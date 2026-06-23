@@ -413,7 +413,7 @@ export default function KetertibanPage() {
         </div>
         <div className="relative z-10 flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-red-800 dark:text-red-400 drop-shadow-sm flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-red-800 dark:text-red-400 drop-shadow-sm flex items-center gap-2 font-theme-hero">
               <FileWarning size={28} /> Ketertiban Murid
             </h1>
             <p className="text-red-600 dark:text-red-300 text-sm mt-1 font-medium max-w-xs">

@@ -232,7 +232,7 @@ export default function UsersManagementPage() {
           <KeyRound size={120} />
         </div>
         <div className="relative z-10">
-          <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2 font-theme-hero">
             Manajemen Pengguna
           </h1>
           <p className="text-indigo-600 dark:text-indigo-300 text-sm mt-1 font-medium max-w-md">

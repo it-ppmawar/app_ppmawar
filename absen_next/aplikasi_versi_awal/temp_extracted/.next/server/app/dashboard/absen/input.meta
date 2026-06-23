@@ -1,0 +1,17 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/dashboard/layout,_N_T_/dashboard/absen/layout,_N_T_/dashboard/absen/input/layout,_N_T_/dashboard/absen/input/page,_N_T_/dashboard/absen/input"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/dashboard/absen/input/__PAGE__",
+    "/dashboard/absen/input",
+    "/dashboard/absen",
+    "/dashboard",
+    "/_index",
+    "/_head"
+  ]
+}

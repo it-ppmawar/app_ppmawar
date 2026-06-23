@@ -81,8 +81,8 @@ export default function DashboardPage() {
       {/* Header Greeting */}
       <div className="text-center py-8 bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 rounded-3xl shadow-sm border border-green-200 dark:border-green-800/50 overflow-hidden relative transition-colors duration-300">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 via-emerald-500 to-green-600 dark:from-green-500 dark:via-emerald-600 dark:to-green-700"></div>
-        <h2 className="text-4xl md:text-5xl font-diwani text-green-800 dark:text-green-400 tracking-wider mb-2 mt-1 drop-shadow-sm transition-all duration-300" dir="rtl">« السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ »</h2>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 dark:text-gray-100 transition-all duration-300">
+        <h2 className="text-4xl md:text-5xl font-theme-arabic text-green-800 dark:text-green-400 tracking-wider mb-2 mt-1 drop-shadow-sm transition-all duration-300" dir="rtl">« السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ »</h2>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 dark:text-gray-100 transition-all duration-300 font-theme-hero">
           {greeting} <span className="text-green-600 dark:text-green-400 inline-block">!</span>
         </h1>
 
@@ -114,12 +114,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Tanggal */}
-        <p className="text-xs text-gray-700 dark:text-gray-200 mt-6 font-semibold bg-white/95 dark:bg-gray-900/95 inline-block px-4 py-1.5 rounded-full shadow-sm border border-gray-200 dark:border-gray-800 transition-all duration-300">
+        <p className="text-xs text-gray-700 dark:text-gray-200 mt-6 font-semibold bg-white/95 dark:bg-gray-900/95 inline-block px-4 py-1.5 rounded-full shadow-sm border border-gray-200 dark:border-gray-800 transition-all duration-300 font-theme-content">
           {dateStr || 'Memuat tanggal...'}
           {hijriDateStr && (
             <>
               <span className="mx-3 opacity-30">|</span>
-              <span className="font-arabic text-sm text-green-700 dark:text-green-400 font-bold tracking-wide" dir="rtl">
+              <span className="font-theme-arabic text-sm text-green-700 dark:text-green-400 font-bold tracking-wide" dir="rtl">
                 {hijriDateStr}
               </span>
             </>

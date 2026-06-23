@@ -556,7 +556,7 @@ export default function TabelJadwalPage() {
         </div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-green-800 dark:text-green-400 drop-shadow-sm flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-green-800 dark:text-green-400 drop-shadow-sm flex items-center gap-2 font-theme-hero">
               <CalendarDays size={28} /> Tabel Jadwal
             </h1>
             <p className="text-green-600 dark:text-green-300 text-sm mt-1 font-medium max-w-md">

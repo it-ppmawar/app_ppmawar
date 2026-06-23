@@ -178,7 +178,7 @@ export default function RekapitulasiPage() {
             <FileText size={120} />
           </div>
           <div className="relative z-10">
-            <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2 font-theme-hero">
               <FileText size={28} /> Rekapitulasi Anak Anda
             </h1>
             <p className="text-indigo-600 dark:text-indigo-300 text-sm mt-1 font-medium max-w-md">
@@ -231,7 +231,7 @@ export default function RekapitulasiPage() {
         </div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-purple-800 dark:text-purple-400 drop-shadow-sm flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-purple-800 dark:text-purple-400 drop-shadow-sm flex items-center gap-2 font-theme-hero">
               <FileText size={28} /> Laporan Rekapitulasi
             </h1>
             <p className="text-purple-600 dark:text-purple-300 text-sm mt-1 font-medium max-w-md">

@@ -283,7 +283,7 @@ export default function KelasPage() {
         </div>
         <div className="relative z-10 flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-teal-800 dark:text-teal-400 drop-shadow-sm flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-teal-800 dark:text-teal-400 drop-shadow-sm flex items-center gap-2 font-theme-hero">
               <BookOpen size={28} /> Manajemen Kelas
             </h1>
             <p className="text-teal-600 dark:text-teal-300 text-sm mt-1 font-medium max-w-sm">

@@ -1,10 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Amiri:wght@400;700&family=Cairo:wght@400;700&display=swap');
+/* ========================
+   FONT IMPORTS
+   ======================== */
+@import url('https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Amiri:wght@400;700&family=Cairo:wght@400;700&family=Cinzel:wght@400;500;600;700;800;900&family=Lato:wght@300;400;700;900&family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400&family=Raleway:wght@300;400;600;700&display=swap');
 @import "tailwindcss";
 
+/* ========================
+   FONT VARIABLES (Tailwind)
+   ======================== */
 @theme {
   --font-cairo: 'Cairo', sans-serif;
   --font-arabic: 'Amiri', serif;
   --font-diwani: 'Aref Ruqaa', serif;
+  --font-cinzel: 'Cinzel', serif;
+  --font-lato: 'Lato', sans-serif;
+  --font-playfair: 'Playfair Display', serif;
+  --font-raleway: 'Raleway', sans-serif;
 }
 
 @variant dark (&:where(.dark, .dark *));
@@ -12,6 +22,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Font Theme Variables (default: Cinzel Hero + Courier New Content) */
+  --font-hero: 'Cinzel', serif;
+  --font-content: '"Courier New", Courier, monospace';
 }
 
 .dark {
@@ -24,6 +38,48 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ========================
+   FONT THEME UTILITY CLASSES
+   Apply dynamically via data-font-hero / data-font-content attributes on <html>
+   ======================== */
+
+/* Default: Cinzel Hero */
+.font-theme-hero {
+  font-family: var(--font-hero, 'Cinzel', serif);
+}
+
+/* Default: Courier New Content */
+.font-theme-content {
+  font-family: var(--font-content, '"Courier New", Courier, monospace');
+}
+
+/* Arabic font stays contextual */
+.font-theme-arabic {
+  font-family: var(--font-arabic-theme, 'Aref Ruqaa', serif);
+}
+
+/* ========================
+   FONT THEME: data attribute selectors
+   These are applied on <html> by layout.tsx to override CSS vars globally
+   ======================== */
+
+/* Theme: default (Cinzel + Courier New) */
+html[data-font-hero="cinzel"] { --font-hero: 'Cinzel', serif; }
+html[data-font-content="courier"] { --font-content: '"Courier New", Courier, monospace'; }
+
+/* Theme: playfair + lato */
+html[data-font-hero="playfair"] { --font-hero: 'Playfair Display', serif; }
+html[data-font-content="lato"] { --font-content: 'Lato', sans-serif; }
+
+/* Theme: raleway */
+html[data-font-hero="raleway"] { --font-hero: 'Raleway', sans-serif; }
+html[data-font-content="raleway"] { --font-content: 'Raleway', sans-serif; }
+
+/* Arabic themes */
+html[data-font-arabic="aref"] { --font-arabic-theme: 'Aref Ruqaa', serif; }
+html[data-font-arabic="amiri"] { --font-arabic-theme: 'Amiri', serif; }
+html[data-font-arabic="cairo"] { --font-arabic-theme: 'Cairo', sans-serif; }
 
 @keyframes slideDown {
   from {

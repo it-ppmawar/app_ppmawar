@@ -70,7 +70,7 @@ export default function InputAbsenPage() {
           <CalendarCheck size={120} />
         </div>
         <div className="relative z-10">
-          <h1 className="text-2xl font-extrabold text-blue-800 dark:text-blue-400 drop-shadow-sm flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold text-blue-800 dark:text-blue-400 drop-shadow-sm flex items-center gap-2 font-theme-hero">
             <CalendarCheck size={28} /> Jadwal Anda Hari Ini
           </h1>
           <p className="text-blue-600 dark:text-blue-300 text-sm mt-1 font-medium max-w-md">

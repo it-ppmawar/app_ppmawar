@@ -1,0 +1,10 @@
+var R=require("../../../chunks/[turbopack]_runtime.js")("server/app/api/jadwal/route.js")
+R.c("server/chunks/[root-of-the-server]__0u03qkt._.js")
+R.c("server/chunks/node_modules_next_124cnn1._.js")
+R.c("server/chunks/node_modules_next_dist_esm_build_templates_app-route_04jlevb.js")
+R.c("server/chunks/[root-of-the-server]__0j8-xkl._.js")
+R.c("server/chunks/[root-of-the-server]__0~e65ls._.js")
+R.c("server/chunks/_00c1l6v._.js")
+R.c("server/chunks/_next-internal_server_app_api_jadwal_route_actions_09hqfrx.js")
+R.m(45674)
+module.exports=R.m(45674).exports

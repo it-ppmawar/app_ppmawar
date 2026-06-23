@@ -1,0 +1,3 @@
+{
+  "/api/auth/update-profile/route": "app/api/auth/update-profile/route.js"
+}

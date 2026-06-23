@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2 } from 'lucide-react';
+import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Palette } from 'lucide-react';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -21,9 +21,64 @@ export default function SettingsPage() {
     nomor_cs: '+628133129223'
   });
 
+  // Font Theme Preference
+  const [fontTheme, setFontTheme] = useState('default');
+  const [fontSaved, setFontSaved] = useState(false);
+
+  const FONT_THEMES = [
+    {
+      id: 'default',
+      name: 'Default – Khas Santri',
+      hero: 'cinzel',
+      content: 'courier',
+      arabic: 'aref',
+      desc: 'Cinzel + Courier New + Aref Ruqaa',
+      preview: { hero: 'Cinzel', content: 'Courier New' }
+    },
+    {
+      id: 'klasik',
+      name: 'Klasik Elegan',
+      hero: 'playfair',
+      content: 'lato',
+      arabic: 'amiri',
+      desc: 'Playfair Display + Lato + Amiri',
+      preview: { hero: 'Playfair Display', content: 'Lato' }
+    },
+    {
+      id: 'modern',
+      name: 'Modern Minimalis',
+      hero: 'raleway',
+      content: 'raleway',
+      arabic: 'cairo',
+      desc: 'Raleway + Raleway + Cairo',
+      preview: { hero: 'Raleway', content: 'Raleway' }
+    },
+  ];
+
+  const handleFontThemeChange = (themeId: string) => {
+    const theme = FONT_THEMES.find(t => t.id === themeId);
+    if (!theme) return;
+    setFontTheme(themeId);
+    // Apply to html element immediately for live preview
+    const htmlEl = document.documentElement;
+    htmlEl.setAttribute('data-font-hero', theme.hero);
+    htmlEl.setAttribute('data-font-content', theme.content);
+    htmlEl.setAttribute('data-font-arabic', theme.arabic);
+    // Persist to localStorage
+    localStorage.setItem('font_hero', theme.hero);
+    localStorage.setItem('font_content', theme.content);
+    localStorage.setItem('font_arabic', theme.arabic);
+    localStorage.setItem('font_theme_id', themeId);
+    setFontSaved(true);
+    setTimeout(() => setFontSaved(false), 2000);
+  };
+
   useEffect(() => {
     fetchSettings();
     fetchGSheetStatus();
+    // Load saved font theme preference
+    const savedThemeId = localStorage.getItem('font_theme_id') || 'default';
+    setFontTheme(savedThemeId);
   }, []);
 
   const fetchSettings = async () => {
@@ -221,7 +276,7 @@ export default function SettingsPage() {
           <Settings size={150} className="animate-[spin_20s_linear_infinite]" />
         </div>
         <div className="relative z-10">
-          <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
+          <h1 className="text-3xl font-extrabold text-white flex items-center gap-3 font-theme-hero">
             <Settings size={32} />
             Pengaturan Sistem
           </h1>
@@ -784,6 +839,57 @@ export default function SettingsPage() {
                 </details>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Pilihan Tema Font */}
+      <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 dark:border-gray-700">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-2 pb-4 border-b border-gray-100 dark:border-gray-700">
+          <Palette size={22} className="text-purple-500" />
+          Preferensi Tampilan Font
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+          Pilih kombinasi font yang paling nyaman untuk Anda. Perubahan langsung diterapkan dan tersimpan di perangkat ini.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {FONT_THEMES.map(theme => (
+            <button
+              key={theme.id}
+              onClick={() => handleFontThemeChange(theme.id)}
+              className={`p-4 rounded-2xl border-2 text-left transition-all hover:shadow-md ${
+                fontTheme === theme.id
+                  ? 'border-green-500 bg-green-50 dark:bg-green-900/30 shadow-md'
+                  : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 hover:border-green-300'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-xs font-black px-2 py-0.5 rounded-full ${
+                  fontTheme === theme.id
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                }`}>
+                  {fontTheme === theme.id ? '✓ Aktif' : 'Pilih'}
+                </span>
+              </div>
+              <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">{theme.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{theme.desc}</p>
+              <div className="mt-3 space-y-1">
+                <p className="text-xs text-gray-500">Judul:</p>
+                <p className={`text-base font-bold text-gray-700 dark:text-gray-200`} style={{fontFamily: theme.preview.hero}}>
+                  Salam Mawar
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Konten:</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300" style={{fontFamily: theme.preview.content}}>
+                  PP. Matholi'ul Anwar
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+        {fontSaved && (
+          <div className="mt-4 flex items-center gap-2 text-green-600 font-bold text-sm animate-pulse">
+            <CheckCircle size={16} /> Tema font berhasil diterapkan!
           </div>
         )}
       </div>

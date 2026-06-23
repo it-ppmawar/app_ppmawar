@@ -299,7 +299,7 @@ export default function JadwalPage() {
           <CalendarDays size={120} />
         </div>
         <div className="relative z-10">
-          <h1 className="text-2xl font-extrabold text-green-800 dark:text-green-400 drop-shadow-sm flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold text-green-800 dark:text-green-400 drop-shadow-sm flex items-center gap-2 font-theme-hero">
             <CalendarDays size={28} /> Jadwal Kegiatan
           </h1>
           <p className="text-green-600 dark:text-green-300 text-sm mt-1 font-medium max-w-md">

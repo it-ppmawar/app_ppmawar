@@ -319,7 +319,7 @@ export default function GuruPage() {
         </div>
         <div className="relative z-10 flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2 font-theme-hero">
               <UserCog size={28} /> Data Guru & Pembina
             </h1>
             <p className="text-indigo-600 dark:text-indigo-300 text-sm mt-1 font-medium max-w-sm">

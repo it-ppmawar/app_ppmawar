@@ -174,7 +174,7 @@ export default function KurikulumPage() {
         </div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-indigo-850 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-indigo-850 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2 font-theme-hero">
               <BookOpen size={28} /> Kurikulum Madin
             </h1>
             <p className="text-indigo-600 dark:text-indigo-300 text-sm mt-1 font-medium max-w-md">

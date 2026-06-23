@@ -1,0 +1,5 @@
+module.exports=[74103,a=>{"use strict";var r=a.i(43793);async function e(a,e,t,s){if(s)return s;try{let[e]=await r.default.execute(`SELECT k.nama_asrama FROM users u 
+       JOIN kamar k ON u.kamar_id = k.kamar_id 
+       WHERE u.id = ? AND k.nama_asrama IS NOT NULL AND k.nama_asrama != '' LIMIT 1`,[a]);if(e.length>0&&e[0].nama_asrama)return e[0].nama_asrama}catch(a){}try{let[e]=await r.default.execute("SELECT nama FROM users WHERE id = ? LIMIT 1",[a]);if(e.length>0&&e[0].nama){let a=e[0].nama.match(/asrama\s+([a-z])/i);if(a)return`Asrama ${a[1].toUpperCase()}`}}catch(a){}let m=t.match(/asrama[_\-\s]?([a-f])(?:[_\-\s]|$)/i);if(m)return`Asrama ${m[1].toUpperCase()}`;let n=t.match(/asrama.*?([a-f])(?:\b|_|$)/i);return n?`Asrama ${n[1].toUpperCase()}`:null}a.s(["resolveAsrama",0,e])}];
+
+//# sourceMappingURL=src_lib_auth_resolveAsrama_ts_09~lzcl._.js.map

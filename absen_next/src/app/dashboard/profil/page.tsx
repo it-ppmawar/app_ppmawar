@@ -143,7 +143,7 @@ export default function ProfilPage() {
             <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
           </label>
         </div>
-        <h2 className="text-2xl font-bold mt-4 capitalize drop-shadow-sm">{user?.username || 'Memuat...'}</h2>
+        <h2 className="text-2xl font-bold mt-4 capitalize drop-shadow-sm font-theme-hero">{user?.username || 'Memuat...'}</h2>
         <p className="text-green-200 text-xs font-medium uppercase tracking-wider mt-1">{user?.role || ''}</p>
       </div>
 

@@ -167,17 +167,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <img src="/logo.png" alt="Logo" className="h-full w-auto object-contain" />
           </div>
           <div className="hidden sm:block">
-            <h1 className="font-bold text-lg leading-tight drop-shadow-sm">Absensi PPMA</h1>
-            <p className="text-green-200 dark:text-green-400 text-xs font-medium">Sistem Absensi Online</p>
+            <h1 className="font-bold text-lg leading-tight drop-shadow-sm font-theme-hero">Salam Mawar</h1>
+            <p className="text-green-200 dark:text-green-400 text-xs font-medium">PP. Matholi'ul Anwar</p>
           </div>
         </Link>
 
         {/* Tulisan Arab di Tengah Navbar (Selalu tampil, disesuaikan untuk mobile) */}
         <Link href="/dashboard" className="absolute left-1/2 transform -translate-x-1/2 z-0 text-center flex flex-col items-center justify-center w-44 sm:w-auto mt-0.5 hover:opacity-80 transition-opacity" aria-label="Kembali ke Dashboard">
-          <h2 className="text-[1.3rem] leading-tight sm:text-2xl lg:text-3xl font-diwani text-green-100/90 dark:text-gray-300 tracking-wider drop-shadow-md" dir="rtl">
+          <h2 className="text-[1.3rem] leading-tight sm:text-2xl lg:text-3xl font-theme-arabic text-green-100/90 dark:text-gray-300 tracking-wider drop-shadow-md" dir="rtl">
             معهد مطالع الأنوار الإسلامي
           </h2>
-          <p className="text-[9px] sm:hidden text-green-200/90 dark:text-green-400 font-medium tracking-wide mt-1 drop-shadow-sm">Sistem Absensi Online</p>
+          <p className="text-[9px] sm:hidden text-green-200/90 dark:text-green-400 font-medium tracking-wide mt-1 drop-shadow-sm">PP. Matholi'ul Anwar</p>
         </Link>
 
         <div className="flex items-center gap-2 relative z-10">

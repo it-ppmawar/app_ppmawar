@@ -3,7 +3,7 @@ import "./globals.css";
 import PwaProvider from "@/components/PwaProvider";
 
 export const metadata: Metadata = {
-  title: "Absensi PP. Matholi'ul Anwar",
+  title: "Salam Mawar - PP. Matholi'ul Anwar",
   description: "Sistem Absensi Online PP. Matholi'ul Anwar",
   manifest: "/manifest.json",
   icons: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "PPMA Absen",
+    title: "Salam Mawar",
   },
   formatDetection: {
     telephone: false,
@@ -45,6 +45,24 @@ export default function RootLayout({
       className="h-full antialiased"
     >
       <body className="min-h-full flex flex-col">
+        {/* Anti-flash script: baca preferensi font dari localStorage sebelum render */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var fontHero = localStorage.getItem('font_hero') || 'cinzel';
+                  var fontContent = localStorage.getItem('font_content') || 'courier';
+                  var fontArabic = localStorage.getItem('font_arabic') || 'aref';
+                  var htmlEl = document.documentElement;
+                  htmlEl.setAttribute('data-font-hero', fontHero);
+                  htmlEl.setAttribute('data-font-content', fontContent);
+                  htmlEl.setAttribute('data-font-arabic', fontArabic);
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
         <PwaProvider>{children}</PwaProvider>
       </body>
     </html>

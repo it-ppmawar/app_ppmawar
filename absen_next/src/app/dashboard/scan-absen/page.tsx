@@ -197,7 +197,7 @@ export default function ScanAbsenPage() {
             <div className="bg-white/20 p-2.5 rounded-xl">
               <QrCode size={24} />
             </div>
-            <h1 className="text-xl font-extrabold">Scan Absen Asrama</h1>
+            <h1 className="text-xl font-extrabold font-theme-hero">Scan Absen Asrama</h1>
           </div>
           <p className="text-green-200 text-sm">Scan kartu QR santri/pengurus untuk absensi otomatis.</p>
           

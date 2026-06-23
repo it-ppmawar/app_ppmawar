@@ -521,7 +521,7 @@ export default function DataMuridPage() {
         </div>
         <div className="relative z-10 flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-blue-800 dark:text-blue-400 drop-shadow-sm flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-blue-800 dark:text-blue-400 drop-shadow-sm flex items-center gap-2 font-theme-hero">
               <Users size={28} /> Data Santri
             </h1>
             <p className="text-blue-600 dark:text-blue-300 text-sm mt-1 font-medium max-w-xs">

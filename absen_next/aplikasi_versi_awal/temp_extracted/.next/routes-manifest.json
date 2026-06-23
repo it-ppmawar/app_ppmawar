@@ -1,0 +1,411 @@
+{
+  "version": 3,
+  "pages404": true,
+  "appType": "app",
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "onMatchHeaders": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_global-error",
+      "regex": "^/_global\\-error(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_global\\-error(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/api/absen/input",
+      "regex": "^/api/absen/input(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/absen/input(?:/)?$"
+    },
+    {
+      "page": "/api/absen/jadwal",
+      "regex": "^/api/absen/jadwal(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/absen/jadwal(?:/)?$"
+    },
+    {
+      "page": "/api/admin/active-reminders",
+      "regex": "^/api/admin/active\\-reminders(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/admin/active\\-reminders(?:/)?$"
+    },
+    {
+      "page": "/api/alumni",
+      "regex": "^/api/alumni(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/alumni(?:/)?$"
+    },
+    {
+      "page": "/api/alumni/restore",
+      "regex": "^/api/alumni/restore(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/alumni/restore(?:/)?$"
+    },
+    {
+      "page": "/api/auth/login",
+      "regex": "^/api/auth/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/login(?:/)?$"
+    },
+    {
+      "page": "/api/auth/logout",
+      "regex": "^/api/auth/logout(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/logout(?:/)?$"
+    },
+    {
+      "page": "/api/auth/me",
+      "regex": "^/api/auth/me(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/me(?:/)?$"
+    },
+    {
+      "page": "/api/auth/update-profile",
+      "regex": "^/api/auth/update\\-profile(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/update\\-profile(?:/)?$"
+    },
+    {
+      "page": "/api/auth/webauthn/login/generate",
+      "regex": "^/api/auth/webauthn/login/generate(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/webauthn/login/generate(?:/)?$"
+    },
+    {
+      "page": "/api/auth/webauthn/login/verify",
+      "regex": "^/api/auth/webauthn/login/verify(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/webauthn/login/verify(?:/)?$"
+    },
+    {
+      "page": "/api/auth/webauthn/register/generate",
+      "regex": "^/api/auth/webauthn/register/generate(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/webauthn/register/generate(?:/)?$"
+    },
+    {
+      "page": "/api/auth/webauthn/register/verify",
+      "regex": "^/api/auth/webauthn/register/verify(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/webauthn/register/verify(?:/)?$"
+    },
+    {
+      "page": "/api/debug/diagnosa",
+      "regex": "^/api/debug/diagnosa(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/debug/diagnosa(?:/)?$"
+    },
+    {
+      "page": "/api/debug/setup-asrama",
+      "regex": "^/api/debug/setup\\-asrama(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/debug/setup\\-asrama(?:/)?$"
+    },
+    {
+      "page": "/api/debug/token",
+      "regex": "^/api/debug/token(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/debug/token(?:/)?$"
+    },
+    {
+      "page": "/api/guru",
+      "regex": "^/api/guru(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/guru(?:/)?$"
+    },
+    {
+      "page": "/api/jadwal",
+      "regex": "^/api/jadwal(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/jadwal(?:/)?$"
+    },
+    {
+      "page": "/api/jadwal/active",
+      "regex": "^/api/jadwal/active(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/jadwal/active(?:/)?$"
+    },
+    {
+      "page": "/api/kamar/list",
+      "regex": "^/api/kamar/list(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/kamar/list(?:/)?$"
+    },
+    {
+      "page": "/api/kegiatan/list",
+      "regex": "^/api/kegiatan/list(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/kegiatan/list(?:/)?$"
+    },
+    {
+      "page": "/api/kelas",
+      "regex": "^/api/kelas(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/kelas(?:/)?$"
+    },
+    {
+      "page": "/api/ketertiban",
+      "regex": "^/api/ketertiban(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/ketertiban(?:/)?$"
+    },
+    {
+      "page": "/api/migrate",
+      "regex": "^/api/migrate(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/migrate(?:/)?$"
+    },
+    {
+      "page": "/api/migrate-db",
+      "regex": "^/api/migrate\\-db(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/migrate\\-db(?:/)?$"
+    },
+    {
+      "page": "/api/murid",
+      "regex": "^/api/murid(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/murid(?:/)?$"
+    },
+    {
+      "page": "/api/murid/lulus",
+      "regex": "^/api/murid/lulus(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/murid/lulus(?:/)?$"
+    },
+    {
+      "page": "/api/pairing",
+      "regex": "^/api/pairing(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/pairing(?:/)?$"
+    },
+    {
+      "page": "/api/rekapitulasi",
+      "regex": "^/api/rekapitulasi(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/rekapitulasi(?:/)?$"
+    },
+    {
+      "page": "/api/scan-absen",
+      "regex": "^/api/scan\\-absen(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/scan\\-absen(?:/)?$"
+    },
+    {
+      "page": "/api/settings",
+      "regex": "^/api/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/settings(?:/)?$"
+    },
+    {
+      "page": "/api/sync/googlesheet",
+      "regex": "^/api/sync/googlesheet(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/sync/googlesheet(?:/)?$"
+    },
+    {
+      "page": "/api/sync/murid",
+      "regex": "^/api/sync/murid(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/sync/murid(?:/)?$"
+    },
+    {
+      "page": "/api/sync/status",
+      "regex": "^/api/sync/status(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/sync/status(?:/)?$"
+    },
+    {
+      "page": "/api/upload",
+      "regex": "^/api/upload(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/upload(?:/)?$"
+    },
+    {
+      "page": "/api/users",
+      "regex": "^/api/users(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/users(?:/)?$"
+    },
+    {
+      "page": "/api/users/convert",
+      "regex": "^/api/users/convert(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/users/convert(?:/)?$"
+    },
+    {
+      "page": "/api/users/generate-pengurus",
+      "regex": "^/api/users/generate\\-pengurus(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/users/generate\\-pengurus(?:/)?$"
+    },
+    {
+      "page": "/api/whatsapp-list",
+      "regex": "^/api/whatsapp\\-list(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/whatsapp\\-list(?:/)?$"
+    },
+    {
+      "page": "/dashboard",
+      "regex": "^/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard(?:/)?$"
+    },
+    {
+      "page": "/dashboard/absen",
+      "regex": "^/dashboard/absen(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/absen(?:/)?$"
+    },
+    {
+      "page": "/dashboard/absen/input",
+      "regex": "^/dashboard/absen/input(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/absen/input(?:/)?$"
+    },
+    {
+      "page": "/dashboard/alumni",
+      "regex": "^/dashboard/alumni(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/alumni(?:/)?$"
+    },
+    {
+      "page": "/dashboard/guru",
+      "regex": "^/dashboard/guru(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/guru(?:/)?$"
+    },
+    {
+      "page": "/dashboard/jadwal",
+      "regex": "^/dashboard/jadwal(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/jadwal(?:/)?$"
+    },
+    {
+      "page": "/dashboard/kamar",
+      "regex": "^/dashboard/kamar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/kamar(?:/)?$"
+    },
+    {
+      "page": "/dashboard/kelas",
+      "regex": "^/dashboard/kelas(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/kelas(?:/)?$"
+    },
+    {
+      "page": "/dashboard/ketertiban",
+      "regex": "^/dashboard/ketertiban(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/ketertiban(?:/)?$"
+    },
+    {
+      "page": "/dashboard/murid",
+      "regex": "^/dashboard/murid(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/murid(?:/)?$"
+    },
+    {
+      "page": "/dashboard/notifikasi",
+      "regex": "^/dashboard/notifikasi(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/notifikasi(?:/)?$"
+    },
+    {
+      "page": "/dashboard/pairing",
+      "regex": "^/dashboard/pairing(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/pairing(?:/)?$"
+    },
+    {
+      "page": "/dashboard/profil",
+      "regex": "^/dashboard/profil(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/profil(?:/)?$"
+    },
+    {
+      "page": "/dashboard/rekapitulasi",
+      "regex": "^/dashboard/rekapitulasi(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/rekapitulasi(?:/)?$"
+    },
+    {
+      "page": "/dashboard/scan-absen",
+      "regex": "^/dashboard/scan\\-absen(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/scan\\-absen(?:/)?$"
+    },
+    {
+      "page": "/dashboard/settings",
+      "regex": "^/dashboard/settings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/settings(?:/)?$"
+    },
+    {
+      "page": "/dashboard/users",
+      "regex": "^/dashboard/users(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/users(?:/)?$"
+    },
+    {
+      "page": "/favicon.ico",
+      "regex": "^/favicon\\.ico(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/favicon\\.ico(?:/)?$"
+    },
+    {
+      "page": "/icon.png",
+      "regex": "^/icon\\.png(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/icon\\.png(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

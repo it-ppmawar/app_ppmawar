@@ -140,7 +140,7 @@ export default function PairingKartuPage() {
           <Camera size={150} />
         </div>
         <div className="relative z-10">
-          <h1 className="text-2xl font-extrabold flex items-center justify-center gap-2 drop-shadow-md">
+          <h1 className="text-2xl font-extrabold flex items-center justify-center gap-2 drop-shadow-md font-theme-hero">
             <Camera size={28} /> Pairing Kartu Santri
           </h1>
           <p className="text-indigo-200 mt-2 text-sm font-medium">
