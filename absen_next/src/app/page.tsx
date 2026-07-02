@@ -28,14 +28,18 @@ export default function LoginPage() {
 
   const getHijriDate = (date: Date) => {
     try {
-      return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {day: 'numeric', month: 'long', year: 'numeric'}).format(date).replace(/هـ/g, 'هـ');
+      const arabicDays = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      const arabicDay = arabicDays[date.getDay()];
+      const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {day: 'numeric', month: 'long', year: 'numeric'});
+      const hijriDate = hijriFormatter.format(date).replace(/هـ/g, '').trim();
+      return `${arabicDay}، ${hijriDate} هـ`;
     } catch (e) {
       return '';
     }
   };
 
   const getMasehiDate = (date: Date) => {
-    return new Intl.DateTimeFormat('id-ID', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'}).format(date) + ' M';
+    return new Intl.DateTimeFormat('id-ID', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'}).format(date).replace('Minggu', 'Ahad') + ' M';
   };
 
   const getTime = (date: Date) => {
@@ -133,12 +137,12 @@ export default function LoginPage() {
         <div className="w-full max-w-md bg-white/10 backdrop-blur-md rounded-2xl p-4 mb-4 shadow-xl border border-white/20 text-center animate-[slideDown_0.5s_ease-out]">
           <div className="flex justify-center items-center gap-2 text-white font-medium text-sm md:text-base">
             <CalendarDays className="h-5 w-5" />
-            <span className="font-cairo text-xl md:text-2xl mt-1 tracking-wide font-bold" dir="rtl">{getHijriDate(currentTime)}</span>
+            <span className="font-cairo text-lg md:text-xl mt-1 tracking-wide font-bold" dir="rtl">{getHijriDate(currentTime)}</span>
           </div>
-          <div className="flex justify-center items-center gap-2 text-green-100 text-xs md:text-sm mt-1">
-            <span>{getMasehiDate(currentTime)}</span>
+          <div className="flex justify-center items-center gap-2 text-green-100 text-xs md:text-sm mt-1 font-bold">
+            <span style={{fontFamily: '"Courier New", Courier, monospace'}}>{getMasehiDate(currentTime)}</span>
             <span className="text-white/50">|</span>
-            <span className="font-mono">{getTime(currentTime)}</span>
+            <span style={{fontFamily: '"Courier New", Courier, monospace'}}>{getTime(currentTime)}</span>
           </div>
         </div>
       )}
@@ -148,8 +152,27 @@ export default function LoginPage() {
           <div className="bg-white rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-xl h-32 w-32 md:h-40 md:w-40 p-4 md:p-5 animate-[slideDown_0.8s_ease-out]">
             <img src="/logo.png" alt="Logo PPMA" className="h-[85%] w-[85%] object-contain drop-shadow-md" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-wide animate-[fadeIn_1s_ease-out]">Sistem Absensi</h1>
-          <p className="text-green-100 text-sm mt-1 animate-[fadeIn_1.2s_ease-out]">Pondok Pesantren Matholi'ul Anwar</p>
+          {/* Salam Mawar — baris terpendek */}
+          <h1
+            className="font-bold text-white animate-[fadeIn_1s_ease-out] mb-2"
+            style={{ fontFamily: 'var(--font-cinzel), serif', fontSize: 'clamp(1.4rem, 4vw, 1.7rem)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
+          >
+            Salam Mawar
+          </h1>
+          {/* Sistem Aplikasi Layanan Akademik — medium */}
+          <h2
+            className="text-white font-bold animate-[fadeIn_1.2s_ease-out] mb-1.5"
+            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.7rem, 2.5vw, 0.85rem)', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
+          >
+            Sistem Aplikasi Layanan Akademik
+          </h2>
+          {/* Pondok Pesantren Matholi'ul Anwar — terpanjang */}
+          <p
+            className="text-white font-bold animate-[fadeIn_1.4s_ease-out]"
+            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.7rem, 2.5vw, 0.85rem)', letterSpacing: '0.12em', whiteSpace: 'nowrap' }}
+          >
+            Pondok Pesantren Matholi&apos;ul Anwar
+          </p>
         </div>
 
         {error && (
@@ -160,35 +183,37 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-1">
-            <label className="text-sm font-medium text-green-50 ml-1">Username / NIP</label>
+            <label className="text-[15px] font-extrabold text-green-50 ml-1" style={{ fontFamily: 'var(--font-cinzel), serif', letterSpacing: '0.05em' }}>Nama Pengguna</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <User className="h-5 w-5 text-green-200" />
+                <User className="h-4 w-4 text-green-200" />
               </div>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-green-200 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
-                placeholder="Masukkan username Anda"
+                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[15px] font-bold placeholder-green-200/70 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
+                style={{ fontFamily: '"Courier New", Courier, monospace' }}
+                placeholder="Masukkan Nama Pengguna Anda"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-green-50 ml-1">Password</label>
+            <label className="text-[15px] font-extrabold text-green-50 ml-1" style={{ fontFamily: 'var(--font-cinzel), serif', letterSpacing: '0.05em' }}>Kata Sandi</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-green-200" />
+                  <Lock className="h-4 w-4 text-green-200" />
                 </div>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-green-200 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
-                  placeholder="Masukkan password Anda"
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[15px] font-bold placeholder-green-200/70 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
+                  style={{ fontFamily: '"Courier New", Courier, monospace' }}
+                  placeholder="Masukkan Kata Sandi Anda"
                   required
                 />
               </div>
@@ -210,6 +235,7 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             className="w-full py-3.5 bg-white text-green-800 font-bold rounded-xl hover:bg-green-50 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-green-800 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
+            style={{ fontFamily: 'var(--font-cinzel), serif' }}
           >
             {loading ? (
               <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-green-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -220,26 +246,27 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="flex-1 h-px bg-white/20" />
-            <span className="text-white/50 text-xs select-none bg-green-800/80 px-2 rounded">atau</span>
+            <span className="text-white/50 text-xs select-none bg-green-800/80 px-2 rounded font-mono">atau</span>
             <div className="flex-1 h-px bg-white/20" />
           </div>
           <button
             type="button"
             onClick={handleGuestLogin}
             disabled={loading}
-            className="w-full py-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/15 border border-white/20 text-white/80 hover:text-white font-semibold rounded-xl transition-all text-sm disabled:opacity-50"
+            className="w-full py-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/15 border border-white/20 text-white/80 hover:text-white font-bold rounded-xl transition-all text-sm disabled:opacity-50"
+            style={{ fontFamily: 'var(--font-cinzel), serif' }}
           >
             <User className="h-4 w-4" />
             Masuk sebagai Tamu
           </button>
-          <p className="text-[10px] text-green-200/60 mt-2">Tamu hanya dapat melihat struktur menu tanpa akses data</p>
+          <p className="text-[10px] text-green-200/60 mt-2 font-mono">Tamu hanya dapat melihat struktur menu tanpa akses data</p>
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-xs text-green-200">
+          <p className="text-xs text-green-200 font-mono" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
             &copy; {new Date().getFullYear()} PP. Matholi'ul Anwar
           </p>
         </div>

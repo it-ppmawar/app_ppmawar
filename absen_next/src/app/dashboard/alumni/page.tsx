@@ -1,13 +1,65 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { GraduationCap, Search, Edit, Trash2, RotateCcw, Download, FileText, X, Plus } from 'lucide-react';
+import { GraduationCap, Search, Edit, Trash2, RotateCcw, Download, FileText, Upload, X, Plus } from 'lucide-react';
+import { downloadTemplate } from '@/lib/downloadTemplate';
 
 export default function AlumniManagementPage() {
   const [alumni, setAlumni] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filterKategori, setFilterKategori] = useState(''); // '' means All, 'PPM', 'LPPM'
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Import State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const handleImportExcel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('type', 'alumni');
+      const res = await fetch('/api/import', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setIsImportModalOpen(false);
+        setImportFile(null);
+        fetchAlumni();
+      } else {
+        alert(data.error || 'Gagal mengimpor data');
+      }
+    } catch {
+      alert('Terjadi kesalahan koneksi');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Helper untuk menentukan URL Foto Santri (Lokal vs Mitra)
+  const getFotoUrl = (fotoName: string | null) => {
+    if (!fotoName || fotoName === '-') return '';
+    if (fotoName.startsWith('http://') || fotoName.startsWith('https://')) {
+      return fotoName;
+    }
+    if (fotoName.startsWith('foto_') || fotoName.startsWith('upload_') || fotoName.startsWith('profil_')) {
+      return `/uploads/${fotoName}`;
+    }
+    const baseUrl = process.env.NEXT_PUBLIC_API_MITRA_FOTO_URL || 'https://mawar.smartpesantren.id/sekretariat/berkas/';
+    const cleanFotoName = fotoName.startsWith('/') ? fotoName.substring(1) : fotoName;
+    if (cleanFotoName.includes('sekretariat/berkas')) {
+      return `https://mawar.smartpesantren.id/${cleanFotoName}`;
+    }
+    return `${baseUrl}${cleanFotoName}`;
+  };
 
   // Form State for Edit Modal
   const [showModal, setShowModal] = useState(false);
@@ -22,13 +74,20 @@ export default function AlumniManagementPage() {
     tahun_masuk: '',
     tahun_keluar: '',
     status_keluar: 'Lulus',
-    jenis_kelamin: 'Laki-laki'
+    jenis_kelamin: 'Laki-laki',
+    kategori_mukim: 'PPM',
+    keterangan: '',
+    kamar: '',
+    madin: '',
+    quran: ''
   });
 
   const fetchAlumni = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/alumni?search=${encodeURIComponent(search)}`);
+      let url = `/api/alumni?search=${encodeURIComponent(search)}`;
+      if (filterKategori) url += `&kategori=${encodeURIComponent(filterKategori)}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setAlumni(data.data);
@@ -44,7 +103,7 @@ export default function AlumniManagementPage() {
 
   useEffect(() => {
     fetchAlumni();
-  }, [search]);
+  }, [search, filterKategori]);
 
   // Sorting
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
@@ -76,6 +135,9 @@ export default function AlumniManagementPage() {
   // Export State
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
+  
+  // Photo Viewer State
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   const handleExport = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
     if (sortedAlumni.length === 0) {
@@ -117,6 +179,20 @@ export default function AlumniManagementPage() {
 
   const handleOpenEditModal = (item: any) => {
     setEditingAlumni(item);
+    
+    let kamar = '';
+    let madin = '';
+    let quran = '';
+    
+    if (item.keterangan) {
+      const parts = item.keterangan.split(' | ');
+      parts.forEach((p: string) => {
+        if (p.startsWith('Kamar: ')) kamar = p.replace('Kamar: ', '');
+        else if (p.startsWith('Madin: ')) madin = p.replace('Madin: ', '');
+        else if (p.startsWith("Qur'an: ")) quran = p.replace("Qur'an: ", '');
+      });
+    }
+
     setFormData({
       alumni_id: item.alumni_id.toString(),
       nama: item.nama || '',
@@ -127,7 +203,12 @@ export default function AlumniManagementPage() {
       tahun_masuk: item.tahun_masuk ? item.tahun_masuk.toString() : '',
       tahun_keluar: item.tahun_keluar ? item.tahun_keluar.toString() : '',
       status_keluar: item.status_keluar || 'Lulus',
-      jenis_kelamin: item.jenis_kelamin || 'Laki-laki'
+      jenis_kelamin: item.jenis_kelamin || 'Laki-laki',
+      kategori_mukim: item.kategori_mukim || 'PPM',
+      keterangan: item.keterangan || '',
+      kamar,
+      madin,
+      quran
     });
     setShowModal(true);
   };
@@ -135,11 +216,18 @@ export default function AlumniManagementPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const parts = [];
+      if (formData.kamar) parts.push(`Kamar: ${formData.kamar}`);
+      if (formData.madin) parts.push(`Madin: ${formData.madin}`);
+      if (formData.quran) parts.push(`Qur'an: ${formData.quran}`);
+      const updatedKeterangan = parts.join(' | ');
+
       const res = await fetch('/api/alumni', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          keterangan: updatedKeterangan,
           tahun_masuk: formData.tahun_masuk ? parseInt(formData.tahun_masuk) : null,
           tahun_keluar: formData.tahun_keluar ? parseInt(formData.tahun_keluar) : null
         })
@@ -203,13 +291,42 @@ export default function AlumniManagementPage() {
         <div className="absolute top-0 right-0 -mt-4 -mr-4 text-green-200/50 dark:text-green-800/20">
           <GraduationCap size={120} />
         </div>
-        <div className="relative z-10">
-          <h1 className="text-2xl font-extrabold text-green-800 dark:text-green-400 drop-shadow-sm flex items-center gap-2">
-            Manajemen Data Alumni
-          </h1>
-          <p className="text-green-600 dark:text-green-300 text-sm mt-1 font-medium max-w-lg">
-            Daftar santri/murid yang telah diluluskan. Anda dapat mengedit data, menghapus permanen, atau memulihkan statusnya menjadi santri aktif.
-          </p>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-extrabold text-green-800 dark:text-green-400 drop-shadow-sm flex items-center gap-2">
+              Manajemen Data Alumni
+            </h1>
+            <p className="text-green-600 dark:text-green-300 text-sm mt-1 font-medium max-w-lg">
+              Daftar santri/murid yang telah diluluskan. Anda dapat mengedit data, menghapus permanen, atau memulihkan statusnya menjadi santri aktif.
+            </p>
+          </div>
+          <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
+            <button onClick={() => handleExport('pdf', true)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5" title="Preview PDF">
+              <FileText size={14} /> Preview
+            </button>
+            <button onClick={() => handleExport('pdf', false)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5" title="Export PDF">
+              <Download size={14} /> PDF
+            </button>
+            <button onClick={() => handleExport('excel', false)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5" title="Export Excel">
+              <Download size={14} /> Excel
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadTemplate('alumni')}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-green-700 border border-green-200 rounded-xl text-xs font-bold hover:bg-green-50 transition-colors flex items-center gap-1.5"
+              title="Unduh Templat Excel"
+            >
+              <Download size={14} /> Templat
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-green-700 border border-green-200 rounded-xl text-xs font-bold hover:bg-green-50 transition-colors flex items-center gap-1.5"
+              title="Impor Excel"
+            >
+              <Upload size={14} /> Impor
+            </button>
+          </div>
         </div>
       </div>
 
@@ -219,28 +336,32 @@ export default function AlumniManagementPage() {
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-          <div className="p-4 md:p-5 border-b dark:border-gray-700 flex flex-col sm:flex-row justify-between gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Cari nama atau NIS alumni..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-green-500 transition-all"
-              />
-            </div>
-            
-            <div className="flex gap-2 shrink-0 overflow-x-auto pb-2 sm:pb-0">
-              <button onClick={() => handleExport('pdf', true)} className="px-3 py-2 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-1.5 shrink-0" title="Preview PDF">
-                <FileText size={14} /> Preview
-              </button>
-              <button onClick={() => handleExport('pdf', false)} className="px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5 shrink-0" title="Export PDF">
-                <Download size={14} /> PDF
-              </button>
-              <button onClick={() => handleExport('excel', false)} className="px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5 shrink-0" title="Export Excel">
-                <Download size={14} /> Excel
-              </button>
+          <div className="p-4 md:p-5 border-b dark:border-gray-700">
+            <div className="flex flex-col gap-4 mb-6">
+              {/* Baris 1: Pencarian */}
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  placeholder="Cari nama atau NIS alumni..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-green-500 transition-all"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              {/* Baris 2: Dropdown Kategori */}
+              <select
+                className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-green-500 transition-all"
+                value={filterKategori}
+                onChange={(e) => setFilterKategori(e.target.value)}
+              >
+                <option value="">Semua Kategori</option>
+                <option value="PPM">PPM (Mukim)</option>
+                <option value="LPPM">LPPM (Tidak Mukim)</option>
+              </select>
+
+
             </div>
           </div>
 
@@ -251,7 +372,10 @@ export default function AlumniManagementPage() {
                   <th className="px-5 py-4 w-10 text-center">NO</th>
                   <th className="px-5 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>NAMA ALUMNI{getSortIcon('nama')}</th>
                   <th className="px-5 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. KELAMIN{getSortIcon('jenis_kelamin')}</th>
-                  <th className="px-5 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none text-center" onClick={() => requestSort('tahun_masuk')}>TAHUN MASUK{getSortIcon('tahun_masuk')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none" onClick={() => requestSort('kategori_mukim')}>
+                    Kategori{getSortIcon('kategori_mukim')}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none" onClick={() => requestSort('tahun_masuk')}>TAHUN MASUK{getSortIcon('tahun_masuk')}</th>
                   <th className="px-5 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none text-center" onClick={() => requestSort('tahun_keluar')}>TAHUN KELUAR{getSortIcon('tahun_keluar')}</th>
                   <th className="px-5 py-4">KONTAK & ALAMAT</th>
                   <th className="px-5 py-4 text-center">STATUS</th>
@@ -260,26 +384,51 @@ export default function AlumniManagementPage() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {loading ? (
-                  <tr><td colSpan={7} className="text-center py-10 animate-pulse text-green-600 font-bold">Memuat data alumni...</td></tr>
+                  <tr><td colSpan={9} className="text-center py-10 animate-pulse text-green-600 font-bold">Memuat data alumni...</td></tr>
                 ) : sortedAlumni.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-10 text-gray-500 font-medium">Tidak ada data alumni</td></tr>
+                  <tr><td colSpan={9} className="text-center py-10 text-gray-500 font-medium">Tidak ada data alumni</td></tr>
                 ) : (
                   sortedAlumni.map((item, idx) => (
                     <tr key={item.alumni_id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="px-5 py-4 text-center text-gray-400 font-medium">{idx + 1}</td>
                       <td className="px-5 py-4">
                         <div className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 flex items-center justify-center text-xs font-bold">
-                            {(item.nama || 'AL').substring(0,2).toUpperCase()}
+                          <div className="w-8 h-8 rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 flex items-center justify-center text-xs font-bold overflow-hidden relative shrink-0">
+                            <span className="absolute inset-0 flex items-center justify-center">
+                              {(item.nama || 'AL').substring(0,2).toUpperCase()}
+                            </span>
+                            {item.foto && item.foto !== '-' && (
+                              <img
+                                src={getFotoUrl(item.foto)}
+                                alt={item.nama}
+                                className="absolute inset-0 w-full h-full object-cover z-10 cursor-pointer hover:scale-110 transition-transform duration-300"
+                                onClick={() => setSelectedPhoto(getFotoUrl(item.foto))}
+                                onError={(e) => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.display = 'none'; }}
+                              />
+                            )}
                           </div>
                           {item.nama}
                         </div>
-                        {item.nis && <div className="text-[11px] text-gray-400 font-mono mt-1 ml-10">NIS: {item.nis}</div>}
+                        <div className="text-[11px] text-gray-400 font-mono mt-1 ml-10 flex flex-col gap-0.5">
+                          {item.nis && <span>NIS: {item.nis}</span>}
+                          {item.keterangan && (
+                            <span className="text-[10px] text-gray-500 font-sans italic">
+                              Riwayat: {item.keterangan}
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-5 py-4 text-xs font-medium uppercase">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                         {item.jenis_kelamin || '-'}
                       </td>
-                      <td className="px-5 py-4 text-center font-medium text-gray-700 dark:text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                        {item.kategori_mukim === 'PPM' ? (
+                          <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 rounded-md text-xs font-medium">PPM</span>
+                        ) : item.kategori_mukim === 'LPPM' ? (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 rounded-md text-xs font-medium">LPPM</span>
+                        ) : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                         {item.tahun_masuk || '-'}
                       </td>
                       <td className="px-5 py-4 text-center font-bold text-green-600 dark:text-green-400">
@@ -330,14 +479,14 @@ export default function AlumniManagementPage() {
 
       {/* Edit Alumni Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="bg-green-600 px-6 py-4 flex justify-between items-center text-white">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
+            <div className="bg-green-600 px-6 py-4 flex justify-between items-center text-white shrink-0 rounded-t-3xl">
               <h3 className="font-bold">Edit Data Alumni</h3>
-              <button onClick={() => setShowModal(false)} className="text-white/70 hover:text-white font-bold">Batal</button>
+              <button type="button" onClick={() => setShowModal(false)} className="text-white/70 hover:text-white font-bold p-1">✕</button>
             </div>
             
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+            <form onSubmit={handleSave} className="p-5 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Nama Lengkap</label>
                 <input required type="text" value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
@@ -372,7 +521,25 @@ export default function AlumniManagementPage() {
 
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Alamat Rumah</label>
-                <textarea rows={3} value={formData.alamat} onChange={e => setFormData({...formData, alamat: e.target.value})} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none resize-none" />
+                <textarea rows={2} value={formData.alamat} onChange={e => setFormData({...formData, alamat: e.target.value})} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none resize-none" />
+              </div>
+
+              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-900/50">
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Riwayat Pendidikan Terakhir</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Kelas Madin</label>
+                    <input type="text" value={formData.madin} onChange={e => setFormData({...formData, madin: e.target.value})} placeholder="Contoh: 3 WUSTHO" className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Kelas Qur'an</label>
+                    <input type="text" value={formData.quran} onChange={e => setFormData({...formData, quran: e.target.value})} placeholder="Contoh: Jilid 2" className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Kamar Asrama</label>
+                    <input type="text" value={formData.kamar} onChange={e => setFormData({...formData, kamar: e.target.value})} placeholder="Contoh: B8 TQ 2" className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -384,16 +551,32 @@ export default function AlumniManagementPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">Status Keluar</label>
-                  <select value={formData.status_keluar} onChange={e => setFormData({...formData, status_keluar: e.target.value})} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status Keluar</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                    value={formData.status_keluar}
+                    onChange={e => setFormData({...formData, status_keluar: e.target.value})}
+                  >
                     <option value="Lulus">Lulus</option>
-                    <option value="Mutasi">Mutasi / Pindah</option>
-                    <option value="Keluar">Keluar</option>
+                    <option value="Berhenti">Berhenti</option>
+                    <option value="Dikeluarkan">Dikeluarkan</option>
                   </select>
                 </div>
               </div>
 
-              <div className="pt-4 flex gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori Mukim</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                  value={formData.kategori_mukim}
+                  onChange={e => setFormData({...formData, kategori_mukim: e.target.value})}
+                >
+                  <option value="PPM">PPM (Mukim)</option>
+                  <option value="LPPM">LPPM (Tidak Mukim)</option>
+                </select>
+              </div>
+
+              <div className="pt-4 pb-2 flex gap-3 shrink-0">
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-bold rounded-xl transition-colors">
                   Batal
                 </button>
@@ -464,6 +647,78 @@ export default function AlumniManagementPage() {
                 </a>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Viewer Modal */}
+      {selectedPhoto && (
+        <div 
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]"
+          onClick={() => setSelectedPhoto(null)}
+        >
+          <button 
+            className="absolute top-4 right-4 md:top-6 md:right-6 text-white/70 hover:text-white p-2 z-[111] transition-colors"
+            onClick={() => setSelectedPhoto(null)}
+            title="Tutup (Esc)"
+          >
+            <X size={32} />
+          </button>
+          <img 
+            src={selectedPhoto} 
+            alt="Foto Full Screen" 
+            className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl animate-[zoomIn_0.2s_ease-out]"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+      {/* Import Excel Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
+            <div className="bg-green-700 dark:bg-green-900 p-5 text-white flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2"><Upload size={20} /> Impor Data Alumni</h2>
+              <button onClick={() => { setIsImportModalOpen(false); setImportFile(null); }} className="text-white hover:text-gray-200"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleImportExcel} className="p-6 space-y-4">
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Silakan pilih file Excel (.xlsx) dengan kolom yang disesuaikan dengan templat yang disediakan.
+                Data alumni dengan NIS atau Nama yang sama akan diperbarui (timpa data lama) secara otomatis untuk menghindari duplikasi.
+              </p>
+              <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors relative">
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  required
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) setImportFile(files[0]);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Upload size={32} className="mx-auto text-green-600 mb-2" />
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                  {importFile ? importFile.name : 'Pilih File Excel (.xlsx)'}
+                </span>
+                <span className="text-[10px] text-gray-400 block mt-1">Maksimal ukuran file: 10MB</span>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setIsImportModalOpen(false); setImportFile(null); }}
+                  className="px-5 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={importing || !importFile}
+                  className="px-5 py-2.5 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {importing ? 'Mengimpor...' : 'Mulai Impor'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

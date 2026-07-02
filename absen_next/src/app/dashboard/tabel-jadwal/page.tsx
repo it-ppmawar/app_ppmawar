@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { CalendarDays, Clock, User, Plus, Edit2, Trash2, X, Check, BookOpen, AlertCircle, FileText, Download, Search, ChevronDown, Sparkles } from 'lucide-react';
-import { exportMatrixPDF } from '@/lib/exportUtils';
+import { exportMatrixPDF, exportMatrixExcel } from '@/lib/exportUtils';
 
 interface Guru {
   id: number;
@@ -558,7 +558,7 @@ export default function TabelJadwalPage() {
   const [showOrientasiModal, setShowOrientasiModal] = useState(false);
   const [pendingPreviewOnly, setPendingPreviewOnly] = useState(false);
 
-  const handleExportMatrix = (orientation: 'landscape' | 'portrait', previewOnly = false) => {
+  const handleExportMatrix = (format: 'pdf' | 'excel', orientation: 'landscape' | 'portrait', previewOnly = false) => {
     if (activeSchedules.length === 0) {
       alert('Tidak ada data untuk di-export.');
       return;
@@ -655,24 +655,41 @@ export default function TabelJadwalPage() {
           'Bagi pengajar yang berhalangan hadir, wajib menunjuk badal guru pengganti.'
         ];
 
-    const result = exportMatrixPDF({
-      title,
-      subtitle,
-      institution: 'PONDOK PESANTREN MATHOLI\'UL ANWAR - LAMONGAN',
-      orientation,
-      klasList: klasListExport,
-      hariList: hariListExport,
-      cellData,
-      teacherLegend,
-      notes,
-      filename,
-      previewOnly,
-      hasNgajiUmum: activeTab === 'madin'
-    });
+    if (format === 'excel') {
+      exportMatrixExcel({
+        title,
+        subtitle,
+        institution: 'PONDOK PESANTREN MATHOLI\'UL ANWAR - LAMONGAN',
+        orientation,
+        klasList: klasListExport,
+        hariList: hariListExport,
+        cellData,
+        teacherLegend,
+        notes,
+        filename,
+        hasNgajiUmum: activeTab === 'madin'
+      });
+      setShowOrientasiModal(false);
+    } else {
+      const result = exportMatrixPDF({
+        title,
+        subtitle,
+        institution: 'PONDOK PESANTREN MATHOLI\'UL ANWAR - LAMONGAN',
+        orientation,
+        klasList: klasListExport,
+        hariList: hariListExport,
+        cellData,
+        teacherLegend,
+        notes,
+        filename,
+        previewOnly,
+        hasNgajiUmum: activeTab === 'madin'
+      });
 
-    if (previewOnly && result) {
-      setPdfUrl(result);
-      setShowPdfPreview(true);
+      if (previewOnly && result) {
+        setPdfUrl(result);
+        setShowPdfPreview(true);
+      }
     }
   };
 
@@ -692,20 +709,27 @@ export default function TabelJadwalPage() {
               Tampilan grid spreadsheet yang tersinkronisasi untuk mengelola kelas Qur'an, Madin, dan kegiatan asrama.
             </p>
           </div>
-          <div className="flex gap-2 self-start md:self-center shrink-0">
+          <div className="flex w-full md:w-auto gap-2 self-start md:self-center shrink-0">
             <button
               onClick={() => { setPendingPreviewOnly(true); setShowOrientasiModal(true); }}
-              className="px-3 py-2 bg-white/90 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 flex items-center gap-1.5 shadow-sm"
+              className="flex-1 justify-center px-3 py-2 bg-white/90 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 flex items-center gap-1.5 shadow-sm"
               title="Preview PDF Tabel"
             >
-              <FileText size={14} className="text-green-600" /> Preview PDF
+              <FileText size={14} className="text-green-600" /> Preview
             </button>
             <button
               onClick={() => { setPendingPreviewOnly(false); setShowOrientasiModal(true); }}
-              className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white border border-red-600 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 shadow-md shadow-red-500/20"
+              className="flex-1 justify-center px-3 py-2 bg-red-500 hover:bg-red-600 text-white border border-red-600 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 shadow-md shadow-red-500/20"
               title="Download PDF Tabel"
             >
-              <Download size={14} /> Download PDF
+              <Download size={14} /> PDF
+            </button>
+            <button
+              onClick={() => { handleExportMatrix('excel', 'landscape', false); }}
+              className="flex-1 justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white border border-green-700 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 shadow-md shadow-green-600/20"
+              title="Download Excel Tabel"
+            >
+              <Download size={14} /> Excel
             </button>
           </div>
         </div>
@@ -1350,13 +1374,13 @@ export default function TabelJadwalPage() {
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
-                  onClick={() => handleExportMatrix('landscape', false)}
+                  onClick={() => handleExportMatrix('pdf', 'landscape', false)}
                   className="flex-1 sm:flex-initial bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-xl text-xs sm:text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
                 >
                   <Download size={16} /> Lanskap
                 </button>
                 <button
-                  onClick={() => handleExportMatrix('portrait', false)}
+                  onClick={() => handleExportMatrix('pdf', 'portrait', false)}
                   className="flex-1 sm:flex-initial bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-xl text-xs sm:text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
                 >
                   <Download size={16} /> Potret
@@ -1438,7 +1462,7 @@ export default function TabelJadwalPage() {
               <button
                 onClick={() => {
                   setShowOrientasiModal(false);
-                  handleExportMatrix('landscape', pendingPreviewOnly);
+                  handleExportMatrix('pdf', 'landscape', pendingPreviewOnly);
                 }}
                 className="w-full flex items-center gap-4 p-4 border-2 border-gray-200 dark:border-gray-600 rounded-2xl hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all group"
               >
@@ -1459,7 +1483,7 @@ export default function TabelJadwalPage() {
               <button
                 onClick={() => {
                   setShowOrientasiModal(false);
-                  handleExportMatrix('portrait', pendingPreviewOnly);
+                  handleExportMatrix('pdf', 'portrait', pendingPreviewOnly);
                 }}
                 className="w-full flex items-center gap-4 p-4 border-2 border-gray-200 dark:border-gray-600 rounded-2xl hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-all group"
               >

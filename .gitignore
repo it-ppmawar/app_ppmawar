@@ -1,14 +1,25 @@
 # Ignore Google Service Account credentials at the root level
 /*.json
 
-# Ignore generated deployment zips at the root level
-/*.zip
+# Ignore all zip files in any directory
+**/*.zip
+*.zip
 
-# Ignore specific scratch or temp files at the root level
-/scratch/
-/absen_next/scratch/
-/absen_next/deploy.zip
+# Ignore Node.js dependency folders
+**/node_modules/
+node_modules/
+
+# Ignore Next.js build folders
+**/.next/
+.next/
+
+# Ignore local environment variables files
+.env*.local
+
+# Ignore specific scratch or temp files
+**/scratch/
+scratch/
+absen_next/deploy.zip
 
 # Ignore large log files
 *cron_error_log.txt
-

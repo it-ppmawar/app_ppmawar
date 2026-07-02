@@ -1,7 +1,7 @@
 <?php
 // cron_notifikasi.php
-// Skrip ini harus dijalankan melalui Cron Job setiap X menit (misal: 5 menit sekali)
-// Contoh cron: */5 * * * * php /path/to/absen.ppma.or.id/cron_notifikasi.php
+// Skrip ini harus dijalankan melalui Cron Job setiap X menit (misal: 15 menit sekali)
+// Contoh cron: */15 * * * * php /path/to/absen.ppma.or.id/cron_notifikasi.php
 
 require_once __DIR__ . '/includes/config.php';
 
@@ -28,6 +28,20 @@ $hari_map = [
 $hari_indo = $hari_map[$hari_ini];
 
 echo "Mulai mengecek jadwal aktif pada $tanggal_ini $waktu_sekarang ($hari_indo)...\n";
+
+// =============================================
+// CEK MODE LIBUR - Jika aktif, skip notifikasi
+// =============================================
+$cek_libur = $conn->query("SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = 'mode_libur' LIMIT 1");
+if ($cek_libur && $cek_libur->num_rows > 0) {
+    $row_libur = $cek_libur->fetch_assoc();
+    if ($row_libur['nilai'] == '1') {
+        echo "MODE LIBUR AKTIF - Notifikasi absensi tidak dikirim.\n";
+        exit(0);
+    }
+}
+
+
 
 /**
  * Fungsi untuk mendapatkan OAuth2 Access Token menggunakan Service Account JSON
@@ -135,7 +149,7 @@ $sql_madin = "SELECT jm.jadwal_id, jm.mata_pelajaran, jm.jam_mulai, jm.jam_seles
                      g.guru_id, g.nama as nama_guru, u.fcm_token 
               FROM jadwal_madin jm
               JOIN kelas_madin km ON jm.kelas_madin_id = km.kelas_id
-              JOIN guru g ON (jm.guru_id = g.guru_id OR km.guru_id = g.guru_id)
+              JOIN guru g ON g.guru_id = COALESCE(NULLIF(jm.guru_id, ''), km.guru_id)
               JOIN users u ON g.user_id = u.id
               WHERE jm.hari = '$hari_indo' 
               AND '$waktu_sekarang' >= jm.jam_mulai 
@@ -147,6 +161,7 @@ $result_madin = $conn->query($sql_madin);
 while ($row = $result_madin->fetch_assoc()) {
     // Cek apakah guru sudah absen di tabel absensi_guru
     $guru_id = $row['guru_id'];
+    if (empty($guru_id)) continue;
     $jadwal_id = $row['jadwal_id'];
     
     $cek_absen = $conn->query("SELECT * FROM absensi_guru 
@@ -186,7 +201,7 @@ $sql_quran = "SELECT jq.id as jadwal_id, jq.mata_pelajaran, jq.jam_mulai, jq.jam
                      g.guru_id, g.nama as nama_guru, u.fcm_token 
               FROM jadwal_quran jq
               JOIN kelas_quran kq ON jq.kelas_quran_id = kq.id
-              JOIN guru g ON (jq.guru_id = g.guru_id OR kq.guru_id = g.guru_id)
+              JOIN guru g ON g.guru_id = COALESCE(NULLIF(jq.guru_id, ''), kq.guru_id)
               JOIN users u ON g.user_id = u.id
               WHERE jq.hari = '$hari_indo' 
               AND '$waktu_sekarang' >= jq.jam_mulai 
@@ -197,6 +212,7 @@ $result_quran = $conn->query($sql_quran);
 
 while ($row = $result_quran->fetch_assoc()) {
     $guru_id = $row['guru_id'];
+    if (empty($guru_id)) continue;
     $jadwal_id = $row['jadwal_id'];
     
     $cek_absen = $conn->query("SELECT * FROM absensi_guru 
@@ -232,7 +248,7 @@ $sql_kegiatan = "SELECT jk.kegiatan_id as jadwal_id, jk.nama_kegiatan, jk.jam_mu
                      g.guru_id, g.nama as nama_guru, u.fcm_token 
               FROM jadwal_kegiatan jk
               JOIN kamar k ON jk.kamar_id = k.kamar_id
-              JOIN guru g ON (jk.guru_id = g.guru_id OR k.guru_id = g.guru_id)
+              JOIN guru g ON g.guru_id = COALESCE(NULLIF(jk.guru_id, ''), k.guru_id)
               JOIN users u ON g.user_id = u.id
               WHERE jk.hari = '$hari_indo' 
               AND '$waktu_sekarang' >= jk.jam_mulai 
@@ -243,6 +259,7 @@ $result_kegiatan = $conn->query($sql_kegiatan);
 
 while ($row = $result_kegiatan->fetch_assoc()) {
     $guru_id = $row['guru_id'];
+    if (empty($guru_id)) continue;
     $jadwal_id = $row['jadwal_id'];
     
     $cek_absen = $conn->query("SELECT * FROM absensi_guru 

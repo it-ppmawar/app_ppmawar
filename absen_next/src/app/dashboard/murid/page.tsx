@@ -595,7 +595,7 @@ export default function DataMuridPage() {
         </div>
 
         {selectedMurid.length > 0 && (role === 'admin' || role === 'staff') && (
-          <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="flex flex-wrap justify-center sm:justify-start gap-2 animate-in fade-in slide-in-from-right-4 duration-300 w-full sm:w-auto">
             <button onClick={() => openBulkModal('quran')} className="px-3 py-2.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-colors flex items-center gap-1.5">
               <CheckSquare size={14} /> Pindah Qur'an ({selectedMurid.length})
             </button>
@@ -618,14 +618,14 @@ export default function DataMuridPage() {
           <Filter size={18} /> <span className="ml-2 text-xs font-bold sm:hidden">Filter</span>
         </button>
 
-        <div className="flex gap-2 shrink-0 ml-auto sm:ml-0">
-          <button onClick={() => handleExport('pdf', true)} className="px-3 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-1.5" title="Preview PDF">
+        <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:flex sm:ml-auto">
+          <button onClick={() => handleExport('pdf', true)} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" title="Preview PDF">
             <FileText size={14} /> Preview
           </button>
-          <button onClick={() => handleExport('pdf', false)} className="px-3 py-2.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5" title="Export PDF">
+          <button onClick={() => handleExport('pdf', false)} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors" title="Export PDF">
             <Download size={14} /> PDF
           </button>
-          <button onClick={() => handleExport('excel', false)} className="px-3 py-2.5 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5" title="Export Excel">
+          <button onClick={() => handleExport('excel', false)} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors" title="Export Excel">
             <Download size={14} /> Excel
           </button>
         </div>
@@ -661,7 +661,7 @@ export default function DataMuridPage() {
             <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kamar Asrama</label>
             <select value={filterKamar} onChange={(e) => setFilterKamar(e.target.value)} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-orange-500">
               <option value="">Semua Kamar</option>
-              <option value="__none__">Belum ada data kamar</option>
+              <option value="__none__">LPPM</option>
               {allKamar.map(k => <option key={k.id} value={k.nama}>{k.nama}</option>)}
             </select>
           </div>
@@ -685,7 +685,8 @@ export default function DataMuridPage() {
                   </th>
                 )}
                 <th className="px-4 py-4 w-12 text-center">FOTO</th>
-                <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>SANTRI & NIS{getSortIcon('nama')}</th>
+                <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nis')}>NIS{getSortIcon('nis')}</th>
+                <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>NAMA LENGKAP{getSortIcon('nama')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. KELAMIN{getSortIcon('jenis_kelamin')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas_madin')}>KELAS & KAMAR{getSortIcon('kelas_madin')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('alamat')}>ALAMAT{getSortIcon('alamat')}</th>
@@ -695,15 +696,15 @@ export default function DataMuridPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-500">Memuat data santri...</td>
+                  <td colSpan={7} className="text-center py-8 text-gray-500">Memuat data santri...</td>
                 </tr>
               ) : filteredMurid.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-500">Data santri tidak ditemukan.</td>
+                  <td colSpan={7} className="text-center py-8 text-gray-500">Data santri tidak ditemukan.</td>
                 </tr>
               ) : !showAll && !search && !filterMadin && !filterQuran && !filterKamar ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12">
+                  <td colSpan={7} className="text-center py-12">
                     <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm font-medium">Gunakan fitur pencarian atau filter di atas untuk menemukan data santri,<br/>atau klik tombol di bawah ini untuk melihat seluruh data santri.</p>
                     <button onClick={() => setShowAll(true)} className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-6 py-2.5 rounded-xl font-bold transition-colors text-sm shadow-sm inline-flex items-center gap-2">
                       <Users size={16} /> Tampilkan Semua Data Santri
@@ -746,9 +747,11 @@ export default function DataMuridPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="font-bold text-gray-900 dark:text-white">{item.nama}</div>
-                      <div className="font-mono text-xs text-gray-500">{item.nis || '-'}</div>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                      {item.nis || '-'}
+                    </td>
+                    <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
+                      {item.nama}
                     </td>
                     <td className="px-4 py-3 text-xs uppercase font-medium">
                       {item.jenis_kelamin || '-'}

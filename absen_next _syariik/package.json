@@ -1,0 +1,45 @@
+{
+  "name": "absen_next",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "build": "next build",
+    "start": "NODE_ENV=production node server.js",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.1",
+    "@zxing/browser": "^0.2.0",
+    "@zxing/library": "^0.22.0",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "express": "^5.2.1",
+    "googleapis": "^171.4.0",
+    "html5-qrcode": "^2.3.8",
+    "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
+    "lucide-react": "^1.11.0",
+    "mysql2": "^3.22.2",
+    "next": "16.2.4",
+    "node-cron": "^4.2.1",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "tailwind-merge": "^3.5.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "jimp": "^1.6.1",
+    "jsqr": "^1.4.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download } from 'lucide-react';
+import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -16,6 +16,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [user, setUser] = useState<any>(null);
   const [nomorCs, setNomorCs] = useState('+628133129223');
   const [webAuthnSupported, setWebAuthnSupported] = useState(false);
+  const [sidebarAvatar, setSidebarAvatar] = useState<string | null>(null);
+  const [showAvatarFull, setShowAvatarFull] = useState(false);
   
   const [activeSchedule, setActiveSchedule] = useState<any>(null);
   const [pendingRemindersCount, setPendingRemindersCount] = useState<number>(0);
@@ -130,6 +132,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
     window.addEventListener('fingerprint-registered', handleFingerprintRegistered);
 
+    // Load avatar from localStorage
+    const savedAvatar = localStorage.getItem('user_avatar');
+    if (savedAvatar) setSidebarAvatar(savedAvatar);
+    const handleAvatarUpdated = () => {
+      const updated = localStorage.getItem('user_avatar');
+      setSidebarAvatar(updated);
+    };
+    window.addEventListener('avatar-updated', handleAvatarUpdated);
+    window.addEventListener('storage', handleAvatarUpdated);
+
     // PWA Install logic for sidebar
     const checkPwa = () => {
       if ((window as any).deferredPrompt) {
@@ -142,6 +154,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return () => {
       window.removeEventListener('fingerprint-registered', handleFingerprintRegistered);
+      window.removeEventListener('avatar-updated', handleAvatarUpdated);
+      window.removeEventListener('storage', handleAvatarUpdated);
       window.removeEventListener('pwa-available', checkPwa);
       window.removeEventListener('pwa-closed', checkPwa);
     };
@@ -184,23 +198,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 flex flex-col">
       {/* Header Mobile & Desktop */}
-      <header className="bg-gradient-to-r from-green-800 to-green-900 dark:from-gray-800 dark:to-gray-900 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center rounded-b-2xl transition-colors duration-300 relative">
+      <header className="bg-gradient-to-r from-green-900 via-green-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 text-white py-1.5 px-4 shadow-lg sticky top-0 z-50 flex justify-between items-center rounded-b-2xl transition-colors duration-300 relative border-b border-green-700/30">
         <Link href="/dashboard" className="flex items-center gap-3 z-10 hover:opacity-80 transition-opacity" aria-label="Kembali ke Dashboard">
           <div className="bg-white rounded-xl flex items-center justify-center shadow-inner h-11 px-2 py-1">
             <img src="/logo.png" alt="Logo" className="h-full w-auto object-contain" />
           </div>
-          <div className="hidden sm:block">
-            <h1 className="font-bold text-lg leading-tight drop-shadow-sm">Absensi PPMA</h1>
-            <p className="text-green-200 dark:text-green-400 text-xs font-medium">Sistem Absensi Online</p>
-          </div>
         </Link>
 
         {/* Tulisan Arab di Tengah Navbar (Selalu tampil, disesuaikan untuk mobile) */}
-        <Link href="/dashboard" className="absolute left-1/2 transform -translate-x-1/2 z-0 text-center flex flex-col items-center justify-center w-44 sm:w-auto mt-0.5 hover:opacity-80 transition-opacity" aria-label="Kembali ke Dashboard">
-          <h2 className="text-[1.3rem] leading-tight sm:text-2xl lg:text-3xl font-diwani text-green-100/90 dark:text-gray-300 tracking-wider drop-shadow-md" dir="rtl">
+        <Link href="/dashboard" className="absolute left-1/2 transform -translate-x-1/2 z-0 text-center flex flex-col items-center justify-center w-[75%] sm:w-auto max-w-sm mt-0.5 hover:opacity-80 transition-opacity" aria-label="Kembali ke Dashboard">
+          <h2 className="text-[clamp(1.4rem,5.5vw,2.5rem)] leading-tight sm:text-2xl lg:text-3xl font-diwani text-green-100/90 dark:text-gray-300 tracking-[0.05em] drop-shadow-md whitespace-nowrap" dir="rtl">
             معهد مطالع الأنوار الإسلامي
           </h2>
-          <p className="text-[9px] sm:hidden text-green-200/90 dark:text-green-400 font-medium tracking-wide mt-1 drop-shadow-sm">Sistem Absensi Online</p>
+          <p className="text-[12px] sm:text-sm text-green-400 font-bold tracking-widest mt-1 drop-shadow-sm uppercase" style={{ fontFamily: '"Courier New", Courier, monospace' }}>Salam Mawar</p>
         </Link>
 
         <div className="flex items-center gap-2 relative z-10">
@@ -292,7 +302,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <aside className="fixed top-0 right-0 h-full w-72 bg-white dark:bg-gray-900 shadow-2xl z-[70] flex flex-col">
             <div className="p-5 border-b dark:border-gray-800 flex justify-between items-center bg-gradient-to-r from-green-800 to-green-900 text-white">
               <div className="flex items-center gap-3">
-                <div className="bg-white p-1.5 rounded-full"><User size={24} className="text-green-800" /></div>
+                <div
+                  className={`${sidebarAvatar ? 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/40 flex-shrink-0' : 'bg-white p-1.5 rounded-full'} ${sidebarAvatar ? 'cursor-pointer hover:ring-2 hover:ring-white/60 transition-all' : ''}`}
+                  onClick={() => sidebarAvatar && setShowAvatarFull(true)}
+                  title={sidebarAvatar ? 'Lihat foto profil' : ''}
+                >
+                  {sidebarAvatar ? (
+                    <img src={sidebarAvatar} alt="Foto Profil" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={24} className="text-green-800" />
+                  )}
+                </div>
                 <div>
                   <p className="font-bold leading-tight capitalize">{user?.real_name || user?.username || 'Memuat...'}</p>
                   <p className="text-[10px] text-green-200 uppercase">{user?.role || ''}</p>
@@ -441,10 +461,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             </li>
             <li>
+              <Link href="/dashboard/jurnal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jurnal' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
+                <BookOpen size={18} /> <span className="text-sm">Jurnal Kegiatan</span>
+              </Link>
+            </li>
+            <li>
+              <Link href="/dashboard/jadwal-alumni" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal-alumni' ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-bold' : 'hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 font-bold'}`}>
+                <CalendarDays size={18} /> <span className="text-sm">Jadwal Alumni</span>
+              </Link>
+            </li>
+            <li>
               <Link href="/dashboard/kurikulum" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/kurikulum' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
                 <BookOpen size={18} /> <span className="text-sm">Kurikulum Madin</span>
               </Link>
             </li>
+            {['admin', 'staff', 'wali_murid'].includes(user?.role || '') && (
+            <li>
+              <Link href="/dashboard/billing" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/billing' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
+                <CreditCard size={18} /> <span className="text-sm">Info Tagihan</span>
+              </Link>
+            </li>
+            )}
             {(user?.role === 'admin' || user?.role === 'pengurus_asrama' || user?.role === 'staff') && (
             <li>
               <Link href="/dashboard/scan-absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/scan-absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
@@ -578,13 +615,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Navigasi Bawah (Mobile App Style) */}
       <nav className="fixed bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_15px_rgba(0,0,0,0.3)] z-50 rounded-t-3xl pb-safe transition-colors duration-300">
-        <div className="flex justify-around items-center p-3">
+        <div className="flex justify-around items-center py-1 px-3">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
-              <Link key={item.name} href={item.href} className="flex flex-col items-center gap-1 w-16 group transition-all duration-300">
-                <div className={`p-2 rounded-2xl transition-all duration-300 ${isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 shadow-sm scale-110' : 'text-gray-400 dark:text-gray-500 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'}`}>
+              <Link key={item.name} href={item.href} className="flex flex-col items-center gap-0.5 w-16 group transition-all duration-300">
+                <div className={`p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 shadow-sm scale-105' : 'text-gray-400 dark:text-gray-500 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'}`}>
                   <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
                 <span className={`text-[10px] font-medium transition-colors ${isActive ? 'text-green-700 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
@@ -595,6 +632,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </div>
       </nav>
+
+      {/* Modal Fullscreen Foto Profil */}
+      {showAvatarFull && sidebarAvatar && (
+        <div
+          className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]"
+          onClick={() => setShowAvatarFull(false)}
+        >
+          <div className="relative max-w-xs w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setShowAvatarFull(false)}
+              className="absolute -top-3 -right-3 bg-white text-gray-800 rounded-full p-1.5 shadow-lg z-10 hover:bg-gray-100 transition-colors"
+              aria-label="Tutup"
+            >
+              <X size={18} />
+            </button>
+            <img
+              src={sidebarAvatar}
+              alt="Foto Profil"
+              className="w-full rounded-2xl shadow-2xl border-4 border-white/20 object-cover"
+            />
+            <p className="text-center text-white/70 text-xs mt-3 font-medium capitalize">
+              {user?.real_name || user?.username}
+            </p>
+          </div>
+        </div>
+      )}
 
     </div>
   );

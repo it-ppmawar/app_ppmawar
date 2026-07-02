@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { UserCog, Search, Plus, Trash2, Edit, Phone, MapPin, BookOpen, Home as HomeIcon, UserPlus, FileText, Download, X } from 'lucide-react';
+import { UserCog, Search, Plus, Trash2, Edit, Phone, MapPin, BookOpen, Home as HomeIcon, UserPlus, FileText, Download, Upload, X } from 'lucide-react';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
+import { downloadTemplate } from '@/lib/downloadTemplate';
 
 export default function GuruPage() {
   const [guru, setGuru] = useState<any[]>([]);
@@ -34,6 +35,42 @@ export default function GuruPage() {
   // Export State
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
+
+  // Import State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const handleImportExcel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('type', 'guru');
+      const res = await fetch('/api/import', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setIsImportModalOpen(false);
+        setImportFile(null);
+        // Refresh data
+        const refreshRes = await fetch('/api/guru');
+        const refreshJson = await refreshRes.json();
+        if (refreshJson.success) setGuru(refreshJson.data);
+      } else {
+        alert(data.error || 'Gagal mengimpor data');
+      }
+    } catch {
+      alert('Terjadi kesalahan koneksi');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   useEffect(() => {
     const fetchMe = async () => {
@@ -327,9 +364,25 @@ export default function GuruPage() {
             </p>
           </div>
           {(role === 'admin' || role === 'staff') && (
-            <button className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full shadow-sm transition-transform hover:scale-105 flex items-center justify-center font-bold" title="Tambah Data">
-              <Plus size={20} />
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => downloadTemplate('guru')}
+                className="bg-white/20 hover:bg-white/30 text-indigo-800 dark:text-indigo-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border border-indigo-200/50 flex items-center gap-1.5"
+                title="Unduh Templat Excel"
+              >
+                <Download size={14} /> Templat
+              </button>
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="bg-white/20 hover:bg-white/30 text-indigo-800 dark:text-indigo-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border border-indigo-200/50 flex items-center gap-1.5"
+                title="Impor Excel"
+              >
+                <Upload size={14} /> Impor
+              </button>
+              <button className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full shadow-sm transition-transform hover:scale-105 flex items-center justify-center font-bold" title="Tambah Data">
+                <Plus size={20} />
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -364,14 +417,14 @@ export default function GuruPage() {
           <Search size={18} /> <span className="ml-2 text-xs font-bold">Filter</span>
         </button>
 
-        <div className="flex gap-2 shrink-0 ml-auto sm:ml-0">
-          <button onClick={() => handleExport('pdf', true)} className="px-3 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-1.5" title="Preview PDF">
+        <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:flex sm:ml-auto">
+          <button onClick={() => handleExport('pdf', true)} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" title="Preview PDF">
             <FileText size={14} /> Preview
           </button>
-          <button onClick={() => handleExport('pdf', false)} className="px-3 py-2.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5" title="Export PDF">
+          <button onClick={() => handleExport('pdf', false)} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors" title="Export PDF">
             <Download size={14} /> PDF
           </button>
-          <button onClick={() => handleExport('excel', false)} className="px-3 py-2.5 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5" title="Export Excel">
+          <button onClick={() => handleExport('excel', false)} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors" title="Export Excel">
             <Download size={14} /> Excel
           </button>
         </div>
@@ -421,7 +474,8 @@ export default function GuruPage() {
                   </th>
                 )}
                 <th className="px-4 py-4 w-12 text-center">FOTO</th>
-                <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('nama')}>NIP & NAMA{getSortIcon('nama')}</th>
+                <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('nip')}>NIP{getSortIcon('nip')}</th>
+                <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('nama')}>NAMA LENGKAP{getSortIcon('nama')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('jenis_kelamin')}>J. KELAMIN{getSortIcon('jenis_kelamin')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('jabatan')}>TUGAS & KELAS{getSortIcon('jabatan')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('alamat')}>KONTAK & ALAMAT{getSortIcon('alamat')}</th>
@@ -431,11 +485,11 @@ export default function GuruPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-gray-500">Memuat data...</td>
+                  <td colSpan={8} className="text-center py-8 text-gray-500">Memuat data...</td>
                 </tr>
               ) : filteredGuru.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-500">Data tidak ditemukan.</td>
+                  <td colSpan={8} className="text-center py-8 text-gray-500">Data tidak ditemukan.</td>
                 </tr>
               ) : (
                 sortedGuru.map((item) => (
@@ -462,9 +516,11 @@ export default function GuruPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="font-bold text-gray-900 dark:text-white">{item.nama}</div>
-                      <div className="text-xs text-gray-500">{item.nip || '-'}</div>
+                    <td className="px-4 py-3 font-mono text-xs">
+                      {item.nip || '-'}
+                    </td>
+                    <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
+                      {item.nama}
                     </td>
                     <td className="px-4 py-3 text-xs uppercase font-medium">
                       {item.jenis_kelamin || '-'}
@@ -797,6 +853,57 @@ export default function GuruPage() {
                 </a>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Excel Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
+            <div className="bg-indigo-600 dark:bg-indigo-900 p-5 text-white flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2"><Upload size={20} /> Impor Data Guru</h2>
+              <button onClick={() => { setIsImportModalOpen(false); setImportFile(null); }} className="text-white hover:text-gray-200"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleImportExcel} className="p-6 space-y-4">
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Silakan pilih file Excel (.xlsx) dengan kolom yang disesuaikan dengan templat yang disediakan.
+                Data guru dengan NIP atau nama yang sama akan diperbarui (timpa data lama) secara otomatis untuk menghindari duplikasi.
+              </p>
+              <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors relative">
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  required
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) setImportFile(files[0]);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Upload size={32} className="mx-auto text-indigo-500 mb-2" />
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                  {importFile ? importFile.name : 'Pilih File Excel (.xlsx)'}
+                </span>
+                <span className="text-[10px] text-gray-400 block mt-1">Maksimal ukuran file: 10MB</span>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setIsImportModalOpen(false); setImportFile(null); }}
+                  className="px-5 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={importing || !importFile}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {importing ? 'Mengimpor...' : 'Mulai Impor'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

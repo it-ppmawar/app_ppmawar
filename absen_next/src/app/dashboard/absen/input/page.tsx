@@ -7,6 +7,43 @@ import Link from 'next/link';
 
 import { Suspense } from 'react';
 
+// ====== Avatar Lokal (tanpa service eksternal) ======
+const AVATAR_COLORS = [
+  '#2563eb', '#16a34a', '#9333ea', '#dc2626', '#ea580c',
+  '#0891b2', '#65a30d', '#7c3aed', '#db2777', '#059669',
+  '#b45309', '#0284c7', '#be123c', '#4f46e5', '#0f766e',
+];
+const getInitials = (nama: string): string => {
+  if (!nama) return '?';
+  const words = nama.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return nama.substring(0, 2).toUpperCase();
+};
+const getAvatarColor = (nama: string): string => {
+  if (!nama) return AVATAR_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < nama.length; i++) {
+    hash = nama.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+
+const getFotoUrl = (fotoName: string | null) => {
+  if (!fotoName || fotoName === '-') return '';
+  if (fotoName.startsWith('http://') || fotoName.startsWith('https://')) {
+    return fotoName;
+  }
+  if (fotoName.startsWith('foto_') || fotoName.startsWith('upload_') || fotoName.startsWith('profil_')) {
+    return `/uploads/${fotoName}`;
+  }
+  const baseUrl = process.env.NEXT_PUBLIC_API_MITRA_FOTO_URL || 'https://mawar.smartpesantren.id/sekretariat/berkas/';
+  const cleanFotoName = fotoName.startsWith('/') ? fotoName.substring(1) : fotoName;
+  if (cleanFotoName.includes('sekretariat/berkas')) {
+    return `https://mawar.smartpesantren.id/${cleanFotoName}`;
+  }
+  return `${baseUrl}${cleanFotoName}`;
+};
+
 function InputAbsenContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -25,11 +62,13 @@ function InputAbsenContent() {
   const [photoUrl, setPhotoUrl] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [sudahAbsen, setSudahAbsen] = useState(false);
+  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
 
   // Camera state
   const [showCamera, setShowCamera] = useState(false);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
+  const [cameraOrientation, setCameraOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -140,7 +179,13 @@ function InputAbsenContent() {
 
   const openCamera = () => {
     setShowCamera(true);
-    setTimeout(() => startCamera(facingMode), 150);
+    setTimeout(() => {
+      startCamera(facingMode);
+      const el = document.getElementById('camera-section-container');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 150);
   };
 
   const closeCamera = () => {
@@ -161,9 +206,51 @@ function InputAbsenContent() {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d')?.drawImage(video, 0, 0);
+    
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+    
+    let targetWidth = videoWidth;
+    let targetHeight = videoHeight;
+    
+    if (cameraOrientation === 'portrait') {
+      // Potret: rasio 3:4
+      if (videoWidth > videoHeight) {
+        targetWidth = (videoHeight * 3) / 4;
+        targetHeight = videoHeight;
+      } else {
+        targetWidth = videoWidth;
+        targetHeight = (videoWidth * 4) / 3;
+        if (targetHeight > videoHeight) {
+          targetHeight = videoHeight;
+          targetWidth = (videoHeight * 3) / 4;
+        }
+      }
+    } else {
+      // Lanskap: rasio 4:3
+      if (videoHeight > videoWidth) {
+        targetWidth = videoWidth;
+        targetHeight = (videoWidth * 3) / 4;
+      } else {
+        targetHeight = videoHeight;
+        targetWidth = (videoHeight * 4) / 3;
+        if (targetWidth > videoWidth) {
+          targetWidth = videoWidth;
+          targetHeight = (videoWidth * 3) / 4;
+        }
+      }
+    }
+    
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // Potong dari pusat (center crop)
+      const sx = (videoWidth - targetWidth) / 2;
+      const sy = (videoHeight - targetHeight) / 2;
+      ctx.drawImage(video, sx, sy, targetWidth, targetHeight, 0, 0, targetWidth, targetHeight);
+    }
+    
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     setPhotoUrl(dataUrl);
     closeCamera();
@@ -322,7 +409,7 @@ function InputAbsenContent() {
         <p className="text-gray-600 dark:text-gray-400 mb-6">Data kehadiran santri telah berhasil masuk ke sistem.</p>
         
         {/* Section: Ambil/Upload Foto */}
-        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-gray-150 dark:border-gray-750 mb-6 space-y-3 text-left">
+        <div id="camera-section-container" className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-gray-150 dark:border-gray-750 mb-6 space-y-3 text-left">
           <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
             <Camera size={18} className="text-indigo-600 dark:text-indigo-400 animate-pulse" />
             Foto Kehadiran Kelas/Kamar (Opsional)
@@ -332,7 +419,7 @@ function InputAbsenContent() {
           {showCamera && (
             <div className="rounded-2xl overflow-hidden border-2 border-indigo-400 dark:border-indigo-600 bg-black relative mb-3">
               {/* Camera toolbar */}
-              <div className="flex justify-between items-center bg-gray-900 px-3 py-2">
+              <div className="flex justify-between items-center bg-gray-900 px-3 py-2 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
                   <span className="text-xs font-semibold text-gray-300">
@@ -340,6 +427,13 @@ function InputAbsenContent() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCameraOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait')}
+                    className="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all"
+                  >
+                    <span>{cameraOrientation === 'portrait' ? '📱 Potret' : '🌅 Lanskap'}</span>
+                  </button>
                   <button
                     type="button"
                     onClick={switchCamera}
@@ -357,7 +451,7 @@ function InputAbsenContent() {
                   <button
                     type="button"
                     onClick={closeCamera}
-                    className="bg-red-500 hover:bg-red-600 p-1.5 rounded-lg transition-colors"
+                    className="bg-red-500 hover:bg-red-650 p-1.5 rounded-lg transition-colors"
                     aria-label="Tutup Kamera"
                   >
                     <XIcon size={16} className="text-white" />
@@ -377,7 +471,9 @@ function InputAbsenContent() {
                   autoPlay
                   playsInline
                   muted
-                  className="w-full object-cover max-h-[360px]"
+                  className={`w-full object-cover transition-all ${
+                    cameraOrientation === 'portrait' ? 'aspect-[3/4] max-h-[480px]' : 'aspect-[4/3] max-h-[360px]'
+                  }`}
                 />
               </div>
               {/* Capture button */}
@@ -499,9 +595,19 @@ function InputAbsenContent() {
         </div>
       </div>
 
-      <div className="flex justify-end gap-2 mb-4 animate-in fade-in slide-in-from-right-4 duration-300">
-        <button onClick={() => setAllStatus('Hadir')} className="text-xs bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900/30 dark:text-green-400 font-bold py-2 px-4 rounded-xl transition-colors">Semua Hadir</button>
-        <button onClick={() => setAllStatus('Alpha')} className="text-xs bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/30 dark:text-red-400 font-bold py-2 px-4 rounded-xl transition-colors">Semua Alpha</button>
+      <div className="grid grid-cols-2 gap-3 w-full mb-4 animate-in fade-in duration-300">
+        <button
+          onClick={() => setAllStatus('Alpha')}
+          className="w-full text-center py-3 bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/30 dark:text-red-400 font-extrabold rounded-xl transition-all text-xs"
+        >
+          Semua Absen
+        </button>
+        <button
+          onClick={() => setAllStatus('Hadir')}
+          className="w-full text-center py-3 bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900/30 dark:text-green-400 font-extrabold rounded-xl transition-all text-xs"
+        >
+          Semua Hadir
+        </button>
       </div>
 
       {/* Tampilan Desktop (Tabel) */}
@@ -525,8 +631,38 @@ function InputAbsenContent() {
                   <tr key={item.murid_id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                     <td className="px-4 py-3 text-center text-gray-400 font-medium">{index + 1}</td>
                     <td className="px-4 py-3">
-                      <div className="font-bold text-gray-900 dark:text-white">{item.nama}</div>
-                      <div className="text-xs text-gray-400 font-mono">{item.nis || '-'}</div>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-9 h-9 rounded-full overflow-hidden relative shrink-0 ${item.foto && item.foto !== '-' ? 'cursor-pointer hover:opacity-80' : ''}`}
+                          onClick={() => item.foto && item.foto !== '-' ? setZoomPhoto(getFotoUrl(item.foto)) : null}
+                        >
+                          <div
+                            className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold"
+                            style={{ backgroundColor: getAvatarColor(item.nama) }}
+                          >
+                            <span>{getInitials(item.nama)}</span>
+                          </div>
+                          {item.foto && item.foto !== '-' && (
+                            <img
+                              src={getFotoUrl(item.foto)}
+                              alt={item.nama}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              onError={(e) => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.display = 'none'; e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; }}
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-bold text-gray-900 dark:text-white">{item.nama}</div>
+                          <div className="text-xs text-gray-400 font-mono flex flex-col gap-0.5">
+                            <span>NIS: {item.nis || '-'}</span>
+                            {item.alamat && (
+                              <span className="text-[10px] text-gray-500 max-w-[250px] truncate block" title={item.alamat}>
+                                Alamat: {item.alamat}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <input
@@ -583,18 +719,44 @@ function InputAbsenContent() {
         ) : (
           murid.map((item, index) => (
             <div key={item.murid_id} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 space-y-3.5">
-              <div className="flex justify-between items-start">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-full overflow-hidden relative shrink-0 ${item.foto && item.foto !== '-' ? 'cursor-pointer hover:opacity-80' : ''}`}
+                  onClick={() => item.foto && item.foto !== '-' ? setZoomPhoto(getFotoUrl(item.foto)) : null}
+                >
+                  <div
+                    className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: getAvatarColor(item.nama) }}
+                  >
+                    <span>{getInitials(item.nama)}</span>
+                  </div>
+                  {item.foto && item.foto !== '-' && (
+                    <img
+                      src={getFotoUrl(item.foto)}
+                      alt={item.nama}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.display = 'none'; e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; }}
+                    />
+                  )}
+                </div>
                 <div>
-                  <div className="font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5">
+                  <div className="font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5 leading-tight">
                     <span className="text-gray-400 text-xs font-semibold">{index + 1}.</span>
                     {item.nama}
                   </div>
-                  <div className="text-xs text-gray-400 font-mono mt-0.5 ml-3.5">NIS: {item.nis || '-'}</div>
+                  <div className="text-xs text-gray-400 font-mono mt-0.5 flex flex-col gap-0.5">
+                    <span>NIS: {item.nis || '-'}</span>
+                    {item.alamat && (
+                      <span className="text-[10px] text-gray-500 max-w-[200px] truncate block" title={item.alamat}>
+                        Alamat: {item.alamat}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Input Nama Panggilan Mobile */}
-              <div className="ml-3.5 flex items-center gap-2">
+              <div className="flex items-center gap-2" style={{ marginLeft: '3.25rem' }}>
                 <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 font-medium">Nama Panggilan:</span>
                 <input
                   type="text"
@@ -665,6 +827,15 @@ function InputAbsenContent() {
           </button>
         </div>
       </div>
+      {/* Zoom Photo Modal */}
+      {zoomPhoto && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm cursor-zoom-out" onClick={() => setZoomPhoto(null)}>
+          <div className="relative max-w-4xl max-h-[90vh] flex items-center justify-center animate-in zoom-in duration-200">
+            <img src={zoomPhoto} alt="Zoomed" className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl" />
+            <button className="absolute -top-4 -right-4 bg-white text-black rounded-full w-8 h-8 flex items-center justify-center font-bold hover:scale-110 transition-transform">X</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

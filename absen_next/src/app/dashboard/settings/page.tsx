@@ -11,6 +11,7 @@ export default function SettingsPage() {
 
   const [settings, setSettings] = useState({
     absensi_otomatis: false,
+    mode_libur: false,
     waktu_tenggang: 2,
     waktu_mulai: 30,
     lat_pesantren: '',
@@ -33,6 +34,7 @@ export default function SettingsPage() {
       if (json.success) {
         setSettings({
           absensi_otomatis: json.data.absensi_otomatis_guru === '1',
+          mode_libur: json.data.mode_libur === '1',
           waktu_tenggang: parseInt(json.data.waktu_tenggang_absensi) || 2,
           waktu_mulai: parseInt(json.data.waktu_mulai_absensi) || 30,
           lat_pesantren: json.data.lat_pesantren || '',
@@ -102,6 +104,85 @@ export default function SettingsPage() {
   const [fixingAsrama, setFixingAsrama] = useState(false);
   const [fixAsramaResult, setFixAsramaResult] = useState<any>(null);
   const [fixAsramaError, setFixAsramaError] = useState('');
+
+  // Sort state untuk tabel Akun Pengurus Asrama
+  const [asramaSortKey, setAsramaSortKey] = useState<string>('nama_kamar');
+  const [asramaSortDir, setAsramaSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleAsramaSort = (key: string) => {
+    if (asramaSortKey === key) {
+      setAsramaSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setAsramaSortKey(key);
+      setAsramaSortDir('asc');
+    }
+  };
+
+  const getSortedAsramaUsers = (users: any[]) => {
+    if (!users) return [];
+    return [...users].sort((a, b) => {
+      let valA = a[asramaSortKey] ?? '';
+      let valB = b[asramaSortKey] ?? '';
+      // Numeric sort untuk kamar_id
+      if (asramaSortKey === 'kamar_id') {
+        valA = Number(valA) || 0;
+        valB = Number(valB) || 0;
+        return asramaSortDir === 'asc' ? valA - valB : valB - valA;
+      }
+      // Sort status: OK dulu atau Kosong dulu
+      if (asramaSortKey === 'status') {
+        valA = a.nama_asrama ? 1 : 0;
+        valB = b.nama_asrama ? 1 : 0;
+        return asramaSortDir === 'asc' ? valB - valA : valA - valB;
+      }
+      return asramaSortDir === 'asc'
+        ? String(valA).localeCompare(String(valB), 'id', { numeric: true })
+        : String(valB).localeCompare(String(valA), 'id', { numeric: true });
+    });
+  };
+
+  const AsramaSortIcon = ({ col }: { col: string }) => {
+    if (asramaSortKey !== col) return <span className="ml-1 text-gray-300 dark:text-gray-600">⇅</span>;
+    return asramaSortDir === 'asc'
+      ? <span className="ml-1 text-amber-500">↑</span>
+      : <span className="ml-1 text-amber-500">↓</span>;
+  };
+
+  // Sort state untuk tabel semua kamar
+  const [kamarSortKey, setKamarSortKey] = useState<string>('nama_kamar');
+  const [kamarSortDir, setKamarSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleKamarSort = (key: string) => {
+    if (kamarSortKey === key) {
+      setKamarSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setKamarSortKey(key);
+      setKamarSortDir('asc');
+    }
+  };
+
+  const getSortedKamar = (kamar: any[]) => {
+    if (!kamar) return [];
+    return [...kamar].sort((a, b) => {
+      let valA = a[kamarSortKey] ?? '';
+      let valB = b[kamarSortKey] ?? '';
+      if (kamarSortKey === 'kamar_id') {
+        valA = Number(valA) || 0;
+        valB = Number(valB) || 0;
+        return kamarSortDir === 'asc' ? valA - valB : valB - valA;
+      }
+      return kamarSortDir === 'asc'
+        ? String(valA).localeCompare(String(valB), 'id', { numeric: true })
+        : String(valB).localeCompare(String(valA), 'id', { numeric: true });
+    });
+  };
+
+  const KamarSortIcon = ({ col }: { col: string }) => {
+    if (kamarSortKey !== col) return <span className="ml-1 text-gray-300 dark:text-gray-600">⇅</span>;
+    return kamarSortDir === 'asc'
+      ? <span className="ml-1 text-amber-500">↑</span>
+      : <span className="ml-1 text-amber-500">↓</span>;
+  };
 
   const fetchGSheetStatus = async () => {
     try {
@@ -250,7 +331,7 @@ export default function SettingsPage() {
           Otomatisasi Kehadiran
         </h2>
 
-        <form onSubmit={handleSave} className="space-y-8">
+        <form onSubmit={handleSave} className="space-y-8" id="settings-form">
           <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-4">
             <div>
               <h3 className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -291,6 +372,30 @@ export default function SettingsPage() {
               </label>
               <span className={`font-black text-sm ${settings.absensi_otomatis ? 'text-green-600' : 'text-gray-400'}`}>
                 {settings.absensi_otomatis ? 'AKTIF' : 'NONAKTIF'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700">
+            <div>
+              <h3 className="font-bold text-gray-800 dark:text-gray-200 text-lg">Mode Libur Semester</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-lg">
+                Jika diaktifkan, seluruh proses pencatatan alpa otomatis (Auto-Alpa) dan notifikasi akan dinonaktifkan sementara selama masa liburan sekolah/semester.
+              </p>
+            </div>
+            
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              <label className="relative inline-flex items-center cursor-pointer scale-125 origin-right">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={settings.mode_libur}
+                  onChange={(e) => setSettings({ ...settings, mode_libur: e.target.checked })}
+                />
+                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-500"></div>
+              </label>
+              <span className={`font-black text-sm ${settings.mode_libur ? 'text-green-600' : 'text-gray-400'}`}>
+                {settings.mode_libur ? 'AKTIF' : 'NONAKTIF'}
               </span>
             </div>
           </div>
@@ -340,16 +445,15 @@ export default function SettingsPage() {
               <span className="text-sm font-bold text-gray-400">Jam setelah kelas dimulai</span>
             </div>
           </div>
-        </form>
-      </div>
+        {/* Form continues below in the location section */}
 
-      <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 dark:border-gray-700">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2 pb-4 border-b border-gray-100 dark:border-gray-700">
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
           <AlertTriangle size={22} className="text-red-500" />
           Pengaturan Lokasi Pesantren (Radius Absen)
         </h2>
         
-        <form onSubmit={handleSave} className="space-y-6">
+        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
               <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Latitude Pesantren</label>
@@ -391,14 +495,17 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+        </div>
+          </div>
+
+          <div className="flex justify-end pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
             <button 
               type="submit" 
               disabled={saving}
               className="bg-slate-800 hover:bg-slate-900 dark:bg-white dark:hover:bg-gray-200 dark:text-slate-900 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
             >
               {saving ? <Clock className="animate-spin" size={20} /> : <Save size={20} />}
-              {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
+              {saving ? 'Menyimpan...' : 'Simpan Semua Pengaturan'}
             </button>
           </div>
         </form>
@@ -561,9 +668,9 @@ export default function SettingsPage() {
                   { tab: 'Rekap_Absensi', mode: 'Append (Tambah ke Bawah)', color: 'amber' },
                   { tab: 'Ketertiban', mode: 'Append (Tambah ke Bawah)', color: 'amber' },
                 ].map(item => (
-                  <div key={item.tab} className="flex items-center justify-between">
+                  <div key={item.tab} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-1 border-b border-gray-100/50 dark:border-gray-800/30 last:border-0">
                     <span className="font-mono text-xs text-gray-600 dark:text-gray-400">{item.tab}</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    <span className={`text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full w-fit ${
                       item.color === 'blue'
                         ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
                         : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
@@ -666,11 +773,11 @@ export default function SettingsPage() {
               </div>
             )}
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 justify-center">
               <button
                 onClick={fetchAsramaData}
                 disabled={loadingAsrama}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl text-sm transition-all disabled:opacity-50"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-xl text-sm transition-all disabled:opacity-50 shadow-sm"
               >
                 <Database size={16} className={loadingAsrama ? 'animate-pulse' : ''} />
                 {loadingAsrama ? 'Memuat...' : 'Cek Data Asrama'}
@@ -678,7 +785,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleAutoFixAsrama}
                 disabled={fixingAsrama}
-                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-xl text-sm transition-all disabled:opacity-50"
+                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-5 rounded-xl text-sm transition-all disabled:opacity-50 shadow-sm"
               >
                 <RefreshCw size={16} className={fixingAsrama ? 'animate-spin' : ''} />
                 {fixingAsrama ? 'Memproses...' : 'Auto-Fix nama_asrama'}
@@ -712,19 +819,29 @@ export default function SettingsPage() {
                   <div>
                     <h4 className="font-bold text-sm text-gray-700 dark:text-gray-300 mb-2">Akun Pengurus Asrama</h4>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-xs border-collapse">
+                      <table className="w-full text-xs border-collapse whitespace-nowrap" style={{ minWidth: '600px' }}>
                         <thead>
                           <tr className="bg-gray-100 dark:bg-gray-700">
-                            <th className="px-3 py-2 text-left font-bold text-gray-600 dark:text-gray-300">Username</th>
-                            <th className="px-3 py-2 text-left font-bold text-gray-600 dark:text-gray-300">kamar_id</th>
-                            <th className="px-3 py-2 text-left font-bold text-gray-600 dark:text-gray-300">Nama Kamar</th>
-                            <th className="px-3 py-2 text-left font-bold text-gray-600 dark:text-gray-300">nama_asrama</th>
-                            <th className="px-3 py-2 text-left font-bold text-gray-600 dark:text-gray-300">Status</th>
+                            {[
+                              { key: 'username', label: 'Username' },
+                              { key: 'kamar_id', label: 'kamar_id' },
+                              { key: 'nama_kamar', label: 'Nama Kamar' },
+                              { key: 'nama_asrama', label: 'nama_asrama' },
+                              { key: 'status', label: 'Status' },
+                            ].map(col => (
+                              <th
+                                key={col.key}
+                                className="px-3 py-2 text-left font-bold text-gray-600 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 select-none transition-colors"
+                                onClick={() => handleAsramaSort(col.key)}
+                              >
+                                {col.label}<AsramaSortIcon col={col.key} />
+                              </th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
-                          {[...(asramaData.users_asrama || [])].sort((a: any, b: any) => (a.nama_kamar || '').localeCompare((b.nama_kamar || ''), 'id', { numeric: true })).map((u: any) => (
-                            <tr key={u.id} className="border-t border-gray-100 dark:border-gray-700">
+                          {getSortedAsramaUsers(asramaData.users_asrama).map((u: any) => (
+                            <tr key={u.id} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                               <td className="px-3 py-2 font-mono">{u.username}</td>
                               <td className="px-3 py-2">{u.kamar_id ?? <span className="text-red-500 font-bold">NULL</span>}</td>
                               <td className="px-3 py-2">{u.nama_kamar ?? <span className="text-gray-400">-</span>}</td>
@@ -762,17 +879,27 @@ export default function SettingsPage() {
                 <details className="text-xs">
                   <summary className="cursor-pointer text-gray-400 hover:text-gray-600 font-semibold">Lihat semua data kamar ({asramaData.total_kamar} kamar)</summary>
                   <div className="overflow-x-auto mt-2">
-                    <table className="w-full border-collapse">
+                    <table className="w-full border-collapse whitespace-nowrap" style={{ minWidth: '400px' }}>
                       <thead>
                         <tr className="bg-gray-100 dark:bg-gray-700">
-                          <th className="px-3 py-1.5 text-left">ID</th>
-                          <th className="px-3 py-1.5 text-left">Nama Kamar</th>
-                          <th className="px-3 py-1.5 text-left">Nama Asrama</th>
+                          {[
+                            { key: 'kamar_id', label: 'ID' },
+                            { key: 'nama_kamar', label: 'Nama Kamar' },
+                            { key: 'nama_asrama', label: 'Nama Asrama' },
+                          ].map(col => (
+                            <th
+                              key={col.key}
+                              className="px-3 py-1.5 text-left font-bold text-gray-600 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 select-none transition-colors"
+                              onClick={() => handleKamarSort(col.key)}
+                            >
+                              {col.label}<KamarSortIcon col={col.key} />
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {[...(asramaData.kamar || [])].sort((a: any, b: any) => (a.nama_kamar || '').localeCompare((b.nama_kamar || ''), 'id', { numeric: true })).map((k: any) => (
-                          <tr key={k.kamar_id} className="border-t border-gray-100 dark:border-gray-700">
+                        {getSortedKamar(asramaData.kamar || []).map((k: any) => (
+                          <tr key={k.kamar_id} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                             <td className="px-3 py-1">{k.kamar_id}</td>
                             <td className="px-3 py-1 font-mono">{k.nama_kamar}</td>
                             <td className="px-3 py-1">{k.nama_asrama ?? <span className="text-red-500">NULL</span>}</td>
