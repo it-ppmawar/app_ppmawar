@@ -285,6 +285,7 @@ export default function UsersManagementPage() {
   const tabs = [
     { id: 'pengelola', label: 'Pengelola (Admin/Staff)', icon: Shield },
     { id: 'pengurus_asrama', label: 'Pengurus Asrama', icon: ShieldAlert },
+    { id: 'pengasuh', label: 'Pengasuh Asrama', icon: UserCog },
     { id: 'guru', label: 'Akun Guru', icon: UserCog },
     { id: 'wali_murid', label: 'Akun Wali Murid', icon: Users }
   ];
@@ -353,11 +354,11 @@ export default function UsersManagementPage() {
               <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
               {syncing ? 'Memproses...' : 'Konversi User'}
             </button>
-            {(activeTab === 'pengelola' || activeTab === 'guru' || activeTab === 'pengurus_asrama') && (
+            {(activeTab === 'pengelola' || activeTab === 'guru' || activeTab === 'pengurus_asrama' || activeTab === 'pengasuh') && (
               <button
                 onClick={() => handleOpenModal()}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
-                title={`Tambah ${activeTab === 'pengelola' ? 'Pengelola' : activeTab === 'pengurus_asrama' ? 'Pengurus Asrama' : 'Guru'}`}
+                title={`Tambah ${activeTab === 'pengelola' ? 'Pengelola' : activeTab === 'pengurus_asrama' ? 'Pengurus Asrama' : activeTab === 'pengasuh' ? 'Pengasuh' : 'Guru'}`}
               >
                 <span className="hidden sm:inline">+ Tambah</span>
                 <span className="sm:hidden text-lg leading-none">+</span>
@@ -445,9 +446,10 @@ export default function UsersManagementPage() {
                           u.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                           u.role === 'staff' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                           u.role === 'guru' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                          u.role === 'pengasuh' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
                           'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                         }`}>
-                          {u.role.includes('asrama') ? u.role.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : u.role.replace('_', ' ')}
+                          {u.role === 'pengasuh' ? 'Pengasuh' : u.role.includes('asrama') ? u.role.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : u.role.replace('_', ' ')}
                         </span>
                       </td>
                       <td className="px-5 py-4">
@@ -576,6 +578,16 @@ export default function UsersManagementPage() {
                         <option value="staff_asrama_e">Staff Asrama E</option>
                         <option value="ketua_asrama_f">Ketua Asrama F</option>
                         <option value="staff_asrama_f">Staff Asrama F</option>
+                      </>
+                    )}
+                    {activeTab === 'pengasuh' && (
+                      <>
+                        <option value="pengasuh">Pengasuh Asrama A</option>
+                        <option value="pengasuh">Pengasuh Asrama B</option>
+                        <option value="pengasuh">Pengasuh Asrama C</option>
+                        <option value="pengasuh">Pengasuh Asrama D</option>
+                        <option value="pengasuh">Pengasuh Asrama E</option>
+                        <option value="pengasuh">Pengasuh Asrama F</option>
                       </>
                     )}
                     {activeTab === 'guru' && <option value="guru">Guru</option>}

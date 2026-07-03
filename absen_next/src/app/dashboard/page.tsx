@@ -168,13 +168,13 @@ export default function DashboardPage() {
         <div className={`grid gap-3 ${
           role === 'tamu'
             ? 'grid-cols-2'
-            : (role === 'admin' || role === 'pengurus_asrama' || role === 'staff')
+            : (role === 'admin' || role === 'pengurus_asrama' || role === 'pengasuh' || role === 'staff')
             ? 'grid-cols-4'
             : role !== 'wali_murid'
             ? 'grid-cols-4'
             : 'grid-cols-3'
         }`}>
-          {(role === 'admin' || role === 'pengurus_asrama' || role === 'staff') && (
+          {(role === 'admin' || role === 'pengurus_asrama' || role === 'pengasuh' || role === 'staff') && (
             <Link 
               href="/dashboard/scan-absen" 
               className="col-span-full flex flex-row items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-2xl border border-green-100 dark:border-green-800/50 shadow-sm hover:bg-green-100 dark:hover:bg-green-900/50 transition"
@@ -207,14 +207,13 @@ export default function DashboardPage() {
       </section>
 
       {/* Pintasan Info Tagihan */}
-      {['admin', 'staff', 'wali_murid'].includes(role) && (
+      {['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama'].includes(role) && (
         <Link 
           href="/dashboard/billing" 
           className="flex flex-row items-center justify-center gap-3 p-4 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 text-orange-700 dark:text-orange-300 rounded-2xl border border-orange-200 dark:border-orange-800/50 shadow-sm hover:from-orange-100 hover:to-amber-100 dark:hover:from-orange-900/40 dark:hover:to-amber-900/40 transition-all"
         >
           <CreditCard size={22} />
           <span className="text-sm font-bold">Info Tagihan & Pembayaran</span>
-          <span className="text-xs bg-orange-200 dark:bg-orange-800/50 text-orange-800 dark:text-orange-300 px-2 py-0.5 rounded-full font-bold ml-1">Baru</span>
         </Link>
       )}
 

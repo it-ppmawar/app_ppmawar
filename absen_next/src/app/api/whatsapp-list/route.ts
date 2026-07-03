@@ -21,7 +21,7 @@ export async function GET() {
     if (role === 'admin' || role === 'staff') {
       // Admin & staff: akses semua santri
       sql += ' ORDER BY m.nama ASC';
-    } else if (role === 'pengurus_asrama') {
+    } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       // Pengurus asrama: hanya santri di asrama mereka
       if (namaAsrama) {
         sql += ' LEFT JOIN kamar k ON m.kamar_id = k.kamar_id WHERE k.nama_asrama = ? ORDER BY m.nama ASC';

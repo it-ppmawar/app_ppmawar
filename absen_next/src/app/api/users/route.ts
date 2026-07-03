@@ -35,6 +35,8 @@ export async function GET(request: Request) {
       query += " WHERE role = 'wali_murid'";
     } else if (roleFilter === 'pengurus_asrama') {
       query += " WHERE role LIKE '%asrama%'";
+    } else if (roleFilter === 'pengasuh') {
+      query += " WHERE role = 'pengasuh'";
     }
 
     const [rows] = await pool.execute<RowDataPacket[]>(query, params);
