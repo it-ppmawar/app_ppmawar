@@ -56,6 +56,27 @@ export async function GET() {
         \`created_at\` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
         \`updated_at\` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      // 12. Update enum role di users untuk pengasuh
+      "ALTER TABLE users MODIFY COLUMN role enum('admin','wali_kelas','wali_murid','guru','staff','pengurus_asrama','tamu','pengasuh') NOT NULL;",
+
+      // 13. Buat tabel billing untuk info tagihan
+      `CREATE TABLE IF NOT EXISTS \`billing\` (
+        \`id\` int(11) NOT NULL AUTO_INCREMENT,
+        \`nis\` varchar(50) NOT NULL,
+        \`nama_santri\` varchar(255) NOT NULL,
+        \`asrama\` varchar(100) NOT NULL,
+        \`kamar\` varchar(100) NOT NULL,
+        \`nama_tagihan\` varchar(150) NOT NULL,
+        \`nominal\` decimal(15,2) NOT NULL,
+        \`status\` varchar(20) NOT NULL DEFAULT 'Belum',
+        \`periode\` varchar(50) NOT NULL,
+        \`source\` varchar(20) NOT NULL DEFAULT 'excel',
+        \`created_at\` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (\`id\`),
+        UNIQUE KEY \`unique_billing\` (\`nis\`, \`nama_tagihan\`, \`periode\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
     ];
 

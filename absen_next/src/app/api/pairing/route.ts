@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     const token = cookieStore.get('token')?.value;
     const payload = token ? verifyToken(token) : null;
     
-    if (!payload || ((payload as any).role !== 'admin' && (payload as any).role !== 'staff' && (payload as any).role !== 'guru' && (payload as any).role !== 'pengurus_asrama')) {
+    if (!payload || ((payload as any).role !== 'admin' && (payload as any).role !== 'staff' && (payload as any).role !== 'guru' && (payload as any).role !== 'pengurus_asrama' && (payload as any).role !== 'pengasuh')) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
 

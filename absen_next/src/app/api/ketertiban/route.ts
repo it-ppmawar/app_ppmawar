@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       } else {
         muridFilter = '0=1';
       }
-    } else if (role === 'pengurus_asrama') {
+    } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       // Resolve nama asrama untuk pengurus
       const { userId, username } = payload as any;
       const tokenAsrama = (payload as any).namaAsrama || null;
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
     const { role } = payload as any;
-    const allowed = ['admin', 'staff', 'pengurus_asrama', 'guru'];
+    const allowed = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'];
     if (!allowed.includes(role)) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
@@ -174,7 +174,7 @@ export async function PUT(request: Request) {
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
     const { role } = payload as any;
-    const allowed = ['admin', 'staff', 'pengurus_asrama', 'guru'];
+    const allowed = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'];
     if (!allowed.includes(role)) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }

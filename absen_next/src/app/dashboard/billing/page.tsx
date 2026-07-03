@@ -54,7 +54,7 @@ export default function BillingPage() {
     );
   }
 
-  const isAccessAllowed = userRole && ['admin', 'staff', 'wali_murid'].includes(userRole);
+  const isAccessAllowed = userRole && ['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama'].includes(userRole);
 
   if (!isAccessAllowed) {
     return (
@@ -64,7 +64,7 @@ export default function BillingPage() {
         </div>
         <h3 className="text-lg font-bold text-red-800 dark:text-red-400 mb-2">Akses Ditolak</h3>
         <p className="text-sm text-red-600 dark:text-red-300 mb-6">
-          Halaman Informasi Tagihan hanya dapat diakses oleh Admin, Staff, dan Wali Murid.
+          Halaman Informasi Tagihan hanya dapat diakses oleh Admin, Staff, Wali Murid, Pengasuh, dan Pengurus Asrama.
         </p>
       </div>
     );
@@ -82,6 +82,8 @@ export default function BillingPage() {
           <p className="text-emerald-50 opacity-90 text-sm sm:text-base max-w-xl">
             {userRole === 'wali_murid' 
               ? 'Pantau status pembayaran administrasi putra/putri Anda secara langsung dari sistem.' 
+              : (userRole === 'pengasuh' || userRole === 'pengurus_asrama')
+              ? 'Pantau status tagihan santri di asrama Anda secara langsung dari sistem keuangan.'
               : 'Dasbor pemantauan status tagihan santri secara menyeluruh dari sistem keuangan pusat.'}
           </p>
         </div>

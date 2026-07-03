@@ -34,7 +34,7 @@ export async function GET() {
       }, { headers: noCacheHeaders });
     }
 
-    if ((role === 'guru' && !guruId) || (role === 'pengurus_asrama' && !kamarId)) {
+    if ((role === 'guru' && !guruId) || ((role === 'pengurus_asrama' || role === 'pengasuh') && !kamarId)) {
       return NextResponse.json({ success: true, activeSchedule: null }, { headers: noCacheHeaders });
     }
 
@@ -75,7 +75,7 @@ export async function GET() {
       const [quranRows] = await pool.execute<RowDataPacket[]>(queryQuran, [currentDay, guruId]);
       const [kegiatanGuruRows] = await pool.execute<RowDataPacket[]>(queryKegiatanGuru, [currentDay, guruId]);
       allSchedules = [...madinRows, ...quranRows, ...kegiatanGuruRows];
-    } else if (role === 'pengurus_asrama') {
+    } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       const queryKegiatan = `
         SELECT jk.jam_mulai, jk.jam_selesai, jk.nama_kegiatan as mata_pelajaran,
                k.nama_kamar as nama_kelas, 'kegiatan' as tipe

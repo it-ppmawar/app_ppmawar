@@ -46,19 +46,27 @@ export async function GET(request: Request) {
       } else {
         whereClause = `WHERE 0=1`;
       }
-    } else if (role === 'pengurus_asrama') {
+    } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (namaAsrama) {
         if (actualType === 'madin') {
-          whereClause = `WHERE k.kelas_id IN (SELECT DISTINCT m.kelas_madin_id FROM murid m JOIN kamar km ON m.kamar_id = km.kamar_id WHERE km.nama_asrama = ? AND m.kelas_madin_id IS NOT NULL)`;
-          params = [namaAsrama];
+          if (role === 'pengasuh') {
+            whereClause = `WHERE 0=1`;
+          } else {
+            whereClause = `WHERE k.kelas_id IN (SELECT DISTINCT m.kelas_madin_id FROM murid m JOIN kamar km ON m.kamar_id = km.kamar_id WHERE km.nama_asrama = ? AND m.kelas_madin_id IS NOT NULL)`;
+            params = [namaAsrama];
+          }
         } else if (actualType === 'quran') {
-          // Pengurus asrama hanya dapat melihat kelas quran yang ada santri dari asramanya ATAU nama_kelas mengandung nama asrama
-          whereClause = `WHERE k.id IN (
-            SELECT DISTINCT m.kelas_quran_id FROM murid m
-            JOIN kamar km ON m.kamar_id = km.kamar_id
-            WHERE km.nama_asrama = ? AND m.kelas_quran_id IS NOT NULL
-          ) OR k.nama_kelas LIKE ?`;
-          params = [namaAsrama, `%${namaAsrama}%`];
+          if (role === 'pengasuh') {
+            whereClause = `WHERE 0=1`;
+          } else {
+            // Pengurus asrama hanya dapat melihat kelas quran yang ada santri dari asramanya ATAU nama_kelas mengandung nama asrama
+            whereClause = `WHERE k.id IN (
+              SELECT DISTINCT m.kelas_quran_id FROM murid m
+              JOIN kamar km ON m.kamar_id = km.kamar_id
+              WHERE km.nama_asrama = ? AND m.kelas_quran_id IS NOT NULL
+            ) OR k.nama_kelas LIKE ?`;
+            params = [namaAsrama, `%${namaAsrama}%`];
+          }
         } else if (actualType === 'kamar') {
           whereClause = `WHERE k.nama_asrama = ?`;
           params = [namaAsrama];

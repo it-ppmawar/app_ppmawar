@@ -28,9 +28,12 @@ export async function GET(request: Request) {
 
     if (!tipe || !kelas_id) return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
 
-    if (role === 'pengurus_asrama') {
+    if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (!namaAsrama) {
         return NextResponse.json({ error: 'Akses ditolak: Asrama tidak terdefinisi' }, { status: 403 });
+      }
+      if (role === 'pengasuh' && (tipe === 'madin' || tipe === 'quran')) {
+        return NextResponse.json({ error: 'Akses ditolak: Pengasuh hanya dapat mengakses absensi kegiatan pesantren' }, { status: 403 });
       }
       if (tipe === 'madin') {
         const [check] = await pool.execute<RowDataPacket[]>(
@@ -69,7 +72,7 @@ export async function GET(request: Request) {
     let query = '';
     let params: any[] = [kelas_id];
 
-    if (role === 'pengurus_asrama' && namaAsrama) {
+    if ((role === 'pengurus_asrama' || role === 'pengasuh') && namaAsrama) {
       // Pengurus asrama hanya melihat santri dari asrama mereka sendiri
       if (tipe === 'madin') {
         query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat FROM murid m
@@ -176,9 +179,12 @@ export async function POST(request: Request) {
     const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
     const namaAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
 
-    if (role === 'pengurus_asrama') {
+    if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (!namaAsrama) {
         return NextResponse.json({ error: 'Akses ditolak: Asrama tidak terdefinisi' }, { status: 403 });
+      }
+      if (role === 'pengasuh' && (tipe === 'madin' || tipe === 'quran')) {
+        return NextResponse.json({ error: 'Akses ditolak: Pengasuh hanya dapat mengakses absensi kegiatan pesantren' }, { status: 403 });
       }
       
       let kelas_id = null;

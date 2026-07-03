@@ -66,18 +66,24 @@ export async function GET(request: Request) {
         whereGuruQuran = '0=1';
         wherePembinaKamar = '0=1';
       }
-    } else if (role === 'pengurus_asrama') {
+    } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (namaAsrama) {
-        whereGuruMadin = `jm.kelas_id IN (
-          SELECT DISTINCT m.kelas_madin_id FROM murid m
-          JOIN kamar km ON m.kamar_id = km.kamar_id
-          WHERE km.nama_asrama = ? AND m.kelas_madin_id IS NOT NULL
-        )`;
-        whereGuruQuran = `jq.kelas_quran_id IN (
-          SELECT DISTINCT m.kelas_quran_id FROM murid m
-          JOIN kamar km ON m.kamar_id = km.kamar_id
-          WHERE km.nama_asrama = ? AND m.kelas_quran_id IS NOT NULL
-        )`;
+        if (role === 'pengasuh') {
+          // Pengasuh hanya untuk asrama/kegiatan pesantren, bukan madrasah (madin/quran)
+          whereGuruMadin = '0=1';
+          whereGuruQuran = '0=1';
+        } else {
+          whereGuruMadin = `jm.kelas_id IN (
+            SELECT DISTINCT m.kelas_madin_id FROM murid m
+            JOIN kamar km ON m.kamar_id = km.kamar_id
+            WHERE km.nama_asrama = ? AND m.kelas_madin_id IS NOT NULL
+          )`;
+          whereGuruQuran = `jq.kelas_quran_id IN (
+            SELECT DISTINCT m.kelas_quran_id FROM murid m
+            JOIN kamar km ON m.kamar_id = km.kamar_id
+            WHERE km.nama_asrama = ? AND m.kelas_quran_id IS NOT NULL
+          )`;
+        }
         wherePembinaKamar = `jk.kamar_id IN (
           SELECT kamar_id FROM kamar WHERE nama_asrama = ?
         )`;
@@ -167,7 +173,7 @@ export async function POST(request: Request) {
 
     const { role, userId } = auth;
     // Guru bisa tambah jurnal miliknya, admin/staff bisa tambah untuk siapa saja
-    if (role !== 'admin' && role !== 'staff' && role !== 'guru' && role !== 'pengurus_asrama') {
+    if (role !== 'admin' && role !== 'staff' && role !== 'guru' && role !== 'pengurus_asrama' && role !== 'pengasuh') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -213,7 +219,7 @@ export async function PUT(request: Request) {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { role } = auth;
-    if (role !== 'admin' && role !== 'staff' && role !== 'guru' && role !== 'pengurus_asrama') {
+    if (role !== 'admin' && role !== 'staff' && role !== 'guru' && role !== 'pengurus_asrama' && role !== 'pengasuh') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -258,7 +264,7 @@ export async function DELETE(request: Request) {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { role } = auth;
-    if (role !== 'admin' && role !== 'staff' && role !== 'guru' && role !== 'pengurus_asrama') {
+    if (role !== 'admin' && role !== 'staff' && role !== 'guru' && role !== 'pengurus_asrama' && role !== 'pengasuh') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

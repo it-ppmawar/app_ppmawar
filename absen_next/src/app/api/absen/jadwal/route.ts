@@ -16,7 +16,7 @@ export async function GET() {
 
     const { role, guruId, userId, username } = payload as any;
     const tokenAsrama = (payload as any).namaAsrama || null;
-    const namaAsrama = (role === 'pengurus_asrama')
+    const namaAsrama = (role === 'pengurus_asrama' || role === 'pengasuh')
       ? await resolveAsrama(userId, role, username || '', tokenAsrama)
       : tokenAsrama;
 
@@ -74,25 +74,31 @@ export async function GET() {
 
       queryKegiatan += ` AND j.guru_id = ?`;
       paramsKegiatan.push(guruId);
-    } else if (role === 'pengurus_asrama') {
+    } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (namaAsrama) {
-        // Hanya jadwal madin yang ada santri dari asrama ini
-        queryMadin += ` AND j.kelas_madin_id IN (
-          SELECT DISTINCT m.kelas_madin_id FROM murid m
-          JOIN kamar km ON m.kamar_id = km.kamar_id
-          WHERE km.nama_asrama = ? AND m.kelas_madin_id IS NOT NULL
-        )`;
-        paramsMadin.push(namaAsrama);
+        if (role === 'pengasuh') {
+          // Pengasuh hanya untuk asrama/kegiatan pesantren, bukan madrasah (madin/quran)
+          queryMadin += ` AND 0=1`;
+          queryQuran += ` AND 0=1`;
+        } else {
+          // Hanya jadwal madin yang ada santri dari asrama ini
+          queryMadin += ` AND j.kelas_madin_id IN (
+            SELECT DISTINCT m.kelas_madin_id FROM murid m
+            JOIN kamar km ON m.kamar_id = km.kamar_id
+            WHERE km.nama_asrama = ? AND m.kelas_madin_id IS NOT NULL
+          )`;
+          paramsMadin.push(namaAsrama);
 
-        // Hanya jadwal quran yang ada santri dari asrama ini (filter per asrama) OR nama_kelas mengandung nama asrama
-        queryQuran += ` AND (j.kelas_quran_id IN (
-          SELECT DISTINCT m.kelas_quran_id FROM murid m
-          JOIN kamar km ON m.kamar_id = km.kamar_id
-          WHERE km.nama_asrama = ? AND m.kelas_quran_id IS NOT NULL
-        ) OR j.kelas_quran_id IN (
-          SELECT id FROM kelas_quran WHERE nama_kelas LIKE ?
-        ))`;
-        paramsQuran.push(namaAsrama, `%${namaAsrama}%`);
+          // Hanya jadwal quran yang ada santri dari asrama ini (filter per asrama) OR nama_kelas mengandung nama asrama
+          queryQuran += ` AND (j.kelas_quran_id IN (
+            SELECT DISTINCT m.kelas_quran_id FROM murid m
+            JOIN kamar km ON m.kamar_id = km.kamar_id
+            WHERE km.nama_asrama = ? AND m.kelas_quran_id IS NOT NULL
+          ) OR j.kelas_quran_id IN (
+            SELECT id FROM kelas_quran WHERE nama_kelas LIKE ?
+          ))`;
+          paramsQuran.push(namaAsrama, `%${namaAsrama}%`);
+        }
 
         // Hanya kegiatan untuk kamar di asrama ini
         queryKegiatan += ` AND j.kamar_id IN (

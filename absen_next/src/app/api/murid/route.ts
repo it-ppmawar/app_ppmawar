@@ -44,42 +44,48 @@ export async function GET(request: Request) {
       } else {
         whereClause = '0=1';
       }
-    } else if (role === 'pengurus_asrama') {
+    } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (namaAsrama) {
-        // Tentukan jenis kelamin target berdasarkan nama asrama
-        let targetGender: string | null = null;
-        const asramaLower = namaAsrama.toLowerCase();
-        if (asramaLower.includes('asrama a') || asramaLower === 'a') {
-          targetGender = 'Laki-laki';
-        } else if (
-          asramaLower.includes('asrama b') ||
-          asramaLower.includes('asrama c') ||
-          asramaLower.includes('asrama d') ||
-          asramaLower.includes('asrama e') ||
-          asramaLower.includes('asrama f') ||
-          ['b', 'c', 'd', 'e', 'f'].includes(asramaLower.trim())
-        ) {
-          targetGender = 'Perempuan';
-        }
+        if (role === 'pengasuh') {
+          // Pengasuh hanya dapat melihat santri di asramanya sendiri (pesantren saja)
+          whereClause = `m.kamar_id IN (SELECT kamar_id FROM kamar WHERE nama_asrama = ?)`;
+          queryParams = [namaAsrama];
+        } else {
+          // Tentukan jenis kelamin target berdasarkan nama asrama
+          let targetGender: string | null = null;
+          const asramaLower = namaAsrama.toLowerCase();
+          if (asramaLower.includes('asrama a') || asramaLower === 'a') {
+            targetGender = 'Laki-laki';
+          } else if (
+            asramaLower.includes('asrama b') ||
+            asramaLower.includes('asrama c') ||
+            asramaLower.includes('asrama d') ||
+            asramaLower.includes('asrama e') ||
+            asramaLower.includes('asrama f') ||
+            ['b', 'c', 'd', 'e', 'f'].includes(asramaLower.trim())
+          ) {
+            targetGender = 'Perempuan';
+          }
 
-        // Pengurus asrama melihat santri di asramanya sendiri, ATAU santri lintas asrama yang terdaftar di kelas Qur'an yang diikuti oleh santri dari asramanya,
-        // ATAU santri yang belum terpetakan (kamar, madin, atau quran) yang berjenis kelamin sesuai gender target asrama
-        whereClause = `(
-          m.kamar_id IN (SELECT kamar_id FROM kamar WHERE nama_asrama = ?)
-          OR m.kelas_quran_id IN (
-            SELECT DISTINCT m2.kelas_quran_id 
-            FROM murid m2 
-            JOIN kamar km2 ON m2.kamar_id = km2.kamar_id 
-            WHERE km2.nama_asrama = ? AND m2.kelas_quran_id IS NOT NULL
-          )
-          OR m.kelas_quran_id IN (
-            SELECT id FROM kelas_quran WHERE nama_kelas LIKE ?
-          )
-          ${targetGender ? 'OR ((m.kamar_id IS NULL OR m.kelas_madin_id IS NULL OR m.kelas_quran_id IS NULL) AND m.jenis_kelamin = ?)' : ''}
-        )`;
-        queryParams = [namaAsrama, namaAsrama, `%${namaAsrama}%`];
-        if (targetGender) {
-          queryParams.push(targetGender);
+          // Pengurus asrama melihat santri di asramanya sendiri, ATAU santri lintas asrama yang terdaftar di kelas Qur'an yang diikuti oleh santri dari asramanya,
+          // ATAU santri yang belum terpetakan (kamar, madin, atau quran) yang berjenis kelamin sesuai gender target asrama
+          whereClause = `(
+            m.kamar_id IN (SELECT kamar_id FROM kamar WHERE nama_asrama = ?)
+            OR m.kelas_quran_id IN (
+              SELECT DISTINCT m2.kelas_quran_id 
+              FROM murid m2 
+              JOIN kamar km2 ON m2.kamar_id = km2.kamar_id 
+              WHERE km2.nama_asrama = ? AND m2.kelas_quran_id IS NOT NULL
+            )
+            OR m.kelas_quran_id IN (
+              SELECT id FROM kelas_quran WHERE nama_kelas LIKE ?
+            )
+            ${targetGender ? 'OR ((m.kamar_id IS NULL OR m.kelas_madin_id IS NULL OR m.kelas_quran_id IS NULL) AND m.jenis_kelamin = ?)' : ''}
+          )`;
+          queryParams = [namaAsrama, namaAsrama, `%${namaAsrama}%`];
+          if (targetGender) {
+            queryParams.push(targetGender);
+          }
         }
       } else {
         whereClause = '0=1';
@@ -144,7 +150,7 @@ export async function PUT(request: Request) {
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
     const payload = token ? verifyToken(token) : null;
-    const allowedRoles = ['admin', 'staff', 'guru', 'pengurus_asrama'];
+    const allowedRoles = ['admin', 'staff', 'guru', 'pengurus_asrama', 'pengasuh'];
     if (!payload || !allowedRoles.includes((payload as any).role)) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
@@ -161,7 +167,7 @@ export async function PUT(request: Request) {
     const idsToUpdate = murid_ids || (murid_id ? [murid_id] : []);
     if (idsToUpdate.length === 0) return NextResponse.json({ error: 'ID Murid tidak valid' }, { status: 400 });
 
-    if (role === 'pengurus_asrama') {
+    if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (!namaAsrama) {
         return NextResponse.json({ error: 'Akses ditolak: Asrama Anda tidak terdefinisi' }, { status: 403 });
       }

@@ -27,7 +27,7 @@ export async function GET() {
       } else {
         query += ` WHERE 0=1`;
       }
-    } else if (role === 'pengurus_asrama') {
+    } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       // Pengurus asrama melihat seluruh pembina kamar (guru) yang bertugas di asramanya
       const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
       const namaAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
