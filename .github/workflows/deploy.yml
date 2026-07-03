@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feature/development
   workflow_dispatch:
 
 jobs:
@@ -44,6 +45,7 @@ jobs:
             **/.git*
             **/.git*/**
             **/node_modules/**
+            **/.next/cache/**
             .env
             mkzip.ps1
             scratch*
