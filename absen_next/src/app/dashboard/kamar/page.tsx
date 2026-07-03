@@ -169,8 +169,9 @@ export default function KamarPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const isNew = !editingKamar.id;
       const res = await fetch('/api/kelas', {
-        method: 'PUT',
+        method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingKamar.id,
@@ -180,7 +181,13 @@ export default function KamarPage() {
       });
       const json = await res.json();
       if (json.success) {
-        setData(data.map(d => d.id === editingKamar.id ? { ...d, nama: editingKamar.nama } : d));
+        if (isNew) {
+          const r = await fetch('/api/kelas?type=kamar');
+          const j = await r.json();
+          if (j.success) setData(j.data);
+        } else {
+          setData(data.map(d => d.id === editingKamar.id ? { ...d, nama: editingKamar.nama } : d));
+        }
         setIsEditModalOpen(false);
       } else {
         alert('Gagal menyimpan: ' + json.error);
@@ -347,6 +354,7 @@ export default function KamarPage() {
                   <Upload size={14} /> Impor
                 </button>
                 <button
+                  onClick={() => { setEditingKamar({ id: null, nama: '' }); setIsEditModalOpen(true); }}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
                   title="Tambah Kamar"
                 >
@@ -433,10 +441,11 @@ export default function KamarPage() {
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
             <div className="bg-blue-600 dark:bg-blue-900 p-5 text-white">
               <h2 className="text-xl font-bold flex items-center gap-2">
-                <Edit size={20} /> Edit Nama Kamar
+                {editingKamar.id ? <Edit size={20} /> : <Plus size={20} />} {editingKamar.id ? 'Edit Nama Kamar' : 'Tambah Kamar Baru'}
               </h2>
             </div>
             <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+              {editingKamar.id && (
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">ID Kamar (Tidak dapat diubah)</label>
                 <input 
@@ -446,6 +455,7 @@ export default function KamarPage() {
                   className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500"
                 />
               </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Nama Kamar</label>
                 <input 

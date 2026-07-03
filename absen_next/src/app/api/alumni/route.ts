@@ -115,6 +115,50 @@ export async function PUT(request: Request) {
   }
 }
 
+// POST: Add new alumni individually
+export async function POST(request: Request) {
+  try {
+    const auth = await checkAuth();
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = await request.json();
+    const {
+      nama, nis, nik, no_hp, alamat,
+      tahun_masuk, tahun_keluar, status_keluar,
+      jenis_kelamin, kategori_mukim, keterangan
+    } = body;
+
+    if (!nama) {
+      return NextResponse.json({ error: 'Nama wajib diisi' }, { status: 400 });
+    }
+
+    const sql = `
+      INSERT INTO alumni 
+      (nama, nis, nik, no_hp, alamat, tahun_masuk, tahun_keluar, status_keluar, jenis_kelamin, kategori_mukim, keterangan)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const params = [
+      nama,
+      nis || '',
+      nik || null,
+      no_hp || null,
+      alamat || null,
+      tahun_masuk || null,
+      tahun_keluar || null,
+      status_keluar || 'Lulus',
+      jenis_kelamin || null,
+      kategori_mukim || 'PPM',
+      keterangan || null
+    ];
+
+    const [result] = await pool.execute<ResultSetHeader>(sql, params);
+    return NextResponse.json({ success: true, message: 'Data alumni berhasil ditambahkan', insertId: result.insertId });
+  } catch (error: any) {
+    console.error('Error POST /api/alumni:', error);
+    return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
+  }
+}
+
 // DELETE: Delete alumni permanently
 export async function DELETE(request: Request) {
   try {

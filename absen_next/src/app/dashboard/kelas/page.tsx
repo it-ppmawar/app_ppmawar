@@ -134,7 +134,7 @@ export default function KelasPage() {
   // Import Excel State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [importType, setImportType] = useState<'kelas'>('kelas');
+  const [importType, setImportType] = useState<'kelas' | 'kelas_quran' | 'kelas_madin'>('kelas');
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
 
@@ -199,8 +199,9 @@ export default function KelasPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const isNew = !editingKelas.id;
       const res = await fetch('/api/kelas', {
-        method: 'PUT',
+        method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingKelas.id,
@@ -210,7 +211,13 @@ export default function KelasPage() {
       });
       const json = await res.json();
       if (json.success) {
-        setData(data.map(d => d.id === editingKelas.id ? { ...d, nama: editingKelas.nama } : d));
+        if (isNew) {
+          const r = await fetch(`/api/kelas?type=${activeTab}`);
+          const j = await r.json();
+          if (j.success) setData(j.data);
+        } else {
+          setData(data.map(d => d.id === editingKelas.id ? { ...d, nama: editingKelas.nama } : d));
+        }
         setIsEditModalOpen(false);
       } else {
         alert('Gagal menyimpan: ' + json.error);
@@ -381,13 +388,14 @@ export default function KelasPage() {
                   <TableProperties size={14} /> Templat
                 </button>
                 <button
-                  onClick={() => { setImportFile(null); setImportResult(null); setIsImportModalOpen(true); }}
+                  onClick={() => { setImportFile(null); setImportResult(null); setImportType(activeTab === 'quran' ? 'kelas_quran' : 'kelas_madin'); setIsImportModalOpen(true); }}
                   className="flex-1 md:flex-none justify-center px-3 py-2 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors flex items-center gap-1.5"
                   title="Impor Data dari Excel"
                 >
                   <Upload size={14} /> Impor
                 </button>
                 <button
+                  onClick={() => { setEditingKelas({ id: null, nama: '' }); setIsEditModalOpen(true); }}
                   className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
                   title="Tambah Kelas"
                 >
@@ -495,10 +503,11 @@ export default function KelasPage() {
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
             <div className="bg-teal-600 dark:bg-teal-900 p-5 text-white">
               <h2 className="text-xl font-bold flex items-center gap-2">
-                <Edit size={20} /> Edit Nama Kelas
+                {editingKelas.id ? <Edit size={20} /> : <Plus size={20} />} {editingKelas.id ? 'Edit Nama Kelas' : `Tambah Kelas ${activeTab === 'quran' ? "Qur'an" : 'Madin'}`}
               </h2>
             </div>
             <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+              {editingKelas.id && (
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">ID Kelas (Tidak dapat diubah)</label>
                 <input 
@@ -508,6 +517,7 @@ export default function KelasPage() {
                   className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-500"
                 />
               </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Nama Kelas</label>
                 <input 
@@ -731,13 +741,9 @@ export default function KelasPage() {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-2">Tipe Kelas</label>
-                <select
-                  value={importType}
-                  onChange={(e) => setImportType(e.target.value as 'kelas')}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm"
-                >
-                  <option value="kelas">Kelas (Madin &amp; Qur&apos;an)</option>
-                </select>
+                <div className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium">
+                  {activeTab === 'quran' ? "Kelas Qur'an" : 'Kelas Madin'}
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-2">Pilih File Excel (.xlsx)</label>

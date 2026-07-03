@@ -177,6 +177,28 @@ export default function AlumniManagementPage() {
     }
   };
 
+  const handleOpenCreateModal = () => {
+    setEditingAlumni(null);
+    setFormData({
+      alumni_id: '',
+      nama: '',
+      nis: '',
+      nik: '',
+      no_hp: '',
+      alamat: '',
+      tahun_masuk: '',
+      tahun_keluar: '',
+      status_keluar: 'Lulus',
+      jenis_kelamin: 'Laki-laki',
+      kategori_mukim: 'PPM',
+      keterangan: '',
+      kamar: '',
+      madin: '',
+      quran: ''
+    });
+    setShowModal(true);
+  };
+
   const handleOpenEditModal = (item: any) => {
     setEditingAlumni(item);
     
@@ -222,8 +244,9 @@ export default function AlumniManagementPage() {
       if (formData.quran) parts.push(`Qur'an: ${formData.quran}`);
       const updatedKeterangan = parts.join(' | ');
 
+      const isNew = !editingAlumni;
       const res = await fetch('/api/alumni', {
-        method: 'PUT',
+        method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -325,6 +348,14 @@ export default function AlumniManagementPage() {
               title="Impor Excel"
             >
               <Upload size={14} /> Impor
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenCreateModal}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+              title="Tambah Alumni"
+            >
+              <Plus size={14} /> Tambah
             </button>
           </div>
         </div>
@@ -482,7 +513,7 @@ export default function AlumniManagementPage() {
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
             <div className="bg-green-600 px-6 py-4 flex justify-between items-center text-white shrink-0 rounded-t-3xl">
-              <h3 className="font-bold">Edit Data Alumni</h3>
+              <h3 className="font-bold">{editingAlumni ? 'Edit Data Alumni' : 'Tambah Data Alumni'}</h3>
               <button type="button" onClick={() => setShowModal(false)} className="text-white/70 hover:text-white font-bold p-1">✕</button>
             </div>
             

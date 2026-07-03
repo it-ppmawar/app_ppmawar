@@ -148,3 +148,52 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+    const payload = token ? verifyToken(token) : null;
+    if (!payload || ((payload as any).role !== 'admin' && (payload as any).role !== 'staff')) {
+      return NextResponse.json({ error: 'Hanya admin/staff yang dapat menambahkan' }, { status: 403 });
+    }
+
+    const data = await request.json();
+    const { nama, type } = data; // type: madin, quran, kamar
+    if (!nama || !type) return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
+
+    if (type === 'madin') {
+      await pool.execute('INSERT INTO kelas_madin (nama_kelas) VALUES (?)', [nama]);
+    } else if (type === 'quran') {
+      await pool.execute('INSERT INTO kelas_quran (nama_kelas) VALUES (?)', [nama]);
+    } else if (type === 'kamar') {
+      let namaAsrama = null;
+      const cleanNama = nama.trim().toUpperCase();
+      if (cleanNama.startsWith('ASRAMA A') || cleanNama.startsWith('A ')) {
+        namaAsrama = 'A';
+      } else if (cleanNama.startsWith('ASRAMA B') || cleanNama.startsWith('B ')) {
+        namaAsrama = 'B';
+      } else if (cleanNama.startsWith('ASRAMA C') || cleanNama.startsWith('C ')) {
+        namaAsrama = 'C';
+      } else if (cleanNama.startsWith('ASRAMA D') || cleanNama.startsWith('D ')) {
+        namaAsrama = 'D';
+      } else if (cleanNama.startsWith('ASRAMA E') || cleanNama.startsWith('E ')) {
+        namaAsrama = 'E';
+      } else if (cleanNama.startsWith('ASRAMA F') || cleanNama.startsWith('F ')) {
+        namaAsrama = 'F';
+      } else {
+        // Fallback check single char
+        const firstChar = cleanNama.charAt(0);
+        if (['A', 'B', 'C', 'D', 'E', 'F'].includes(firstChar)) {
+          namaAsrama = firstChar;
+        }
+      }
+      await pool.execute('INSERT INTO kamar (nama_kamar, nama_asrama) VALUES (?, ?)', [nama, namaAsrama]);
+    }
+
+    return NextResponse.json({ success: true, message: 'Data berhasil ditambahkan' });
+  } catch (error: any) {
+    return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
+  }
+}
+

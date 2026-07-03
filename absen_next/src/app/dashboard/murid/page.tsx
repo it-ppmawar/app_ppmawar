@@ -576,11 +576,14 @@ export default function DataMuridPage() {
             </button>
             {(role === 'admin' || role === 'staff') && (
               <button
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
-                title="Tambah Santri"
+                onClick={handleSyncMitra}
+                disabled={syncing}
+                className="flex-1 md:flex-none justify-center px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 disabled:opacity-75"
+                title="Sinkronisasi Data Mitra"
               >
-                <span className="hidden sm:inline">+ Tambah</span>
-                <span className="sm:hidden text-lg leading-none">+</span>
+                <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+                <span className="hidden sm:inline">{syncing ? 'Sinkronisasi...' : 'Sinkronisasi'}</span>
+                <span className="sm:hidden">{syncing ? '...' : 'Sync'}</span>
               </button>
             )}
           </div>
@@ -589,18 +592,10 @@ export default function DataMuridPage() {
 
       {/* Tombol Aksi Admin */}
       {(role === 'admin' || role === 'staff') && (
-        <div className="flex flex-col sm:flex-row justify-center gap-3 -mt-2 max-w-2xl mx-auto w-full px-4">
-          <Link href="/dashboard/pairing" className="w-full sm:w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl shadow-lg shadow-indigo-600/10 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2.5 text-sm font-extrabold tracking-wide border border-indigo-500/50">
+        <div className="flex justify-center -mt-2 max-w-lg mx-auto w-full px-4">
+          <Link href="/dashboard/pairing" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl shadow-lg shadow-indigo-600/10 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2.5 text-sm font-extrabold tracking-wide border border-indigo-500/50">
             <Camera size={18} className="text-indigo-200" /> Pairing Kartu Barcode Santri
           </Link>
-          <button 
-            onClick={handleSyncMitra} 
-            disabled={syncing}
-            className="w-full sm:w-1/2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-3.5 rounded-2xl shadow-lg shadow-emerald-600/10 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2.5 text-sm font-extrabold tracking-wide border border-emerald-500/30 disabled:opacity-75"
-          >
-            <RefreshCw size={18} className={`text-emerald-100 ${syncing ? 'animate-spin' : ''}`} /> 
-            {syncing ? 'Mensinkronkan Data...' : 'Sinkronisasi Data Mitra'}
-          </button>
         </div>
       )}
 

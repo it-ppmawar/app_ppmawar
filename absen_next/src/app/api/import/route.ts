@@ -94,6 +94,12 @@ export async function POST(request: Request) {
       case 'kelas':
         result = await importKelas(dataRows, headers);
         break;
+      case 'kelas_quran':
+        result = await importKelas(dataRows, headers, 'quran');
+        break;
+      case 'kelas_madin':
+        result = await importKelas(dataRows, headers, 'madin');
+        break;
       case 'kamar':
         result = await importKamar(dataRows, headers);
         break;
@@ -552,21 +558,21 @@ async function importKetertiban(rows: any[][], headers: string[]) {
 }
 
 // ─── IMPORT KELAS ───────────────────────────────────────────────────────────
-async function importKelas(rows: any[][], headers: string[]) {
+async function importKelas(rows: any[][], headers: string[], defaultType?: 'quran' | 'madin') {
   const result = { inserted: 0, updated: 0, skipped: 0, errors: [] as string[] };
   const colNamaKelas = findCol(headers, ['NAMA KELAS', 'KELAS']);
   const colTipe = findCol(headers, ['TIPE', 'JENIS']);
   const colWali = findCol(headers, ['WALI KELAS', 'PEMBINA', 'GURU']);
 
-  if (colNamaKelas === -1 || colTipe === -1) {
-    result.errors.push('Kolom wajib (NAMA KELAS, TIPE) tidak ditemukan');
+  if (colNamaKelas === -1 || (colTipe === -1 && !defaultType)) {
+    result.errors.push(colTipe === -1 ? 'Kolom wajib (NAMA KELAS) tidak ditemukan' : 'Kolom wajib (NAMA KELAS, TIPE) tidak ditemukan');
     return result;
   }
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const namaKelas = String(row[colNamaKelas] || '').trim();
-    const tipe = String(row[colTipe] || '').trim().toLowerCase();
+    const tipe = colTipe !== -1 ? String(row[colTipe] || '').trim().toLowerCase() : (defaultType || '');
     if (!namaKelas || !tipe) { result.skipped++; continue; }
 
     const waliIdentitas = colWali !== -1 ? String(row[colWali] || '').trim() : '';
