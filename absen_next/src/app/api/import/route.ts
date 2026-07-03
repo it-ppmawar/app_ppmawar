@@ -110,6 +110,9 @@ export async function POST(request: Request) {
       case 'users':
         result = await importUsers(dataRows, headers);
         break;
+      case 'kurikulum':
+        result = await importKurikulum(dataRows, headers);
+        break;
       default:
         return NextResponse.json({ error: `Tipe impor "${type}" tidak valid` }, { status: 400 });
     }
@@ -902,4 +905,54 @@ async function importBilling(workbook: XLSX.WorkBook) {
 
   return result;
 }
+
+// ─── IMPORT KURIKULUM ───────────────────────────────────────────────────────────
+async function importKurikulum(rows: any[][], headers: string[]) {
+  const result = { inserted: 0, updated: 0, skipped: 0, errors: [] as string[] };
+  const colTingkat = findCol(headers, ['TINGKATAN', 'TINGKAT', 'LEVEL']);
+  const colMapel = findCol(headers, ['MATA PELAJARAN', 'MAPEL']);
+  const colKitab = findCol(headers, ['JENJANG KITAB', 'KITAB', 'BUKU']);
+  const colKeterangan = findCol(headers, ['KETERANGAN', 'CATATAN']);
+
+  if (colTingkat === -1 || colMapel === -1 || colKitab === -1) {
+    result.errors.push('Kolom wajib (TINGKATAN, MATA PELAJARAN, JENJANG KITAB) tidak ditemukan');
+    return result;
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const tingkat = String(row[colTingkat] || '').trim().toUpperCase();
+    const mapel = String(row[colMapel] || '').trim();
+    const kitab = String(row[colKitab] || '').trim();
+    const keterangan = colKeterangan !== -1 ? String(row[colKeterangan] || '').trim() : '';
+
+    if (!tingkat || !mapel || !kitab) { result.skipped++; continue; }
+
+    try {
+      // Cek duplikasi berdasarkan tingkat + mapel
+      const [existing] = await pool.execute<RowDataPacket[]>(
+        'SELECT id FROM kurikulum_madin WHERE tingkat = ? AND mata_pelajaran = ? LIMIT 1',
+        [tingkat, mapel]
+      );
+
+      if (existing.length > 0) {
+        await pool.execute(
+          'UPDATE kurikulum_madin SET kitab = ?, keterangan = ? WHERE id = ?',
+          [kitab, keterangan || null, existing[0].id]
+        );
+        result.updated++;
+      } else {
+        await pool.execute(
+          'INSERT INTO kurikulum_madin (tingkat, mata_pelajaran, kitab, keterangan) VALUES (?, ?, ?, ?)',
+          [tingkat, mapel, kitab, keterangan || null]
+        );
+        result.inserted++;
+      }
+    } catch (err: any) {
+      result.errors.push(`Baris ${i + 2}: ${err.message}`);
+    }
+  }
+  return result;
+}
+
 
