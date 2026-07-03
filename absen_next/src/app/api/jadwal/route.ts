@@ -39,32 +39,38 @@ export async function GET() {
         whereClauseQuran = '0=1';
         whereClauseKegiatan = '0=1';
       }
-    } else if (role === 'pengurus_asrama') {
+    } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (namaAsrama) {
-        // Jadwal Madin: kelas yang ada santri dari asrama ini
-        whereClauseMadin = `j.kelas_madin_id IN (
-          SELECT DISTINCT m.kelas_madin_id FROM murid m
-          JOIN kamar km ON m.kamar_id = km.kamar_id
-          WHERE km.nama_asrama = ? AND m.kelas_madin_id IS NOT NULL
-        )`;
-        // Jadwal Quran: kelas yang ada santri dari asrama ini OR nama_kelas mengandung nama asrama
-        whereClauseQuran = `(
-          j.kelas_quran_id IN (
-            SELECT DISTINCT m.kelas_quran_id FROM murid m
+        if (role === 'pengasuh') {
+          // Pengasuh hanya untuk asrama/kegiatan pesantren, bukan madrasah (madin/quran)
+          whereClauseMadin = '0=1';
+          whereClauseQuran = '0=1';
+        } else {
+          // Jadwal Madin: kelas yang ada santri dari asrama ini
+          whereClauseMadin = `j.kelas_madin_id IN (
+            SELECT DISTINCT m.kelas_madin_id FROM murid m
             JOIN kamar km ON m.kamar_id = km.kamar_id
-            WHERE km.nama_asrama = ? AND m.kelas_quran_id IS NOT NULL
-          )
-          OR
-          j.kelas_quran_id IN (
-            SELECT id FROM kelas_quran WHERE nama_kelas LIKE ?
-          )
-        )`;
+            WHERE km.nama_asrama = ? AND m.kelas_madin_id IS NOT NULL
+          )`;
+          // Jadwal Quran: kelas yang ada santri dari asrama ini OR nama_kelas mengandung nama asrama
+          whereClauseQuran = `(
+            j.kelas_quran_id IN (
+              SELECT DISTINCT m.kelas_quran_id FROM murid m
+              JOIN kamar km ON m.kamar_id = km.kamar_id
+              WHERE km.nama_asrama = ? AND m.kelas_quran_id IS NOT NULL
+            )
+            OR
+            j.kelas_quran_id IN (
+              SELECT id FROM kelas_quran WHERE nama_kelas LIKE ?
+            )
+          )`;
+          paramsMadin = [namaAsrama];
+          paramsQuran = [namaAsrama, `%${namaAsrama}%`];
+        }
         // Kegiatan: kamar yang masuk asrama ini
         whereClauseKegiatan = `j.kamar_id IN (
           SELECT kamar_id FROM kamar WHERE nama_asrama = ?
         )`;
-        paramsMadin = [namaAsrama];
-        paramsQuran = [namaAsrama, `%${namaAsrama}%`];
         paramsKegiatan = [namaAsrama];
       } else {
         whereClauseMadin = '0=1';

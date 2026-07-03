@@ -929,7 +929,6 @@ async function importKurikulum(rows: any[][], headers: string[]) {
     if (!tingkat || !mapel || !kitab) { result.skipped++; continue; }
 
     try {
-      // Cek duplikasi berdasarkan tingkat + mapel
       const [existing] = await pool.execute<RowDataPacket[]>(
         'SELECT id FROM kurikulum_madin WHERE tingkat = ? AND mata_pelajaran = ? LIMIT 1',
         [tingkat, mapel]
@@ -954,5 +953,4 @@ async function importKurikulum(rows: any[][], headers: string[]) {
   }
   return result;
 }
-
 
