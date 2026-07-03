@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BookOpen, Calendar, Clock, MapPin, User, Plus, Edit, Trash2, FileText, Download, X, Search } from 'lucide-react';
+import { BookOpen, Calendar, Clock, MapPin, User, Plus, Edit, Trash2, FileText, Download, Upload, X, Search } from 'lucide-react';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
+import { downloadTemplate } from '@/lib/downloadTemplate';
 
 export default function JurnalPage() {
   const [jurnalData, setJurnalData] = useState<any>({ madin: [], quran: [], kamar: [] });
@@ -10,6 +11,39 @@ export default function JurnalPage() {
   const [role, setRole] = useState('tamu');
   const [userId, setUserId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'madin' | 'quran' | 'kamar'>('madin');
+
+  // Import State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const handleImportExcel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('type', `jurnal_${activeTab}`);
+      const res = await fetch('/api/import', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setIsImportModalOpen(false);
+        setImportFile(null);
+        fetchData();
+      } else {
+        alert(data.error || 'Gagal mengimpor data');
+      }
+    } catch {
+      alert('Terjadi kesalahan koneksi');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   // Filter States
   const [search, setSearch] = useState('');
@@ -271,34 +305,93 @@ export default function JurnalPage() {
         <div className="absolute top-0 right-0 -mt-4 -mr-4 text-blue-200/50 dark:text-blue-800/30">
           <BookOpen size={120} />
         </div>
-        <div className="relative z-10">
-          <h1 className="text-2xl font-extrabold text-blue-800 dark:text-blue-400 drop-shadow-sm flex items-center gap-2">
-            <BookOpen size={28} /> Jurnal Kegiatan Pembelajaran
-          </h1>
-          <p className="text-blue-600 dark:text-blue-300 text-sm mt-1 font-medium max-w-md">
-            Rekapitulasi materi, catatan pembelajaran, dan kendala kelas.
-          </p>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-extrabold text-blue-800 dark:text-blue-400 drop-shadow-sm flex items-center gap-2">
+              <BookOpen size={28} /> Jurnal Kegiatan Pembelajaran
+            </h1>
+            <p className="text-blue-600 dark:text-blue-300 text-sm mt-1 font-medium max-w-md">
+              Rekapitulasi materi, catatan pembelajaran, dan kendala kelas.
+            </p>
+          </div>
+          <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
+            <button
+              onClick={() => handleExport('pdf', true)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+              title="Preview PDF"
+            >
+              <FileText size={14} /> Preview
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5"
+              title="Export PDF"
+            >
+              <Download size={14} /> PDF
+            </button>
+            <button
+              onClick={() => handleExport('excel')}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5"
+              title="Export Excel"
+            >
+              <Download size={14} /> Excel
+            </button>
+            {(role === 'admin' || role === 'staff') && (
+              <>
+                <button
+                  onClick={() => downloadTemplate(`jurnal_${activeTab}` as any)}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-blue-700 border border-blue-200 rounded-xl text-xs font-bold hover:bg-blue-50 transition-colors flex items-center gap-1.5"
+                  title="Unduh Templat Excel"
+                >
+                  <Download size={14} /> Templat
+                </button>
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-blue-700 border border-blue-200 rounded-xl text-xs font-bold hover:bg-blue-50 transition-colors flex items-center gap-1.5"
+                  title="Impor Excel"
+                >
+                  <Upload size={14} /> Impor
+                </button>
+              </>
+            )}
+            {canAdd && (
+              <button
+                onClick={handleOpenAdd}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
+                title="Isi Jurnal"
+              >
+                <span className="hidden sm:inline">+ Isi Jurnal</span>
+                <span className="sm:hidden text-lg leading-none">+</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700">
-        {(['madin', 'quran', 'kamar'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => {
-              setActiveTab(tab);
-              setSearch('');
-            }}
-            className={`py-3 px-6 font-bold text-sm border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-            }`}
-          >
-            {tab === 'madin' ? 'Madrasah Diniyah (Madin)' : tab === 'quran' ? "Al-Qur'an" : 'Kegiatan Kamar'}
-          </button>
-        ))}
+      <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto">
+        {(['madin', 'quran', 'kamar'] as const).map((tab) => {
+          const isActive = activeTab === tab;
+          let activeBg = 'bg-blue-500 text-white shadow-md';
+          if (tab === 'quran') activeBg = 'bg-emerald-500 text-white shadow-md';
+          if (tab === 'madin') activeBg = 'bg-indigo-500 text-white shadow-md';
+          return (
+            <button
+              key={tab}
+              onClick={() => {
+                setActiveTab(tab);
+                setSearch('');
+              }}
+              className={`flex-1 min-w-[120px] py-2.5 text-sm font-bold rounded-xl transition-all ${
+                isActive
+                  ? activeBg
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              {tab === 'madin' ? 'Madrasah Diniyah (Madin)' : tab === 'quran' ? "Al-Qur'an" : 'Kegiatan Kamar'}
+            </button>
+          );
+        })}
       </div>
 
       {/* Filters and Actions */}
@@ -332,38 +425,6 @@ export default function JurnalPage() {
             onChange={(e) => setDateTo(e.target.value)}
             className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs dark:text-gray-200"
           />
-        </div>
-
-        {/* Add Button */}
-        {canAdd && (
-          <button
-            onClick={handleOpenAdd}
-            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center gap-1.5 transition-transform hover:scale-105 shrink-0"
-          >
-            <Plus size={16} /> Isi Jurnal
-          </button>
-        )}
-
-        {/* Exports */}
-        <div className="grid grid-cols-3 gap-2 w-full md:w-auto md:flex">
-          <button
-            onClick={() => handleExport('pdf', true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 transition-colors"
-          >
-            <FileText size={14} /> Preview
-          </button>
-          <button
-            onClick={() => handleExport('pdf')}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors"
-          >
-            <Download size={14} /> PDF
-          </button>
-          <button
-            onClick={() => handleExport('excel')}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors"
-          >
-            <Download size={14} /> Excel
-          </button>
         </div>
       </div>
 
@@ -657,6 +718,57 @@ export default function JurnalPage() {
               <button onClick={() => setShowPdfPreview(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><X size={20} /></button>
             </div>
             <iframe src={pdfUrl} className="flex-1 w-full" />
+          </div>
+        </div>
+      )}
+
+      {/* Import Excel Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
+            <div className="bg-blue-600 dark:bg-blue-900 p-5 text-white flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2"><Upload size={20} /> Impor Jurnal</h2>
+              <button onClick={() => { setIsImportModalOpen(false); setImportFile(null); }} className="text-white hover:text-gray-200"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleImportExcel} className="p-6 space-y-4">
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Silakan pilih file Excel (.xlsx) dengan kolom yang disesuaikan dengan templat yang disediakan.
+                Data jurnal akan ditambahkan otomatis.
+              </p>
+              <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors relative">
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  required
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) setImportFile(files[0]);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Upload size={32} className="mx-auto text-blue-500 mb-2" />
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                  {importFile ? importFile.name : 'Pilih File Excel (.xlsx)'}
+                </span>
+                <span className="text-[10px] text-gray-400 block mt-1">Maksimal ukuran file: 10MB</span>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setIsImportModalOpen(false); setImportFile(null); }}
+                  className="px-5 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={importing || !importFile}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {importing ? 'Mengimpor...' : 'Mulai Impor'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

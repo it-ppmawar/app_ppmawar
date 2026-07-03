@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertTriangle, UserX, FileWarning, Search, Filter, Plus, Calendar, Clock, ChevronDown, CheckCircle, Trash2, Edit, FileText, Download, X, Save, User } from 'lucide-react';
+import { AlertTriangle, UserX, FileWarning, Search, Filter, Plus, Calendar, Clock, ChevronDown, CheckCircle, Trash2, Edit, FileText, Download, Upload, X, Save, User } from 'lucide-react';
 import Link from 'next/link';
+import { downloadTemplate } from '@/lib/downloadTemplate';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface RowItem {
@@ -267,6 +268,39 @@ export default function KetertibanPage() {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState('');
   const [search, setSearch] = useState('');
+
+  // Import State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const handleImportExcel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('type', 'ketertiban');
+      const res = await fetch('/api/import', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setIsImportModalOpen(false);
+        setImportFile(null);
+        fetchData();
+      } else {
+        alert(data.error || 'Gagal mengimpor data');
+      }
+    } catch {
+      alert('Terjadi kesalahan koneksi');
+    } finally {
+      setImporting(false);
+    }
+  };
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
 
   // Modal state
@@ -411,7 +445,7 @@ export default function KetertibanPage() {
         <div className="absolute top-0 right-0 -mt-4 -mr-4 text-red-200/50 dark:text-red-800/30">
           <AlertTriangle size={120} />
         </div>
-        <div className="relative z-10 flex items-start justify-between">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-red-800 dark:text-red-400 drop-shadow-sm flex items-center gap-2">
               <FileWarning size={28} /> Ketertiban Murid
@@ -420,15 +454,57 @@ export default function KetertibanPage() {
               Sistem pencatatan otomatis siswa alpa dan riwayat pelanggaran tata tertib pesantren.
             </p>
           </div>
-          {canManage && (
+          <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
             <button
-              onClick={handleAdd}
-              className="bg-red-600 hover:bg-red-700 text-white p-3 rounded-full shadow-lg transition-all hover:scale-105 flex items-center justify-center active:scale-95"
-              title="Tambah Catatan Pelanggaran"
+              onClick={() => handleExport('pdf', true)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+              title="Preview PDF"
             >
-              <Plus size={20} />
+              <FileText size={14} /> Preview
             </button>
-          )}
+            <button
+              onClick={() => handleExport('pdf', false)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5"
+              title="Export PDF"
+            >
+              <Download size={14} /> PDF
+            </button>
+            <button
+              onClick={() => handleExport('excel', false)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5"
+              title="Export Excel"
+            >
+              <Download size={14} /> Excel
+            </button>
+            {(role === 'admin' || role === 'staff') && (
+              <>
+                <button
+                  onClick={() => downloadTemplate('ketertiban')}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-red-700 border border-red-200 rounded-xl text-xs font-bold hover:bg-red-50 transition-colors flex items-center gap-1.5"
+                  title="Unduh Templat Excel"
+                >
+                  <Download size={14} /> Templat
+                </button>
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-red-700 border border-red-200 rounded-xl text-xs font-bold hover:bg-red-50 transition-colors flex items-center gap-1.5"
+                  title="Impor Excel"
+                >
+                  <Upload size={14} /> Impor
+                </button>
+              </>
+            )}
+            {canManage && (
+              <button
+                onClick={handleAdd}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
+                title="Tambah Catatan Pelanggaran"
+              >
+                <span className="hidden sm:inline">+ Tambah Catatan</span>
+                <span className="sm:hidden text-lg leading-none">+</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -472,17 +548,6 @@ export default function KetertibanPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-gray-200 transition-colors"
           />
-        </div>
-        <div className="flex w-full sm:w-auto gap-2 shrink-0 overflow-x-auto pb-2 sm:pb-0">
-          <button onClick={() => handleExport('pdf', true)} className="flex-1 justify-center px-3 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-1.5 shrink-0" title="Preview PDF">
-            <FileText size={14} /> Preview
-          </button>
-          <button onClick={() => handleExport('pdf', false)} className="flex-1 justify-center px-3 py-2.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5 shrink-0" title="Export PDF">
-            <Download size={14} /> PDF
-          </button>
-          <button onClick={() => handleExport('excel', false)} className="flex-1 justify-center px-3 py-2.5 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5 shrink-0" title="Export Excel">
-            <Download size={14} /> Excel
-          </button>
         </div>
       </div>
 
@@ -699,6 +764,57 @@ export default function KetertibanPage() {
                 </a>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Excel Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
+            <div className="bg-red-600 dark:bg-red-900 p-5 text-white flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2"><Upload size={20} /> Impor Ketertiban</h2>
+              <button onClick={() => { setIsImportModalOpen(false); setImportFile(null); }} className="text-white hover:text-gray-200"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleImportExcel} className="p-6 space-y-4">
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Silakan pilih file Excel (.xlsx) dengan kolom yang disesuaikan dengan templat yang disediakan.
+                Data catatan ketertiban akan ditambahkan otomatis.
+              </p>
+              <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors relative">
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  required
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) setImportFile(files[0]);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Upload size={32} className="mx-auto text-red-500 mb-2" />
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                  {importFile ? importFile.name : 'Pilih File Excel (.xlsx)'}
+                </span>
+                <span className="text-[10px] text-gray-400 block mt-1">Maksimal ukuran file: 10MB</span>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setIsImportModalOpen(false); setImportFile(null); }}
+                  className="px-5 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={importing || !importFile}
+                  className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {importing ? 'Mengimpor...' : 'Mulai Impor'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

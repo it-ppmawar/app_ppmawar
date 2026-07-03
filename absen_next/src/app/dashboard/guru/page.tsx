@@ -354,7 +354,7 @@ export default function GuruPage() {
         <div className="absolute top-0 right-0 -mt-4 -mr-4 text-indigo-200/50 dark:text-indigo-800/30">
           <UserCog size={120} />
         </div>
-        <div className="relative z-10 flex items-start justify-between">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2">
               <UserCog size={28} /> Data Guru & Pembina
@@ -363,27 +363,54 @@ export default function GuruPage() {
               Manajemen informasi dewan asatidz dan pembina kamar.
             </p>
           </div>
-          {(role === 'admin' || role === 'staff') && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => downloadTemplate('guru')}
-                className="bg-white/20 hover:bg-white/30 text-indigo-800 dark:text-indigo-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border border-indigo-200/50 flex items-center gap-1.5"
-                title="Unduh Templat Excel"
-              >
-                <Download size={14} /> Templat
-              </button>
-              <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="bg-white/20 hover:bg-white/30 text-indigo-800 dark:text-indigo-200 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border border-indigo-200/50 flex items-center gap-1.5"
-                title="Impor Excel"
-              >
-                <Upload size={14} /> Impor
-              </button>
-              <button className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full shadow-sm transition-transform hover:scale-105 flex items-center justify-center font-bold" title="Tambah Data">
-                <Plus size={20} />
-              </button>
-            </div>
-          )}
+          <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
+            <button
+              onClick={() => handleExport('pdf', true)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+              title="Preview PDF"
+            >
+              <FileText size={14} /> Preview
+            </button>
+            <button
+              onClick={() => handleExport('pdf', false)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5"
+              title="Export PDF"
+            >
+              <Download size={14} /> PDF
+            </button>
+            <button
+              onClick={() => handleExport('excel', false)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5"
+              title="Export Excel"
+            >
+              <Download size={14} /> Excel
+            </button>
+            {(role === 'admin' || role === 'staff') && (
+              <>
+                <button
+                  onClick={() => downloadTemplate('guru')}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-50 transition-colors flex items-center gap-1.5"
+                  title="Unduh Templat Excel"
+                >
+                  <Download size={14} /> Templat
+                </button>
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-50 transition-colors flex items-center gap-1.5"
+                  title="Impor Excel"
+                >
+                  <Upload size={14} /> Impor
+                </button>
+                <button
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
+                  title="Tambah Data"
+                >
+                  <span className="hidden sm:inline">+ Tambah</span>
+                  <span className="sm:hidden text-lg leading-none">+</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -416,18 +443,6 @@ export default function GuruPage() {
         <button onClick={() => setShowFilters(!showFilters)} className={`px-3 py-2.5 border rounded-xl flex items-center justify-center transition-colors shrink-0 ${showFilters || filterMadin || filterQuran || filterKamar ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
           <Search size={18} /> <span className="ml-2 text-xs font-bold">Filter</span>
         </button>
-
-        <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:flex sm:ml-auto">
-          <button onClick={() => handleExport('pdf', true)} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" title="Preview PDF">
-            <FileText size={14} /> Preview
-          </button>
-          <button onClick={() => handleExport('pdf', false)} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors" title="Export PDF">
-            <Download size={14} /> PDF
-          </button>
-          <button onClick={() => handleExport('excel', false)} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors" title="Export Excel">
-            <Download size={14} /> Excel
-          </button>
-        </div>
       </div>
 
       {/* Filter Panel */}

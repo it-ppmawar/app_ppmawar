@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, ShieldAlert, Edit, Trash2, Plus, Search, Shield, UserCog, User, BookOpen, KeyRound, FileText, Download, X, Fingerprint, RefreshCw } from 'lucide-react';
+import { Users, ShieldAlert, Edit, Trash2, Plus, Search, Shield, UserCog, User, BookOpen, KeyRound, FileText, Download, X, Fingerprint, RefreshCw, Upload, TableProperties } from 'lucide-react';
 import Link from 'next/link';
+import { downloadTemplate } from '@/lib/downloadTemplate';
 
 export default function UsersManagementPage() {
   const [activeTab, setActiveTab] = useState('pengelola');
@@ -11,6 +12,18 @@ export default function UsersManagementPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [myRole, setMyRole] = useState('');
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const json = await res.json();
+        if (json.success) setMyRole(json.user.role);
+      } catch (err) {}
+    };
+    fetchMe();
+  }, []);
 
   // Form State
   const [showModal, setShowModal] = useState(false);
@@ -220,6 +233,31 @@ export default function UsersManagementPage() {
 
   const [syncing, setSyncing] = useState(false);
 
+  // Import Excel State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+
+  const handleImportExcel = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', importFile);
+      fd.append('type', 'users');
+      const res = await fetch('/api/import', { method: 'POST', body: fd });
+      const json = await res.json();
+      setImportResult(json);
+      if (json.success) fetchUsers();
+    } catch (err) {
+      setImportResult({ success: false, error: 'Gagal menghubungi server' });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleSyncAllUsers = async () => {
     if (!confirm('Apakah Anda yakin ingin melakukan sinkronisasi & konversi akun otomatis untuk seluruh Guru dan Wali Murid?\n\n- Akun baru akan otomatis dibuat untuk guru/murid yang belum punya akun.\n- Informasi nama/NIP akan disinkronkan (tanpa mereset password atau username yang sudah ada/diganti).\n- Akun dari guru/murid yang tidak aktif/alumni/dihapus akan otomatis dibersihkan.')) return;
     
@@ -257,13 +295,75 @@ export default function UsersManagementPage() {
         <div className="absolute top-0 right-0 -mt-4 -mr-4 text-indigo-200/50 dark:text-indigo-800/30">
           <KeyRound size={120} />
         </div>
-        <div className="relative z-10">
-          <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2">
-            Manajemen Pengguna
-          </h1>
-          <p className="text-indigo-600 dark:text-indigo-300 text-sm mt-1 font-medium max-w-md">
-            Kelola hak akses, tambah akun, dan ubah password dari satu tempat.
-          </p>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2">
+              Manajemen Pengguna
+            </h1>
+            <p className="text-indigo-600 dark:text-indigo-300 text-sm mt-1 font-medium max-w-md">
+              Kelola hak akses, tambah akun, dan ubah password dari satu tempat.
+            </p>
+          </div>
+          <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
+            <button
+              onClick={() => handleExport('pdf', true)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+              title="Preview PDF"
+            >
+              <FileText size={14} /> Preview
+            </button>
+            <button
+              onClick={() => handleExport('pdf', false)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5"
+              title="Export PDF"
+            >
+              <Download size={14} /> PDF
+            </button>
+            <button
+              onClick={() => handleExport('excel', false)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5"
+              title="Export Excel"
+            >
+              <Download size={14} /> Excel
+            </button>
+            {(myRole === 'admin' || myRole === 'staff') && (
+              <>
+                <button
+                  onClick={() => downloadTemplate('users')}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1.5"
+                  title="Unduh Templat Excel"
+                >
+                  <TableProperties size={14} /> Templat
+                </button>
+                <button
+                  onClick={() => { setImportFile(null); setImportResult(null); setIsImportModalOpen(true); }}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors flex items-center gap-1.5"
+                  title="Impor Data dari Excel"
+                >
+                  <Upload size={14} /> Impor
+                </button>
+              </>
+            )}
+            <button
+              onClick={handleSyncAllUsers}
+              disabled={syncing}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              title="Sinkronisasi & Konversi User Otomatis"
+            >
+              <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+              {syncing ? 'Memproses...' : 'Konversi User'}
+            </button>
+            {(activeTab === 'pengelola' || activeTab === 'guru' || activeTab === 'pengurus_asrama') && (
+              <button
+                onClick={() => handleOpenModal()}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
+                title={`Tambah ${activeTab === 'pengelola' ? 'Pengelola' : activeTab === 'pengurus_asrama' ? 'Pengurus Asrama' : 'Guru'}`}
+              >
+                <span className="hidden sm:inline">+ Tambah</span>
+                <span className="sm:hidden text-lg leading-none">+</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -305,41 +405,6 @@ export default function UsersManagementPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
               />
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 sm:shrink-0">
-              {/* Konversi User — full-width on mobile */}
-              <button
-                onClick={handleSyncAllUsers}
-                disabled={syncing}
-                className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors disabled:opacity-50"
-                title="Sinkronisasi & Konversi User Otomatis"
-              >
-                <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-                {syncing ? 'Memproses...' : 'Konversi User'}
-              </button>
-
-              {/* Export buttons — 3 columns full-width on mobile */}
-              <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:flex sm:gap-2">
-                <button onClick={() => handleExport('pdf', true)} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" title="Preview PDF">
-                  <FileText size={14} /> Preview
-                </button>
-                <button onClick={() => handleExport('pdf', false)} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors" title="Export PDF">
-                  <Download size={14} /> PDF
-                </button>
-                <button onClick={() => handleExport('excel', false)} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors" title="Export Excel">
-                  <Download size={14} /> Excel
-                </button>
-              </div>
-
-              {(activeTab === 'pengelola' || activeTab === 'guru' || activeTab === 'pengurus_asrama') && (
-                <button
-                  onClick={() => handleOpenModal()}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl shadow-sm transition-transform hover:scale-105 font-bold text-sm"
-                  title={`Tambah ${activeTab === 'pengelola' ? 'Pengelola' : activeTab === 'pengurus_asrama' ? 'Pengurus Asrama' : 'Guru'}`}
-                >
-                  <Plus size={16} /> Tambah
-                </button>
-              )}
             </div>
           </div>
 
@@ -405,6 +470,57 @@ export default function UsersManagementPage() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Import Excel Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-gray-100 dark:border-gray-700">
+            <div className="bg-indigo-600 dark:bg-indigo-900 p-5 text-white flex justify-between items-center">
+              <h2 className="text-lg font-bold flex items-center gap-2"><Upload size={20} /> Impor Data Pengguna</h2>
+              <button onClick={() => setIsImportModalOpen(false)} className="bg-white/20 p-1.5 rounded-lg hover:bg-white/30"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-300">
+                <p className="font-bold mb-1">⚠ Perhatian</p>
+                <p>Password akan di-hash secara otomatis. Pastikan kolom USERNAME, ROLE, dan PASSWORD terisi.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-2">Pilih File Excel (.xlsx)</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => { setImportFile(e.target.files?.[0] || null); setImportResult(null); }}
+                  className="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                />
+              </div>
+              {importResult && (
+                <div className={`p-3 rounded-xl text-sm ${importResult.success ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'}`}>
+                  <p className="font-bold">{importResult.success ? '✓ Berhasil' : '✗ Gagal'}</p>
+                  <p>{importResult.message || importResult.error}</p>
+                  {importResult.details?.errors?.length > 0 && (
+                    <ul className="mt-2 list-disc list-inside text-xs space-y-0.5">
+                      {importResult.details.errors.slice(0, 5).map((e: string, i: number) => <li key={i}>{e}</li>)}
+                      {importResult.details.errors.length > 5 && <li>...dan {importResult.details.errors.length - 5} error lainnya</li>}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setIsImportModalOpen(false)} className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+                  Tutup
+                </button>
+                <button
+                  onClick={handleImportExcel}
+                  disabled={!importFile || importing}
+                  className="flex-1 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {importing ? <><span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> Mengimpor...</> : <><Upload size={16} /> Impor</>}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

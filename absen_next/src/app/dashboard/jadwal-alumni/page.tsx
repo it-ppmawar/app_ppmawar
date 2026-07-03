@@ -1,13 +1,47 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CalendarDays, Clock, MapPin, Plus, Edit, Trash2, FileText, Download, X, Search, Star } from 'lucide-react';
+import { CalendarDays, Clock, MapPin, Plus, Edit, Trash2, FileText, Download, Upload, X, Search, Star } from 'lucide-react';
+import { downloadTemplate } from '@/lib/downloadTemplate';
 
 export default function JadwalAlumniPage() {
   const [jadwal, setJadwal] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState('');
   const [search, setSearch] = useState('');
+
+  // Import State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const handleImportExcel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('type', 'jadwal_alumni');
+      const res = await fetch('/api/import', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setIsImportModalOpen(false);
+        setImportFile(null);
+        fetchData();
+      } else {
+        alert(data.error || 'Gagal mengimpor data');
+      }
+    } catch {
+      alert('Terjadi kesalahan koneksi');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   // Pasaran Jawa
   const [wetonHariIni, setWetonHariIni] = useState('');
@@ -212,29 +246,80 @@ export default function JadwalAlumniPage() {
         <div className="absolute top-0 right-0 -mt-4 -mr-4 text-amber-200/50 dark:text-amber-800/30">
           <Star size={120} />
         </div>
-        <div className="relative z-10">
-          <h1 className="text-2xl font-extrabold text-amber-800 dark:text-amber-400 drop-shadow-sm flex items-center gap-2">
-            <CalendarDays size={28} /> Jadwal Alumni — Ahad Legi
-          </h1>
-          <p className="text-amber-600 dark:text-amber-300 text-sm mt-1 font-medium max-w-md">
-            Jadwal kegiatan alumni setiap Ahad Legi (siklus 35 hari).
-          </p>
-
-          {/* Weton Info Cards */}
-          <div className="flex flex-col sm:flex-row gap-3 mt-4">
-            <div className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 ${isAhadLegiToday ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 border border-green-300 dark:border-green-700 animate-pulse' : 'bg-white/70 dark:bg-gray-800/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700'}`}>
-              <CalendarDays size={16} />
-              Hari ini: {wetonHariIni || '...'}
-              {isAhadLegiToday && <span className="ml-1 text-green-600">🎉 AHAD LEGI!</span>}
-            </div>
-            {nextAhadLegi && !isAhadLegiToday && (
-              <div className="px-4 py-2.5 bg-white/70 dark:bg-gray-800/70 rounded-xl text-sm font-bold text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700 flex items-center gap-2">
-                <Clock size={16} />
-                Ahad Legi berikutnya: {formatTanggal(nextAhadLegi)} ({getCountdown()})
-              </div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-extrabold text-amber-800 dark:text-amber-400 drop-shadow-sm flex items-center gap-2">
+              <CalendarDays size={28} /> Jadwal Alumni — Ahad Legi
+            </h1>
+            <p className="text-amber-600 dark:text-amber-300 text-sm mt-1 font-medium max-w-md">
+              Jadwal kegiatan alumni setiap Ahad Legi (siklus 35 hari).
+            </p>
+          </div>
+          <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
+            <button
+              onClick={() => handleExport('pdf', true)}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+              title="Preview PDF"
+            >
+              <FileText size={14} /> Preview
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5"
+              title="Export PDF"
+            >
+              <Download size={14} /> PDF
+            </button>
+            <button
+              onClick={() => handleExport('excel')}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5"
+              title="Export Excel"
+            >
+              <Download size={14} /> Excel
+            </button>
+            {canEdit && (
+              <>
+                <button
+                  onClick={() => downloadTemplate('jadwal_alumni')}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-amber-700 border border-amber-200 rounded-xl text-xs font-bold hover:bg-amber-50 transition-colors flex items-center gap-1.5"
+                  title="Unduh Templat Excel"
+                >
+                  <Download size={14} /> Templat
+                </button>
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-amber-700 border border-amber-200 rounded-xl text-xs font-bold hover:bg-amber-50 transition-colors flex items-center gap-1.5"
+                  title="Impor Excel"
+                >
+                  <Upload size={14} /> Impor
+                </button>
+                <button
+                  onClick={handleAdd}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
+                  title="Tambah Jadwal"
+                >
+                  <span className="hidden sm:inline">+ Tambah Jadwal</span>
+                  <span className="sm:hidden text-lg leading-none">+</span>
+                </button>
+              </>
             )}
           </div>
         </div>
+      </div>
+
+      {/* Weton Info Cards (Outside Hero Card) */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 ${isAhadLegiToday ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 border border-green-300 dark:border-green-700 animate-pulse' : 'bg-white/70 dark:bg-gray-800/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700'}`}>
+          <CalendarDays size={16} />
+          Hari ini: {wetonHariIni || '...'}
+          {isAhadLegiToday && <span className="ml-1 text-green-600">🎉 AHAD LEGI!</span>}
+        </div>
+        {nextAhadLegi && !isAhadLegiToday && (
+          <div className="px-4 py-2.5 bg-white/70 dark:bg-gray-800/70 rounded-xl text-sm font-bold text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700 flex items-center gap-2">
+            <Clock size={16} />
+            Ahad Legi berikutnya: {formatTanggal(nextAhadLegi)} ({getCountdown()})
+          </div>
+        )}
       </div>
 
       {/* Controls */}
@@ -242,18 +327,6 @@ export default function JadwalAlumniPage() {
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search size={16} className="text-gray-400" /></div>
           <input type="text" placeholder="Cari kegiatan, tempat, keterangan..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-200 transition-colors" />
-        </div>
-
-        {canEdit && (
-          <button onClick={handleAdd} className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition-transform hover:scale-105 flex items-center gap-2 shrink-0">
-            <Plus size={16} /> Tambah Jadwal
-          </button>
-        )}
-
-        <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:flex">
-          <button onClick={() => handleExport('pdf', true)} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"><FileText size={14} /> Preview</button>
-          <button onClick={() => handleExport('pdf')} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors"><Download size={14} /> PDF</button>
-          <button onClick={() => handleExport('excel')} className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors"><Download size={14} /> Excel</button>
         </div>
       </div>
 
@@ -317,6 +390,57 @@ export default function JadwalAlumniPage() {
               <button onClick={() => setShowPdfPreview(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"><X size={20} /></button>
             </div>
             <iframe src={pdfUrl} className="flex-1 w-full" />
+          </div>
+        </div>
+      )}
+
+      {/* Import Excel Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
+            <div className="bg-amber-600 dark:bg-amber-900 p-5 text-white flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2"><Upload size={20} /> Impor Jadwal Alumni</h2>
+              <button onClick={() => { setIsImportModalOpen(false); setImportFile(null); }} className="text-white hover:text-gray-200"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleImportExcel} className="p-6 space-y-4">
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Silakan pilih file Excel (.xlsx) dengan kolom yang disesuaikan dengan templat yang disediakan.
+                Data jadwal alumni akan ditambahkan otomatis.
+              </p>
+              <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors relative">
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  required
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) setImportFile(files[0]);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Upload size={32} className="mx-auto text-amber-500 mb-2" />
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                  {importFile ? importFile.name : 'Pilih File Excel (.xlsx)'}
+                </span>
+                <span className="text-[10px] text-gray-400 block mt-1">Maksimal ukuran file: 10MB</span>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setIsImportModalOpen(false); setImportFile(null); }}
+                  className="px-5 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={importing || !importFile}
+                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {importing ? 'Mengimpor...' : 'Mulai Impor'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
