@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 
-export const downloadTemplate = (type: 'guru' | 'alumni' | 'jadwal_madin' | 'jadwal_quran' | 'jadwal_kegiatan' | 'jurnal_madin' | 'jurnal_quran' | 'jurnal_kamar' | 'jadwal_alumni' | 'ketertiban' | 'kelas' | 'kamar' | 'users') => {
+export const downloadTemplate = (type: 'guru' | 'alumni' | 'jadwal_madin' | 'jadwal_quran' | 'jadwal_kegiatan' | 'jurnal_madin' | 'jurnal_quran' | 'jurnal_kamar' | 'jadwal_alumni' | 'ketertiban' | 'kelas' | 'kamar' | 'users' | 'kurikulum') => {
   let headers: string[] = [];
   let exampleRow: string[] = [];
   let filename = '';
@@ -10,6 +10,11 @@ export const downloadTemplate = (type: 'guru' | 'alumni' | 'jadwal_madin' | 'jad
       headers = ['NIP', 'NAMA LENGKAP', 'JENIS KELAMIN', 'JABATAN', 'NO HP', 'ALAMAT'];
       exampleRow = ['198203042009121002', 'Ahmad Fauzi, M.Pd.', 'L', 'Ustadz Madin', '081234567890', 'Babat, Lamongan'];
       filename = 'Templat_Impor_Guru.xlsx';
+      break;
+    case 'kurikulum':
+      headers = ['TINGKATAN', 'MATA PELAJARAN', 'JENJANG KITAB', 'KETERANGAN'];
+      exampleRow = ['ULA', 'Fiqh', 'Safinatun Najah', 'Kitab fiqih dasar'];
+      filename = 'Templat_Impor_Kurikulum.xlsx';
       break;
     case 'alumni':
       headers = ['NIS', 'NAMA LENGKAP', 'NIK', 'JENIS KELAMIN', 'NO HP', 'ALAMAT', 'TAHUN MASUK', 'TAHUN KELUAR', 'STATUS KELUAR', 'KATEGORI MUKIM', 'KETERANGAN'];

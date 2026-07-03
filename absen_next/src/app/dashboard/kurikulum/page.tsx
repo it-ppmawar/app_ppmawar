@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BookOpen, Plus, Edit2, Trash2, Save, X, FileText, Download } from 'lucide-react';
+import { BookOpen, Plus, Edit2, Trash2, Save, X, FileText, Download, Upload, TableProperties } from 'lucide-react';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
+import { downloadTemplate } from '@/lib/downloadTemplate';
 
 interface KurikulumItem {
   id: number;
@@ -28,6 +29,42 @@ export default function KurikulumPage() {
     keterangan: ''
   });
   const [saving, setSaving] = useState(false);
+
+  // Import Excel State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+
+  const handleImportExcel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('type', 'kurikulum');
+      const res = await fetch('/api/import', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      setImportResult(data);
+      if (data.success) {
+        alert(data.message);
+        setIsImportModalOpen(false);
+        setImportFile(null);
+        fetchData();
+      } else {
+        alert(data.error || 'Gagal mengimpor data');
+      }
+    } catch {
+      alert('Terjadi kesalahan koneksi');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   useEffect(() => {
     const fetchMe = async () => {
@@ -181,16 +218,36 @@ export default function KurikulumPage() {
               Informasi daftar kitab pelajaran dan jenjang tingkatan di Madrasah Diniyah.
             </p>
           </div>
-          <div className="flex w-full md:w-auto gap-2 self-start md:self-center">
-            <button onClick={() => handleExport('pdf', true)} className="flex-1 justify-center px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5" title="Preview PDF">
+          <div className="flex flex-wrap w-full md:w-auto gap-2 justify-center md:justify-start items-center">
+            <button onClick={() => handleExport('pdf', true)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5" title="Preview PDF">
               <FileText size={14} /> Preview
             </button>
-            <button onClick={() => handleExport('pdf', false)} className="flex-1 justify-center px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5" title="Export PDF">
+            <button onClick={() => handleExport('pdf', false)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5" title="Export PDF">
               <Download size={14} /> PDF
             </button>
-            <button onClick={() => handleExport('excel', false)} className="flex-1 justify-center px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5" title="Export Excel">
+            <button onClick={() => handleExport('excel', false)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5" title="Export Excel">
               <Download size={14} /> Excel
             </button>
+            {isEditable && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => downloadTemplate('kurikulum')}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-50 transition-colors flex items-center gap-1.5"
+                  title="Unduh Templat Excel"
+                >
+                  <TableProperties size={14} /> Templat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setImportFile(null); setImportResult(null); setIsImportModalOpen(true); }}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-bold hover:bg-amber-100 transition-colors flex items-center gap-1.5"
+                  title="Impor Excel"
+                >
+                  <Upload size={14} /> Impor
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -475,6 +532,57 @@ export default function KurikulumPage() {
                 </a>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Excel Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
+            <div className="bg-indigo-600 dark:bg-indigo-900 p-5 text-white flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2"><Upload size={20} /> Impor Kurikulum</h2>
+              <button onClick={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null); }} className="text-white hover:text-gray-200"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleImportExcel} className="p-6 space-y-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                Silakan pilih file Excel (.xlsx) dengan kolom yang disesuaikan dengan templat yang disediakan.
+                Data kurikulum baru akan ditambahkan ke sistem.
+              </p>
+              <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors relative">
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  required
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) setImportFile(files[0]);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Upload size={32} className="mx-auto text-indigo-500 mb-2" />
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                  {importFile ? importFile.name : 'Pilih File Excel (.xlsx)'}
+                </span>
+                <span className="text-[10px] text-gray-400 block mt-1">Maksimal ukuran file: 10MB</span>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setIsImportModalOpen(false); setImportFile(null); setImportResult(null); }}
+                  className="px-5 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-xs"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={importing || !importFile}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50 text-xs"
+                >
+                  {importing ? 'Mengimpor...' : 'Mulai Impor'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

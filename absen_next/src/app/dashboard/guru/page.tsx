@@ -179,6 +179,21 @@ export default function GuruPage() {
     setIsDetailModalOpen(true);
   };
 
+  const handleOpenCreateModal = () => {
+    setEditingGuru({
+      guru_id: null,
+      nip: '',
+      nama: '',
+      jenis_kelamin: 'LAKI-LAKI',
+      jabatan: '',
+      alamat: '',
+      whatsapp: '',
+      foto: null
+    });
+    setPhotoFile(null);
+    setIsEditModalOpen(true);
+  };
+
   const handleEditClick = (item: any) => {
     setEditingGuru(item);
     setPhotoFile(null);
@@ -209,11 +224,13 @@ export default function GuruPage() {
         }
       }
 
+      const isNew = !editingGuru.guru_id;
       const res = await fetch('/api/guru', {
-        method: 'PUT',
+        method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           guru_id: editingGuru.guru_id,
+          nip: editingGuru.nip,
           nama: editingGuru.nama,
           jenis_kelamin: editingGuru.jenis_kelamin,
           jabatan: editingGuru.jabatan,
@@ -224,7 +241,14 @@ export default function GuruPage() {
       });
       const json = await res.json();
       if (json.success) {
-        setGuru(guru.map(g => g.guru_id === editingGuru.guru_id ? { ...g, ...editingGuru, no_hp: editingGuru.whatsapp, foto: fotoName } : g));
+        if (isNew) {
+          // Refresh data from server to get the new record with its ID
+          const refreshRes = await fetch('/api/guru');
+          const refreshJson = await refreshRes.json();
+          if (refreshJson.success) setGuru(refreshJson.data);
+        } else {
+          setGuru(guru.map(g => g.guru_id === editingGuru.guru_id ? { ...g, ...editingGuru, no_hp: editingGuru.whatsapp, foto: fotoName } : g));
+        }
         setIsEditModalOpen(false);
       } else {
         alert('Gagal menyimpan: ' + json.error);
@@ -402,6 +426,7 @@ export default function GuruPage() {
                   <Upload size={14} /> Impor
                 </button>
                 <button
+                  onClick={handleOpenCreateModal}
                   className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
                   title="Tambah Data"
                 >
@@ -700,7 +725,7 @@ export default function GuruPage() {
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-lg border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[80vh] mb-16 overflow-hidden">
             <div className="bg-indigo-600 dark:bg-indigo-900 p-5 text-white shrink-0">
               <h2 className="text-xl font-bold flex items-center gap-2">
-                <Edit size={20} /> Edit Data Guru
+                <Edit size={20} /> {editingGuru?.guru_id ? 'Edit Data Guru' : 'Tambah Data Guru Baru'}
               </h2>
             </div>
             <form onSubmit={handleSaveEdit} className="p-6 space-y-4 overflow-y-auto flex-1">
@@ -723,6 +748,16 @@ export default function GuruPage() {
                 </div>
 
                 <div className="w-full sm:w-2/3 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">NIP (Nomor Induk)</label>
+                    <input
+                      type="text"
+                      value={editingGuru.nip || ''}
+                      onChange={(e) => setEditingGuru({ ...editingGuru, nip: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Opsional"
+                    />
+                  </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">Nama Lengkap</label>
                     <input
@@ -790,7 +825,7 @@ export default function GuruPage() {
                   disabled={saving}
                   className="flex-1 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
                 >
-                  {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                  {saving ? 'Menyimpan...' : (editingGuru?.guru_id ? 'Simpan Perubahan' : 'Tambah Guru')}
                 </button>
               </div>
             </form>

@@ -88,6 +88,44 @@ export async function GET() {
   }
 }
 
+export async function POST(request: Request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+    const payload = token ? verifyToken(token) : null;
+    if (!payload || !['admin', 'staff'].includes((payload as any).role)) {
+      return NextResponse.json({ error: 'Hanya admin/staff yang dapat menambah data' }, { status: 403 });
+    }
+
+    const data = await request.json();
+    const { nip, nama, jenis_kelamin, jabatan, alamat, whatsapp, foto } = data;
+
+    if (!nama) {
+      return NextResponse.json({ error: 'Nama wajib diisi' }, { status: 400 });
+    }
+
+    const sql = `
+      INSERT INTO guru (nip, nama, jenis_kelamin, jabatan, alamat, no_hp, foto)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+    const params = [
+      nip || null,
+      nama,
+      jenis_kelamin || 'LAKI-LAKI',
+      jabatan || null,
+      alamat || null,
+      whatsapp || null,
+      foto || null
+    ];
+
+    const [result] = await pool.execute(sql, params);
+    return NextResponse.json({ success: true, message: 'Data guru berhasil ditambahkan', insertId: (result as any).insertId });
+  } catch (error: any) {
+    console.error('Error POST /api/guru:', error);
+    return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const cookieStore = await cookies();

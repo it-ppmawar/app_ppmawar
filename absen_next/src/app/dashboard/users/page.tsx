@@ -305,7 +305,7 @@ export default function UsersManagementPage() {
               Kelola hak akses, tambah akun, dan ubah password dari satu tempat.
             </p>
           </div>
-          <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
+          <div className="flex flex-wrap w-full md:w-auto gap-2 justify-center md:justify-start self-center md:self-center">
             <button
               onClick={() => handleExport('pdf', true)}
               className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5"
@@ -345,6 +345,16 @@ export default function UsersManagementPage() {
                 </button>
               </>
             )}
+            {(activeTab === 'pengelola' || activeTab === 'guru' || activeTab === 'pengurus_asrama' || activeTab === 'pengasuh') && (
+              <button
+                onClick={() => handleOpenModal()}
+                className="flex-1 md:flex-none justify-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                title={`Tambah ${activeTab === 'pengelola' ? 'Pengelola' : activeTab === 'pengurus_asrama' ? 'Pengurus Asrama' : activeTab === 'pengasuh' ? 'Pengasuh' : 'Guru'}`}
+              >
+                <Plus size={14} />
+                <span>Tambah</span>
+              </button>
+            )}
             <button
               onClick={handleSyncAllUsers}
               disabled={syncing}
@@ -354,16 +364,6 @@ export default function UsersManagementPage() {
               <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
               {syncing ? 'Memproses...' : 'Konversi User'}
             </button>
-            {(activeTab === 'pengelola' || activeTab === 'guru' || activeTab === 'pengurus_asrama' || activeTab === 'pengasuh') && (
-              <button
-                onClick={() => handleOpenModal()}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
-                title={`Tambah ${activeTab === 'pengelola' ? 'Pengelola' : activeTab === 'pengurus_asrama' ? 'Pengurus Asrama' : activeTab === 'pengasuh' ? 'Pengasuh' : 'Guru'}`}
-              >
-                <span className="hidden sm:inline">+ Tambah</span>
-                <span className="sm:hidden text-lg leading-none">+</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
