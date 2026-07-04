@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CreditCard, CheckCircle2, XCircle, Search, Calendar, FileText, AlertCircle, Building2, GraduationCap } from 'lucide-react';
+import { CreditCard, CheckCircle2, XCircle, Search, Calendar, FileText, AlertCircle, Building2, GraduationCap, RefreshCw } from 'lucide-react';
 
 export default function BillingPage() {
   const [loading, setLoading] = useState(true);
@@ -11,7 +11,9 @@ export default function BillingPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState('Semua'); // Semua, Lunas, Belum
   const [filterKategori, setFilterKategori] = useState('Semua'); // Semua, pesantren, madrasah
+  const [selectedSubTab, setSelectedSubTab] = useState('Semua');
   const [searchQuery, setSearchQuery] = useState('');
+  const [syncing, setSyncing] = useState(false);
 
   const fetchBilling = (kategori?: string) => {
     setLoading(true);
@@ -27,6 +29,27 @@ export default function BillingPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  const handleSyncBilling = async () => {
+    if (!confirm('Apakah Anda yakin ingin menyinkronkan data billing dari Google Sheets? Proses ini akan memperbarui data tagihan di database.')) {
+      return;
+    }
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/sync/billing', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Sinkronisasi berhasil! ${data.inserted} data tagihan berhasil diimpor/diperbarui.`);
+        fetchBilling(filterKategori);
+      } else {
+        alert(`Sinkronisasi gagal: ${data.error || 'Terjadi kesalahan'}`);
+      }
+    } catch (err: any) {
+      alert(`Terjadi kesalahan jaringan: ${err.message}`);
+    } finally {
+      setSyncing(false);
+    }
   };
 
   useEffect(() => {
@@ -50,8 +73,32 @@ export default function BillingPage() {
     }
   }, [filterKategori]);
 
+
   const filteredTagihan = tagihan.filter(t => {
+    // 1. Status Filter
     if (filterStatus !== 'Semua' && t.status !== filterStatus) return false;
+
+    // 2. Kategori Filter (if not Semua)
+    if (filterKategori !== 'Semua') {
+      if (t.kategori !== filterKategori) return false;
+
+      // 3. Sub Tab Filter
+      if (selectedSubTab !== 'Semua') {
+        if (filterKategori === 'pesantren') {
+          const cleanAsrama = (t.asrama || '').trim().toUpperCase();
+          const targetLetter = selectedSubTab.toUpperCase();
+          const isMatch = cleanAsrama === targetLetter || 
+                          cleanAsrama === `ASRAMA ${targetLetter}` || 
+                          cleanAsrama.endsWith(` ${targetLetter}`);
+          if (!isMatch) return false;
+        } else if (filterKategori === 'madrasah') {
+          const cleanAsrama = (t.asrama || '').trim().toUpperCase();
+          if (!cleanAsrama.includes(selectedSubTab.toUpperCase())) return false;
+        }
+      }
+    }
+
+    // 4. Search Query
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
@@ -100,15 +147,27 @@ export default function BillingPage() {
         <div className="absolute top-0 right-0 p-8 opacity-10">
           <CreditCard size={120} />
         </div>
-        <div className="relative z-10">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Informasi Tagihan & Pembayaran</h1>
-          <p className="text-emerald-50 opacity-90 text-sm sm:text-base max-w-xl">
-            {userRole === 'wali_murid' 
-              ? 'Pantau status pembayaran administrasi putra/putri Anda secara langsung dari sistem.' 
-              : (userRole === 'pengasuh' || userRole === 'pengurus_asrama')
-              ? 'Pantau status tagihan santri di asrama Anda secara langsung dari sistem keuangan.'
-              : 'Dasbor pemantauan status tagihan santri secara menyeluruh dari sistem keuangan pusat.'}
-          </p>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Informasi Tagihan & Pembayaran</h1>
+            <p className="text-emerald-50 opacity-90 text-sm sm:text-base max-w-xl">
+              {userRole === 'wali_murid' 
+                ? 'Pantau status pembayaran administrasi putra/putri Anda secara langsung dari sistem.' 
+                : (userRole === 'pengasuh' || userRole === 'pengurus_asrama')
+                ? 'Pantau status tagihan santri di asrama Anda secara langsung dari sistem keuangan.'
+                : 'Dasbor pemantauan status tagihan santri secara menyeluruh dari sistem keuangan pusat.'}
+            </p>
+          </div>
+          {userRole && ['admin', 'staff'].includes(userRole) && (
+            <button
+              onClick={handleSyncBilling}
+              disabled={syncing}
+              className="self-start md:self-center px-5 py-3 bg-white/20 hover:bg-white/30 text-white font-bold rounded-2xl transition-all flex items-center gap-2 border border-white/20 active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+              {syncing ? 'Menyinkronkan...' : 'Sinkron Google Sheets'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -147,58 +206,157 @@ export default function BillingPage() {
         
         {/* Category Filters (for admin/staff only) */}
         {userRole && ['admin', 'staff'].includes(userRole) && (
-          <div className="p-4 md:p-5 border-b dark:border-gray-700 flex flex-wrap gap-2">
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 self-center mr-2">Kategori:</span>
-            <button 
-              onClick={() => setFilterKategori('Semua')}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${filterKategori === 'Semua' ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
-            >
-              Semua Kategori
-            </button>
-            <button 
-              onClick={() => setFilterKategori('pesantren')}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${filterKategori === 'pesantren' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40'}`}
-            >
-              <Building2 size={14} /> Pesantren
-            </button>
-            <button 
-              onClick={() => setFilterKategori('madrasah')}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${filterKategori === 'madrasah' ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40'}`}
-            >
-              <GraduationCap size={14} /> Madrasah
-            </button>
+          <div className="p-4 md:p-5 border-b dark:border-gray-700 flex flex-col gap-3">
+            <div className="flex flex-col gap-2 w-full">
+              <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Kategori Utama</span>
+              
+              {/* Semua Kategori — Baris tersendiri di atas */}
+              <div className="bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700 w-full flex">
+                <button 
+                  onClick={() => {
+                    setFilterKategori('Semua');
+                    setSelectedSubTab('Semua');
+                  }}
+                  className={`w-full flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                    filterKategori === 'Semua' 
+                      ? 'bg-slate-650 dark:bg-slate-700 text-white shadow-md' 
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                  }`}
+                >
+                  Semua Kategori
+                </button>
+              </div>
+
+              {/* Pesantren & Madrasah — Dibawahnya sama rata */}
+              <div className="flex bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700 gap-1.5 w-full">
+                <button 
+                  onClick={() => {
+                    setFilterKategori('pesantren');
+                    setSelectedSubTab('Semua');
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                    filterKategori === 'pesantren' 
+                      ? 'bg-emerald-500 text-white shadow-md' 
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                  }`}
+                >
+                  <Building2 size={16} /> Pesantren
+                </button>
+                <button 
+                  onClick={() => {
+                    setFilterKategori('madrasah');
+                    setSelectedSubTab('Semua');
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                    filterKategori === 'madrasah' 
+                      ? 'bg-blue-500 text-white shadow-md' 
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                  }`}
+                >
+                  <GraduationCap size={16} /> Madrasah
+                </button>
+              </div>
+            </div>
+            
+            {/* Sub-tabs based on Category selection */}
+            {filterKategori === 'pesantren' && (
+              <div className="flex flex-col gap-2 w-full pt-1">
+                <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Sub-Kategori: Asrama</span>
+                <div className="flex bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto scrollbar-none gap-1.5 w-full">
+                  {['Semua', 'A', 'B', 'C', 'D', 'E', 'F'].map((dorm) => (
+                    <button
+                      key={dorm}
+                      onClick={() => setSelectedSubTab(dorm)}
+                      className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                        selectedSubTab === dorm
+                          ? 'bg-emerald-500 text-white shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                      }`}
+                    >
+                      {dorm === 'Semua' ? 'Semua Asrama' : `Asrama ${dorm}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {filterKategori === 'madrasah' && (
+              <div className="flex flex-col gap-2 w-full pt-1">
+                <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Sub-Kategori: Unit Sekolah</span>
+                <div className="flex bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto scrollbar-none gap-1.5 w-full">
+                  {['Semua', 'MA', 'SMK', 'MTS', 'SMP'].map((unit) => (
+                    <button
+                      key={unit}
+                      onClick={() => setSelectedSubTab(unit)}
+                      className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                        selectedSubTab === unit
+                          ? 'bg-blue-500 text-white shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                      }`}
+                    >
+                      {unit === 'Semua' ? 'Semua Unit' : unit}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* Status Filters + Search */}
-        <div className="p-4 md:p-5 border-b dark:border-gray-700 flex flex-wrap gap-2 items-center">
-          <button 
-            onClick={() => setFilterStatus('Semua')}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${filterStatus === 'Semua' ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
-          >
-            Semua ({tagihan.length})
-          </button>
-          <button 
-            onClick={() => setFilterStatus('Belum')}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${filterStatus === 'Belum' ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40'}`}
-          >
-            Belum Lunas ({tagihan.filter(t => t.status === 'Belum').length})
-          </button>
-          <button 
-            onClick={() => setFilterStatus('Lunas')}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${filterStatus === 'Lunas' ? 'bg-green-500 text-white' : 'bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40'}`}
-          >
-            Sudah Lunas ({tagihan.filter(t => t.status === 'Lunas').length})
-          </button>
-          <div className="flex-1 min-w-[200px]">
+        <div className="p-4 md:p-5 border-b dark:border-gray-700 flex flex-col gap-3">
+          <div className="flex flex-col gap-2 w-full">
+            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Filter Status</span>
+            
+            {/* Semua Status — Baris tersendiri di atas */}
+            <div className="bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700 w-full flex">
+              <button 
+                onClick={() => setFilterStatus('Semua')}
+                className={`w-full flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                  filterStatus === 'Semua' 
+                    ? 'bg-slate-650 dark:bg-slate-700 text-white shadow-md' 
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                Semua ({tagihan.length})
+              </button>
+            </div>
+
+            {/* Belum Lunas & Sudah Lunas — Dibawahnya sama rata */}
+            <div className="flex bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700 gap-1.5 w-full">
+              <button 
+                onClick={() => setFilterStatus('Belum')}
+                className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                  filterStatus === 'Belum' 
+                    ? 'bg-red-500 text-white shadow-md' 
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                Belum Lunas ({tagihan.filter(t => t.status === 'Belum').length})
+              </button>
+              <button 
+                onClick={() => setFilterStatus('Lunas')}
+                className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                  filterStatus === 'Lunas' 
+                    ? 'bg-green-500 text-white shadow-md' 
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                Sudah Lunas ({tagihan.filter(t => t.status === 'Lunas').length})
+              </button>
+            </div>
+          </div>
+
+          {/* Search bar */}
+          <div className="w-full pt-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input 
                 type="text"
                 placeholder="Cari nama, NIS, asrama..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-full text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500"
+                className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm bg-gray-50 dark:bg-gray-800 text-gray-850 dark:text-gray-200 border border-gray-200 dark:border-gray-705 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500 transition-all"
               />
             </div>
           </div>

@@ -130,3 +130,25 @@ export async function appendSheetUnique(
   
   return { appended: rowsToAppend.length, skipped: newRows.length - rowsToAppend.length };
 }
+
+/**
+ * Membaca data dari tab sheet tertentu di Google Spreadsheet.
+ */
+export async function readSheet(sheetName: string): Promise<(string | number | null)[][]> {
+  const sheets = getAuthClient();
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheetName}!A:ZZ`,
+  });
+  return (response.data.values as (string | number | null)[][]) || [];
+}
+
+/**
+ * Mendapatkan daftar nama tab sheet yang ada di Google Spreadsheet.
+ */
+export async function listSheets(): Promise<string[]> {
+  const sheets = getAuthClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  return meta.data.sheets?.map((s: any) => s.properties?.title) || [];
+}
+
