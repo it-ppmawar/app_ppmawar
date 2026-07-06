@@ -42,3 +42,8 @@ REKAP PESANTREN 2026-2027/
 inspect_db.js
 inspect_excel_ws.js
 run_migration.js
+
+# Smart Pesantren / Bridge Files
+api_bridge.php
+ppmawar.zip
+*.zip
