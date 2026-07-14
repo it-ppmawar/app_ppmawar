@@ -36,6 +36,8 @@ jobs:
           cp package-lock.json deploy_dist/
           cp next.config.ts deploy_dist/
           cp server.js deploy_dist/
+          echo "Commit: ${{ github.sha }}" > deploy_dist/public/version.txt
+          echo "Date: $(date)" >> deploy_dist/public/version.txt
 
       - name: Deploy to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
