@@ -28,7 +28,8 @@ jobs:
 
       - name: Prepare Production Files
         run: |
-          mkdir deploy_dist
+          mkdir -p deploy_dist/tmp
+          touch deploy_dist/tmp/restart.txt
           cp -r .next deploy_dist/
           cp -r public deploy_dist/
           cp package.json deploy_dist/
