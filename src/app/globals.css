@@ -5,6 +5,7 @@
   --font-cairo: 'Cairo', sans-serif;
   --font-arabic: 'Amiri', serif;
   --font-diwani: 'Aref Ruqaa', serif;
+  --font-cinzel: var(--font-cinzel), serif;
 }
 
 @variant dark (&:where(.dark, .dark *));

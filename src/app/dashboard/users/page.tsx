@@ -284,8 +284,8 @@ export default function UsersManagementPage() {
 
   const tabs = [
     { id: 'pengelola', label: 'Pengelola (Admin/Staff)', icon: Shield },
-    { id: 'pengurus_asrama', label: 'Pengurus Asrama', icon: ShieldAlert },
     { id: 'pengasuh', label: 'Pengasuh Asrama', icon: UserCog },
+    { id: 'pengurus_asrama', label: 'Pengurus Asrama', icon: ShieldAlert },
     { id: 'guru', label: 'Akun Guru', icon: UserCog },
     { id: 'wali_murid', label: 'Akun Wali Murid', icon: Users }
   ];
@@ -368,8 +368,22 @@ export default function UsersManagementPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+      {/* Tabs — Dropdown di mobile, tombol di desktop */}
+      {/* Mobile: Dropdown */}
+      <div className="block md:hidden w-full flex justify-center">
+        <select
+          value={activeTab}
+          onChange={(e) => setActiveTab(e.target.value)}
+          className="w-full max-w-xs mx-auto px-5 py-3 rounded-2xl font-bold text-sm bg-indigo-600 text-white shadow-md border-0 text-center appearance-none cursor-pointer focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+          style={{ textAlignLast: 'center' }}
+        >
+          {tabs.map(tab => (
+            <option key={tab.id} value={tab.id}>{tab.label}</option>
+          ))}
+        </select>
+      </div>
+      {/* Desktop: Tombol */}
+      <div className="hidden md:flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {tabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
