@@ -1,6 +1,0 @@
-[20-Dec-2015 12:19:31 Asia/Jakarta] PHP Deprecated:  mysql_connect(): The mysql extension is deprecated and will be removed in the future: use mysqli or PDO instead in /home/ppmawaro/public_html/sec/karyawanmawar/config/kon.php on line 6
-[20-Dec-2015 12:19:31 Asia/Jakarta] PHP Warning:  mysql_fetch_array() expects parameter 1 to be resource, boolean given in /home/ppmawaro/public_html/sec/karyawanmawar/template/header.php on line 86
-[20-Dec-2015 12:19:35 Asia/Jakarta] PHP Deprecated:  mysql_connect(): The mysql extension is deprecated and will be removed in the future: use mysqli or PDO instead in /home/ppmawaro/public_html/sec/karyawanmawar/config/kon.php on line 6
-[20-Dec-2015 12:19:35 Asia/Jakarta] PHP Warning:  mysql_fetch_array() expects parameter 1 to be resource, boolean given in /home/ppmawaro/public_html/sec/karyawanmawar/template/header.php on line 86
-[20-Dec-2015 12:19:52 Asia/Jakarta] PHP Deprecated:  mysql_connect(): The mysql extension is deprecated and will be removed in the future: use mysqli or PDO instead in /home/ppmawaro/public_html/sec/karyawanmawar/config/kon.php on line 6
-[20-Dec-2015 12:19:52 Asia/Jakarta] PHP Warning:  mysql_fetch_array() expects parameter 1 to be resource, boolean given in /home/ppmawaro/public_html/sec/karyawanmawar/template/header.php on line 86

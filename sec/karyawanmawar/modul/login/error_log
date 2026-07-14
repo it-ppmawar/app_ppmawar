@@ -1,5 +1,0 @@
-[20-Dec-2015 08:52:53 Asia/Jakarta] PHP Deprecated:  mysql_connect(): The mysql extension is deprecated and will be removed in the future: use mysqli or PDO instead in /home/ppmawaro/public_html/sec/karyawanmawar/config/kon.php on line 6
-[20-Dec-2015 12:19:15 Asia/Jakarta] PHP Deprecated:  mysql_connect(): The mysql extension is deprecated and will be removed in the future: use mysqli or PDO instead in /home/ppmawaro/public_html/sec/karyawanmawar/config/kon.php on line 6
-[20-Dec-2015 12:19:15 Asia/Jakarta] PHP Notice:  Undefined index: nik in /home/ppmawaro/public_html/sec/karyawanmawar/modul/login/ceklogin.php on line 22
-[20-Dec-2015 17:17:36 Asia/Jakarta] PHP Deprecated:  mysql_connect(): The mysql extension is deprecated and will be removed in the future: use mysqli or PDO instead in /home/ppmawaro/public_html/sec/karyawanmawar/config/kon.php on line 6
-[20-Dec-2015 17:17:36 Asia/Jakarta] PHP Notice:  Undefined index: nik in /home/ppmawaro/public_html/sec/karyawanmawar/modul/login/ceklogin.php on line 22

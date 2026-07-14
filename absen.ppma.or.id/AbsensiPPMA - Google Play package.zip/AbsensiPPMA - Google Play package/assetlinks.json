@@ -1,8 +1,0 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "id.or.ppmawar.twa",
-        "sha256_cert_fingerprints": ["9D:D7:2B:90:C5:03:E6:9F:B2:2E:2D:96:0D:26:8C:F2:36:E2:DB:D1:0E:65:A4:23:78:C5:BF:6A:A4:50:A5:3C"]
-      }
-    }]
