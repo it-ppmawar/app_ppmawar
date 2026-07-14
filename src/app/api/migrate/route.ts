@@ -84,7 +84,41 @@ export async function GET() {
 
       // 15. Update unique index untuk billing
       "ALTER TABLE billing DROP KEY unique_billing;",
-      "ALTER TABLE billing ADD UNIQUE KEY unique_billing (nis, nama_tagihan, periode, kategori);"
+      "ALTER TABLE billing ADD UNIQUE KEY unique_billing (nis, nama_tagihan, periode, kategori);",
+
+      // 16. Update role enum to include 'petugas_sarpras'
+      "ALTER TABLE users MODIFY COLUMN role enum('admin','wali_kelas','wali_murid','guru','staff','pengurus_asrama','tamu','pengasuh','petugas_sarpras') NOT NULL;",
+
+      // 17. Create tabel inventaris
+      `CREATE TABLE IF NOT EXISTS inventaris (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nama_barang VARCHAR(255) NOT NULL,
+        kategori ENUM('alat', 'sarana', 'prasarana', 'lainnya') NOT NULL,
+        asrama VARCHAR(100) NOT NULL,
+        kamar_id INT DEFAULT NULL,
+        jumlah INT NOT NULL DEFAULT 1,
+        kondisi ENUM('Baik', 'Rusak Ringan', 'Rusak Berat') NOT NULL DEFAULT 'Baik',
+        keterangan TEXT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      // 18. Create tabel laporan kerusakan
+      `CREATE TABLE IF NOT EXISTS laporan_kerusakan (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        inventaris_id INT NOT NULL,
+        pelapor_id INT NOT NULL,
+        petugas_id INT DEFAULT NULL,
+        deskripsi_masalah TEXT NOT NULL,
+        status ENUM('Dilaporkan', 'Diproses', 'Selesai', 'Dibatalkan') NOT NULL DEFAULT 'Dilaporkan',
+        tindakan_perbaikan TEXT DEFAULT NULL,
+        tanggal_selesai TIMESTAMP DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_laporan_inventaris FOREIGN KEY (inventaris_id) REFERENCES inventaris(id) ON DELETE CASCADE,
+        CONSTRAINT fk_laporan_pelapor FOREIGN KEY (pelapor_id) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_laporan_petugas FOREIGN KEY (petugas_id) REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
     ];
 
     let results = [];

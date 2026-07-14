@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard } from 'lucide-react';
+import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -24,13 +24,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [pwaInstallable, setPwaInstallable] = useState(false);
   const [userSchedules, setUserSchedules] = useState<any[]>([]);
 
-  const navItems = [
+  let navItems = [
     { name: 'Beranda', href: '/dashboard', icon: Home },
     { name: 'Jadwal', href: '/dashboard/jadwal', icon: CalendarDays },
     ...(user?.role !== 'wali_murid' && user?.role !== 'tamu' ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
     ...(user?.role !== 'tamu' ? [{ name: 'Notifikasi', href: '/dashboard/notifikasi', icon: Bell }] : []),
     { name: 'Profil', href: '/dashboard/profil', icon: User },
   ];
+
+  if (user?.role === 'petugas_sarpras') {
+    navItems = [
+      { name: 'Beranda', href: '/dashboard', icon: Home },
+      { name: 'Inventaris', href: '/dashboard/inventaris', icon: Archive },
+      { name: 'Profil', href: '/dashboard/profil', icon: User },
+    ];
+  }
 
   const isTamu = user?.role === 'tamu';
 
@@ -455,6 +463,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Home size={18} /> <span className="text-sm">Dashboard</span>
               </Link>
             </li>
+            {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh'].includes(user?.role || '') && (
+            <li>
+              <Link href="/dashboard/inventaris" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/inventaris') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
+                <Archive size={18} /> <span className="text-sm">Inventaris Asrama</span>
+              </Link>
+            </li>
+            )}
+            {user?.role !== 'petugas_sarpras' && (
+              <>
             <li>
               <Link href="/dashboard/tabel-jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/tabel-jadwal' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
                 <CalendarDays size={18} /> <span className="text-sm">Tabel Jadwal</span>
@@ -494,9 +511,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <FileWarning size={18} /> <span className="text-sm">Ketertiban Murid</span>
               </Link>
             </li>
+              </>
+            )}
           </ul>
 
-          {!isTamu && (
+          {!isTamu && user?.role !== 'petugas_sarpras' && (
           <>
           <div className="px-5 mb-2">
             <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Manajemen Data</p>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Clock, BookOpen, Activity, FileText, CheckCircle, XCircle, AlertTriangle, Users, User, Camera, CalendarDays, ClipboardCheck, QrCode, CreditCard } from 'lucide-react';
+import { Clock, BookOpen, Activity, FileText, CheckCircle, XCircle, AlertTriangle, Users, User, Camera, CalendarDays, ClipboardCheck, QrCode, CreditCard, Archive, PenTool } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -189,6 +189,14 @@ export default function DashboardPage() {
               <span className="text-[10px] font-semibold text-center">Input Absen</span>
             </Link>
           )}
+          {(role === 'admin' || role === 'staff' || role === 'petugas_sarpras' || role === 'pengurus_asrama' || role === 'pengasuh') && (
+            <Link href="/dashboard/inventaris" className="flex flex-col items-center justify-center p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-2xl border border-indigo-100 dark:border-indigo-800/50 shadow-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition">
+              <Archive size={24} className="mb-2" />
+              <span className="text-[10px] font-semibold text-center">Inventaris Asrama</span>
+            </Link>
+          )}
+          {role !== 'petugas_sarpras' && (
+            <>
           <Link href="/dashboard/jadwal" className="flex flex-col items-center justify-center p-3 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-2xl border border-teal-100 dark:border-teal-800/50 shadow-sm hover:bg-teal-100 dark:hover:bg-teal-900/50 transition">
             <CalendarDays size={24} className="mb-2" />
             <span className="text-[10px] font-semibold text-center">Lihat Jadwal</span>
@@ -203,6 +211,8 @@ export default function DashboardPage() {
             <FileText size={24} className="mb-2" />
             <span className="text-[10px] font-semibold text-center">Rekapitulasi</span>
           </Link>
+            </>
+          )}
         </div>
       </section>
 
@@ -218,6 +228,7 @@ export default function DashboardPage() {
       )}
 
       {/* Daftar Jadwal Hari Ini */}
+      {role !== 'petugas_sarpras' && (
       <section className="space-y-4">
         {['kegiatan', 'quran', 'madin'].filter(tipe => role === 'admin' || role === 'staff' || allSchedules.some(s => s.tipe === tipe)).map(tipe => {
           const tipeName = tipe === 'kegiatan' ? 'Kegiatan' : tipe === 'quran' ? "Qur'an" : 'Madin';
@@ -340,8 +351,10 @@ export default function DashboardPage() {
           })}
         </div>
       </section>
+      )}
 
       {/* Info Tambahan */}
+      {role !== 'petugas_sarpras' && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-8">
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
           <div className="bg-green-800 dark:bg-green-900 px-4 py-2 text-white text-xs font-semibold">Perizinan Terbaru</div>
@@ -352,6 +365,23 @@ export default function DashboardPage() {
           <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada pelanggaran 1 hari terakhir</div>
         </div>
       </div>
+      )}
+
+      {/* Info Petugas Sarpras */}
+      {role === 'petugas_sarpras' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-8 mt-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300 flex flex-col items-center justify-center p-6 text-center h-48">
+             <PenTool size={48} className="text-amber-500 mb-3" />
+             <h4 className="font-bold text-gray-800 dark:text-gray-200">Laporan Kerusakan Pending</h4>
+             <p className="text-xs text-gray-500 mt-2">Buka menu Inventaris untuk melihat detail laporan kerusakan yang belum diselesaikan.</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300 flex flex-col items-center justify-center p-6 text-center h-48">
+             <Archive size={48} className="text-indigo-500 mb-3" />
+             <h4 className="font-bold text-gray-800 dark:text-gray-200">Total Inventaris</h4>
+             <p className="text-xs text-gray-500 mt-2">Anda bertanggung jawab atas pemantauan inventaris di seluruh asrama.</p>
+          </div>
+        </div>
+      )}
 
       {/* Fullscreen Photo Modal */}
       {showFullPic && profilePic && (

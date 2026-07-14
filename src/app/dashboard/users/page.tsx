@@ -562,6 +562,7 @@ export default function UsersManagementPage() {
                       <>
                         <option value="admin">Admin</option>
                         <option value="staff">Staff</option>
+                        <option value="petugas_sarpras">Petugas Sarpras</option>
                       </>
                     )}
                     {activeTab === 'pengurus_asrama' && (
