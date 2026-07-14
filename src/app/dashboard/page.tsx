@@ -229,6 +229,7 @@ export default function DashboardPage() {
 
       {/* Daftar Jadwal Hari Ini */}
       {role !== 'petugas_sarpras' && (
+      <>
       <section className="space-y-4">
         {['kegiatan', 'quran', 'madin'].filter(tipe => role === 'admin' || role === 'staff' || allSchedules.some(s => s.tipe === tipe)).map(tipe => {
           const tipeName = tipe === 'kegiatan' ? 'Kegiatan' : tipe === 'quran' ? "Qur'an" : 'Madin';
@@ -351,6 +352,7 @@ export default function DashboardPage() {
           })}
         </div>
       </section>
+      </>
       )}
 
       {/* Info Tambahan */}

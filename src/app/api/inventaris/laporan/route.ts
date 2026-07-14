@@ -137,19 +137,19 @@ export async function PUT(request: Request) {
 
     const petugas_id = payload.userId;
 
-    let query = \`UPDATE laporan_kerusakan SET status = ?, petugas_id = ?\`;
+    let query = `UPDATE laporan_kerusakan SET status = ?, petugas_id = ?`;
     let params: any[] = [status, petugas_id];
 
     if (tindakan_perbaikan !== undefined) {
-      query += \`, tindakan_perbaikan = ?\`;
+      query += `, tindakan_perbaikan = ?`;
       params.push(tindakan_perbaikan);
     }
 
     if (status === 'Selesai') {
-      query += \`, tanggal_selesai = CURRENT_TIMESTAMP\`;
+      query += `, tanggal_selesai = CURRENT_TIMESTAMP`;
     }
 
-    query += \` WHERE id = ?\`;
+    query += ` WHERE id = ?`;
     params.push(id);
 
     await pool.execute(query, params);

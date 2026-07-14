@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Archive, Plus, Search, MapPin, Package, PenTool, CheckCircle, Clock, AlertTriangle, ShieldAlert, Trash2, Edit, X, Download } from 'lucide-react';
+import { Archive, Plus, Search, MapPin, Package, PenTool, CheckCircle, Clock, AlertTriangle, ShieldAlert, Trash2, Edit, X, Download, User } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -390,7 +390,18 @@ export default function InventarisPage() {
                       <td className="px-5 py-4">
                         <div className="flex justify-center items-center gap-2">
                           {canEdit && (
-                            <button onClick={() => { setEditingItem(item); setItemForm({ ...item, asrama: item.asrama.replace('Asrama ', '') }); setShowItemModal(true); }} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors" title="Edit Data">
+                            <button onClick={() => { 
+                              setEditingItem(item); 
+                              setItemForm({ 
+                                nama_barang: item.nama_barang,
+                                kategori: item.kategori,
+                                asrama: item.asrama.replace('Asrama ', ''),
+                                jumlah: item.jumlah,
+                                kondisi: item.kondisi,
+                                keterangan: item.keterangan || ''
+                              }); 
+                              setShowItemModal(true); 
+                            }} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors" title="Edit Data">
                               <Edit size={16} />
                             </button>
                           )}
