@@ -51,4 +51,4 @@ jobs:
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
           # Mengabaikan pengecekan perubahan lama untuk menjamin kecocokan penuh
           dangerous-clean-slate: false
-
+          log-level: verbose
