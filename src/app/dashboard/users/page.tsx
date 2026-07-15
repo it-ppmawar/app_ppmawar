@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, ShieldAlert, Edit, Trash2, Plus, Search, Shield, UserCog, User, BookOpen, KeyRound, FileText, Download, X, Fingerprint, RefreshCw, Upload, TableProperties } from 'lucide-react';
+import { Users, ShieldAlert, Edit, Trash2, Plus, Search, Shield, UserCog, User, BookOpen, KeyRound, FileText, Download, X, Fingerprint, RefreshCw, Upload, TableProperties, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { downloadTemplate } from '@/lib/downloadTemplate';
 
 export default function UsersManagementPage() {
   const [activeTab, setActiveTab] = useState('pengelola');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [kamarList, setKamarList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -370,17 +371,55 @@ export default function UsersManagementPage() {
 
       {/* Tabs — Dropdown di mobile, tombol di desktop */}
       {/* Mobile: Dropdown */}
-      <div className="block md:hidden w-full flex justify-center">
-        <select
-          value={activeTab}
-          onChange={(e) => setActiveTab(e.target.value)}
-          className="w-full max-w-xs mx-auto px-5 py-3 rounded-2xl font-bold text-sm bg-indigo-600 text-white shadow-md border-0 text-center appearance-none cursor-pointer focus:ring-2 focus:ring-indigo-400 focus:outline-none"
-          style={{ textAlignLast: 'center' }}
-        >
-          {tabs.map(tab => (
-            <option key={tab.id} value={tab.id}>{tab.label}</option>
-          ))}
-        </select>
+      <div className="block md:hidden w-full relative">
+        <div className="flex justify-center">
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="w-full max-w-xs flex items-center justify-between px-5 py-3 rounded-2xl font-bold text-sm bg-indigo-600 text-white shadow-lg transition-transform active:scale-95 focus:outline-none"
+          >
+            <div className="flex items-center gap-2">
+              {(() => {
+                const activeTabInfo = tabs.find(t => t.id === activeTab) || tabs[0];
+                const Icon = activeTabInfo.icon;
+                return <Icon size={16} />;
+              })()}
+              <span>{tabs.find(t => t.id === activeTab)?.label || 'Pilih Role'}</span>
+            </div>
+            <ChevronDown size={16} className={`transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {/* Floating Menu Option List */}
+        {isDropdownOpen && (
+          <>
+            {/* Click-outside backdrop to close */}
+            <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+            
+            <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-full max-w-xs bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 z-50 animate-[fadeIn_0.2s_ease-out] overflow-hidden">
+              {tabs.map(tab => {
+                const TabIcon = tab.icon;
+                const isSelected = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 text-left text-xs font-semibold transition-colors ${
+                      isSelected
+                        ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <TabIcon size={16} className={isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
       {/* Desktop: Tombol */}
       <div className="hidden md:flex gap-2 overflow-x-auto pb-2 scrollbar-hide">

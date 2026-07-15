@@ -189,12 +189,7 @@ export default function DashboardPage() {
               <span className="text-[10px] font-semibold text-center">Input Absen</span>
             </Link>
           )}
-          {(role === 'admin' || role === 'staff' || role === 'petugas_sarpras' || role === 'pengurus_asrama' || role === 'pengasuh') && (
-            <Link href="/dashboard/inventaris" className="flex flex-col items-center justify-center p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-2xl border border-indigo-100 dark:border-indigo-800/50 shadow-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition">
-              <Archive size={24} className="mb-2" />
-              <span className="text-[10px] font-semibold text-center">Inventaris Asrama</span>
-            </Link>
-          )}
+
           {role !== 'petugas_sarpras' && (
             <>
           <Link href="/dashboard/jadwal" className="flex flex-col items-center justify-center p-3 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-2xl border border-teal-100 dark:border-teal-800/50 shadow-sm hover:bg-teal-100 dark:hover:bg-teal-900/50 transition">
@@ -215,6 +210,17 @@ export default function DashboardPage() {
           )}
         </div>
       </section>
+
+      {/* Pintasan Inventaris Asrama */}
+      {(role === 'admin' || role === 'staff' || role === 'petugas_sarpras' || role === 'pengurus_asrama' || role === 'pengasuh') && (
+        <Link
+          href="/dashboard/inventaris"
+          className="flex flex-row items-center justify-center gap-3 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 text-indigo-700 dark:text-indigo-300 rounded-2xl border border-indigo-200 dark:border-indigo-800/50 shadow-sm hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/40 dark:hover:to-purple-900/40 transition-all"
+        >
+          <Archive size={22} />
+          <span className="text-sm font-bold">Inventaris Asrama</span>
+        </Link>
+      )}
 
       {/* Pintasan Info Tagihan */}
       {['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama'].includes(role) && (
