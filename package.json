@@ -13,6 +13,7 @@
     "@simplewebauthn/server": "^13.3.1",
     "@zxing/browser": "^0.2.0",
     "@zxing/library": "^0.22.0",
+    "basic-ftp": "^6.0.1",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "express": "^5.2.1",
