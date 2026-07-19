@@ -38,6 +38,11 @@ jobs:
           cp server.js deploy_dist/
           echo "Commit: ${{ github.sha }}" > deploy_dist/public/version.txt
           echo "Date: $(date)" >> deploy_dist/public/version.txt
+          echo "Branch: ${{ github.ref_name }}" >> deploy_dist/public/version.txt
+          echo ""
+          echo "=== Files prepared for deployment ==="
+          ls -la deploy_dist/
+          echo "=== Target Dir: ${{ secrets.FTP_TARGET_DIR }} ==="
 
       - name: Deploy to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -45,10 +50,9 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # Menunjuk ke folder dist produksi agar transfer cepat & bersih
+          # PENTING: harus menunjuk ke direktori aplikasi, bukan root FTP
+          # Contoh yang benar: /home/ppmawar/app.ppmawaror.id/
           local-dir: ./deploy_dist/
-          # Tentukan target direktori menggunakan secret yang sudah di-set
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
-          # Mengabaikan pengecekan perubahan lama untuk menjamin kecocokan penuh
           dangerous-clean-slate: false
           log-level: verbose
