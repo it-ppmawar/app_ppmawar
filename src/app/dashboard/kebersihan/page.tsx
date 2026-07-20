@@ -316,23 +316,26 @@ export default function KebersIhanPage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons — matches jadwal page style */}
         <div className="relative flex flex-wrap gap-2">
           <button
             onClick={() => handleExport('pdf', true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors"
+            className="flex-1 md:flex-none justify-center flex items-center gap-1.5 px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold hover:bg-white transition-colors"
+            title="Preview PDF"
           >
             <Eye size={14} /> Preview
           </button>
           <button
             onClick={() => handleExport('pdf')}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors"
+            className="flex-1 md:flex-none justify-center flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors"
+            title="Export PDF"
           >
             <FileText size={14} /> PDF
           </button>
           <button
             onClick={() => handleExport('excel')}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors"
+            className="flex-1 md:flex-none justify-center flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-colors"
+            title="Export Excel"
           >
             <TableProperties size={14} /> Excel
           </button>
@@ -340,25 +343,29 @@ export default function KebersIhanPage() {
             <>
               <button
                 onClick={() => downloadTemplate('kebersihan')}
-                className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors"
+                className="flex-1 md:flex-none justify-center flex items-center gap-1.5 px-3 py-2 bg-white text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-colors"
+                title="Unduh Templat Excel"
               >
                 <Download size={14} /> Templat
               </button>
               <button
                 onClick={() => { setIsImportModalOpen(true); setImportFile(null); setImportResult(null); }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors"
+                className="flex-1 md:flex-none justify-center flex items-center gap-1.5 px-3 py-2 bg-white text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-colors"
+                title="Impor Excel"
               >
                 <Upload size={14} /> Impor
               </button>
               <button
                 onClick={openAddItem}
-                className="flex items-center gap-1.5 px-3 py-2 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl text-xs font-extrabold transition-colors shadow-sm"
+                className="flex-1 md:flex-none justify-center flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-extrabold transition-colors shadow-sm"
+                title="Tambah Item"
               >
-                <Plus size={14} /> Tambah
+                <Plus size={14} /> <span className="hidden sm:inline">Tambah</span><span className="sm:hidden">+</span>
               </button>
             </>
           )}
         </div>
+
       </div>
 
       {/* Stats Grid — di luar header card */}
