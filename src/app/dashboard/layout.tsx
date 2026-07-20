@@ -362,7 +362,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
 
             {/* Banner Reminder Sidik Jari */}
-            {webAuthnSupported && user && !user.has_fingerprint && (user.role === 'guru' || user.role === 'wali_murid') && (
+            {webAuthnSupported && user && !user.has_fingerprint && (user.role === 'guru' || user.role === 'wali_murid' || user.role === 'petugas') && (
               <div className="px-4 mb-5">
                 <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-2xl p-3 shadow-sm relative overflow-hidden">
                   <div className="absolute -top-4 -right-4 w-16 h-16 bg-indigo-100 dark:bg-indigo-800/30 rounded-full opacity-50 pointer-events-none"></div>
@@ -463,7 +463,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Home size={18} /> <span className="text-sm">Dashboard</span>
               </Link>
             </li>
-            {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh'].includes(user?.role || '') && (
+            {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum'].includes(user?.role || '') && (
             <li>
               <Link href="/dashboard/inventaris" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/inventaris') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
                 <Archive size={18} /> <span className="text-sm">Inventaris Asrama</span>

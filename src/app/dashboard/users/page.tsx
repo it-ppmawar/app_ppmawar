@@ -159,7 +159,7 @@ export default function UsersManagementPage() {
       setFormData({
         username: '',
         password: '',
-        role: activeTab === 'pengelola' ? 'staff' : activeTab,
+        role: activeTab === 'pengelola' ? 'staff' : activeTab === 'petugas' ? 'petugas' : activeTab,
         nama: '',
         nip: '',
         kamar_id: null
@@ -288,7 +288,8 @@ export default function UsersManagementPage() {
     { id: 'pengasuh', label: 'Pengasuh Asrama', icon: UserCog },
     { id: 'pengurus_asrama', label: 'Pengurus Asrama', icon: ShieldAlert },
     { id: 'guru', label: 'Akun Guru', icon: UserCog },
-    { id: 'wali_murid', label: 'Akun Wali Murid', icon: Users }
+    { id: 'wali_murid', label: 'Akun Wali Murid', icon: Users },
+    { id: 'petugas', label: 'Akun Petugas', icon: User }
   ];
 
   return (
@@ -346,11 +347,11 @@ export default function UsersManagementPage() {
                 </button>
               </>
             )}
-            {(activeTab === 'pengelola' || activeTab === 'guru' || activeTab === 'pengurus_asrama' || activeTab === 'pengasuh') && (
+            {(activeTab === 'pengelola' || activeTab === 'guru' || activeTab === 'pengurus_asrama' || activeTab === 'pengasuh' || activeTab === 'petugas') && (
               <button
                 onClick={() => handleOpenModal()}
                 className="flex-1 md:flex-none justify-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
-                title={`Tambah ${activeTab === 'pengelola' ? 'Pengelola' : activeTab === 'pengurus_asrama' ? 'Pengurus Asrama' : activeTab === 'pengasuh' ? 'Pengasuh' : 'Guru'}`}
+                title={`Tambah ${activeTab === 'pengelola' ? 'Pengelola' : activeTab === 'pengurus_asrama' ? 'Pengurus Asrama' : activeTab === 'pengasuh' ? 'Pengasuh' : activeTab === 'petugas' ? 'Petugas' : 'Guru'}`}
               >
                 <Plus size={14} />
                 <span>Tambah</span>
@@ -500,9 +501,15 @@ export default function UsersManagementPage() {
                           u.role === 'staff' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                           u.role === 'guru' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                           u.role === 'pengasuh' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                          u.role === 'petugas' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' :
+                          u.role === 'petugas_umum' ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' :
                           'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                         }`}>
-                          {u.role === 'pengasuh' ? 'Pengasuh' : u.role.includes('asrama') ? u.role.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : u.role.replace('_', ' ')}
+                          {u.role === 'pengasuh' ? 'Pengasuh' :
+                           u.role === 'petugas' ? 'Petugas' :
+                           u.role === 'petugas_umum' ? 'Petugas Umum' :
+                           u.role.includes('asrama') ? u.role.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') :
+                           u.role.replace('_', ' ')}
                         </span>
                       </td>
                       <td className="px-5 py-4">
@@ -646,6 +653,12 @@ export default function UsersManagementPage() {
                     )}
                     {activeTab === 'guru' && <option value="guru">Guru</option>}
                     {activeTab === 'wali_murid' && <option value="wali_murid">Wali Murid</option>}
+                    {activeTab === 'petugas' && (
+                      <>
+                        <option value="petugas">Petugas Perorangan (bisa sidik jari)</option>
+                        <option value="petugas_umum">Akun Petugas Umum (shared, tanpa sidik jari)</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
