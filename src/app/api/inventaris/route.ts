@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const tokenAsrama = payload.namaAsrama || null;
 
     // Cek akses
-    const allowedRoles = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh'];
+    const allowedRoles = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas_inventaris', 'petugas_inventaris_umum'];
     if (!allowedRoles.includes(role)) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
@@ -113,7 +113,7 @@ export async function PUT(request: Request) {
     
     const role = payload.role;
     // Boleh Edit: Admin, Staff, Petugas Sarpras, Pengurus Asrama
-    if (!['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama'].includes(role)) {
+    if (!['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(role)) {
       return NextResponse.json({ error: 'Akses edit ditolak' }, { status: 403 });
     }
 

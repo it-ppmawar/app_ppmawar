@@ -95,7 +95,7 @@ export default function KebersIhanPage() {
   const [pdfUrl, setPdfUrl] = useState('');
 
   const isAdmin = user?.role === 'admin' || user?.role === 'staff';
-  const isPengasuhOrAdmin = isAdmin || ['pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras'].includes(user?.role || '') || (user?.role === 'guru' && user?.is_pengasuh);
+  const isPengasuhOrAdmin = isAdmin || ['pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || (user?.role === 'guru' && user?.is_pengasuh);
 
   useEffect(() => {
     fetch('/api/auth/me')

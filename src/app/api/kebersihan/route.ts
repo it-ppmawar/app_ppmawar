@@ -4,7 +4,7 @@ import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 
-const ALLOWED_ROLES = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'guru'];
+const ALLOWED_ROLES = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'guru', 'petugas_kebersihan', 'petugas_kebersihan_umum'];
 
 export async function GET(request: Request) {
   try {

@@ -505,6 +505,8 @@ export default function UsersManagementPage() {
                           u.role === 'staff' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                           u.role === 'guru' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                           u.role === 'pengasuh' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                          u.role.startsWith('petugas_inventaris') ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' :
+                          u.role.startsWith('petugas_kebersihan') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
                           u.role === 'petugas' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' :
                           u.role === 'petugas_umum' ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' :
                           'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
@@ -512,6 +514,11 @@ export default function UsersManagementPage() {
                           {u.role === 'pengasuh' ? 'Pengasuh' :
                            u.role === 'petugas' ? 'Petugas' :
                            u.role === 'petugas_umum' ? 'Petugas Umum' :
+                           u.role === 'petugas_sarpras' ? 'Petugas Sarpras' :
+                           u.role === 'petugas_inventaris' ? 'Petugas Inventaris' :
+                           u.role === 'petugas_inventaris_umum' ? 'Petugas Inventaris Umum' :
+                           u.role === 'petugas_kebersihan' ? 'Petugas Kebersihan' :
+                           u.role === 'petugas_kebersihan_umum' ? 'Petugas Kebersihan Umum' :
                            u.role.includes('asrama') ? u.role.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') :
                            u.role.replace('_', ' ')}
                         </span>
@@ -659,7 +666,11 @@ export default function UsersManagementPage() {
                     {activeTab === 'wali_murid' && <option value="wali_murid">Wali Murid</option>}
                     {activeTab === 'petugas' && (
                       <>
-                        <option value="petugas">Petugas Perorangan (bisa sidik jari)</option>
+                        <option value="petugas_inventaris">Petugas Inventaris (perorangan, bisa sidik jari)</option>
+                        <option value="petugas_inventaris_umum">Akun Petugas Inventaris Umum (shared, tanpa sidik jari)</option>
+                        <option value="petugas_kebersihan">Petugas Kebersihan (perorangan, bisa sidik jari)</option>
+                        <option value="petugas_kebersihan_umum">Akun Petugas Kebersihan Umum (shared, tanpa sidik jari)</option>
+                        <option value="petugas">Petugas Umum (perorangan, bisa sidik jari)</option>
                         <option value="petugas_umum">Akun Petugas Umum (shared, tanpa sidik jari)</option>
                       </>
                     )}

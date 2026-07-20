@@ -32,10 +32,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Profil', href: '/dashboard/profil', icon: User },
   ];
 
-  if (user?.role === 'petugas_sarpras') {
+  if (user?.role === 'petugas_sarpras' || user?.role === 'petugas_inventaris' || user?.role === 'petugas_inventaris_umum') {
     navItems = [
       { name: 'Beranda', href: '/dashboard', icon: Home },
       { name: 'Inventaris', href: '/dashboard/inventaris', icon: Archive },
+      { name: 'Profil', href: '/dashboard/profil', icon: User },
+    ];
+  } else if (user?.role === 'petugas_kebersihan' || user?.role === 'petugas_kebersihan_umum') {
+    navItems = [
+      { name: 'Beranda', href: '/dashboard', icon: Home },
+      { name: 'Kebersihan', href: '/dashboard/kebersihan', icon: Trash2 },
       { name: 'Profil', href: '/dashboard/profil', icon: User },
     ];
   }
@@ -362,7 +368,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
 
             {/* Banner Reminder Sidik Jari */}
-            {webAuthnSupported && user && !user.has_fingerprint && (user.role === 'guru' || user.role === 'wali_murid' || user.role === 'petugas' || user.role === 'pengasuh' || user.role === 'pengurus_asrama' || user.role === 'petugas_umum' || user.role === 'petugas_sarpras') && (
+            {webAuthnSupported && user && !user.has_fingerprint && (['guru', 'wali_murid', 'petugas', 'pengasuh', 'pengurus_asrama', 'petugas_umum', 'petugas_sarpras', 'petugas_inventaris', 'petugas_kebersihan'].includes(user.role)) && (
               <div className="px-4 mb-5">
                 <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-2xl p-3 shadow-sm relative overflow-hidden">
                   <div className="absolute -top-4 -right-4 w-16 h-16 bg-indigo-100 dark:bg-indigo-800/30 rounded-full opacity-50 pointer-events-none"></div>
@@ -463,7 +469,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Home size={18} /> <span className="text-sm">Dashboard</span>
               </Link>
             </li>
-            {user?.role !== 'petugas_sarpras' && (
+            {!['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') && (
               <>
             <li>
               <Link href="/dashboard/tabel-jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/tabel-jadwal' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
@@ -505,7 +511,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             </li>
             {/* Kebersihan & Sampah - di bawah Ketertiban Murid */}
-            {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras'].includes(user?.role || '') || (user?.role === 'guru' && user?.is_pengasuh) ? (
+            {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || (user?.role === 'guru' && user?.is_pengasuh) ? (
             <li>
               <Link href="/dashboard/kebersihan" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/kebersihan') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
                 <Trash2 size={18} /> <span className="text-sm">Kebersihan & Sampah</span>
@@ -516,7 +522,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
           </ul>
 
-          {!isTamu && user?.role !== 'petugas_sarpras' && (
+          {!isTamu && !['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') && (
           <>
           <div className="px-5 mb-2">
             <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Manajemen Data</p>
@@ -558,7 +564,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </li>
             )}
             {/* Inventaris Asrama - di bawah Kamar Asrama */}
-            {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum'].includes(user?.role || '') || (user?.role === 'guru' && user?.is_pengasuh) ? (
+            {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '') || (user?.role === 'guru' && user?.is_pengasuh) ? (
               <li>
                 <Link href="/dashboard/inventaris" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/inventaris') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
                   <Archive size={18} /> <span className="text-sm">Inventaris Asrama</span>

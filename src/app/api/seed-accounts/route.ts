@@ -5,14 +5,15 @@ import bcrypt from 'bcryptjs';
 // Default accounts to seed — tanpa sidik jari (biometric tidak akan didaftarkan)
 const DEFAULT_ACCOUNTS = [
   // Pengasuh Asrama A - F
-  { username: 'pengasuh_a', nama: 'Pengasuh Asrama A', role: 'pengasuh', password: 'Ppmawar@A' },
-  { username: 'pengasuh_b', nama: 'Pengasuh Asrama B', role: 'pengasuh', password: 'Ppmawar@B' },
-  { username: 'pengasuh_c', nama: 'Pengasuh Asrama C', role: 'pengasuh', password: 'Ppmawar@C' },
-  { username: 'pengasuh_d', nama: 'Pengasuh Asrama D', role: 'pengasuh', password: 'Ppmawar@D' },
-  { username: 'pengasuh_e', nama: 'Pengasuh Asrama E', role: 'pengasuh', password: 'Ppmawar@E' },
-  { username: 'pengasuh_f', nama: 'Pengasuh Asrama F', role: 'pengasuh', password: 'Ppmawar@F' },
-  // Petugas
-  { username: 'petugas',    nama: 'Petugas Umum',     role: 'petugas',   password: 'Ppmawar@Petugas' },
+  { username: 'pengasuh_a', nama: 'Pengasuh Asrama A', role: 'pengasuh', password: 'Ppmawar@AsramaA' },
+  { username: 'pengasuh_b', nama: 'Pengasuh Asrama B', role: 'pengasuh', password: 'Ppmawar@AsramaB' },
+  { username: 'pengasuh_c', nama: 'Pengasuh Asrama C', role: 'pengasuh', password: 'Ppmawar@AsramaC' },
+  { username: 'pengasuh_d', nama: 'Pengasuh Asrama D', role: 'pengasuh', password: 'Ppmawar@AsramaD' },
+  { username: 'pengasuh_e', nama: 'Pengasuh Asrama E', role: 'pengasuh', password: 'Ppmawar@AsramaE' },
+  { username: 'pengasuh_f', nama: 'Pengasuh Asrama F', role: 'pengasuh', password: 'Ppmawar@AsramaF' },
+  // Petugas Inventaris (Umum) & Petugas Kebersihan (Umum)
+  { username: 'petugas_inventaris', nama: 'Petugas Inventaris (Umum)', role: 'petugas_inventaris_umum', password: 'Ppmawar@Inventaris' },
+  { username: 'petugas_kebersihan', nama: 'Petugas Kebersihan (Umum)', role: 'petugas_kebersihan_umum', password: 'Ppmawar@Kebersihan' },
 ];
 
 export async function GET() {

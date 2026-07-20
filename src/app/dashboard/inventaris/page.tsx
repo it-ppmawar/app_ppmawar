@@ -262,8 +262,8 @@ export default function InventarisPage() {
   const dorms = ['Semua', 'A', 'B', 'C', 'D', 'E', 'F', 'Tahfid'];
 
   const canAddDelete = user?.role === 'admin' || user?.role === 'staff';
-  const canEdit = canAddDelete || user?.role === 'petugas_sarpras' || user?.role === 'pengurus_asrama';
-  const canUpdateLaporan = canAddDelete || user?.role === 'petugas_sarpras';
+  const canEdit = canAddDelete || ['petugas_sarpras', 'pengurus_asrama', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '');
+  const canUpdateLaporan = canAddDelete || ['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '');
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20 fade-in">

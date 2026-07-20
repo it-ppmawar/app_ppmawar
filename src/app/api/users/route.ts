@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     } else if (roleFilter === 'pengasuh') {
       query += " WHERE role = 'pengasuh'";
     } else if (roleFilter === 'petugas') {
-      query += " WHERE role IN ('petugas', 'petugas_umum')";
+      query += " WHERE role IN ('petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum')";
     }
 
     const [rows] = await pool.execute<RowDataPacket[]>(query, params);
