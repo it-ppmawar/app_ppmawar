@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Archive, Plus, Search, MapPin, Package, PenTool, CheckCircle, Clock, AlertTriangle, ShieldAlert, Trash2, Edit, X, Download, User } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { Archive, Plus, Search, MapPin, Package, PenTool, CheckCircle, Clock, AlertTriangle, ShieldAlert, Trash2, Edit, X, Download, User, Upload, FileText } from 'lucide-react';
+import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
+import { downloadTemplate } from '@/lib/downloadTemplate';
 
 interface Inventaris {
   id: number;
@@ -63,6 +63,16 @@ export default function InventarisPage() {
   });
   const [laporanForm, setLaporanForm] = useState({ deskripsi: '' });
   const [updateForm, setUpdateForm] = useState({ status: 'Diproses', tindakan: '', kondisi_akhir: 'Baik' });
+
+  // Import Excel State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  
+  // PDF Preview State
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState('');
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -184,27 +194,55 @@ export default function InventarisPage() {
     }
   };
 
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.text('Laporan Inventaris Asrama', 14, 15);
-    
-    const tableData = filteredItems.map((item, idx) => [
+  const handleImportExcel = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', importFile);
+      fd.append('type', 'inventaris');
+      const res = await fetch('/api/import', { method: 'POST', body: fd });
+      const json = await res.json();
+      setImportResult(json);
+      if (json.success) fetchData();
+    } catch (err) {
+      setImportResult({ success: false, error: 'Gagal menghubungi server' });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleExport = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
+    if (filteredItems.length === 0) {
+      alert('Tidak ada data untuk di-export.');
+      return;
+    }
+
+    const title = 'LAPORAN INVENTARIS ASRAMA';
+    const subtitle = `Filter Asrama: ${activeTab.toUpperCase()} | Kategori: ${filterKategori || 'Semua'} | Kondisi: ${filterKondisi || 'Semua'}`;
+    const filename = `Inventaris_Asrama_${activeTab}`;
+
+    const tableColumn = ["NO", "NAMA BARANG", "KATEGORI", "ASRAMA", "JUMLAH", "KONDISI", "KETERANGAN"];
+    const tableRows = filteredItems.map((item, idx) => [
       idx + 1,
       item.nama_barang,
-      item.asrama,
       item.kategori,
+      item.asrama,
       item.jumlah,
       item.kondisi,
       item.keterangan || '-'
     ]);
 
-    autoTable(doc, {
-      head: [['No', 'Nama Barang', 'Asrama', 'Kategori', 'Jml', 'Kondisi', 'Keterangan']],
-      body: tableData,
-      startY: 20,
-    });
-
-    doc.save('inventaris-asrama.pdf');
+    if (format === 'excel') {
+      exportToExcel({ title, subtitle, columns: tableColumn, rows: tableRows, filename });
+    } else {
+      const result = exportToPDF({ title, subtitle, columns: tableColumn, rows: tableRows, filename, previewOnly });
+      if (previewOnly && result) {
+        setPdfUrl(result);
+        setShowPdfPreview(true);
+      }
+    }
   };
 
   // Filter Data
@@ -235,30 +273,68 @@ export default function InventarisPage() {
         <div className="absolute -top-10 -right-10 text-white/10 rotate-12 pointer-events-none">
           <Archive size={150} />
         </div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black mb-1 flex items-center gap-2 tracking-wide">
-              <Package size={24} className="text-indigo-300"/> INVENTARIS ASRAMA
-            </h1>
-            <p className="text-indigo-200 text-xs max-w-md leading-relaxed">
-              Manajemen fasilitas, sarana, dan prasarana pondok pesantren. Pantau dan laporkan kondisi barang dengan mudah.
-            </p>
+        <div className="relative z-10 flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-black mb-1 flex items-center gap-2 tracking-wide">
+                <Package size={24} className="text-indigo-300"/> INVENTARIS ASRAMA
+              </h1>
+              <p className="text-indigo-200 text-xs max-w-md leading-relaxed">
+                Manajemen fasilitas, sarana, dan prasarana pondok pesantren. Pantau dan laporkan kondisi barang dengan mudah.
+              </p>
+            </div>
+            
+            {/* Header Action Buttons (Format Jadwal) */}
+            <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
+              <button onClick={() => handleExport('pdf', true)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/15 hover:bg-white/25 text-white border border-indigo-500/30 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5" title="Preview PDF">
+                <FileText size={14} /> Preview
+              </button>
+              <button onClick={() => handleExport('pdf', false)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-red-500/20 text-red-200 border border-red-500/30 rounded-xl text-xs font-bold hover:bg-red-500/30 transition-colors flex items-center gap-1.5" title="Export PDF">
+                <Download size={14} /> PDF
+              </button>
+              <button onClick={() => handleExport('excel', false)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 rounded-xl text-xs font-bold hover:bg-emerald-500/30 transition-colors flex items-center gap-1.5" title="Export Excel">
+                <Download size={14} /> Excel
+              </button>
+              {canAddDelete && (
+                <>
+                  <button
+                    onClick={() => downloadTemplate('inventaris')}
+                    className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-indigo-900 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-50 transition-colors flex items-center gap-1.5"
+                    title="Unduh Templat Excel"
+                  >
+                    <Download size={14} /> Templat
+                  </button>
+                  <button
+                    onClick={() => { setImportFile(null); setImportResult(null); setIsImportModalOpen(true); }}
+                    className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-indigo-900 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-50 transition-colors flex items-center gap-1.5"
+                    title="Impor Excel"
+                  >
+                    <Upload size={14} /> Impor
+                  </button>
+                  <button onClick={() => { setEditingItem(null); setItemForm({ nama_barang: '', kategori: 'alat', asrama: activeTab !== 'Semua' ? activeTab : 'A', jumlah: 1, kondisi: 'Baik', keterangan: '' }); setShowItemModal(true); }} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1" title="Tambah Barang">
+                    <Plus size={16} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 bg-indigo-950/50 p-2 rounded-2xl border border-indigo-500/30">
+
+          {/* Equal-width Tabs on mobile (Foto 2) */}
+          <div className="w-full md:w-auto flex items-center gap-2 bg-indigo-950/50 p-1.5 rounded-2xl border border-indigo-500/30 self-start">
             <button
               onClick={() => setViewMode('daftar')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'daftar' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-indigo-700/50 text-indigo-300'}`}
+              className={`flex-1 md:flex-none justify-center px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'daftar' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-indigo-700/50 text-indigo-300'}`}
             >
               <Package size={16} /> Daftar Barang
             </button>
             <button
               onClick={() => setViewMode('laporan')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'laporan' ? 'bg-amber-600 text-white shadow-lg' : 'hover:bg-amber-700/50 text-indigo-300'}`}
+              className={`flex-1 md:flex-none justify-center px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'laporan' ? 'bg-amber-600 text-white shadow-lg' : 'hover:bg-amber-700/50 text-indigo-300'}`}
             >
               <AlertTriangle size={16} /> 
               Laporan Kerusakan
               {laporan.filter(l => l.status === 'Dilaporkan').length > 0 && (
-                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full min-w-[20px] text-center ml-1">
                   {laporan.filter(l => l.status === 'Dilaporkan').length}
                 </span>
               )}
@@ -339,9 +415,6 @@ export default function InventarisPage() {
                 <option value="Rusak Ringan">Rusak Ringan</option>
                 <option value="Rusak Berat">Rusak Berat</option>
               </select>
-              <button onClick={exportPDF} className="px-3 py-2.5 bg-gray-800 text-white rounded-xl text-xs font-bold hover:bg-gray-700 transition-colors flex items-center gap-2">
-                <Download size={14}/> PDF
-              </button>
               {canAddDelete && (
                 <button
                   onClick={() => {
@@ -632,6 +705,95 @@ export default function InventarisPage() {
                 Simpan Pembaruan
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Import Excel Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-gray-100 dark:border-gray-700">
+            <div className="bg-indigo-600 dark:bg-indigo-900 p-5 text-white flex justify-between items-center">
+              <h2 className="text-lg font-bold flex items-center gap-2"><Upload size={20} /> Impor Data Inventaris</h2>
+              <button onClick={() => setIsImportModalOpen(false)} className="bg-white/20 p-1.5 rounded-lg hover:bg-white/30"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-300">
+                <p className="font-bold mb-1">⚠ Perhatian</p>
+                <p>Pastikan nama kolom sesuai templat. Data yang sama (nama barang & asrama) akan diperbarui otomatis.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-2">Pilih File Excel (.xlsx)</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => { setImportFile(e.target.files?.[0] || null); setImportResult(null); }}
+                  className="w-full text-sm text-gray-600 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                />
+              </div>
+              {importResult && (
+                <div className={`p-3 rounded-xl text-sm ${importResult.success ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'}`}>
+                  <p className="font-bold">{importResult.success ? '✓ Berhasil' : '✗ Gagal'}</p>
+                  <p>{importResult.message || importResult.error}</p>
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setIsImportModalOpen(false)} className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 transition-colors">
+                  Tutup
+                </button>
+                <button
+                  onClick={handleImportExcel}
+                  disabled={!importFile || importing}
+                  className="flex-1 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {importing ? <><span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> Mengimpor...</> : <><Upload size={16} /> Impor</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Preview Modal */}
+      {showPdfPreview && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out]">
+            <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+              <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                <FileText className="text-indigo-500" size={20} />
+                Preview PDF Data Inventaris
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleExport('pdf', false)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-xl text-sm transition-colors flex items-center gap-2"
+                >
+                  <Download size={16} /> Download
+                </button>
+                <button
+                  onClick={() => setShowPdfPreview(false)}
+                  className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 p-2 rounded-xl transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="hidden md:block flex-1 bg-gray-200 dark:bg-black/50 p-4 h-full">
+              <iframe 
+                src={pdfUrl} 
+                className="w-full h-full rounded-xl shadow-inner bg-white"
+                title="PDF Preview"
+                style={{ minHeight: '60vh' }}
+              />
+            </div>
+            <div className="flex md:hidden flex-1 flex-col items-center justify-center gap-5 p-8 bg-gray-50 dark:bg-gray-900/50">
+              <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-900/40 rounded-full flex items-center justify-center">
+                <FileText size={40} className="text-indigo-500" />
+              </div>
+              <div className="text-center font-bold text-gray-700 dark:text-gray-200">
+                Preview tidak tersedia di HP, silakan langsung unduh file PDF.
+              </div>
+            </div>
           </div>
         </div>
       )}

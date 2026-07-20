@@ -37,6 +37,14 @@ export async function GET() {
       results.push('alumni.kategori_mukim already exists or error: ' + e.message);
     }
 
+    // Add is_pengasuh to users (for guru who also serve as pengasuh)
+    try {
+      await pool.execute('ALTER TABLE users ADD COLUMN is_pengasuh TINYINT(1) NOT NULL DEFAULT 0');
+      results.push('Added is_pengasuh to users');
+    } catch (e: any) {
+      results.push('users.is_pengasuh already exists or error: ' + e.message);
+    }
+
     return NextResponse.json({ success: true, results });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

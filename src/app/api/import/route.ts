@@ -113,6 +113,12 @@ export async function POST(request: Request) {
       case 'kurikulum':
         result = await importKurikulum(dataRows, headers);
         break;
+      case 'inventaris':
+        result = await importInventaris(dataRows, headers);
+        break;
+      case 'kebersihan':
+        result = await importKebersihan(dataRows, headers);
+        break;
       default:
         return NextResponse.json({ error: `Tipe impor "${type}" tidak valid` }, { status: 400 });
     }
@@ -953,4 +959,113 @@ async function importKurikulum(rows: any[][], headers: string[]) {
   }
   return result;
 }
+
+// ─── IMPORT INVENTARIS ────────────────────────────────────────────────────────
+async function importInventaris(rows: any[][], headers: string[]) {
+  const result = { inserted: 0, updated: 0, skipped: 0, errors: [] as string[] };
+  const colNama = findCol(headers, ['NAMA BARANG', 'NAMA', 'BARANG']);
+  const colKategori = findCol(headers, ['KATEGORI']);
+  const colAsrama = findCol(headers, ['ASRAMA']);
+  const colJumlah = findCol(headers, ['JUMLAH', 'JML', 'QTY']);
+  const colKondisi = findCol(headers, ['KONDISI']);
+  const colKeterangan = findCol(headers, ['KETERANGAN', 'CATATAN']);
+
+  if (colNama === -1 || colKategori === -1 || colAsrama === -1) {
+    result.errors.push('Kolom wajib (NAMA BARANG, KATEGORI, ASRAMA) tidak ditemukan');
+    return result;
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const nama = String(row[colNama] || '').trim();
+    const kategori = String(row[colKategori] || '').trim().toLowerCase();
+    const asrama = String(row[colAsrama] || '').trim();
+    
+    if (!nama || !kategori || !asrama) { result.skipped++; continue; }
+
+    const jumlah = colJumlah !== -1 ? Number(row[colJumlah] || 1) : 1;
+    let kondisi = colKondisi !== -1 ? String(row[colKondisi] || 'Baik').trim() : 'Baik';
+    if (!['Baik', 'Rusak Ringan', 'Rusak Berat'].includes(kondisi)) kondisi = 'Baik';
+    const keterangan = colKeterangan !== -1 ? String(row[colKeterangan] || '').trim() : '';
+
+    try {
+      const [existing] = await pool.execute<RowDataPacket[]>(
+        'SELECT id FROM inventaris WHERE nama_barang = ? AND asrama = ? LIMIT 1',
+        [nama, asrama]
+      );
+
+      if (existing.length > 0) {
+        await pool.execute(
+          'UPDATE inventaris SET kategori = ?, jumlah = ?, kondisi = ?, keterangan = ? WHERE id = ?',
+          [kategori, jumlah, kondisi, keterangan || null, existing[0].id]
+        );
+        result.updated++;
+      } else {
+        await pool.execute(
+          'INSERT INTO inventaris (nama_barang, kategori, asrama, jumlah, kondisi, keterangan) VALUES (?, ?, ?, ?, ?, ?)',
+          [nama, kategori, asrama, jumlah, kondisi, keterangan || null]
+        );
+        result.inserted++;
+      }
+    } catch (err: any) {
+      result.errors.push(`Baris ${i + 2}: ${err.message}`);
+    }
+  }
+  return result;
+}
+
+// ─── IMPORT KEBERSIHAN ────────────────────────────────────────────────────────
+async function importKebersihan(rows: any[][], headers: string[]) {
+  const result = { inserted: 0, updated: 0, skipped: 0, errors: [] as string[] };
+  const colNama = findCol(headers, ['NAMA ITEM', 'NAMA', 'ITEM']);
+  const colKategori = findCol(headers, ['KATEGORI']);
+  const colAsrama = findCol(headers, ['ASRAMA']);
+  const colJumlah = findCol(headers, ['JUMLAH', 'JML', 'QTY']);
+  const colKondisi = findCol(headers, ['KONDISI']);
+  const colKeterangan = findCol(headers, ['KETERANGAN', 'CATATAN']);
+
+  if (colNama === -1 || colKategori === -1 || colAsrama === -1) {
+    result.errors.push('Kolom wajib (NAMA ITEM, KATEGORI, ASRAMA) tidak ditemukan');
+    return result;
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const nama = String(row[colNama] || '').trim();
+    const kategori = String(row[colKategori] || '').trim().toLowerCase();
+    const asrama = String(row[colAsrama] || '').trim();
+    
+    if (!nama || !kategori || !asrama) { result.skipped++; continue; }
+
+    const jumlah = colJumlah !== -1 ? Number(row[colJumlah] || 1) : 1;
+    let kondisi = colKondisi !== -1 ? String(row[colKondisi] || 'Bersih').trim() : 'Bersih';
+    if (!['Bersih', 'Kotor Ringan', 'Kotor Berat'].includes(kondisi)) kondisi = 'Bersih';
+    const keterangan = colKeterangan !== -1 ? String(row[colKeterangan] || '').trim() : '';
+
+    try {
+      const [existing] = await pool.execute<RowDataPacket[]>(
+        'SELECT id FROM kebersihan WHERE nama_item = ? AND asrama = ? LIMIT 1',
+        [nama, asrama]
+      );
+
+      if (existing.length > 0) {
+        await pool.execute(
+          'UPDATE kebersihan SET kategori = ?, jumlah = ?, kondisi = ?, keterangan = ? WHERE id = ?',
+          [kategori, jumlah, kondisi, keterangan || null, existing[0].id]
+        );
+        result.updated++;
+      } else {
+        await pool.execute(
+          'INSERT INTO kebersihan (nama_item, kategori, asrama, jumlah, kondisi, keterangan) VALUES (?, ?, ?, ?, ?, ?)',
+          [nama, kategori, asrama, jumlah, kondisi, keterangan || null]
+        );
+        result.inserted++;
+      }
+    } catch (err: any) {
+      result.errors.push(`Baris ${i + 2}: ${err.message}`);
+    }
+  }
+  return result;
+}
+
 

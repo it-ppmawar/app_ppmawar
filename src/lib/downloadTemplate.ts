@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 
-export const downloadTemplate = (type: 'guru' | 'alumni' | 'jadwal_madin' | 'jadwal_quran' | 'jadwal_kegiatan' | 'jurnal_madin' | 'jurnal_quran' | 'jurnal_kamar' | 'jadwal_alumni' | 'ketertiban' | 'kelas' | 'kamar' | 'users' | 'kurikulum') => {
+export const downloadTemplate = (type: 'guru' | 'alumni' | 'jadwal_madin' | 'jadwal_quran' | 'jadwal_kegiatan' | 'jurnal_madin' | 'jurnal_quran' | 'jurnal_kamar' | 'jadwal_alumni' | 'ketertiban' | 'kelas' | 'kamar' | 'users' | 'kurikulum' | 'inventaris' | 'kebersihan') => {
   let headers: string[] = [];
   let exampleRow: string[] = [];
   let filename = '';
@@ -75,6 +75,16 @@ export const downloadTemplate = (type: 'guru' | 'alumni' | 'jadwal_madin' | 'jad
       headers = ['USERNAME', 'NAMA', 'ROLE (admin/staff/guru/pengurus_asrama/wali_murid)', 'PASSWORD', 'NIP / NIS'];
       exampleRow = ['zidan123', 'Muhammad Zidan', 'wali_murid', 'Mawar123', '202301004'];
       filename = 'Templat_Impor_Users.xlsx';
+      break;
+    case 'inventaris':
+      headers = ['NAMA BARANG', 'KATEGORI (alat/sarana/prasarana/lainnya)', 'ASRAMA (Asrama A/B/C/D/E/F/Tahfid)', 'JUMLAH', 'KONDISI (Baik/Rusak Ringan/Rusak Berat)', 'KETERANGAN'];
+      exampleRow = ['Sapu Ijuk', 'alat', 'Asrama A', '5', 'Baik', 'Sapu ijuk kualitas bagus'];
+      filename = 'Templat_Impor_Inventaris.xlsx';
+      break;
+    case 'kebersihan':
+      headers = ['NAMA ITEM', 'KATEGORI (alat_kebersihan/tempat_sampah/area_pembuangan/lainnya)', 'ASRAMA (Asrama A/B/C/D/E/F/Tahfid)', 'JUMLAH', 'KONDISI (Bersih/Kotor Ringan/Kotor Berat)', 'KETERANGAN'];
+      exampleRow = ['Tempat Sampah Kamar', 'tempat_sampah', 'Asrama B', '2', 'Bersih', 'Tempat sampah plastik'];
+      filename = 'Templat_Impor_Kebersihan.xlsx';
       break;
   }
 

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { Trash2, Plus, Search, MapPin, CheckCircle, Clock, AlertTriangle, ShieldAlert, Edit, X, Download, User, Leaf, Wind, Package } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Trash2, Plus, Search, MapPin, CheckCircle, Clock, AlertTriangle, ShieldAlert, Edit, X, Download, User, Leaf, Wind, Package, Upload, FileText, Eye, TableProperties } from 'lucide-react';
+import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
+import { downloadTemplate } from '@/lib/downloadTemplate';
 
 interface KebersIhan {
   id: number;
@@ -82,6 +82,17 @@ export default function KebersIhanPage() {
   const [updateForm, setUpdateForm] = useState({ status: 'Diproses', tindakan: '', kondisi_akhir: 'Bersih' });
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  // Import Excel State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  // PDF Preview State
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState('');
 
   const isAdmin = user?.role === 'admin' || user?.role === 'staff';
   const isPengasuhOrAdmin = isAdmin || ['pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras'].includes(user?.role || '') || (user?.role === 'guru' && user?.is_pengasuh);
@@ -220,39 +231,56 @@ export default function KebersIhanPage() {
     else showToast(data.error || 'Gagal memperbarui', 'error');
   };
 
-  // --- EXPORT ---
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(`Laporan Kebersihan - ${activeTab === 'Semua' ? 'Semua Asrama' : `Asrama ${activeTab}`}`, 14, 18);
-    doc.setFontSize(10);
-    doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 14, 26);
-    if (viewMode === 'daftar') {
-      autoTable(doc, {
-        startY: 32,
-        head: [['No', 'Nama Item', 'Kategori', 'Asrama', 'Jumlah', 'Kondisi', 'Keterangan']],
-        body: filteredItems.map((item, i) => [i + 1, item.nama_item, KATEGORI_LABEL[item.kategori] || item.kategori, item.asrama, item.jumlah, item.kondisi, item.keterangan || '-']),
-        styles: { fontSize: 9 }, headStyles: { fillColor: [5, 150, 105] }
-      });
-    } else {
-      autoTable(doc, {
-        startY: 32,
-        head: [['No', 'Item', 'Pelapor', 'Masalah', 'Status', 'Tanggal']],
-        body: filteredLaporan.map((l, i) => [i + 1, l.nama_item, l.nama_pelapor, l.deskripsi_masalah, l.status, new Date(l.created_at).toLocaleDateString('id-ID')]),
-        styles: { fontSize: 9 }, headStyles: { fillColor: [5, 150, 105] }
-      });
+  // --- EXPORT / IMPORT ---
+  const handleImportExcel = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', importFile);
+      fd.append('type', 'kebersihan');
+      const res = await fetch('/api/import', { method: 'POST', body: fd });
+      const json = await res.json();
+      setImportResult(json);
+      if (json.success) fetchData();
+    } catch {
+      setImportResult({ success: false, error: 'Gagal menghubungi server' });
+    } finally {
+      setImporting(false);
     }
-    doc.save(`kebersihan-${activeTab}-${Date.now()}.pdf`);
   };
 
-  const exportExcel = () => {
-    const rows = viewMode === 'daftar'
-      ? [['No','Nama Item','Kategori','Asrama','Kamar','Jumlah','Kondisi','Keterangan'], ...filteredItems.map((item, i) => [i+1, item.nama_item, KATEGORI_LABEL[item.kategori]||item.kategori, item.asrama, item.nama_kamar||'-', item.jumlah, item.kondisi, item.keterangan||''])]
-      : [['No','Item','Pelapor','Petugas','Deskripsi','Status','Tindakan','Tanggal'], ...filteredLaporan.map((l, i) => [i+1, l.nama_item, l.nama_pelapor, l.nama_petugas||'-', l.deskripsi_masalah, l.status, l.tindakan_kebersihan||'-', new Date(l.created_at).toLocaleDateString('id-ID')])];
-    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `kebersihan-${activeTab}-${Date.now()}.csv`; a.click();
+  const handleExport = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
+    if (filteredItems.length === 0) {
+      alert('Tidak ada data untuk di-export.');
+      return;
+    }
+
+    const title = 'LAPORAN KEBERSIHAN & PENGELOLAAN SAMPAH';
+    const subtitle = `Filter Asrama: ${activeTab.toUpperCase()} | Kategori: ${filterKategori || 'Semua'} | Kondisi: ${filterKondisi || 'Semua'}`;
+    const filename = `Kebersihan_Asrama_${activeTab}`;
+
+    const tableColumn = ["NO", "NAMA ITEM", "KATEGORI", "ASRAMA", "JUMLAH", "KONDISI", "KETERANGAN"];
+    const tableRows = filteredItems.map((item, idx) => [
+      idx + 1,
+      item.nama_item,
+      KATEGORI_LABEL[item.kategori] || item.kategori,
+      item.asrama,
+      item.jumlah,
+      item.kondisi,
+      item.keterangan || '-'
+    ]);
+
+    if (format === 'excel') {
+      exportToExcel({ title, subtitle, columns: tableColumn, rows: tableRows, filename });
+    } else {
+      const result = exportToPDF({ title, subtitle, columns: tableColumn, rows: tableRows, filename, previewOnly });
+      if (previewOnly && result) {
+        setPdfUrl(result);
+        setShowPdfPreview(true);
+      }
+    }
   };
 
   if (loading) return (
@@ -272,80 +300,126 @@ export default function KebersIhanPage() {
         </div>
       )}
 
-      {/* Header */}
+      {/* Header Card */}
       <div className="bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-700 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
         <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/5 rounded-full pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-tr-full pointer-events-none" />
-        <div className="relative flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div className="bg-white/20 backdrop-blur-sm p-3 rounded-2xl shadow-inner">
-              <Trash2 size={28} className="text-emerald-100" />
-            </div>
-            <div>
-              <h1 className="text-xl font-extrabold tracking-tight">Kebersihan & Pengelolaan Sampah</h1>
-              <p className="text-emerald-200 text-xs mt-0.5">Manajemen kebersihan & pelaporan area asrama</p>
-            </div>
+
+        {/* Title row */}
+        <div className="relative flex items-center gap-3 mb-4">
+          <div className="bg-white/20 backdrop-blur-sm p-3 rounded-2xl shadow-inner">
+            <Trash2 size={28} className="text-emerald-100" />
           </div>
-          <div className="flex gap-2">
-            <button onClick={exportPDF} className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors">
-              <Download size={14} /> PDF
-            </button>
-            <button onClick={exportExcel} className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors">
-              <Download size={14} /> Excel
-            </button>
-            {isAdmin && (
-              <button onClick={openAddItem} className="flex items-center gap-1.5 px-3 py-2 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl text-xs font-extrabold transition-colors shadow-sm">
-                <Plus size={14} /> Tambah Item
-              </button>
-            )}
+          <div>
+            <h1 className="text-xl font-extrabold tracking-tight">Kebersihan & Pengelolaan Sampah</h1>
+            <p className="text-emerald-200 text-xs mt-0.5">Manajemen kebersihan & pelaporan area asrama</p>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="relative mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'Total Item', val: stats.total, icon: <Package size={16} />, color: 'bg-white/15' },
-            { label: 'Bersih', val: stats.bersih, icon: <Leaf size={16} />, color: 'bg-emerald-500/30' },
-            { label: 'Kotor Ringan', val: stats.kotorRingan, icon: <AlertTriangle size={16} />, color: 'bg-amber-400/30' },
-            { label: 'Laporan Aktif', val: stats.laporanAktif, icon: <Clock size={16} />, color: 'bg-red-400/30' },
-          ].map(s => (
-            <div key={s.label} className={`${s.color} backdrop-blur-sm rounded-2xl p-3 flex items-center gap-2`}>
-              <div className="text-emerald-100">{s.icon}</div>
-              <div>
-                <p className="text-lg font-extrabold leading-tight">{s.val}</p>
-                <p className="text-[10px] text-emerald-200">{s.label}</p>
-              </div>
-            </div>
-          ))}
+        {/* Action Buttons */}
+        <div className="relative flex flex-wrap gap-2">
+          <button
+            onClick={() => handleExport('pdf', true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors"
+          >
+            <Eye size={14} /> Preview
+          </button>
+          <button
+            onClick={() => handleExport('pdf')}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors"
+          >
+            <FileText size={14} /> PDF
+          </button>
+          <button
+            onClick={() => handleExport('excel')}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors"
+          >
+            <TableProperties size={14} /> Excel
+          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => downloadTemplate('kebersihan')}
+                className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors"
+              >
+                <Download size={14} /> Templat
+              </button>
+              <button
+                onClick={() => { setIsImportModalOpen(true); setImportFile(null); setImportResult(null); }}
+                className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-colors"
+              >
+                <Upload size={14} /> Impor
+              </button>
+              <button
+                onClick={openAddItem}
+                className="flex items-center gap-1.5 px-3 py-2 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl text-xs font-extrabold transition-colors shadow-sm"
+              >
+                <Plus size={14} /> Tambah
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Tabs Asrama */}
+      {/* Stats Grid — di luar header card */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Total Item', val: stats.total, icon: <Package size={18} />, color: 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800', iconColor: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+          { label: 'Bersih', val: stats.bersih, icon: <Leaf size={18} />, color: 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800', iconColor: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+          { label: 'Kotor Ringan', val: stats.kotorRingan, icon: <AlertTriangle size={18} />, color: 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800', iconColor: 'text-amber-500 bg-amber-100 dark:bg-amber-900/30' },
+          { label: 'Laporan Aktif', val: stats.laporanAktif, icon: <Clock size={18} />, color: 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800', iconColor: 'text-red-500 bg-red-100 dark:bg-red-900/30' },
+        ].map(s => (
+          <div key={s.label} className={`${s.color} border rounded-2xl p-4 flex items-center gap-3 shadow-sm`}>
+            <div className={`${s.iconColor} p-2.5 rounded-xl flex-shrink-0`}>
+              {s.icon}
+            </div>
+            <div>
+              <p className="text-2xl font-extrabold text-gray-800 dark:text-gray-100 leading-tight">{s.val}</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">{s.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs Asrama — Semua full-width on top, asrama tabs below */}
       {isAdmin && (
-        <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-          {['Semua', ...ASRAMA_LIST].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all ${activeTab === tab ? 'bg-emerald-600 text-white shadow-md scale-105' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-gray-200 dark:border-gray-700'}`}
-            >
-              {tab === 'Semua' ? '🏠 Semua' : `Asrama ${tab}`}
-            </button>
-          ))}
+        <div className="space-y-2">
+          {/* Tab Semua — full width */}
+          <button
+            onClick={() => setActiveTab('Semua')}
+            className={`w-full py-2.5 rounded-2xl text-xs font-bold transition-all ${activeTab === 'Semua' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-gray-200 dark:border-gray-700'}`}
+          >
+            🏠 Semua Asrama
+          </button>
+          {/* Asrama tabs — wrap equally */}
+          <div className="flex flex-wrap gap-2">
+            {ASRAMA_LIST.map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 min-w-[80px] py-2 rounded-2xl text-xs font-bold transition-all ${activeTab === tab ? 'bg-emerald-600 text-white shadow-md scale-105' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-gray-200 dark:border-gray-700'}`}
+              >
+                {tab === 'Tahfid' ? 'Tahfid' : `Asrama ${tab}`}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       {/* View Toggle & Filters */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 space-y-3">
         <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setViewMode('daftar')} className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'daftar' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50'}`}>
-            <Package size={14} /> Daftar Item
-          </button>
-          <button onClick={() => setViewMode('laporan')} className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'laporan' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50'}`}>
-            <ShieldAlert size={14} /> Laporan Kebersihan
-            {stats.laporanAktif > 0 && <span className="ml-1 bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">{stats.laporanAktif}</span>}
-          </button>
-          <div className="ml-auto flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl flex-1 min-w-[140px] max-w-xs">
+          {/* View mode tabs — equal width on mobile */}
+          <div className="flex flex-1 gap-2 min-w-full sm:min-w-0">
+            <button onClick={() => setViewMode('daftar')} className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'daftar' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50'}`}>
+              <Package size={14} /> Daftar Item
+            </button>
+            <button onClick={() => setViewMode('laporan')} className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${viewMode === 'laporan' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-emerald-50'}`}>
+              <ShieldAlert size={14} /> Laporan Kebersihan
+              {stats.laporanAktif > 0 && <span className="ml-1 bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">{stats.laporanAktif}</span>}
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl flex-1 min-w-[140px] max-w-xs">
             <Search size={14} className="text-gray-400 flex-shrink-0" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari..." className="bg-transparent text-xs outline-none w-full text-gray-700 dark:text-gray-200 placeholder-gray-400" />
           </div>
@@ -451,6 +525,8 @@ export default function KebersIhanPage() {
           )}
         </div>
       )}
+
+      {/* ======================== MODALS ======================== */}
 
       {/* MODAL TAMBAH/EDIT ITEM */}
       {showItemModal && (
@@ -577,6 +653,97 @@ export default function KebersIhanPage() {
               <button onClick={submitUpdate} disabled={submitting} className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition-colors disabled:opacity-50 shadow-sm">
                 {submitting ? 'Memperbarui...' : 'Simpan Status'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL IMPORT EXCEL */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-end sm:items-center justify-center p-4" onClick={() => setIsImportModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-extrabold text-gray-800 dark:text-gray-100 text-base">Impor Data Kebersihan</h2>
+              <button onClick={() => setIsImportModalOpen(false)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"><X size={18} /></button>
+            </div>
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-3 text-xs text-emerald-700 dark:text-emerald-300">
+              <p className="font-bold mb-1">Panduan Impor:</p>
+              <ul className="list-disc list-inside space-y-0.5 text-emerald-600 dark:text-emerald-400">
+                <li>Unduh templat Excel terlebih dahulu</li>
+                <li>Isi data sesuai format kolom yang tersedia</li>
+                <li>Kolom wajib: Nama Item, Kategori, Asrama, Kondisi</li>
+                <li>Upload file .xlsx atau .xls</li>
+              </ul>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-600 dark:text-gray-400 mb-2 block">Pilih File Excel</label>
+              <div
+                className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center cursor-pointer hover:border-emerald-400 transition-colors"
+                onClick={() => importFileRef.current?.click()}
+              >
+                <Upload size={24} className="mx-auto mb-2 text-gray-400" />
+                {importFile ? (
+                  <p className="text-sm font-bold text-emerald-600">{importFile.name}</p>
+                ) : (
+                  <p className="text-sm text-gray-400">Klik untuk memilih file .xlsx / .xls</p>
+                )}
+              </div>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={e => setImportFile(e.target.files?.[0] || null)}
+              />
+            </div>
+            {importResult && (
+              <div className={`rounded-2xl p-3 text-xs font-bold ${importResult.success ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
+                {importResult.success
+                  ? `✓ Berhasil mengimpor ${importResult.inserted ?? ''} data.`
+                  : `✗ ${importResult.error || 'Terjadi kesalahan saat impor.'}`}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => setIsImportModalOpen(false)} className="flex-1 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm font-bold hover:bg-gray-50 transition-colors">Tutup</button>
+              <button
+                onClick={handleImportExcel}
+                disabled={!importFile || importing}
+                className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition-colors disabled:opacity-50 shadow-sm flex items-center justify-center gap-2"
+              >
+                {importing ? (
+                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Mengimpor...</>
+                ) : (
+                  <><Upload size={14} /> Impor Sekarang</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PDF PREVIEW */}
+      {showPdfPreview && pdfUrl && (
+        <div className="fixed inset-0 bg-black/80 z-[110] flex flex-col items-center justify-center p-4">
+          <div className="w-full max-w-4xl bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: '90vh' }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+              <h2 className="font-extrabold text-gray-800 dark:text-gray-100 text-base flex items-center gap-2">
+                <FileText size={18} className="text-emerald-600" /> Preview PDF Kebersihan
+              </h2>
+              <div className="flex items-center gap-2">
+                <a
+                  href={pdfUrl}
+                  download={`Kebersihan_Asrama_${activeTab}.pdf`}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors"
+                >
+                  <Download size={14} /> Unduh PDF
+                </a>
+                <button onClick={() => setShowPdfPreview(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <iframe src={pdfUrl} className="w-full h-full" style={{ minHeight: '60vh' }} title="PDF Preview" />
             </div>
           </div>
         </div>
