@@ -21,6 +21,7 @@ export async function GET(request: Request) {
 
     let query = `
       SELECT users.id, users.username, users.role, users.nama, users.nip, users.murid_id, users.kamar_id, kamar.nama_kamar,
+             users.is_pengasuh,
              (SELECT COUNT(*) FROM webauthn_credentials wc WHERE wc.user_id = users.id) as has_fingerprint
       FROM users 
       LEFT JOIN kamar ON users.kamar_id = kamar.kamar_id
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { username, password, role, nama, nip, kamar_id } = body;
+    const { username, password, role, nama, nip, kamar_id, is_pengasuh } = body;
 
     if (!username || !password || !role || !nama) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
@@ -70,9 +71,10 @@ export async function POST(request: Request) {
     if (existing.length > 0) return NextResponse.json({ error: 'Username sudah terdaftar' }, { status: 400 });
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const isPengasuhVal = (role === 'guru' && is_pengasuh) ? 1 : 0;
     await pool.execute(
-      'INSERT INTO users (username, password, role, nama, nip, kamar_id) VALUES (?, ?, ?, ?, ?, ?)',
-      [username, hashedPassword, role, nama, nip || null, kamar_id || null]
+      'INSERT INTO users (username, password, role, nama, nip, kamar_id, is_pengasuh) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [username, hashedPassword, role, nama, nip || null, kamar_id || null, isPengasuhVal]
     );
 
     return NextResponse.json({ success: true, message: 'User berhasil ditambahkan' });
@@ -93,7 +95,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { id, username, password, role, nama, nip, kamar_id, reset_fingerprint } = body;
+    const { id, username, password, role, nama, nip, kamar_id, reset_fingerprint, is_pengasuh } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 });
@@ -113,8 +115,9 @@ export async function PUT(request: Request) {
     const [existing] = await pool.execute<RowDataPacket[]>('SELECT id FROM users WHERE username = ? AND id != ?', [username, id]);
     if (existing.length > 0) return NextResponse.json({ error: 'Username sudah digunakan oleh user lain' }, { status: 400 });
 
-    let query = 'UPDATE users SET username = ?, role = ?, nama = ?, nip = ?, kamar_id = ?';
-    let params: any[] = [username, role, nama, nip || null, kamar_id || null];
+    const isPengasuhVal = (role === 'guru' && is_pengasuh) ? 1 : 0;
+    let query = 'UPDATE users SET username = ?, role = ?, nama = ?, nip = ?, kamar_id = ?, is_pengasuh = ?';
+    let params: any[] = [username, role, nama, nip || null, kamar_id || null, isPengasuhVal];
 
     if (password) {
       query += ', password = ?';

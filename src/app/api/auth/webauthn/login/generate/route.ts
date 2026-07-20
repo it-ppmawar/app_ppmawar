@@ -17,8 +17,9 @@ export async function GET(request: Request) {
       const [users] = await pool.execute<RowDataPacket[]>('SELECT id, role FROM users WHERE username = ? LIMIT 1', [username]);
       if (users.length > 0) {
         const user = users[0];
-        if (user.role !== 'guru' && user.role !== 'wali_murid') {
-          return NextResponse.json({ error: 'Login biometrik hanya diizinkan untuk Guru dan Wali Murid.' }, { status: 403 });
+        const allowedBiometricRoles = ['guru', 'wali_murid', 'pengasuh', 'pengurus_asrama', 'petugas', 'petugas_umum', 'petugas_sarpras'];
+        if (!allowedBiometricRoles.includes(user.role)) {
+          return NextResponse.json({ error: 'Login biometrik tidak diizinkan untuk akun ini.' }, { status: 403 });
         }
         const [creds] = await pool.execute<RowDataPacket[]>('SELECT credential_id, transports FROM webauthn_credentials WHERE user_id = ?', [user.id]);
         if (creds.length > 0) {

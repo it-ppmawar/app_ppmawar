@@ -35,7 +35,8 @@ export default function UsersManagementPage() {
     role: 'admin',
     nama: '',
     nip: '',
-    kamar_id: null as number | null
+    kamar_id: null as number | null,
+    is_pengasuh: false
   });
 
   const fetchUsers = async () => {
@@ -152,7 +153,8 @@ export default function UsersManagementPage() {
         role: user.role,
         nama: user.nama,
         nip: user.nip || '',
-        kamar_id: user.kamar_id || null
+        kamar_id: user.kamar_id || null,
+        is_pengasuh: !!user.is_pengasuh
       });
     } else {
       setEditingId(null);
@@ -162,7 +164,8 @@ export default function UsersManagementPage() {
         role: activeTab === 'pengelola' ? 'staff' : activeTab === 'petugas' ? 'petugas' : activeTab,
         nama: '',
         nip: '',
-        kamar_id: null
+        kamar_id: null,
+        is_pengasuh: false
       });
     }
     setShowModal(true);
@@ -489,6 +492,7 @@ export default function UsersManagementPage() {
                             {(u.nama || u.username || 'US').substring(0,2).toUpperCase()}
                           </div>
                           {u.nama || u.username || 'User Tanpa Nama'}
+                          {u.role === 'guru' && u.is_pengasuh ? <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 rounded-full">+ PENGASUH</span> : null}
                         </div>
                         {u.nip && <div className="text-[11px] text-gray-400 font-mono mt-1 ml-10">NIP: {u.nip}</div>}
                       </td>
@@ -669,6 +673,23 @@ export default function UsersManagementPage() {
                 </label>
                 <input type="password" required={!editingId} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500" />
               </div>
+
+              {/* Checkbox is_pengasuh - hanya muncul untuk role guru */}
+              {formData.role === 'guru' && (
+                <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/50 rounded-xl">
+                  <input
+                    id="is_pengasuh"
+                    type="checkbox"
+                    checked={!!formData.is_pengasuh}
+                    onChange={e => setFormData({...formData, is_pengasuh: e.target.checked})}
+                    className="w-4 h-4 accent-purple-600 rounded"
+                  />
+                  <label htmlFor="is_pengasuh" className="text-xs font-bold text-purple-700 dark:text-purple-300 cursor-pointer">
+                    Guru ini juga bertindak sebagai Pengasuh Asrama
+                    <span className="block font-normal text-purple-500 dark:text-purple-400 mt-0.5">Memungkinkan akses fitur Pengasuh & login sidik jari (peran ganda)</span>
+                  </label>
+                </div>
+              )}
 
               <div className="pt-4 flex gap-3">
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-bold rounded-xl transition-colors">

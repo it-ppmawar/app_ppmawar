@@ -118,6 +118,43 @@ export async function GET() {
         CONSTRAINT fk_laporan_inventaris FOREIGN KEY (inventaris_id) REFERENCES inventaris(id) ON DELETE CASCADE,
         CONSTRAINT fk_laporan_pelapor FOREIGN KEY (pelapor_id) REFERENCES users(id) ON DELETE CASCADE,
         CONSTRAINT fk_laporan_petugas FOREIGN KEY (petugas_id) REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      // 19. Update users role enum to support all roles including petugas, petugas_umum
+      "ALTER TABLE users MODIFY COLUMN role enum('admin','wali_kelas','wali_murid','guru','staff','pengurus_asrama','tamu','pengasuh','petugas_sarpras','petugas','petugas_umum') NOT NULL;",
+
+      // 20. Add is_pengasuh column to users table for double-role guru as caretaker
+      "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_pengasuh TINYINT(1) DEFAULT 0;",
+
+      // 21. Create tabel kebersihan
+      `CREATE TABLE IF NOT EXISTS kebersihan (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nama_item VARCHAR(255) NOT NULL,
+        kategori ENUM('alat_kebersihan', 'tempat_sampah', 'area_pembuangan', 'lainnya') NOT NULL,
+        asrama VARCHAR(100) NOT NULL,
+        kamar_id INT DEFAULT NULL,
+        jumlah INT NOT NULL DEFAULT 1,
+        kondisi ENUM('Bersih', 'Kotor Ringan', 'Kotor Berat') NOT NULL DEFAULT 'Bersih',
+        keterangan TEXT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      // 22. Create tabel laporan kebersihan
+      `CREATE TABLE IF NOT EXISTS laporan_kebersihan (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        kebersihan_id INT NOT NULL,
+        pelapor_id INT NOT NULL,
+        petugas_id INT DEFAULT NULL,
+        deskripsi_masalah TEXT NOT NULL,
+        status ENUM('Dilaporkan', 'Diproses', 'Selesai', 'Dibatalkan') NOT NULL DEFAULT 'Dilaporkan',
+        tindakan_kebersihan TEXT DEFAULT NULL,
+        tanggal_selesai TIMESTAMP DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_laporan_kebersihan FOREIGN KEY (kebersihan_id) REFERENCES kebersihan(id) ON DELETE CASCADE,
+        CONSTRAINT fk_laporan_keb_pelapor FOREIGN KEY (pelapor_id) REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_laporan_keb_petugas FOREIGN KEY (petugas_id) REFERENCES users(id) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
     ];
 
@@ -140,6 +177,48 @@ export async function GET() {
           throw err;
         }
       }
+    }
+
+    // Seed General / Common accounts
+    try {
+      const bcrypt = await import('bcryptjs');
+      const hashedPwd = await bcrypt.hash('mawar123', 10);
+      
+      const seedUsers = [
+        // 1. Akun Pengasuh
+        { username: 'pengasuh_a', nama: 'Pengasuh Asrama A', role: 'pengasuh' },
+        { username: 'pengasuh_b', nama: 'Pengasuh Asrama B', role: 'pengasuh' },
+        { username: 'pengasuh_c', nama: 'Pengasuh Asrama C', role: 'pengasuh' },
+        { username: 'pengasuh_d', nama: 'Pengasuh Asrama D', role: 'pengasuh' },
+        { username: 'pengasuh_e', nama: 'Pengasuh Asrama E', role: 'pengasuh' },
+        { username: 'pengasuh_f', nama: 'Pengasuh Asrama F', role: 'pengasuh' },
+        { username: 'pengasuh_tahfid', nama: 'Pengasuh Asrama Tahfid', role: 'pengasuh' },
+        // 2. Akun Pengurus Asrama
+        { username: 'pengurus_asrama_a', nama: 'Pengurus Asrama A', role: 'pengurus_asrama' },
+        { username: 'pengurus_asrama_b', nama: 'Pengurus Asrama B', role: 'pengurus_asrama' },
+        { username: 'pengurus_asrama_c', nama: 'Pengurus Asrama C', role: 'pengurus_asrama' },
+        { username: 'pengurus_asrama_d', nama: 'Pengurus Asrama D', role: 'pengurus_asrama' },
+        { username: 'pengurus_asrama_e', nama: 'Pengurus Asrama E', role: 'pengurus_asrama' },
+        { username: 'pengurus_asrama_f', nama: 'Pengurus Asrama F', role: 'pengurus_asrama' },
+        { username: 'pengurus_asrama_tahfid', nama: 'Pengurus Asrama Tahfid', role: 'pengurus_asrama' },
+        // 3. Akun Petugas Umum
+        { username: 'petugas_umum', nama: 'Petugas Umum', role: 'petugas_umum' }
+      ];
+
+      let seededCount = 0;
+      for (const u of seedUsers) {
+        const [exist] = await pool.execute<RowDataPacket[]>('SELECT id FROM users WHERE username = ? LIMIT 1', [u.username]);
+        if (exist.length === 0) {
+          await pool.execute(
+            'INSERT INTO users (username, password, role, nama) VALUES (?, ?, ?, ?)',
+            [u.username, hashedPwd, u.role, u.nama]
+          );
+          seededCount++;
+        }
+      }
+      results.push({ query: 'Seed general accounts', status: `Success (${seededCount} accounts seeded)` });
+    } catch (e: any) {
+      results.push({ query: 'Seed general accounts', status: `Error: ${e.message}` });
     }
 
     // 6. Seed nama_asrama if it is null

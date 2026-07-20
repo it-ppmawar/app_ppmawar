@@ -63,9 +63,18 @@ export async function GET() {
       console.warn('[auth/me] Could not fetch real_name:', nameErr);
     }
 
+    // Fetch is_pengasuh flag from DB (to ensure up-to-date even if token is old)
+    let isPengasuh = !!(payload.isPengasuh);
+    try {
+      if (payload.userId) {
+        const [uRows] = await pool.execute<RowDataPacket[]>('SELECT is_pengasuh FROM users WHERE id = ? LIMIT 1', [payload.userId]);
+        if (uRows.length > 0) isPengasuh = !!uRows[0].is_pengasuh;
+      }
+    } catch (e) {}
+
     return NextResponse.json({
       success: true,
-      user: { ...payload, real_name: realName, has_fingerprint: hasFingerprint }
+      user: { ...payload, real_name: realName, has_fingerprint: hasFingerprint, is_pengasuh: isPengasuh }
     });
   } catch (error) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

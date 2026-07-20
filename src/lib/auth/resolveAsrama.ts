@@ -29,6 +29,10 @@ export async function resolveAsrama(
       [userId]
     );
     if (userRows.length > 0 && userRows[0].nama) {
+      const namaUpper = userRows[0].nama.toLowerCase();
+      if (namaUpper.includes('tahfid')) {
+        return 'Asrama Tahfid';
+      }
       // Cari pola 'Asrama X' dalam nama user (misalnya "Pengurus Asrama A")
       const namaMatch = (userRows[0].nama as string).match(/asrama\s+([a-z])/i);
       if (namaMatch) {
@@ -36,6 +40,10 @@ export async function resolveAsrama(
       }
     }
   } catch (e) {}
+
+  if (username.toLowerCase().includes('tahfid')) {
+    return 'Asrama Tahfid';
+  }
 
   // Tebak dari username - pola yang lebih luas:
   // staff_asrama_a, ketua_asrama_a, pengurus_asrama_a, pengasuh_a, asrama_a, asrama-a, dll.

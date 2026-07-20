@@ -28,8 +28,9 @@ export async function POST(request: Request) {
 
     const authenticator = creds[0];
     
-    if (authenticator.role !== 'guru' && authenticator.role !== 'wali_murid') {
-      return NextResponse.json({ error: 'Login biometrik hanya diizinkan untuk Guru dan Wali Murid.' }, { status: 403 });
+    const allowedBiometricRoles = ['guru', 'wali_murid', 'pengasuh', 'pengurus_asrama', 'petugas', 'petugas_umum', 'petugas_sarpras'];
+    if (!allowedBiometricRoles.includes(authenticator.role)) {
+      return NextResponse.json({ error: 'Login biometrik tidak diizinkan untuk akun ini.' }, { status: 403 });
     }
 
     const publicKeyBytes = Buffer.from(authenticator.public_key, 'base64');
@@ -67,6 +68,10 @@ export async function POST(request: Request) {
         if (gurus.length > 0) guruId = gurus[0].guru_id;
       }
 
+      // Ambil is_pengasuh
+      const [uRows] = await pool.execute<RowDataPacket[]>('SELECT is_pengasuh FROM users WHERE id = ? LIMIT 1', [authenticator.user_id]);
+      const isPengasuh = uRows.length > 0 ? !!uRows[0].is_pengasuh : false;
+
       // Buat JWT Token (sama seperti login biasa)
       const payload = {
         userId: authenticator.user_id,
@@ -75,7 +80,8 @@ export async function POST(request: Request) {
         guruId: guruId,
         muridId: authenticator.murid_id,
         kamarId: authenticator.kamar_id,
-        namaAsrama: authenticator.nama_asrama || null
+        namaAsrama: authenticator.nama_asrama || null,
+        isPengasuh: isPengasuh
       };
 
       const token = signToken(payload);
