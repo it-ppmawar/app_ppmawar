@@ -45,6 +45,24 @@ export async function GET() {
       results.push('users.is_pengasuh already exists or error: ' + e.message);
     }
 
+    // Modify users.role enum to support all specialized roles
+    try {
+      await pool.execute("ALTER TABLE users MODIFY COLUMN role ENUM('admin','wali_kelas','wali_murid','guru','staff','pengurus_asrama','tamu','pengasuh','petugas_sarpras','petugas','petugas_umum','petugas_inventaris','petugas_inventaris_umum','petugas_kebersihan','petugas_kebersihan_umum') NOT NULL");
+      results.push('✅ Updated users.role ENUM definition to support all new roles');
+    } catch (e: any) {
+      results.push('❌ Failed to update users.role ENUM: ' + e.message);
+    }
+
+    // Repair roles for seeded accounts that were set to empty/invalid string due to missing enum options
+    try {
+      const [fixPengasuh] = await pool.execute("UPDATE users SET role = 'pengasuh' WHERE (role = '' OR role IS NULL) AND username LIKE 'pengasuh_%'");
+      const [fixInventaris] = await pool.execute("UPDATE users SET role = 'petugas_inventaris_umum' WHERE (role = '' OR role IS NULL) AND username = 'petugas_inventaris'");
+      const [fixKebersihan] = await pool.execute("UPDATE users SET role = 'petugas_kebersihan_umum' WHERE (role = '' OR role IS NULL) AND username = 'petugas_kebersihan'");
+      results.push(`✅ Fixed empty roles for seeded accounts: ${(fixPengasuh as any).affectedRows} pengasuh, ${(fixInventaris as any).affectedRows} petugas inventaris, ${(fixKebersihan as any).affectedRows} petugas kebersihan`);
+    } catch (e: any) {
+      results.push('❌ Failed to repair empty roles: ' + e.message);
+    }
+
     return NextResponse.json({ success: true, results });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

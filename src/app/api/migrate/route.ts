@@ -122,7 +122,7 @@ export async function GET() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
 
       // 19. Update users role enum to support all roles including petugas, petugas_umum
-      "ALTER TABLE users MODIFY COLUMN role enum('admin','wali_kelas','wali_murid','guru','staff','pengurus_asrama','tamu','pengasuh','petugas_sarpras','petugas','petugas_umum') NOT NULL;",
+      "ALTER TABLE users MODIFY COLUMN role enum('admin','wali_kelas','wali_murid','guru','staff','pengurus_asrama','tamu','pengasuh','petugas_sarpras','petugas','petugas_umum','petugas_inventaris','petugas_inventaris_umum','petugas_kebersihan','petugas_kebersihan_umum') NOT NULL;",
 
       // 20. Add is_pengasuh column to users table for double-role guru as caretaker
       "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_pengasuh TINYINT(1) DEFAULT 0;",
