@@ -268,6 +268,10 @@ export default function InventarisPage() {
   const canAddDelete = user?.role === 'admin' || user?.role === 'staff';
   const canEdit = canAddDelete || ['petugas_sarpras', 'pengurus_asrama', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '');
   const canUpdateLaporan = canAddDelete || ['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '');
+  // Petugas inventaris umum dan sarpras juga lihat semua tab asrama seperti admin
+  const showAllTabs = canAddDelete
+    || user?.role === 'petugas_inventaris_umum'
+    || user?.role === 'petugas_sarpras';
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20 fade-in">
@@ -355,7 +359,7 @@ export default function InventarisPage() {
             <span>Pengaturan: {activeTab === 'Tahfid' ? 'Asrama Tahfid' : `Asrama ${activeTab}`}</span>
           </div>
         </div>
-      ) : (
+      ) : showAllTabs ? (
         <div className="flex flex-col gap-2 w-full">
           {/* Semua — Baris tersendiri di atas, memanjang memenuhi sisi kanan kiri */}
           <div className="bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full">
@@ -393,7 +397,7 @@ export default function InventarisPage() {
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {viewMode === 'daftar' ? (
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">

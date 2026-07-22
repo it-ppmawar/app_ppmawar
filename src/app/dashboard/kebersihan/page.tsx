@@ -95,6 +95,10 @@ export default function KebersIhanPage() {
   const [pdfUrl, setPdfUrl] = useState('');
 
   const isAdmin = user?.role === 'admin' || user?.role === 'staff';
+  // Petugas umum dan sarpras juga lihat semua tab asrama seperti admin
+  const showAllTabs = isAdmin
+    || user?.role === 'petugas_kebersihan_umum'
+    || user?.role === 'petugas_sarpras';
   const isPengasuhOrAdmin = isAdmin || ['pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || (user?.role === 'guru' && user?.is_pengasuh);
 
   useEffect(() => {
@@ -400,7 +404,7 @@ export default function KebersIhanPage() {
             <span>Pengaturan: {activeTab === 'Tahfid' ? 'Asrama Tahfid' : `Asrama ${activeTab}`}</span>
           </div>
         </div>
-      ) : isAdmin ? (
+      ) : showAllTabs ? (
         <div className="space-y-2">
           {/* Tab Semua — full width */}
           <button
