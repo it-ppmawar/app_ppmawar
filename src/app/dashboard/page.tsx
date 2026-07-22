@@ -209,38 +209,48 @@ export default function DashboardPage() {
       </section>
       )}
 
-      {/* Pintasan Kebersihan & Sampah (Diatas tombol Inventaris) */}
-      {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role) && (
-        <Link
-          href="/dashboard/kebersihan"
-          className="flex flex-row items-center justify-center gap-3 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 text-emerald-700 dark:text-emerald-300 rounded-2xl border border-emerald-200 dark:border-emerald-800/50 shadow-sm hover:from-emerald-100 hover:to-teal-100 dark:hover:from-emerald-900/40 dark:hover:to-teal-900/40 transition-all"
-        >
-          <Trash2 size={22} />
-          <span className="text-sm font-bold">Kebersihan & Sampah</span>
-        </Link>
-      )}
-
-      {/* Pintasan Inventaris Asrama (Dibawah tombol Kebersihan) */}
-      {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(role) && (
-        <Link
-          href="/dashboard/inventaris"
-          className="flex flex-row items-center justify-center gap-3 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 text-indigo-700 dark:text-indigo-300 rounded-2xl border border-indigo-200 dark:border-indigo-800/50 shadow-sm hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/40 dark:hover:to-purple-900/40 transition-all"
-        >
-          <Archive size={22} />
-          <span className="text-sm font-bold">Inventaris Asrama</span>
-        </Link>
-      )}
-
-      {/* Pintasan Info Tagihan */}
-      {['admin', 'staff', 'wali_murid', 'pengasuh'].includes(role) && (
-        <Link 
-          href="/dashboard/billing" 
-          className="flex flex-row items-center justify-center gap-3 p-4 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 text-orange-700 dark:text-orange-300 rounded-2xl border border-orange-200 dark:border-orange-800/50 shadow-sm hover:from-orange-100 hover:to-amber-100 dark:hover:from-orange-900/40 dark:hover:to-amber-900/40 transition-all"
-        >
-          <CreditCard size={22} />
-          <span className="text-sm font-bold">Info Tagihan & Pembayaran</span>
-        </Link>
-      )}
+      {/* Pintasan cepat — Kebersihan, Inventaris, Tagihan — horizontal grid mengisi penuh */}
+      {(() => {
+        const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role);
+        const showInventaris = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(role);
+        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(role);
+        const visibleCount = [showKebersihan, showInventaris, showTagihan].filter(Boolean).length;
+        if (visibleCount === 0) return null;
+        return (
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${visibleCount}, minmax(0, 1fr))` }}
+          >
+            {showKebersihan && (
+              <Link
+                href="/dashboard/kebersihan"
+                className="flex flex-col items-center justify-center gap-1.5 p-3 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 text-emerald-700 dark:text-emerald-300 rounded-2xl border border-emerald-200 dark:border-emerald-800/50 shadow-sm hover:from-emerald-100 hover:to-teal-100 dark:hover:from-emerald-900/50 dark:hover:to-teal-900/50 transition-all text-center"
+              >
+                <Trash2 size={20} />
+                <span className="text-[10px] font-bold leading-tight">Kebersihan &amp; Sampah</span>
+              </Link>
+            )}
+            {showInventaris && (
+              <Link
+                href="/dashboard/inventaris"
+                className="flex flex-col items-center justify-center gap-1.5 p-3 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300 rounded-2xl border border-indigo-200 dark:border-indigo-800/50 shadow-sm hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 transition-all text-center"
+              >
+                <Archive size={20} />
+                <span className="text-[10px] font-bold leading-tight">Inventaris Asrama</span>
+              </Link>
+            )}
+            {showTagihan && (
+              <Link
+                href="/dashboard/billing"
+                className="flex flex-col items-center justify-center gap-1.5 p-3 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 text-orange-700 dark:text-orange-300 rounded-2xl border border-orange-200 dark:border-orange-800/50 shadow-sm hover:from-orange-100 hover:to-amber-100 dark:hover:from-orange-900/50 dark:hover:to-amber-900/50 transition-all text-center"
+              >
+                <CreditCard size={20} />
+                <span className="text-[10px] font-bold leading-tight">Info Tagihan &amp; Pembayaran</span>
+              </Link>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Daftar Jadwal Hari Ini */}
       {!['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role) && (

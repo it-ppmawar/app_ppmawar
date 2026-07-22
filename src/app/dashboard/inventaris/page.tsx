@@ -268,10 +268,11 @@ export default function InventarisPage() {
   const canAddDelete = user?.role === 'admin' || user?.role === 'staff';
   const canEdit = canAddDelete || ['petugas_sarpras', 'pengurus_asrama', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '');
   const canUpdateLaporan = canAddDelete || ['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '');
-  // Petugas inventaris umum dan sarpras juga lihat semua tab asrama seperti admin
+  // Petugas inventaris umum, sarpras, dan pengasuh juga lihat semua tab asrama seperti admin
   const showAllTabs = canAddDelete
     || user?.role === 'petugas_inventaris_umum'
-    || user?.role === 'petugas_sarpras';
+    || user?.role === 'petugas_sarpras'
+    || user?.role === 'pengasuh';
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20 fade-in">
@@ -351,12 +352,12 @@ export default function InventarisPage() {
         </div>
       </div>
 
-      {/* Tabs Asrama — Khusus pengurus_asrama hanya tampilkan tab asrama terkait */}
+      {/* Tabs Asrama — pengurus_asrama hanya tampilkan tab asrama terkait */}
       {user?.role === 'pengurus_asrama' ? (
         <div className="bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full text-center">
           <div className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-extrabold text-xs rounded-xl shadow-sm w-full">
             <MapPin size={16} />
-            <span>Pengaturan: {activeTab === 'Tahfid' ? 'Asrama Tahfid' : `Asrama ${activeTab}`}</span>
+            <span>{activeTab === 'Tahfid' ? 'Asrama Tahfid' : `Asrama ${activeTab}`}</span>
           </div>
         </div>
       ) : showAllTabs ? (
