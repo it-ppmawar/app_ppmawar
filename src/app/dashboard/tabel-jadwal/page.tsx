@@ -1206,6 +1206,32 @@ export default function TabelJadwalPage() {
                 </div>
               </div>
 
+              {/* Kelas / Kamar Tempat Dropdown */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">
+                  {activeTab === 'kegiatan' ? 'Kamar Asrama / Tempat' : 'Kelas / Tempat'}
+                </label>
+                <select
+                  value={modalData.kelas_id || ''}
+                  onChange={(e) => {
+                    const selectedId = parseInt(e.target.value);
+                    const classList = activeTab === 'madin' ? classesMadin : activeTab === 'quran' ? classesQuran : rooms;
+                    const opt = classList.find(c => c.id === selectedId);
+                    setModalData({
+                      ...modalData,
+                      kelas_id: selectedId,
+                      kelas_nama: opt ? opt.nama : modalData.kelas_nama
+                    });
+                  }}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-200 outline-none"
+                  required
+                >
+                  {(activeTab === 'madin' ? classesMadin : activeTab === 'quran' ? classesQuran : rooms).map(c => (
+                    <option key={c.id} value={c.id}>{c.nama}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Guru Searchable Dropdown */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">

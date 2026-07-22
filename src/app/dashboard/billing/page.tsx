@@ -124,7 +124,7 @@ export default function BillingPage() {
     );
   }
 
-  const isAccessAllowed = userRole && ['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama'].includes(userRole);
+  const isAccessAllowed = userRole && ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(userRole);
 
   if (!isAccessAllowed) {
     return (
@@ -134,7 +134,7 @@ export default function BillingPage() {
         </div>
         <h3 className="text-lg font-bold text-red-800 dark:text-red-400 mb-2">Akses Ditolak</h3>
         <p className="text-sm text-red-600 dark:text-red-300 mb-6">
-          Halaman Informasi Tagihan hanya dapat diakses oleh Admin, Staff, Wali Murid, Pengasuh, dan Pengurus Asrama.
+          Halaman Informasi Tagihan hanya dapat diakses oleh Admin, Staff, Wali Murid, dan Pengasuh.
         </p>
       </div>
     );

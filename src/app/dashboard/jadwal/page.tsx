@@ -341,7 +341,11 @@ export default function JadwalPage() {
   const handleEditClick = (item: any) => {
     fetchData();
     fetchOptions();
-    setEditingJadwal({ ...item, guru_id: item.guru_id || '' });
+    setEditingJadwal({
+      ...item,
+      tempat_id: item.tempat_id !== undefined && item.tempat_id !== null ? item.tempat_id.toString() : '',
+      guru_id: item.guru_id ? item.guru_id.toString() : ''
+    });
     setIsEditModalOpen(true);
   };
 
@@ -356,6 +360,7 @@ export default function JadwalPage() {
         jam_mulai: editingJadwal.jam_mulai,
         jam_selesai: editingJadwal.jam_selesai,
         kegiatan: editingJadwal.kegiatan,
+        tempat_id: editingJadwal.tempat_id ? parseInt(editingJadwal.tempat_id) : null,
         guru_id: editingJadwal.guru_id ? parseInt(editingJadwal.guru_id) : null
       };
       const res = await fetch('/api/jadwal', {
@@ -683,7 +688,18 @@ export default function JadwalPage() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Kegiatan / Mapel</label>
-                <input type="text" value={editingJadwal.kegiatan} onChange={(e) => setEditingJadwal({ ...editingJadwal, kegiatan: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg" required />
+                <input type="text" value={editingJadwal.kegiatan} onChange={(e) => setEditingJadwal({ ...editingJadwal, kegiatan: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs" required />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Kelas / Kamar (Tempat)</label>
+                <select
+                  value={editingJadwal.tempat_id || ''}
+                  onChange={(e) => setEditingJadwal({ ...editingJadwal, tempat_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs"
+                >
+                  <option value="">-- Pilih Tempat --</option>
+                  {tempatOptions.map(t => <option key={t.id} value={t.id}>{t.nama}</option>)}
+                </select>
               </div>
               <div className="relative" ref={guruDropdownRefEdit}>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Guru Pengajar</label>

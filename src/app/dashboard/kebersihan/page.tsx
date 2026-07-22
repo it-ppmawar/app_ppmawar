@@ -103,10 +103,14 @@ export default function KebersIhanPage() {
       .then(d => {
         if (d.success) {
           setUser(d.user);
-          if ((d.user.role === 'pengurus_asrama' || d.user.role === 'pengasuh') && d.user.real_name) {
-            const m = d.user.real_name.match(/asrama\s+([a-z])/i);
-            if (m) setActiveTab(m[1].toUpperCase());
-            if (d.user.real_name.toLowerCase().includes('tahfid')) setActiveTab('Tahfid');
+          if (d.user.role === 'pengurus_asrama' || d.user.role === 'pengasuh') {
+            const str = `${d.user.real_name || ''} ${d.user.username || ''} ${d.user.nama || ''} ${d.user.asrama || ''}`;
+            if (/tahfid/i.test(str)) {
+              setActiveTab('Tahfid');
+            } else {
+              const m = str.match(/asrama\s+([a-f])/i) || str.match(/(?:asrama|pengasuh)[_\-\s]?([a-f])(?:\b|_|\s|$)/i);
+              if (m) setActiveTab(m[1].toUpperCase());
+            }
           }
         }
       });
@@ -388,8 +392,15 @@ export default function KebersIhanPage() {
         ))}
       </div>
 
-      {/* Tabs Asrama — Semua full-width on top, asrama tabs below */}
-      {isAdmin && (
+      {/* Tabs Asrama — Khusus pengurus_asrama hanya tampilkan tab asrama terkait */}
+      {user?.role === 'pengurus_asrama' ? (
+        <div className="bg-white dark:bg-gray-900 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 w-full text-center">
+          <div className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow-sm w-full">
+            <MapPin size={16} />
+            <span>Pengaturan: {activeTab === 'Tahfid' ? 'Asrama Tahfid' : `Asrama ${activeTab}`}</span>
+          </div>
+        </div>
+      ) : isAdmin ? (
         <div className="space-y-2">
           {/* Tab Semua — full width */}
           <button
@@ -411,7 +422,7 @@ export default function KebersIhanPage() {
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* View Toggle & Filters */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 space-y-3">

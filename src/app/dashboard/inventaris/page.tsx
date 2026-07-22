@@ -80,11 +80,15 @@ export default function InventarisPage() {
       .then(data => {
         if (data.success) {
            setUser(data.user);
-           // Jika pengurus asrama, otomatis tab ke asramanya
-           if (data.user.role === 'pengurus_asrama' && data.user.nama) {
-             const m = data.user.nama.match(/asrama\s+([a-z])/i);
-             if (m) setActiveTab(m[1].toUpperCase());
-           }
+          if (data.user.role === 'pengurus_asrama') {
+            const str = `${data.user.real_name || ''} ${data.user.username || ''} ${data.user.nama || ''} ${data.user.asrama || ''}`;
+            if (/tahfid/i.test(str)) {
+              setActiveTab('Tahfid');
+            } else {
+              const m = str.match(/asrama\s+([a-f])/i) || str.match(/(?:asrama|pengasuh)[_\-\s]?([a-f])(?:\b|_|\s|$)/i);
+              if (m) setActiveTab(m[1].toUpperCase());
+            }
+          }
         }
       });
     fetchData();
@@ -343,49 +347,53 @@ export default function InventarisPage() {
         </div>
       </div>
 
-      {/* Tabs Asrama */}
-      <div className="flex flex-col gap-2 w-full">
-        {/* Semua — Baris tersendiri di atas, memanjang memenuhi sisi kanan kiri */}
-        <div className="bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full">
-          <button
-            onClick={() => setActiveTab('Semua')}
-            className={`w-full flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
-              activeTab === 'Semua'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-            }`}
-          >
-            <Archive size={16}/>
-            Semua Asrama
-            <span className={`text-[10px] px-3.5 py-0.5 rounded-full font-extrabold transition-colors ${
-              activeTab === 'Semua' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-            }`}>{items.length}</span>
-          </button>
+      {/* Tabs Asrama — Khusus pengurus_asrama hanya tampilkan tab asrama terkait */}
+      {user?.role === 'pengurus_asrama' ? (
+        <div className="bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full text-center">
+          <div className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-extrabold text-xs rounded-xl shadow-sm w-full">
+            <MapPin size={16} />
+            <span>Pengaturan: {activeTab === 'Tahfid' ? 'Asrama Tahfid' : `Asrama ${activeTab}`}</span>
+          </div>
         </div>
-
-        {/* Asrama lainnya — berdampingan */}
-        <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto scrollbar-none gap-1.5 w-full">
-          {dorms.filter(d => d !== 'Semua').map(dorm => {
-            if (user?.role === 'pengurus_asrama') {
-               const myDorm = (user?.nama || '').match(/asrama\s+([a-z])/i)?.[1]?.toUpperCase();
-               if (myDorm && dorm !== myDorm) return null;
-            }
-            return (
+      ) : (
+        <div className="flex flex-col gap-2 w-full">
+          {/* Semua — Baris tersendiri di atas, memanjang memenuhi sisi kanan kiri */}
+          <div className="bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full">
             <button
-              key={dorm}
-              onClick={() => setActiveTab(dorm)}
-              className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
-                activeTab === dorm
+              onClick={() => setActiveTab('Semua')}
+              className={`w-full flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                activeTab === 'Semua'
                   ? 'bg-indigo-600 text-white shadow-md'
                   : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
               }`}
             >
-              <MapPin size={16}/>
-              {dorm === 'Tahfid' ? 'Tahfid' : `Asrama ${dorm}`}
+              <Archive size={16}/>
+              Semua Asrama
+              <span className={`text-[10px] px-3.5 py-0.5 rounded-full font-extrabold transition-colors ${
+                activeTab === 'Semua' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+              }`}>{items.length}</span>
             </button>
-          )})}
+          </div>
+
+          {/* Asrama lainnya — berdampingan */}
+          <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto scrollbar-none gap-1.5 w-full">
+            {dorms.filter(d => d !== 'Semua').map(dorm => (
+              <button
+                key={dorm}
+                onClick={() => setActiveTab(dorm)}
+                className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                  activeTab === dorm
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                <MapPin size={16}/>
+                {dorm === 'Tahfid' ? 'Tahfid' : `Asrama ${dorm}`}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {viewMode === 'daftar' ? (
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
