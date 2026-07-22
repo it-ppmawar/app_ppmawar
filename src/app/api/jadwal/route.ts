@@ -41,11 +41,6 @@ export async function GET() {
       }
     } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (namaAsrama) {
-        if (role === 'pengasuh') {
-          // Pengasuh hanya untuk asrama/kegiatan pesantren, bukan madrasah (madin/quran)
-          whereClauseMadin = '0=1';
-          whereClauseQuran = '0=1';
-        } else {
           // Jadwal Madin: kelas yang ada santri dari asrama ini
           whereClauseMadin = `j.kelas_madin_id IN (
             SELECT DISTINCT m.kelas_madin_id FROM murid m
@@ -66,7 +61,6 @@ export async function GET() {
           )`;
           paramsMadin = [namaAsrama];
           paramsQuran = [namaAsrama, `%${namaAsrama}%`];
-        }
         // Kegiatan: kamar yang masuk asrama ini
         whereClauseKegiatan = `j.kamar_id IN (
           SELECT kamar_id FROM kamar WHERE nama_asrama = ?

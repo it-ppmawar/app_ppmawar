@@ -152,8 +152,8 @@ export default function JadwalPage() {
     fetchData();
   }, []);
 
-  // Roles yang selalu melihat semua 3 tab jadwal
-  const isFullTabRole = ['admin', 'staff', 'pengasuh'].includes(role);
+  // Roles yang selalu melihat semua 3 tab jadwal (terlepas dari data)
+  const isFullTabRole = ['admin', 'staff'].includes(role);
 
   const fetchData = async () => {
     setLoading(true);
@@ -173,13 +173,16 @@ export default function JadwalPage() {
     }
   };
 
-  // Compute available tabs — admin, staff, dan pengasuh selalu lihat semua tab
+  // Compute available tabs
+  // - admin & staff: selalu lihat semua 3 tab
+  // - pengasuh: tabs muncul otomatis sesuai data yang dikembalikan backend (sudah difilter per asrama)
+  // - role lain: tabs muncul hanya jika ada datanya
   const availableTabs = (['quran', 'madin', 'kegiatan'] as const).filter((tipe) => {
     if (isFullTabRole) return true;
     return jadwal.some((j) => j.tipe === tipe);
   });
 
-  // Auto-switch activeTab if current tab not available for this user
+  // Auto-switch activeTab if current tab not available
   useEffect(() => {
     if (loading || isFullTabRole) return;
     if (availableTabs.length > 0 && !availableTabs.includes(activeTab)) {
