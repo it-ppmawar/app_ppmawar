@@ -6,6 +6,10 @@ on:
       - main
       - feature/development # Menjalankan workflow saat push ke main atau feature/development
 
+concurrency:
+  group: deploy-cpanel
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -30,6 +34,7 @@ jobs:
         run: |
           mkdir -p deploy_dist/tmp
           touch deploy_dist/tmp/restart.txt
+          rm -rf .next/cache
           cp -r .next deploy_dist/
           cp -r public deploy_dist/
           cp package.json deploy_dist/
