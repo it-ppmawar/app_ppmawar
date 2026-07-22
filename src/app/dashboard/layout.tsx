@@ -367,8 +367,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             )}
 
-            {/* Banner Reminder Sidik Jari */}
-            {webAuthnSupported && user && !user.has_fingerprint && (['guru', 'wali_murid', 'petugas', 'pengasuh', 'pengurus_asrama', 'petugas_umum', 'petugas_sarpras', 'petugas_inventaris', 'petugas_kebersihan'].includes(user.role)) && (
+            {/* Banner Reminder Sidik Jari — hanya tampil untuk role yg punya fitur WebAuthn di halaman profil */}
+            {webAuthnSupported && user && !user.has_fingerprint && (['guru', 'wali_murid'].includes(user.role)) && (
               <div className="px-4 mb-5">
                 <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-2xl p-3 shadow-sm relative overflow-hidden">
                   <div className="absolute -top-4 -right-4 w-16 h-16 bg-indigo-100 dark:bg-indigo-800/30 rounded-full opacity-50 pointer-events-none"></div>
