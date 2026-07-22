@@ -80,7 +80,7 @@ export default function InventarisPage() {
       .then(data => {
         if (data.success) {
            setUser(data.user);
-          if (data.user.role === 'pengurus_asrama') {
+          if (data.user.role === 'pengurus_asrama' || data.user.role === 'pengasuh') {
             const str = `${data.user.real_name || ''} ${data.user.username || ''} ${data.user.nama || ''} ${data.user.asrama || ''}`;
             if (/tahfid/i.test(str)) {
               setActiveTab('Tahfid');

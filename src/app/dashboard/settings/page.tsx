@@ -35,8 +35,8 @@ export default function SettingsPage() {
         setSettings({
           absensi_otomatis: json.data.absensi_otomatis_guru === '1',
           mode_libur: json.data.mode_libur === '1',
-          waktu_tenggang: parseInt(json.data.waktu_tenggang_absensi) || 2,
-          waktu_mulai: parseInt(json.data.waktu_mulai_absensi) || 30,
+          waktu_tenggang: isNaN(parseInt(json.data.waktu_tenggang_absensi)) ? 2 : parseInt(json.data.waktu_tenggang_absensi),
+          waktu_mulai: isNaN(parseInt(json.data.waktu_mulai_absensi)) ? 30 : parseInt(json.data.waktu_mulai_absensi),
           lat_pesantren: json.data.lat_pesantren || '',
           lng_pesantren: json.data.lng_pesantren || '',
           radius_absen: parseInt(json.data.radius_absen) || 50,
@@ -436,10 +436,13 @@ export default function SettingsPage() {
             <div className="flex items-center gap-4">
               <input 
                 type="number" 
-                min="1" 
+                min="0" 
                 max="24" 
                 value={settings.waktu_tenggang}
-                onChange={(e) => setSettings({ ...settings, waktu_tenggang: parseInt(e.target.value) || 1 })}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setSettings({ ...settings, waktu_tenggang: isNaN(val) ? 0 : val });
+                }}
                 className="w-24 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-4 py-2 rounded-xl text-center font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 transition-all"
               />
               <span className="text-sm font-bold text-gray-400">Jam setelah kelas dimulai</span>
