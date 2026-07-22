@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - feature/development # Menjalankan workflow saat push ke main atau feature/development
 
 concurrency:
   group: deploy-cpanel
