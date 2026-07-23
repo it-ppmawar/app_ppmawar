@@ -101,7 +101,9 @@ export async function POST(request: Request) {
       muridId: user.murid_id,
       kamarId: user.kamar_id,
       namaAsrama: user.nama_asrama || null,
-      isPengasuh: !!user.is_pengasuh
+      asrama: user.asrama || user.nama_asrama || null,
+      isPengasuh: !!user.is_pengasuh,
+      isPengurusAsrama: !!user.is_pengurus_asrama
     };
 
     const token = signToken(payload);

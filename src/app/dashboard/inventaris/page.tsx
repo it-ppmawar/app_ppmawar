@@ -80,8 +80,8 @@ export default function InventarisPage() {
       .then(data => {
         if (data.success) {
            setUser(data.user);
-          if (data.user.role === 'pengurus_asrama' || data.user.role === 'pengasuh') {
-            const str = `${data.user.real_name || ''} ${data.user.username || ''} ${data.user.nama || ''} ${data.user.asrama || ''}`;
+          if (data.user.role === 'pengurus_asrama' || data.user.role === 'pengasuh' || (data.user.role === 'guru' && (data.user.is_pengasuh || data.user.is_pengurus_asrama || data.user.asrama))) {
+            const str = `${data.user.asrama || ''} ${data.user.real_name || ''} ${data.user.username || ''} ${data.user.nama || ''}`;
             if (/tahfid/i.test(str)) {
               setActiveTab('Tahfid');
             } else {
@@ -265,8 +265,10 @@ export default function InventarisPage() {
 
   const dorms = ['Semua', 'A', 'B', 'C', 'D', 'E', 'F', 'Tahfid'];
 
-  const canAddDelete = user?.role === 'admin' || user?.role === 'staff';
-  const canEdit = canAddDelete || ['petugas_sarpras', 'pengurus_asrama', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '');
+  const canAddDelete = user?.role === 'admin' || user?.role === 'staff'
+    || ['petugas_inventaris', 'petugas_inventaris_umum', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh'].includes(user?.role || '')
+    || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama));
+  const canEdit = canAddDelete || true; // semua role yang punya akses halaman inventaris boleh edit kondisi laporan
   const canUpdateLaporan = canAddDelete || ['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '');
   // Petugas inventaris umum dan sarpras lihat semua tab asrama seperti admin
   // pengasuh & pengurus_asrama hanya lihat tab asrama mereka sendiri
@@ -352,8 +354,8 @@ export default function InventarisPage() {
         </div>
       </div>
 
-      {/* Tabs Asrama — pengurus_asrama & pengasuh hanya tampilkan tab asrama terkait */}
-      {(user?.role === 'pengurus_asrama' || user?.role === 'pengasuh') ? (
+      {/* Tabs Asrama — pengurus_asrama & pengasuh & guru peran ganda hanya tampilkan tab asrama terkait */}
+      {(user?.role === 'pengurus_asrama' || user?.role === 'pengasuh' || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama))) ? (
         <div className="bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full text-center">
           <div className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-extrabold text-xs rounded-xl shadow-sm w-full">
             <MapPin size={16} />

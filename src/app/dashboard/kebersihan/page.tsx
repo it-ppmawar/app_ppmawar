@@ -97,10 +97,11 @@ export default function KebersIhanPage() {
   const isAdmin = user?.role === 'admin' || user?.role === 'staff';
   // Petugas umum dan sarpras lihat semua tab asrama seperti admin
   // pengasuh & pengurus_asrama hanya lihat tab asrama mereka sendiri
+  const isDoubleRoleAsrama = user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama);
   const showAllTabs = isAdmin
     || user?.role === 'petugas_kebersihan_umum'
     || user?.role === 'petugas_sarpras';
-  const isPengasuhOrAdmin = isAdmin || ['pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || (user?.role === 'guru' && user?.is_pengasuh);
+  const isPengasuhOrAdmin = isAdmin || ['pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || isDoubleRoleAsrama;
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -108,8 +109,8 @@ export default function KebersIhanPage() {
       .then(d => {
         if (d.success) {
           setUser(d.user);
-          if (d.user.role === 'pengurus_asrama' || d.user.role === 'pengasuh') {
-            const str = `${d.user.real_name || ''} ${d.user.username || ''} ${d.user.nama || ''} ${d.user.asrama || ''}`;
+          if (d.user.role === 'pengurus_asrama' || d.user.role === 'pengasuh' || (d.user.role === 'guru' && (d.user.is_pengasuh || d.user.is_pengurus_asrama || d.user.asrama))) {
+            const str = `${d.user.asrama || ''} ${d.user.real_name || ''} ${d.user.username || ''} ${d.user.nama || ''}`;
             if (/tahfid/i.test(str)) {
               setActiveTab('Tahfid');
             } else {
@@ -348,7 +349,7 @@ export default function KebersIhanPage() {
           >
             <TableProperties size={14} /> Excel
           </button>
-          {isAdmin && (
+          {isPengasuhOrAdmin && (
             <>
               <button
                 onClick={() => downloadTemplate('kebersihan')}
@@ -397,8 +398,8 @@ export default function KebersIhanPage() {
         ))}
       </div>
 
-      {/* Tabs Asrama — pengurus_asrama & pengasuh hanya tampilkan tab asrama terkait */}
-      {(user?.role === 'pengurus_asrama' || user?.role === 'pengasuh') ? (
+      {/* Tabs Asrama — pengurus_asrama & pengasuh & guru peran ganda hanya tampilkan tab asrama terkait */}
+      {(user?.role === 'pengurus_asrama' || user?.role === 'pengasuh' || isDoubleRoleAsrama) ? (
         <div className="bg-white dark:bg-gray-900 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 w-full text-center">
           <div className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow-sm w-full">
             <MapPin size={16} />
@@ -468,7 +469,7 @@ export default function KebersIhanPage() {
             <div className="bg-white dark:bg-gray-900 rounded-2xl p-12 text-center border border-dashed border-gray-200 dark:border-gray-700">
               <Trash2 size={40} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
               <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Belum ada item kebersihan</p>
-              {isAdmin && <button onClick={openAddItem} className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors">+ Tambah Item</button>}
+              {isPengasuhOrAdmin && <button onClick={openAddItem} className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors">+ Tambah Item</button>}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

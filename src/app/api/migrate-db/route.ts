@@ -45,6 +45,22 @@ export async function GET() {
       results.push('users.is_pengasuh already exists or error: ' + e.message);
     }
 
+    // Add is_pengurus_asrama to users (for guru who also serve as pengurus asrama)
+    try {
+      await pool.execute('ALTER TABLE users ADD COLUMN is_pengurus_asrama TINYINT(1) NOT NULL DEFAULT 0');
+      results.push('Added is_pengurus_asrama to users');
+    } catch (e: any) {
+      results.push('users.is_pengurus_asrama already exists or error: ' + e.message);
+    }
+
+    // Add asrama to users (for double-role guru assigned to specific dorm)
+    try {
+      await pool.execute('ALTER TABLE users ADD COLUMN asrama VARCHAR(50) NULL');
+      results.push('Added asrama to users');
+    } catch (e: any) {
+      results.push('users.asrama already exists or error: ' + e.message);
+    }
+
     // Modify users.role enum to support all specialized roles
     try {
       await pool.execute("ALTER TABLE users MODIFY COLUMN role ENUM('admin','wali_kelas','wali_murid','guru','staff','pengurus_asrama','tamu','pengasuh','petugas_sarpras','petugas','petugas_umum','petugas_inventaris','petugas_inventaris_umum','petugas_kebersihan','petugas_kebersihan_umum') NOT NULL");

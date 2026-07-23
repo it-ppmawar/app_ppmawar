@@ -36,7 +36,9 @@ export default function UsersManagementPage() {
     nama: '',
     nip: '',
     kamar_id: null as number | null,
-    is_pengasuh: false
+    is_pengasuh: false,
+    is_pengurus_asrama: false,
+    asrama: ''
   });
 
   const fetchUsers = async () => {
@@ -154,7 +156,9 @@ export default function UsersManagementPage() {
         nama: user.nama,
         nip: user.nip || '',
         kamar_id: user.kamar_id || null,
-        is_pengasuh: !!user.is_pengasuh
+        is_pengasuh: !!user.is_pengasuh,
+        is_pengurus_asrama: !!user.is_pengurus_asrama,
+        asrama: user.asrama || ''
       });
     } else {
       setEditingId(null);
@@ -165,7 +169,9 @@ export default function UsersManagementPage() {
         nama: '',
         nip: '',
         kamar_id: null,
-        is_pengasuh: false
+        is_pengasuh: false,
+        is_pengurus_asrama: false,
+        asrama: ''
       });
     }
     setShowModal(true);
@@ -492,7 +498,8 @@ export default function UsersManagementPage() {
                             {(u.nama || u.username || 'US').substring(0,2).toUpperCase()}
                           </div>
                           {u.nama || u.username || 'User Tanpa Nama'}
-                          {u.role === 'guru' && u.is_pengasuh ? <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 rounded-full">+ PENGASUH</span> : null}
+                          {u.role === 'guru' && u.is_pengasuh ? <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 rounded-full">+ PENGASUH {u.asrama ? `(${u.asrama})` : ''}</span> : null}
+                          {u.role === 'guru' && u.is_pengurus_asrama ? <span className="text-[9px] font-extrabold px-1.5 py-0.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 rounded-full">+ PENGURUS {u.asrama ? `(${u.asrama})` : ''}</span> : null}
                         </div>
                         {u.nip && <div className="text-[11px] text-gray-400 font-mono mt-1 ml-10">NIP: {u.nip}</div>}
                       </td>
@@ -685,20 +692,61 @@ export default function UsersManagementPage() {
                 <input type="password" required={!editingId} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500" />
               </div>
 
-              {/* Checkbox is_pengasuh - hanya muncul untuk role guru */}
+              {/* Peran Ganda & Akses Asrama - hanya muncul untuk role guru */}
               {formData.role === 'guru' && (
-                <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/50 rounded-xl">
-                  <input
-                    id="is_pengasuh"
-                    type="checkbox"
-                    checked={!!formData.is_pengasuh}
-                    onChange={e => setFormData({...formData, is_pengasuh: e.target.checked})}
-                    className="w-4 h-4 accent-purple-600 rounded"
-                  />
-                  <label htmlFor="is_pengasuh" className="text-xs font-bold text-purple-700 dark:text-purple-300 cursor-pointer">
-                    Guru ini juga bertindak sebagai Pengasuh Asrama
-                    <span className="block font-normal text-purple-500 dark:text-purple-400 mt-0.5">Memungkinkan akses fitur Pengasuh & login sidik jari (peran ganda)</span>
+                <div className="space-y-3 p-3.5 bg-purple-50/70 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/50 rounded-2xl">
+                  <div className="text-xs font-bold text-purple-800 dark:text-purple-300">
+                    Peran Ganda (Akses Fitur Asrama)
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="is_pengasuh"
+                      type="checkbox"
+                      checked={!!formData.is_pengasuh}
+                      onChange={e => setFormData({...formData, is_pengasuh: e.target.checked})}
+                      className="w-4 h-4 accent-purple-600 rounded"
+                    />
+                    <label htmlFor="is_pengasuh" className="text-xs font-bold text-gray-700 dark:text-gray-300 cursor-pointer">
+                      Guru ini juga bertindak sebagai <span className="text-purple-600 dark:text-purple-400 font-extrabold">Pengasuh Asrama</span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="is_pengurus_asrama"
+                      type="checkbox"
+                      checked={!!formData.is_pengurus_asrama}
+                      onChange={e => setFormData({...formData, is_pengurus_asrama: e.target.checked})}
+                      className="w-4 h-4 accent-indigo-600 rounded"
+                    />
+                    <label htmlFor="is_pengurus_asrama" className="text-xs font-bold text-gray-700 dark:text-gray-300 cursor-pointer">
+                      Guru ini juga bertindak sebagai <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">Pengurus Asrama</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Selection Asrama Binaan / Kelolaan */}
+              {(formData.role === 'pengurus_asrama' || formData.role === 'pengasuh' || (formData.role === 'guru' && (formData.is_pengasuh || formData.is_pengurus_asrama))) && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">
+                    Asrama Binaan / Kelolaan
                   </label>
+                  <select
+                    value={formData.asrama}
+                    onChange={e => setFormData({ ...formData, asrama: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-gray-800 dark:text-gray-200"
+                  >
+                    <option value="">-- Pilih Asrama --</option>
+                    <option value="Asrama A">Asrama A</option>
+                    <option value="Asrama B">Asrama B</option>
+                    <option value="Asrama C">Asrama C</option>
+                    <option value="Asrama D">Asrama D</option>
+                    <option value="Asrama E">Asrama E</option>
+                    <option value="Asrama F">Asrama F</option>
+                    <option value="Tahfid">Asrama Tahfid</option>
+                  </select>
                 </div>
               )}
 
