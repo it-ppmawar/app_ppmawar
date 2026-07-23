@@ -527,7 +527,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             </li>
             {/* Kebersihan & Sampah - di bawah Ketertiban Murid */}
-            {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || (user?.role === 'guru' && user?.is_pengasuh) ? (
+            {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama)) ? (
             <li>
               <Link href="/dashboard/kebersihan" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/kebersihan') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
                 <Trash2 size={18} /> <span className="text-sm">Kebersihan & Sampah</span>
@@ -580,7 +580,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </li>
             )}
             {/* Inventaris Asrama - di bawah Kamar Asrama */}
-            {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '') || (user?.role === 'guru' && user?.is_pengasuh) ? (
+            {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '') || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama)) ? (
               <li>
                 <Link href="/dashboard/inventaris" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/inventaris') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
                   <Archive size={18} /> <span className="text-sm">Inventaris Asrama</span>

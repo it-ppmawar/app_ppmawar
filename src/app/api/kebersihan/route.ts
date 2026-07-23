@@ -15,11 +15,11 @@ export async function GET(request: Request) {
     const payload = verifyToken(token) as any;
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
-    const { role, userId, username, isPengasuh } = payload;
+    const { role, userId, username, isPengasuh, isPengurusAsrama } = payload;
     const tokenAsrama = payload.namaAsrama || null;
 
-    // Guru hanya boleh jika is_pengasuh
-    if (role === 'guru' && !isPengasuh) {
+    // Guru hanya boleh jika is_pengasuh atau is_pengurus_asrama
+    if (role === 'guru' && !isPengasuh && !isPengurusAsrama) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
     if (!ALLOWED_ROLES.includes(role)) {

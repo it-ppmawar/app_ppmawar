@@ -7,7 +7,23 @@ export async function resolveAsrama(
   username: string,
   tokenAsrama: string | null
 ): Promise<string | null> {
-  if (tokenAsrama) return tokenAsrama;
+  if (tokenAsrama) {
+    if (tokenAsrama.startsWith('Asrama ') || tokenAsrama === 'Semua') return tokenAsrama;
+    return `Asrama ${tokenAsrama}`;
+  }
+
+  // Coba cari dari database users.asrama secara langsung
+  try {
+    const [uRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT asrama FROM users WHERE id = ? AND asrama IS NOT NULL AND asrama != '' LIMIT 1`,
+      [userId]
+    );
+    if (uRows.length > 0 && uRows[0].asrama) {
+      const val = uRows[0].asrama;
+      if (val.startsWith('Asrama ') || val === 'Semua') return val;
+      return `Asrama ${val}`;
+    }
+  } catch (e) {}
 
   // Coba cari dari database users -> kamar (relasi langsung)
   try {

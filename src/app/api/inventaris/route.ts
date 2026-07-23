@@ -14,12 +14,14 @@ export async function GET(request: Request) {
     const payload = verifyToken(token) as any;
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
-    const { role, userId, username } = payload;
+    const { role, userId, username, isPengasuh, isPengurusAsrama } = payload;
     const tokenAsrama = payload.namaAsrama || null;
 
     // Cek akses
     const allowedRoles = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas_inventaris', 'petugas_inventaris_umum'];
-    if (!allowedRoles.includes(role)) {
+    const isDoubleRoleGuru = role === 'guru' && (isPengasuh || isPengurusAsrama);
+
+    if (!allowedRoles.includes(role) && !isDoubleRoleGuru) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
 
@@ -31,8 +33,8 @@ export async function GET(request: Request) {
     let whereClause = 'WHERE 1=1';
     let params: any[] = [];
 
-    // Jika pengurus asrama, batasi hanya asramanya sendiri
-    if (role === 'pengurus_asrama') {
+    // Jika pengurus asrama, pengasuh, atau guru peran ganda, batasi ke asramanya sendiri
+    if (['pengurus_asrama', 'pengasuh'].includes(role) || isDoubleRoleGuru) {
       const myAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
       if (!myAsrama) {
         return NextResponse.json({ error: 'Asrama tidak ditemukan untuk akun ini' }, { status: 403 });
