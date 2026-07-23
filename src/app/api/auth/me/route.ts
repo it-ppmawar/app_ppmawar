@@ -4,6 +4,8 @@ import { verifyToken } from '@/lib/auth/jwt';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
+import { ensureUserColumns } from '@/lib/ensureColumns';
+
 export async function GET() {
   try {
     const cookieStore = await cookies();
@@ -69,6 +71,7 @@ export async function GET() {
     let asramaVal = payload.asrama || payload.namaAsrama || null;
     try {
       if (payload.userId) {
+        await ensureUserColumns();
         const [uRows] = await pool.execute<RowDataPacket[]>('SELECT is_pengasuh, is_pengurus_asrama, asrama FROM users WHERE id = ? LIMIT 1', [payload.userId]);
         if (uRows.length > 0) {
           isPengasuh = !!uRows[0].is_pengasuh;

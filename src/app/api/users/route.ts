@@ -5,6 +5,8 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 import bcrypt from 'bcryptjs';
 
+import { ensureUserColumns } from '@/lib/ensureColumns';
+
 export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
@@ -15,6 +17,9 @@ export async function GET(request: Request) {
     if (!payload || ((payload as any).role !== 'admin' && (payload as any).role !== 'staff')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    // Auto-migrate missing columns if needed
+    await ensureUserColumns();
 
     const { searchParams } = new URL(request.url);
     const roleFilter = searchParams.get('role'); // 'pengelola', 'guru', 'wali_murid'
@@ -42,7 +47,17 @@ export async function GET(request: Request) {
       query += " WHERE role IN ('petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum')";
     }
 
-    const [rows] = await pool.execute<RowDataPacket[]>(query, params);
+    let rows: RowDataPacket[] = [];
+    try {
+      const [res] = await pool.execute<RowDataPacket[]>(query, params);
+      rows = res;
+    } catch (queryErr: any) {
+      // Safe fallback if column is missing despite migration
+      const fallbackQuery = query.replace('users.is_pengasuh, users.is_pengurus_asrama, users.asrama,', '');
+      const [res] = await pool.execute<RowDataPacket[]>(fallbackQuery, params);
+      rows = res.map((r: any) => ({ ...r, is_pengasuh: 0, is_pengurus_asrama: 0, asrama: null }));
+    }
+
     return NextResponse.json({ success: true, data: rows });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -59,6 +74,8 @@ export async function POST(request: Request) {
     if (!payload || payload.role !== 'admin') {
       return NextResponse.json({ error: 'Hanya Admin Utama yang dapat menambah user' }, { status: 403 });
     }
+
+    await ensureUserColumns();
 
     const body = await request.json();
     const { username, password, role, nama, nip, kamar_id, is_pengasuh, is_pengurus_asrama, asrama } = body;
