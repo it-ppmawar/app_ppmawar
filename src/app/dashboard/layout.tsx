@@ -192,10 +192,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const hasMadin = userSchedules.some(s => s.tipe === 'madin');
   const hasKegiatan = userSchedules.some(s => s.tipe === 'kegiatan');
 
+  const isPengasuhRole = ['pengasuh', 'pengurus_asrama'].includes(user?.role || '') || !!user?.is_pengasuh || !!user?.isPengasuh || !!user?.is_pengurus_asrama || !!user?.isPengurusAsrama;
+
   const showQuranMadin = user?.role === 'admin' || user?.role === 'staff' || hasQuran || hasMadin;
-  const showKamarAsrama = user?.role === 'admin' || user?.role === 'staff' || hasKegiatan;
-  const showDataSantri = user?.role === 'admin' || user?.role === 'staff' || hasQuran || hasMadin || hasKegiatan;
-  const showDataGuru = user?.role === 'admin' || user?.role === 'staff' || hasQuran || hasMadin || hasKegiatan;
+  const showKamarAsrama = user?.role === 'admin' || user?.role === 'staff' || isPengasuhRole || hasKegiatan;
+  const showDataSantri = user?.role === 'admin' || user?.role === 'staff' || isPengasuhRole || hasQuran || hasMadin || hasKegiatan;
+  const showDataGuru = user?.role === 'admin' || user?.role === 'staff' || isPengasuhRole || hasQuran || hasMadin || hasKegiatan;
 
   const toggleTheme = () => {
     if (isDark) {
@@ -513,14 +515,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <BookOpen size={18} /> <span className="text-sm">Kurikulum Madin</span>
               </Link>
             </li>
-            {(['admin', 'staff', 'wali_murid', 'pengasuh'].includes(user?.role || '') || user?.is_pengasuh || user?.isPengasuh) && (
+            {(['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama', 'guru'].includes(user?.role || '') || isPengasuhRole) && (
             <li>
               <Link href="/dashboard/billing" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/billing' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
                 <CreditCard size={18} /> <span className="text-sm">Info Tagihan</span>
               </Link>
             </li>
             )}
-            {(user?.role === 'admin' || user?.role === 'pengurus_asrama' || user?.role === 'pengasuh' || user?.role === 'staff' || user?.is_pengasuh || user?.isPengasuh || user?.is_pengurus_asrama || user?.isPengurusAsrama) && (
+            {(user?.role === 'admin' || user?.role === 'pengurus_asrama' || user?.role === 'pengasuh' || user?.role === 'staff' || user?.role === 'guru' || isPengasuhRole) && (
             <li>
               <Link href="/dashboard/scan-absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/scan-absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
                 <QrCode size={18} /> <span className="text-sm">Scan Absensi</span>
@@ -533,7 +535,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             </li>
             {/* Kebersihan & Sampah - di bawah Ketertiban Murid */}
-            {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama)) ? (
+            {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || isPengasuhRole ? (
             <li>
               <Link href="/dashboard/kebersihan" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/kebersihan') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
                 <Trash2 size={18} /> <span className="text-sm">Kebersihan & Sampah</span>
@@ -586,7 +588,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </li>
             )}
             {/* Inventaris Asrama - di bawah Kamar Asrama */}
-            {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '') || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama)) ? (
+            {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '') || isPengasuhRole ? (
               <li>
                 <Link href="/dashboard/inventaris" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/inventaris') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
                   <Archive size={18} /> <span className="text-sm">Inventaris Asrama</span>
