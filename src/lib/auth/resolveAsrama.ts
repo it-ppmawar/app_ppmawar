@@ -61,18 +61,12 @@ export async function resolveAsrama(
     return 'Asrama Tahfid';
   }
 
-  // Tebak dari username - pola yang lebih luas:
+  // Tebak dari username - pola yang lebih presisi:
   // staff_asrama_a, ketua_asrama_a, pengurus_asrama_a, pengasuh_a, asrama_a, asrama-a, dll.
-  // Cocokkan: kata "asrama" atau "pengasuh" diikuti separator opsional dan huruf a-f
-  const usernameMatch = username.match(/(?:asrama|pengasuh)[_\-\s]?([a-f])(?:[_\-\s]|$)/i);
+  // Harus diikuti separator (`_`, `-`, spasi) baru huruf a-f
+  const usernameMatch = username.match(/(?:asrama|pengasuh)[_\-\s]+([a-f])(?:[_\-\s]|$)/i);
   if (usernameMatch) {
     return `Asrama ${usernameMatch[1].toUpperCase()}`;
-  }
-
-  // Tebak dari huruf di akhir username jika mengandung kata "asrama" atau "pengasuh" di mana saja
-  const anyMatch = username.match(/(?:asrama|pengasuh).*?([a-f])(?:\b|_|$)/i);
-  if (anyMatch) {
-    return `Asrama ${anyMatch[1].toUpperCase()}`;
   }
 
   return null;
