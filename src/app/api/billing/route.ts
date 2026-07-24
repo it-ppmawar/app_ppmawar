@@ -35,10 +35,21 @@ export async function GET(request: Request) {
     }
 
     // pengurus_asrama TIDAK mendapat akses billing
+    // Otorisasi peran
     const allowedRoles = ['admin', 'staff', 'wali_murid', 'pengasuh'];
     if (!allowedRoles.includes(role) && !isPengasuhUser) {
       return NextResponse.json({ error: 'Akses ditolak: Peran Anda tidak memiliki izin mengakses info tagihan.' }, { status: 403 });
     }
+
+    // Bersihkan otomatis record ganda (format lama vs format baru) jika ada
+    try {
+      await pool.execute(`
+        DELETE b1 FROM billing b1
+        JOIN billing b2 ON b1.nis = b2.nis AND b1.periode = b2.periode AND b1.kategori = b2.kategori
+        WHERE b1.nama_tagihan LIKE 'Tagihan KELAS%' 
+          AND b2.nama_tagihan LIKE 'Total Tagihan KELAS%'
+      `);
+    } catch (_) {}
 
     // JOIN dengan tabel murid untuk mendapatkan info nama_wali, no_wali/no_hp_wali, foto_url, alamat
     let query = `

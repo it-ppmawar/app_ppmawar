@@ -314,6 +314,18 @@ export async function POST(request: Request) {
 
         // === UPSERT KE DATABASE ===
         try {
+          // Hapus record tagihan google_sheet lama yang sudah tidak aktif/berubah nama untuk santri & periode ini
+          if (billingsToUpsert.length > 0) {
+            const validNames = billingsToUpsert.map(b => b.namaTagihan);
+            const placeholders = validNames.map(() => '?').join(',');
+            await pool.execute(
+              `DELETE FROM billing 
+               WHERE nis = ? AND periode = ? AND source = 'google_sheet' 
+                 AND nama_tagihan NOT IN (${placeholders})`,
+              [nis, periode, ...validNames]
+            );
+          }
+
           for (const bill of billingsToUpsert) {
             await pool.execute(
               `INSERT INTO billing (nis, nama_santri, asrama, kamar, nama_tagihan, nominal, status, periode, source, kategori)
