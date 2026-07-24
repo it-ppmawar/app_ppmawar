@@ -34,7 +34,13 @@ function NotifikasiContent() {
 
   // Tab aktif pada kartu terpadu Admin/Staff: 'auto' | 'manual' | 'info_akun'
   const [guruCardTab, setGuruCardTab] = useState<'auto' | 'manual' | 'info_akun'>('auto');
-  const [manualMode, setManualMode] = useState<'absensi' | 'info_akun'>('absensi');
+  const [manualMode, setManualMode] = useState<'absensi' | 'info_akun' | 'pembayaran'>('absensi');
+
+  // State untuk Tab Tagihan & Pembayaran
+  const [billingList, setBillingList] = useState<any[]>([]);
+  const [billingSearch, setBillingSearch] = useState('');
+  const [loadingBilling, setLoadingBilling] = useState(false);
+  const [sentBillingIds, setSentBillingIds] = useState<Record<string, boolean>>({});
 
   const isRemindParam = searchParams.get('remind') === 'true';
   const [activeReminders, setActiveReminders] = useState<any[]>([]);
