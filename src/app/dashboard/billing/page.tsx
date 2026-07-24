@@ -279,7 +279,7 @@ export default function BillingPage() {
       <div className="bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 rounded-2xl p-4 flex gap-3 text-sm backdrop-blur-sm">
         <AlertCircle className="text-blue-500 shrink-0 mt-0.5" size={20} />
         <p className="text-blue-900 dark:text-blue-200">
-          <strong>Perhatian:</strong> Data tagihan ini disinkronisasikan langsung dari sistem pusat Smart Pesantren. Jika terdapat ketidaksesuaian data, silakan hubungi pihak tata usaha (TU) pesantren.
+          <strong>Perhatian:</strong> Data tagihan ini disinkronisasikan langsung dari sistem pusat Koperasi Mawar. Jika terdapat ketidaksesuaian data, silakan hubungi pihak pembayaran (Kasir) Kopma.
         </p>
       </div>
 
@@ -429,7 +429,7 @@ export default function BillingPage() {
                 <div className="text-xs text-blue-800 dark:text-blue-200 bg-blue-50/80 dark:bg-blue-900/30 p-2.5 rounded-xl border border-blue-200/80 dark:border-blue-800/50 flex items-center gap-2">
                   <AlertCircle size={15} className="shrink-0 text-blue-500" />
                   <span>
-                    <strong>Struktur Tingkatan:</strong> <u>Wustho</u> = MA & SMK | <u>Ula</u> = MTs & SMP. Sistem pembayaran saat ini diprioritaskan untuk sekolah formal <strong>MA</strong>.
+                    <strong>Struktur Tingkatan:</strong> <u>Wustho</u> = MA & SMK | <u>Ula</u> = MTs & SMP. Sistem pembayaran saat ini diprioritaskan untuk <strong>Pondok Pesantren Matholi'ul Anwar</strong>.
                   </span>
                 </div>
               </div>
