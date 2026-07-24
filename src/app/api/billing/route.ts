@@ -18,18 +18,28 @@ export async function GET(request: Request) {
 
     const { id: userId, role, username } = payload;
 
-    const allowedRoles = ['admin', 'staff', 'wali_murid', 'pengasuh'];
+    const allowedRoles = ['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama'];
     if (!allowedRoles.includes(role)) {
       return NextResponse.json({ error: 'Akses ditolak: Peran tidak diizinkan' }, { status: 403 });
     }
 
-    let query = 'SELECT * FROM billing';
+    // JOIN dengan tabel murid untuk mendapatkan info nama_wali, no_wali/no_hp_wali, foto_url, alamat
+    let query = `
+      SELECT b.*, 
+             m.nama_wali, 
+             m.no_wali, 
+             m.foto_url, 
+             m.alamat 
+      FROM billing b
+      LEFT JOIN murid m ON b.nis = m.nis
+    `;
     let params: any[] = [];
     const conditions: string[] = [];
 
     // Parse query params
     const url = new URL(request.url);
     const kategoriFilter = url.searchParams.get('kategori'); // 'pesantren' | 'madrasah' | null
+    const nisFilter = url.searchParams.get('nis');
 
     if (role === 'wali_murid') {
       // Dapatkan NIS santri yang terhubung dengan akun wali murid ini
@@ -43,11 +53,11 @@ export async function GET(request: Request) {
         return NextResponse.json({ success: true, data: [], total_lunas: 0, total_belum: 0 });
       }
       const nis = userRows[0].nis;
-      conditions.push('nis = ?');
+      conditions.push('b.nis = ?');
       params.push(nis);
     } else if (role === 'pengasuh' || role === 'pengurus_asrama') {
       // Pengasuh hanya bisa melihat tagihan pesantren (asrama/kamar)
-      conditions.push("kategori = 'pesantren'");
+      conditions.push("b.kategori = 'pesantren'");
 
       // Dapatkan nama asrama yang dikelola
       const namaAsrama = await resolveAsrama(userId, role, username, null);
@@ -59,14 +69,20 @@ export async function GET(request: Request) {
       const matches = namaAsrama.match(/asrama\s+([a-z])/i);
       const hurufAsrama = matches ? matches[1].toUpperCase() : '';
 
-      conditions.push('(asrama = ? OR asrama = ?)');
+      conditions.push('(b.asrama = ? OR b.asrama = ?)');
       params.push(namaAsrama);
       params.push(hurufAsrama || namaAsrama);
     }
 
+    // Filter NIS spesifik jika ada dari query params
+    if (nisFilter) {
+      conditions.push('b.nis = ?');
+      params.push(nisFilter);
+    }
+
     // Filter kategori dari query param (untuk admin/staff)
     if (kategoriFilter && ['pesantren', 'madrasah'].includes(kategoriFilter)) {
-      conditions.push('kategori = ?');
+      conditions.push('b.kategori = ?');
       params.push(kategoriFilter);
     }
 
@@ -74,9 +90,11 @@ export async function GET(request: Request) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
 
+    query += ' ORDER BY b.id DESC';
+
     const [rows] = await pool.execute<RowDataPacket[]>(query, params);
 
-    // Format nominal ke number
+    // Format data billing + santri
     const resultData = rows.map((r: any) => ({
       id: r.id,
       nis: r.nis,
@@ -87,7 +105,12 @@ export async function GET(request: Request) {
       periode: r.periode,
       asrama: r.asrama,
       kamar: r.kamar,
-      kategori: r.kategori || 'pesantren'
+      kategori: r.kategori || 'pesantren',
+      // Info Tambahan Santri & Wali
+      nama_wali: r.nama_wali || '-',
+      no_wali: r.no_wali || '',
+      foto_url: r.foto_url || null,
+      alamat: r.alamat || '-'
     }));
 
     const totalLunas = resultData

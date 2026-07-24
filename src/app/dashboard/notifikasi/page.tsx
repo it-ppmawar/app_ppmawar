@@ -34,7 +34,13 @@ function NotifikasiContent() {
 
   // Tab aktif pada kartu terpadu Admin/Staff: 'auto' | 'manual' | 'info_akun'
   const [guruCardTab, setGuruCardTab] = useState<'auto' | 'manual' | 'info_akun'>('auto');
-  const [manualMode, setManualMode] = useState<'absensi' | 'info_akun'>('absensi');
+  const [manualMode, setManualMode] = useState<'absensi' | 'info_akun' | 'pembayaran'>('absensi');
+
+  // State untuk Tab Tagihan & Pembayaran
+  const [billingList, setBillingList] = useState<any[]>([]);
+  const [billingSearch, setBillingSearch] = useState('');
+  const [loadingBilling, setLoadingBilling] = useState(false);
+  const [sentBillingIds, setSentBillingIds] = useState<Record<string, boolean>>({});
 
   const isRemindParam = searchParams.get('remind') === 'true';
   const [activeReminders, setActiveReminders] = useState<any[]>([]);
@@ -47,6 +53,8 @@ function NotifikasiContent() {
 
   const defaultWaliTemplate = `Assalamu'alaikum Wr. Wb. Bapak/Ibu Wali dari Ananda *{nama_santri}*.\n\nKami dari pengurus PPMA menginformasikan perkembangan kehadiran ananda hari ini:\n\n* Kegiatan: {kegiatan}\n* Tempat/Kelas: {kelas}\n* Status Absensi: *{status}*\n\nUntuk informasi kehadiran lebih lengkap, dapat dilihat melalui tautan berikut:\n{link_laporan}\n\nDemikian informasi yang dapat kami sampaikan. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
 
+  const defaultBillingTemplate = `Assalamu'alaikum Wr. Wb.\n\nYth. Bapak/Ibu Wali dari Ananda *{nama_santri}*,\n\nSemoga Bapak/Ibu sekeluarga senantiasa dalam keadaan sehat wal \'afiat dan mendapat lindungan serta keberkahan dari Allah SWT.\n\nMelalui pesan ini, kami dari pengurus *Pondok Pesantren Miftahul Anwar (PPMA)* hendak menyampaikan informasi rincian tagihan administrasi ananda yang masih tercatat belum terlunasi:\n\n📋 *Rincian Tagihan*\n• Jenis Tagihan: {nama_tagihan}\n• Periode: {periode}\n• Total Nominal: *{nominal}*\n• Status: *⚠️ Belum Lunas*\n\nBapak/Ibu dapat melakukan konfirmasi pembayaran atau melihat informasi lebih lanjut melalui aplikasi berikut:\n🔗 https://app.ppmawar.or.id/dashboard/billing\n\nApabila Bapak/Ibu telah melakukan pembayaran, mohon konfirmasi kepada pihak Tata Usaha (TU) Pesantren agar segera diproses. Jika ada pertanyaan atau kendala, kami siap membantu.\n\nDemikian informasi ini kami sampaikan. Atas perhatian dan kerjasamanya, kami ucapkan terima kasih yang sebesar-besarnya.\n\nWassalamu\'alaikum Wr. Wb.\n\n_Pengurus PPMA_`;
+
   const defaultWaliInfoTemplate = `Assalamu'alaikum Wr. Wb. Bapak/Ibu Wali dari Ananda *{nama_santri}*.\n\nBerikut kami sampaikan informasi login default untuk mengakses aplikasi absensi PPMA:\n\n* Username: *{username}*\n* Password: *{password}*\n\nSilakan akses aplikasi pada tautan berikut: https://app.ppmawar.or.id/\n\nDemi keamanan akun, kami sarankan Bapak/Ibu untuk langsung mengubah password setelah berhasil login di halaman Profil.\n\nAtas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
 
   const defaultGuruTemplate = `Assalamu'alaikum Wr. Wb. Ustadz/Ustadzah *{nama_guru}*.\n\nKami dari pengurus PPMA menginformasikan pengingat jadwal mengajar/tugas Anda:\n\n* Kategori: {kegiatan}\n* Tempat/Kelas: {kelas}\n* Jam: {jam}\n\nLink Absensi: {link_absen}\n\nMohon untuk mengisi absensi tepat waktu. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
@@ -57,6 +65,7 @@ function NotifikasiContent() {
   const [pesanWaliInfoTemplate, setPesanWaliInfoTemplate] = useState(defaultWaliInfoTemplate);
   const [pesanGuruTemplate, setPesanGuruTemplate] = useState(defaultGuruTemplate);
   const [pesanGuruInfoTemplate, setPesanGuruInfoTemplate] = useState(defaultGuruInfoTemplate);
+  const [pesanBillingTemplate, setPesanBillingTemplate] = useState(defaultBillingTemplate);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -71,6 +80,9 @@ function NotifikasiContent() {
 
       const storedGuruInfo = localStorage.getItem('wa_template_guru_info');
       if (storedGuruInfo) setPesanGuruInfoTemplate(storedGuruInfo);
+
+      const storedBilling = localStorage.getItem('wa_template_billing');
+      if (storedBilling) setPesanBillingTemplate(storedBilling);
 
       try {
         const storageKey = 'wa_reminded_teachers';
@@ -610,11 +622,234 @@ function NotifikasiContent() {
             >
               Info Akun Wali Murid
             </button>
+            <button
+              onClick={() => {
+                setManualMode('pembayaran');
+                if (billingList.length === 0) {
+                  setLoadingBilling(true);
+                  fetch('/api/billing')
+                    .then(r => r.json())
+                    .then(d => {
+                      if (d.success) setBillingList(d.data.filter((b: any) => b.status === 'Belum'));
+                    })
+                    .catch(console.error)
+                    .finally(() => setLoadingBilling(false));
+                }
+              }}
+              className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
+                manualMode === 'pembayaran'
+                  ? 'bg-orange-500 text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
+              }`}
+            >
+              💳 Tagihan
+            </button>
           </div>
         )}
 
-        {/* Dropdown default pesan WA */}
-        <div className={`grid grid-cols-1 ${manualMode === 'info_akun' ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4 mb-6 bg-green-50/50 dark:bg-green-950/20 p-4 rounded-2xl border border-green-100 dark:border-green-900/30`}>
+        {/* ===== TAB TAGIHAN & PEMBAYARAN ===== */}
+        {manualMode === 'pembayaran' && (
+          <div className="space-y-4">
+            {/* Templat Pesan Pengingat Tagihan */}
+            <div className="bg-orange-50/30 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-900/30 rounded-2xl p-4">
+              <label className="block text-xs font-bold text-orange-800 dark:text-orange-400 mb-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span>✏️ Edit Templat Pesan Pengingat Tagihan</span>
+                <span className="text-[10px] font-normal text-gray-400">Placeholder: &#123;nama_santri&#125;, &#123;nama_tagihan&#125;, &#123;periode&#125;, &#123;nominal&#125;</span>
+              </label>
+              <textarea
+                value={pesanBillingTemplate}
+                onChange={(e) => {
+                  setPesanBillingTemplate(e.target.value);
+                  localStorage.setItem('wa_template_billing', e.target.value);
+                }}
+                rows={6}
+                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-orange-400 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
+              />
+              <button
+                onClick={() => {
+                  setPesanBillingTemplate(defaultBillingTemplate);
+                  localStorage.removeItem('wa_template_billing');
+                }}
+                className="mt-2 text-xs text-orange-600 dark:text-orange-400 hover:underline"
+              >⟳ Reset ke Templat Default</button>
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="text"
+                placeholder="Cari nama santri, NIS, atau nama wali..."
+                value={billingSearch}
+                onChange={(e) => setBillingSearch(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
+              />
+            </div>
+
+            {/* Info count */}
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {loadingBilling ? 'Memuat...' : `${billingList.filter(b => {
+                  if (!billingSearch.trim()) return true;
+                  const q = billingSearch.toLowerCase();
+                  return (b.nama_santri || '').toLowerCase().includes(q) ||
+                         (b.nis || '').toLowerCase().includes(q) ||
+                         (b.nama_wali || '').toLowerCase().includes(q);
+                }).length} santri memiliki tunggakan`}
+              </p>
+              <button
+                onClick={() => {
+                  setLoadingBilling(true);
+                  fetch('/api/billing')
+                    .then(r => r.json())
+                    .then(d => { if (d.success) setBillingList(d.data.filter((b: any) => b.status === 'Belum')); })
+                    .catch(console.error)
+                    .finally(() => setLoadingBilling(false));
+                }}
+                className="flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 font-bold"
+              >
+                <RefreshCw size={13} className={loadingBilling ? 'animate-spin' : ''} /> Refresh
+              </button>
+            </div>
+
+            {/* List Tagihan Belum Lunas */}
+            {loadingBilling ? (
+              <div className="flex justify-center py-8"><RefreshCw className="animate-spin text-orange-500" /></div>
+            ) : (() => {
+              const filteredBilling = billingList.filter(b => {
+                if (!billingSearch.trim()) return true;
+                const q = billingSearch.toLowerCase();
+                return (b.nama_santri || '').toLowerCase().includes(q) ||
+                       (b.nis || '').toLowerCase().includes(q) ||
+                       (b.nama_wali || '').toLowerCase().includes(q);
+              });
+
+              if (filteredBilling.length === 0) {
+                return (
+                  <div className="text-center py-10 bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700">
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">✅ Tidak ada tagihan yang belum lunas{billingSearch ? ` untuk "${billingSearch}"` : ''}.</p>
+                  </div>
+                );
+              }
+
+              const formatRupiahLocal = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
+
+              const getBillingWaLink = (b: any) => {
+                let phone = (b.no_wali || '').replace(/[^0-9]/g, '');
+                if (!phone) return '#';
+                if (phone.startsWith('0')) phone = '62' + phone.slice(1);
+                const msg = pesanBillingTemplate
+                  .replace(/{nama_santri}/g, b.nama_santri)
+                  .replace(/{nama_tagihan}/g, b.nama_tagihan)
+                  .replace(/{periode}/g, b.periode)
+                  .replace(/{nominal}/g, formatRupiahLocal(b.nominal));
+                return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+              };
+
+              return (
+                <div className="space-y-3">
+                  {/* Desktop table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-orange-50 dark:bg-orange-950/30 text-xs uppercase font-bold text-orange-700 dark:text-orange-400 border-b border-orange-200 dark:border-orange-900/50">
+                        <tr>
+                          <th className="px-4 py-3">Santri & Wali</th>
+                          <th className="px-4 py-3">Tagihan</th>
+                          <th className="px-4 py-3">Nominal</th>
+                          <th className="px-4 py-3 text-right">Kirim WA</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {filteredBilling.map((b, idx) => (
+                          <tr key={`${b.id}-${idx}`} className="hover:bg-orange-50/30 dark:hover:bg-orange-950/10 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="font-bold text-gray-800 dark:text-gray-100">{b.nama_santri}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">NIS: {b.nis}</div>
+                              {b.nama_wali && <div className="text-xs text-emerald-600 dark:text-emerald-400">Wali: {b.nama_wali}</div>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-gray-700 dark:text-gray-200">{b.nama_tagihan}</div>
+                              <div className="text-xs text-gray-400">{b.periode}</div>
+                            </td>
+                            <td className="px-4 py-3 font-extrabold text-red-600 dark:text-red-400">{formatRupiahLocal(b.nominal)}</td>
+                            <td className="px-4 py-3 text-right">
+                              {b.no_wali ? (
+                                <a
+                                  href={getBillingWaLink(b)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => setSentBillingIds(prev => ({ ...prev, [`${b.id}`]: true }))}
+                                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-105 active:scale-95 ${
+                                    sentBillingIds[`${b.id}`]
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border border-green-200 dark:border-green-800'
+                                      : 'bg-[#25D366] hover:bg-[#1DA851] text-white'
+                                  }`}
+                                >
+                                  <MessageCircle size={14} />
+                                  {sentBillingIds[`${b.id}`] ? 'Terkirim ✓' : 'WA Wali'}
+                                </a>
+                              ) : (
+                                <span className="text-xs text-gray-400 italic">No WA kosong</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile cards */}
+                  <div className="block md:hidden space-y-3">
+                    {filteredBilling.map((b, idx) => (
+                      <div key={`${b.id}-m-${idx}`} className={`rounded-2xl p-4 border transition-colors ${
+                        sentBillingIds[`${b.id}`]
+                          ? 'bg-green-50/30 dark:bg-green-900/10 border-green-200 dark:border-green-800'
+                          : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'
+                      }`}>
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <div className="font-extrabold text-gray-900 dark:text-white">{b.nama_santri}</div>
+                            <div className="text-xs text-gray-400 font-mono">NIS: {b.nis}</div>
+                          </div>
+                          <span className="text-xs bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 px-2.5 py-1 rounded-full font-bold border border-red-200 dark:border-red-800">
+                            Belum Lunas
+                          </span>
+                        </div>
+                        <div className="bg-orange-50/50 dark:bg-orange-950/20 p-3 rounded-xl text-xs space-y-1.5 border border-orange-100 dark:border-orange-900/30 mb-3">
+                          <div className="flex justify-between"><span className="text-gray-500">Tagihan:</span><span className="font-bold text-gray-800 dark:text-gray-100">{b.nama_tagihan}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">Periode:</span><span className="font-semibold text-gray-700 dark:text-gray-300">{b.periode}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">Nominal:</span><span className="font-extrabold text-red-600 dark:text-red-400">{formatRupiahLocal(b.nominal)}</span></div>
+                          {b.nama_wali && <div className="flex justify-between"><span className="text-gray-500">Wali:</span><span className="font-bold text-emerald-600 dark:text-emerald-400">{b.nama_wali}</span></div>}
+                        </div>
+                        {b.no_wali ? (
+                          <a
+                            href={getBillingWaLink(b)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setSentBillingIds(prev => ({ ...prev, [`${b.id}`]: true }))}
+                            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ${
+                              sentBillingIds[`${b.id}`]
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 border border-green-200 dark:border-green-800'
+                                : 'bg-[#25D366] hover:bg-[#1DA851] text-white shadow-md'
+                            }`}
+                          >
+                            <MessageCircle size={16} />
+                            {sentBillingIds[`${b.id}`] ? '✓ Pesan Terkirim' : 'Kirim WA Pengingat Tagihan'}
+                          </a>
+                        ) : (
+                          <div className="text-center text-xs text-gray-400 italic py-2">Nomor WA wali tidak tersedia</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Dropdown default pesan WA — hanya tampil untuk mode absensi & info_akun */}
+        <div className={`${manualMode === 'pembayaran' ? 'hidden' : ''} grid grid-cols-1 ${manualMode === 'info_akun' ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4 mb-6 bg-green-50/50 dark:bg-green-950/20 p-4 rounded-2xl border border-green-100 dark:border-green-900/30`}>
           <div>
             <label className="block text-xs font-bold text-green-800 dark:text-green-400 mb-1.5">Kategori Kegiatan</label>
             <select
@@ -709,22 +944,24 @@ function NotifikasiContent() {
           </div>
         )}
 
-        {/* Search bar */}
-        <div className="relative mb-4">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Ketik nama santri atau nama wali untuk mencari..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm transition-all"
-          />
-        </div>
+        {/* Search bar — hanya tampil untuk mode absensi & info_akun */}
+        {manualMode !== 'pembayaran' && (
+          <div className="relative mb-4">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Ketik nama santri atau nama wali untuk mencari..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm transition-all"
+            />
+          </div>
+        )}
 
-        {/* Hasil / List Murid */}
-        {loading ? (
+        {/* Hasil / List Murid — hanya tampil untuk mode absensi & info_akun */}
+        {manualMode !== 'pembayaran' && loading ? (
           <div className="flex justify-center p-8"><RefreshCw className="animate-spin text-green-500" /></div>
-        ) : (
+        ) : manualMode !== 'pembayaran' && (
           <>
             {/* Tampilan Desktop (Tabel) */}
             <div className="hidden md:block overflow-x-auto">
