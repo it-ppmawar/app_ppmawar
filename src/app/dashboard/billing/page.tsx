@@ -32,7 +32,7 @@ export default function BillingPage() {
   };
 
   const handleSyncBilling = async () => {
-    if (!confirm('Apakah Anda yakin ingin menyinkronkan data billing dari Google Sheets? Proses ini akan memperbarui data tagihan di database.')) {
+    if (!confirm('Apakah Anda yakin ingin menyinkronkan data billing dari Google Sheets (KELAS I, II, III)?\nProses ini akan memperbarui data tagihan di database.')) {
       return;
     }
     setSyncing(true);
@@ -40,13 +40,14 @@ export default function BillingPage() {
       const res = await fetch('/api/sync/billing', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        alert(`Sinkronisasi berhasil! ${data.inserted} data tagihan berhasil diimpor/diperbarui.`);
+        const errMsg = data.errors?.length > 0 ? `\n\nPeringatan (${data.errors.length} error):\n${data.errors.slice(0,3).join('\n')}` : '';
+        alert(`✅ Sinkronisasi berhasil!\n\n• ${data.inserted} santri diimpor/diperbarui\n• ${data.skipped} baris dilewati\n• Waktu: ${new Date(data.synced_at).toLocaleString('id-ID')}${errMsg}`);
         fetchBilling(filterKategori);
       } else {
-        alert(`Sinkronisasi gagal: ${data.error || 'Terjadi kesalahan'}`);
+        alert(`❌ Sinkronisasi gagal:\n${data.error || 'Terjadi kesalahan tidak terduga'}`);
       }
     } catch (err: any) {
-      alert(`Terjadi kesalahan jaringan: ${err.message}`);
+      alert(`❌ Terjadi kesalahan jaringan: ${err.message}`);
     } finally {
       setSyncing(false);
     }
@@ -78,22 +79,33 @@ export default function BillingPage() {
     // 1. Status Filter
     if (filterStatus !== 'Semua' && t.status !== filterStatus) return false;
 
-    // 2. Kategori Filter (if not Semua)
+    // 2. Kategori Filter
     if (filterKategori !== 'Semua') {
       if (t.kategori !== filterKategori) return false;
 
       // 3. Sub Tab Filter
       if (selectedSubTab !== 'Semua') {
         if (filterKategori === 'pesantren') {
+          // Pesantren: filter berdasarkan asrama (A-F)
           const cleanAsrama = (t.asrama || '').trim().toUpperCase();
           const targetLetter = selectedSubTab.toUpperCase();
-          const isMatch = cleanAsrama === targetLetter || 
-                          cleanAsrama === `ASRAMA ${targetLetter}` || 
-                          cleanAsrama.endsWith(` ${targetLetter}`);
+          const isMatch =
+            cleanAsrama === targetLetter ||
+            cleanAsrama === `ASRAMA ${targetLetter}` ||
+            cleanAsrama.endsWith(` ${targetLetter}`);
           if (!isMatch) return false;
         } else if (filterKategori === 'madrasah') {
-          const cleanAsrama = (t.asrama || '').trim().toUpperCase();
-          if (!cleanAsrama.includes(selectedSubTab.toUpperCase())) return false;
+          // Madrasah: filter berdasarkan nama kelas (KELAS I/II/III)
+          // Field 'asrama' pada kategori madrasah berisi nama kelas (misal: "KELAS I")
+          const cleanAsrama     = (t.asrama || '').trim().toUpperCase();
+          const cleanNamaTagihan = (t.nama_tagihan || '').trim().toUpperCase();
+          const cleanKamar      = (t.kamar || '').trim().toUpperCase();
+          const target = selectedSubTab.toUpperCase();
+          const isMatch =
+            cleanAsrama.includes(target) ||
+            cleanNamaTagihan.includes(target) ||
+            cleanKamar.includes(target);
+          if (!isMatch) return false;
         }
       }
     }
@@ -105,6 +117,7 @@ export default function BillingPage() {
         (t.nama_santri || '').toLowerCase().includes(q) ||
         (t.nis || '').toLowerCase().includes(q) ||
         (t.asrama || '').toLowerCase().includes(q) ||
+        (t.kamar || '').toLowerCase().includes(q) ||
         (t.nama_tagihan || '').toLowerCase().includes(q)
       );
     }
@@ -281,22 +294,65 @@ export default function BillingPage() {
             )}
 
             {filterKategori === 'madrasah' && (
-              <div className="flex flex-col gap-2 w-full pt-1">
-                <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Sub-Kategori: Unit Sekolah</span>
-                <div className="flex bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto scrollbar-none gap-1.5 w-full">
-                  {['Semua', 'MA', 'SMK', 'MTS', 'SMP'].map((unit) => (
-                    <button
-                      key={unit}
-                      onClick={() => setSelectedSubTab(unit)}
-                      className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
-                        selectedSubTab === unit
-                          ? 'bg-blue-500 text-white shadow-sm'
-                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
-                      }`}
-                    >
-                      {unit === 'Semua' ? 'Semua Unit' : unit}
-                    </button>
-                  ))}
+              <div className="flex flex-col gap-3 w-full pt-1">
+                {/* Sub-tab Tingkat Kelas */}
+                <div>
+                  <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block mb-1.5">Tingkat Kelas</span>
+                  <div className="flex bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto scrollbar-none gap-1.5 w-full">
+                    {[
+                      { key: 'Semua',    label: 'Semua Kelas' },
+                      { key: 'KELAS I',  label: 'Kelas I' },
+                      { key: 'KELAS II', label: 'Kelas II' },
+                      { key: 'KELAS III',label: 'Kelas III' },
+                    ].map(({ key, label }) => (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedSubTab(key)}
+                        className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                          selectedSubTab === key
+                            ? 'bg-blue-500 text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sub-tab Unit Sekolah & Diniyah (MA, MTs, Wustho, Ula) */}
+                <div>
+                  <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block mb-1.5">Unit Sekolah & Diniyah</span>
+                  <div className="flex bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto scrollbar-none gap-1.5 w-full">
+                    {[
+                      { key: 'MA',     label: 'MA (Wustho)' },
+                      { key: 'MTS',    label: 'MTs (Ula)' },
+                      { key: 'SMK',    label: 'SMK (Wustho)' },
+                      { key: 'SMP',    label: 'SMP (Ula)' },
+                      { key: 'WUSTHO', label: 'Wustho (MA/SMK)' },
+                      { key: 'ULA',    label: 'Ula (MTs/SMP)' },
+                    ].map(({ key, label }) => (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedSubTab(key)}
+                        className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                          selectedSubTab === key
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Catatan Edukasi Tingkatan */}
+                <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50/70 dark:bg-blue-900/20 p-2.5 rounded-xl border border-blue-100 dark:border-blue-800/40 flex items-center gap-2">
+                  <AlertCircle size={15} className="shrink-0 text-blue-500" />
+                  <span>
+                    <strong>Struktur Tingkatan:</strong> <u>Wustho</u> = MA & SMK | <u>Ula</u> = MTs & SMP. Currently payment integration is prioritized for formal <strong>MA</strong> students.
+                  </span>
                 </div>
               </div>
             )}
