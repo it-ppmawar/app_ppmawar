@@ -325,7 +325,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <img src={sidebarAvatar} alt="Foto Profil" className="w-full h-full object-cover" />
                   ) : (
                     <User size={24} className="text-green-800" />
-                  )}                <div>
+                  )}
+                </div>
+                <div>
                   <p className="font-bold leading-tight capitalize">{user?.real_name || user?.username || 'Memuat...'}</p>
                   <p className="text-[10px] text-green-200 uppercase">
                     {[
