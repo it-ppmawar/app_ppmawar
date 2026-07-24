@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       SELECT b.*, 
              m.nama_wali, 
              m.no_wali, 
-             m.foto_url, 
+             m.foto as foto_url, 
              m.alamat 
       FROM billing b
       LEFT JOIN murid m ON b.nis = m.nis
