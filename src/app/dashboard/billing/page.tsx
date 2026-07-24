@@ -75,6 +75,8 @@ export default function BillingPage() {
       .then(data => {
         if (data.success) {
           setUserRole(data.user.role);
+          // Hanya is_pengasuh yang memberi akses ke billing, bukan is_pengurus_asrama
+          setIsPengasuhUser(!!(data.user.is_pengasuh || data.user.isPengasuh));
         }
       })
       .catch(console.error);
@@ -212,7 +214,8 @@ export default function BillingPage() {
     );
   }
 
-  const isAccessAllowed = userRole && (['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama', 'guru'].includes(userRole) || isPengasuhUser);
+  // pengurus_asrama TIDAK mendapat akses billing; hanya pengasuh (atau guru yg juga pengasuh) yang boleh
+  const isAccessAllowed = userRole && (['admin', 'staff', 'wali_murid', 'pengasuh', 'guru'].includes(userRole) || isPengasuhUser);
 
   if (!isAccessAllowed) {
     return (
@@ -245,7 +248,7 @@ export default function BillingPage() {
             <p className="text-emerald-50 opacity-90 text-sm sm:text-base max-w-xl">
               {userRole === 'wali_murid' 
                 ? 'Pantau status pembayaran administrasi putra/putri Anda secara langsung dari sistem.' 
-                : (userRole === 'pengasuh' || userRole === 'pengurus_asrama')
+                : (userRole === 'pengasuh' || isPengasuhUser)
                 ? 'Pantau status tagihan santri di asrama Anda secara langsung dari sistem keuangan.'
                 : 'Dasbor pemantauan status tagihan santri secara menyeluruh dari sistem keuangan pusat.'}
             </p>

@@ -193,6 +193,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const hasKegiatan = userSchedules.some(s => s.tipe === 'kegiatan');
 
   const isPengasuhRole = ['pengasuh', 'pengurus_asrama'].includes(user?.role || '') || !!user?.is_pengasuh || !!user?.isPengasuh || !!user?.is_pengurus_asrama || !!user?.isPengurusAsrama;
+  // canAccessBilling: pengurus_asrama TIDAK termasuk — hanya pengasuh (role atau is_pengasuh=true)
+  const canAccessBilling = ['admin', 'staff', 'wali_murid', 'pengasuh', 'guru'].includes(user?.role || '') || !!user?.is_pengasuh || !!user?.isPengasuh;
 
   const showQuranMadin = user?.role === 'admin' || user?.role === 'staff' || hasQuran || hasMadin;
   const showKamarAsrama = user?.role === 'admin' || user?.role === 'staff' || isPengasuhRole || hasKegiatan;
@@ -515,7 +517,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <BookOpen size={18} /> <span className="text-sm">Kurikulum Madin</span>
               </Link>
             </li>
-            {(['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama', 'guru'].includes(user?.role || '') || isPengasuhRole) && (
+            {canAccessBilling && (
             <li>
               <Link href="/dashboard/billing" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/billing' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
                 <CreditCard size={18} /> <span className="text-sm">Info Tagihan</span>
