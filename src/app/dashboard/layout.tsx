@@ -325,11 +325,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <img src={sidebarAvatar} alt="Foto Profil" className="w-full h-full object-cover" />
                   ) : (
                     <User size={24} className="text-green-800" />
-                  )}
-                </div>
-                <div>
+                  )}                <div>
                   <p className="font-bold leading-tight capitalize">{user?.real_name || user?.username || 'Memuat...'}</p>
-                  <p className="text-[10px] text-green-200 uppercase">{user?.role || ''}</p>
+                  <p className="text-[10px] text-green-200 uppercase">
+                    {[
+                      user?.role,
+                      (user?.is_pengasuh || user?.isPengasuh) && user?.role !== 'pengasuh' ? 'Pengasuh' : null,
+                      (user?.is_pengurus_asrama || user?.isPengurusAsrama) && user?.role !== 'pengurus_asrama' ? 'Pengurus Asrama' : null
+                    ].filter(Boolean).join(' + ')}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -343,7 +347,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
         
           <div className="flex-1 overflow-y-auto py-4">
-            
+
             {/* Banner Mode Tamu */}
             {isTamu && (
               <div className="px-4 mb-5">
@@ -507,14 +511,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <BookOpen size={18} /> <span className="text-sm">Kurikulum Madin</span>
               </Link>
             </li>
-            {['admin', 'staff', 'wali_murid', 'pengasuh'].includes(user?.role || '') && (
+            {(['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama'].includes(user?.role || '') || user?.is_pengasuh || user?.isPengasuh || user?.is_pengurus_asrama || user?.isPengurusAsrama) && (
             <li>
               <Link href="/dashboard/billing" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/billing' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
                 <CreditCard size={18} /> <span className="text-sm">Info Tagihan</span>
               </Link>
             </li>
             )}
-            {(user?.role === 'admin' || user?.role === 'pengurus_asrama' || user?.role === 'pengasuh' || user?.role === 'staff') && (
+            {(user?.role === 'admin' || user?.role === 'pengurus_asrama' || user?.role === 'pengasuh' || user?.role === 'staff' || user?.is_pengasuh || user?.isPengasuh || user?.is_pengurus_asrama || user?.isPengurusAsrama) && (
             <li>
               <Link href="/dashboard/scan-absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/scan-absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
                 <QrCode size={18} /> <span className="text-sm">Scan Absensi</span>
