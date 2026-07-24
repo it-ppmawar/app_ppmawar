@@ -8,86 +8,80 @@
  * Terverifikasi dengan kalender resmi Jawa (Kompas, Detik, Tirto).
  */
 
-const PASARAN = ['Wage', 'Kliwon', 'Legi', 'Pahing', 'Pon'] as const;
+export const PASARAN = ['Wage', 'Kliwon', 'Legi', 'Pahing', 'Pon'] as const;
 export type Pasaran = typeof PASARAN[number];
+
+// Hari Masehi (0=Ahad/Minggu, 1=Senin, ..., 6=Sabtu)
+export const HARI_LABELS = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 /**
  * Menghitung pasaran Jawa dari tanggal Masehi.
- * @param date - Objek Date JavaScript
- * @returns Nama pasaran Jawa (Wage, Kliwon, Legi, Pahing, Pon)
  */
 export const getPasaranJawa = (date: Date): Pasaran => {
-  // Referensi: 1970-01-01 UTC = Kamis Wage (index 0 dalam array PASARAN)
   const refDate = new Date('1970-01-01T00:00:00Z');
   const targetDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const diffMs = targetDate.getTime() - refDate.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const idx = ((diffDays % 5) + 5) % 5; // Pastikan selalu positif
+  const idx = ((diffDays % 5) + 5) % 5;
   return PASARAN[idx];
-};
-
-/**
- * Mengecek apakah tanggal tertentu adalah Ahad Legi.
- * @param date - Objek Date JavaScript
- * @returns true jika hari Ahad (Minggu) dan pasaran Legi
- */
-export const isAhadLegi = (date: Date): boolean => {
-  return date.getDay() === 0 && getPasaranJawa(date) === 'Legi';
-};
-
-/**
- * Menghitung tanggal Ahad Legi berikutnya dari tanggal tertentu.
- * @param fromDate - Tanggal mulai pencarian (default: hari ini)
- * @returns Objek Date untuk Ahad Legi berikutnya
- */
-export const getNextAhadLegi = (fromDate: Date = new Date()): Date => {
-  const date = new Date(fromDate);
-  // Mulai dari hari berikutnya
-  date.setDate(date.getDate() + 1);
-  
-  // Cari sampai 365 hari ke depan (pasti ketemu dalam 35 hari = LCM(5,7))
-  for (let i = 0; i < 365; i++) {
-    if (isAhadLegi(date)) return date;
-    date.setDate(date.getDate() + 1);
-  }
-  
-  return date; // Fallback (seharusnya tidak pernah sampai sini)
-};
-
-/**
- * Menghitung daftar tanggal Ahad Legi dalam rentang waktu tertentu.
- * @param startDate - Tanggal mulai
- * @param endDate - Tanggal akhir
- * @returns Array tanggal Ahad Legi dalam rentang tersebut
- */
-export const getAhadLegiInRange = (startDate: Date, endDate: Date): Date[] => {
-  const result: Date[] = [];
-  const current = new Date(startDate);
-  
-  while (current <= endDate) {
-    if (isAhadLegi(current)) {
-      result.push(new Date(current));
-    }
-    current.setDate(current.getDate() + 1);
-  }
-  
-  return result;
 };
 
 /**
  * Mendapatkan nama hari dalam Bahasa Indonesia.
  */
 export const getHariIndonesia = (date: Date): string => {
-  const hari = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  return hari[date.getDay()];
+  return HARI_LABELS[date.getDay()];
 };
 
 /**
- * Mendapatkan weton lengkap (Hari + Pasaran) dari tanggal Masehi.
- * Contoh: "Kamis Kliwon"
+ * Mendapatkan weton lengkap (Hari + Pasaran). Contoh: "Kamis Kliwon"
  */
 export const getWeton = (date: Date): string => {
   return `${getHariIndonesia(date)} ${getPasaranJawa(date)}`;
 };
 
-export { PASARAN };
+/**
+ * Mengecek apakah tanggal tertentu adalah weton target (hari + pasaran tertentu).
+ * @param hariIndex - 0=Ahad, 1=Senin, ..., 6=Sabtu
+ */
+export const isTargetWeton = (date: Date, hariIndex: number, pasaran: Pasaran): boolean => {
+  return date.getDay() === hariIndex && getPasaranJawa(date) === pasaran;
+};
+
+/**
+ * Menghitung tanggal weton target berikutnya (hari + pasaran tertentu).
+ */
+export const getNextTargetWeton = (fromDate: Date = new Date(), hariIndex: number, pasaran: Pasaran): Date => {
+  const date = new Date(fromDate);
+  date.setDate(date.getDate() + 1);
+  for (let i = 0; i < 365; i++) {
+    if (isTargetWeton(date, hariIndex, pasaran)) return date;
+    date.setDate(date.getDate() + 1);
+  }
+  return date;
+};
+
+// --- Fungsi spesifik untuk kompatibilitas mundur ---
+
+export const isAhadLegi = (date: Date): boolean => isTargetWeton(date, 0, 'Legi');
+export const getNextAhadLegi = (fromDate: Date = new Date()): Date => getNextTargetWeton(fromDate, 0, 'Legi');
+
+export const isSabtuPon = (date: Date): boolean => isTargetWeton(date, 6, 'Pon');
+export const getNextSabtuPon = (fromDate: Date = new Date()): Date => getNextTargetWeton(fromDate, 6, 'Pon');
+
+/**
+ * Menghitung daftar tanggal weton target dalam rentang waktu tertentu.
+ */
+export const getWetonInRange = (startDate: Date, endDate: Date, hariIndex: number, pasaran: Pasaran): Date[] => {
+  const result: Date[] = [];
+  const current = new Date(startDate);
+  while (current <= endDate) {
+    if (isTargetWeton(current, hariIndex, pasaran)) result.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  return result;
+};
+
+// Kompatibilitas mundur
+export const getAhadLegiInRange = (startDate: Date, endDate: Date): Date[] =>
+  getWetonInRange(startDate, endDate, 0, 'Legi');

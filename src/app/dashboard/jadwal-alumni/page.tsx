@@ -1,8 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CalendarDays, Clock, MapPin, Plus, Edit, Trash2, FileText, Download, Upload, X, Search, Star } from 'lucide-react';
+import { CalendarDays, Clock, MapPin, Plus, Edit, Trash2, FileText, Download, Upload, X, Search, Star, Settings } from 'lucide-react';
 import { downloadTemplate } from '@/lib/downloadTemplate';
+
+const HARI_OPTIONS = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const PASARAN_OPTIONS = ['Wage', 'Kliwon', 'Legi', 'Pahing', 'Pon'];
+
+// Default: Sabtu Pon (hariIndex=6, pasaran='Pon')
+const DEFAULT_HARI_INDEX = 6;
+const DEFAULT_PASARAN = 'Pon';
 
 export default function JadwalAlumniPage() {
   const [jadwal, setJadwal] = useState<any[]>([]);
@@ -10,43 +17,23 @@ export default function JadwalAlumniPage() {
   const [role, setRole] = useState('');
   const [search, setSearch] = useState('');
 
+  // Konfigurasi hari siklus alumni
+  const [hariSiklusIndex, setHariSiklusIndex] = useState(DEFAULT_HARI_INDEX); // 6=Sabtu
+  const [pasaranSiklus, setPasaranSiklus] = useState(DEFAULT_PASARAN);        // Pon
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [tempHariIndex, setTempHariIndex] = useState(DEFAULT_HARI_INDEX);
+  const [tempPasaran, setTempPasaran] = useState(DEFAULT_PASARAN);
+
   // Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
 
-  const handleImportExcel = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!importFile) return;
-    setImporting(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', importFile);
-      formData.append('type', 'jadwal_alumni');
-      const res = await fetch('/api/import', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message);
-        setIsImportModalOpen(false);
-        setImportFile(null);
-        fetchData();
-      } else {
-        alert(data.error || 'Gagal mengimpor data');
-      }
-    } catch {
-      alert('Terjadi kesalahan koneksi');
-    } finally {
-      setImporting(false);
-    }
-  };
-
   // Pasaran Jawa
   const [wetonHariIni, setWetonHariIni] = useState('');
-  const [nextAhadLegi, setNextAhadLegi] = useState<Date | null>(null);
-  const [isAhadLegiToday, setIsAhadLegiToday] = useState(false);
+  const [nextTargetDate, setNextTargetDate] = useState<Date | null>(null);
+  const [isTargetToday, setIsTargetToday] = useState(false);
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -60,20 +47,40 @@ export default function JadwalAlumniPage() {
   const [pdfUrl, setPdfUrl] = useState('');
 
   const canEdit = role === 'admin' || role === 'staff';
+  const namaHariSiklus = HARI_OPTIONS[hariSiklusIndex] || 'Sabtu';
+  const namaWetonSiklus = `${namaHariSiklus} ${pasaranSiklus}`;
 
-  useEffect(() => {
-    // Load Javanese calendar
-    import('@/lib/javaneseCalendar').then(({ getWeton, isAhadLegi, getNextAhadLegi }) => {
+  const updateCalendar = (hariIdx: number, pasaran: string) => {
+    import('@/lib/javaneseCalendar').then(({ getWeton, isTargetWeton, getNextTargetWeton, PASARAN }) => {
       const today = new Date();
       setWetonHariIni(getWeton(today));
-      setIsAhadLegiToday(isAhadLegi(today));
-      setNextAhadLegi(getNextAhadLegi(today));
+      const isToday = isTargetWeton(today, hariIdx, pasaran as any);
+      setIsTargetToday(isToday);
+      const next = getNextTargetWeton(today, hariIdx, pasaran as any);
+      setNextTargetDate(isToday ? today : next);
     });
+  };
 
-    // Fetch role
+  useEffect(() => {
+    // Load settings & role
     fetch('/api/auth/me').then(r => r.json()).then(data => {
       if (data.success) setRole(data.user.role);
     }).catch(() => {});
+
+    // Load hari siklus dari settings
+    fetch('/api/jadwal/alumni/settings').then(r => r.json()).then(data => {
+      if (data.success && data.data) {
+        const idx = data.data.hari_siklus_alumni_index ?? DEFAULT_HARI_INDEX;
+        const pas = data.data.pasaran_siklus_alumni ?? DEFAULT_PASARAN;
+        setHariSiklusIndex(idx);
+        setPasaranSiklus(pas);
+        updateCalendar(idx, pas);
+      } else {
+        updateCalendar(DEFAULT_HARI_INDEX, DEFAULT_PASARAN);
+      }
+    }).catch(() => {
+      updateCalendar(DEFAULT_HARI_INDEX, DEFAULT_PASARAN);
+    });
 
     fetchData();
   }, []);
@@ -96,19 +103,73 @@ export default function JadwalAlumniPage() {
     return !s || j.kegiatan?.toLowerCase().includes(s) || j.tempat?.toLowerCase().includes(s) || j.keterangan?.toLowerCase().includes(s);
   });
 
-  // Hitung countdown
   const getCountdown = () => {
-    if (!nextAhadLegi) return '';
+    if (!nextTargetDate) return '';
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const target = new Date(nextAhadLegi);
+    const target = new Date(nextTargetDate);
     target.setHours(0, 0, 0, 0);
     const diff = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diff === 0) return 'Hari ini!';
     return `${diff} hari lagi`;
   };
 
   const formatTanggal = (date: Date) => {
     return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  // Simpan pengaturan hari siklus
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      const res = await fetch('/api/jadwal/alumni/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hari_siklus_alumni_index: tempHariIndex,
+          pasaran_siklus_alumni: tempPasaran
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setHariSiklusIndex(tempHariIndex);
+        setPasaranSiklus(tempPasaran);
+        updateCalendar(tempHariIndex, tempPasaran);
+        setShowSettingsModal(false);
+        alert(`Hari siklus alumni berhasil diubah ke ${HARI_OPTIONS[tempHariIndex]} ${tempPasaran}`);
+      } else {
+        alert(data.error || 'Gagal menyimpan pengaturan');
+      }
+    } catch {
+      alert('Gagal menyimpan pengaturan');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleImportExcel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('type', 'jadwal_alumni');
+      const res = await fetch('/api/import', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        setIsImportModalOpen(false);
+        setImportFile(null);
+        fetchData();
+      } else {
+        alert(data.error || 'Gagal mengimpor data');
+      }
+    } catch {
+      alert('Terjadi kesalahan koneksi');
+    } finally {
+      setImporting(false);
+    }
   };
 
   // CRUD handlers
@@ -175,9 +236,9 @@ export default function JadwalAlumniPage() {
     const exportData = filteredJadwal;
     if (exportData.length === 0) { alert('Tidak ada data untuk di-export.'); return; }
 
-    const title = 'JADWAL ALUMNI - AHAD LEGI';
-    const subtitle = nextAhadLegi ? `Ahad Legi berikutnya: ${formatTanggal(nextAhadLegi)}` : '';
-    const filename = 'Jadwal_Alumni_Ahad_Legi';
+    const title = `JADWAL ALUMNI - ${namaWetonSiklus.toUpperCase()}`;
+    const subtitle = nextTargetDate ? `${namaWetonSiklus} berikutnya: ${formatTanggal(nextTargetDate)}` : '';
+    const filename = `Jadwal_Alumni_${namaWetonSiklus.replace(' ', '_')}`;
     const columns = ['NO', 'JAM', 'KEGIATAN', 'TEMPAT', 'KETERANGAN'];
     const rows = exportData.map((item: any, idx: number) => [
       idx + 1,
@@ -249,10 +310,10 @@ export default function JadwalAlumniPage() {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-amber-800 dark:text-amber-400 drop-shadow-sm flex items-center gap-2">
-              <CalendarDays size={28} /> Jadwal Alumni — Ahad Legi
+              <CalendarDays size={28} /> Jadwal Alumni — {namaWetonSiklus}
             </h1>
             <p className="text-amber-600 dark:text-amber-300 text-sm mt-1 font-medium max-w-md">
-              Jadwal kegiatan alumni setiap Ahad Legi (siklus 35 hari).
+              Jadwal kegiatan alumni setiap {namaWetonSiklus} (siklus 35 hari).
             </p>
           </div>
           <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
@@ -293,6 +354,14 @@ export default function JadwalAlumniPage() {
                 >
                   <Upload size={14} /> Impor
                 </button>
+                {/* Tombol Pengaturan Hari Siklus */}
+                <button
+                  onClick={() => { setTempHariIndex(hariSiklusIndex); setTempPasaran(pasaranSiklus); setShowSettingsModal(true); }}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1.5"
+                  title="Atur Hari Siklus Alumni"
+                >
+                  <Settings size={14} /> Hari Siklus
+                </button>
                 <button
                   onClick={handleAdd}
                   className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
@@ -307,17 +376,17 @@ export default function JadwalAlumniPage() {
         </div>
       </div>
 
-      {/* Weton Info Cards (Outside Hero Card) */}
+      {/* Weton Info Cards */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 ${isAhadLegiToday ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 border border-green-300 dark:border-green-700 animate-pulse' : 'bg-white/70 dark:bg-gray-800/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700'}`}>
+        <div className={`px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 ${isTargetToday ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 border border-green-300 dark:border-green-700 animate-pulse' : 'bg-white/70 dark:bg-gray-800/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700'}`}>
           <CalendarDays size={16} />
           Hari ini: {wetonHariIni || '...'}
-          {isAhadLegiToday && <span className="ml-1 text-green-600">🎉 AHAD LEGI!</span>}
+          {isTargetToday && <span className="ml-1 text-green-600">🎉 {namaWetonSiklus.toUpperCase()}!</span>}
         </div>
-        {nextAhadLegi && !isAhadLegiToday && (
+        {nextTargetDate && !isTargetToday && (
           <div className="px-4 py-2.5 bg-white/70 dark:bg-gray-800/70 rounded-xl text-sm font-bold text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700 flex items-center gap-2">
             <Clock size={16} />
-            Ahad Legi berikutnya: {formatTanggal(nextAhadLegi)} ({getCountdown()})
+            {namaWetonSiklus} berikutnya: {formatTanggal(nextTargetDate)} ({getCountdown()})
           </div>
         )}
       </div>
@@ -377,9 +446,59 @@ export default function JadwalAlumniPage() {
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Form Modals */}
       <FormModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSubmit={handleSaveAdd} title="Tambah Jadwal Alumni" />
       <FormModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} onSubmit={handleSaveEdit} title="Edit Jadwal Alumni" />
+
+      {/* Settings Modal - Hari Siklus */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-sm border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
+            <div className="bg-indigo-600 dark:bg-indigo-900 p-5 text-white rounded-t-3xl flex justify-between items-center">
+              <h2 className="text-lg font-bold flex items-center gap-2"><Settings size={18} /> Hari Siklus Alumni</h2>
+              <button onClick={() => setShowSettingsModal(false)} className="text-white hover:text-gray-200"><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                Atur hari Jawa (Weton) yang digunakan sebagai siklus pertemuan alumni. Siklus 35 hari sekali (LCM 5×7).
+              </p>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Hari</label>
+                <select
+                  value={tempHariIndex}
+                  onChange={e => setTempHariIndex(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                >
+                  {HARI_OPTIONS.map((h, i) => (
+                    <option key={h} value={i}>{h}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Pasaran</label>
+                <select
+                  value={tempPasaran}
+                  onChange={e => setTempPasaran(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                >
+                  {PASARAN_OPTIONS.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-3 text-sm text-indigo-700 dark:text-indigo-300 font-bold text-center">
+                Siklus baru: {HARI_OPTIONS[tempHariIndex]} {tempPasaran}
+              </div>
+              <div className="flex justify-end gap-3 pt-1">
+                <button type="button" onClick={() => setShowSettingsModal(false)} className="px-5 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 transition-colors">Batal</button>
+                <button onClick={handleSaveSettings} disabled={savingSettings} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50">
+                  {savingSettings ? 'Menyimpan...' : 'Simpan'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PDF Preview Modal */}
       {showPdfPreview && (
