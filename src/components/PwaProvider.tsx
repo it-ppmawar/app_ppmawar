@@ -236,7 +236,7 @@ function DraggableInstallButton({ onInstall, onClose }: { onInstall: () => void,
             `}
           >
             <Download size={20} className="group-hover:animate-bounce" />
-            <span className="whitespace-nowrap select-none">Install App</span>
+            <span className="whitespace-nowrap select-none font-cinzel font-bold tracking-wider">Pasang App</span>
           </button>
         )}
       </div>

@@ -8,6 +8,9 @@ export default function DashboardPage() {
   const [greeting, setGreeting] = useState('');
   const [username, setUsername] = useState('Memuat...');
   const [role, setRole] = useState('guru');
+  const [isPengasuh, setIsPengasuh] = useState(false);
+  const [isPengurusAsrama, setIsPengurusAsrama] = useState(false);
+  const [asramaName, setAsramaName] = useState<string | null>(null);
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [showFullPic, setShowFullPic] = useState(false);
   
@@ -33,6 +36,9 @@ export default function DashboardPage() {
         if (data.success && data.user) {
           setUsername(data.user.real_name || data.user.username);
           setRole(data.user.role);
+          setIsPengasuh(!!(data.user.is_pengasuh || data.user.isPengasuh));
+          setIsPengurusAsrama(!!(data.user.is_pengurus_asrama || data.user.isPengurusAsrama));
+          setAsramaName(data.user.asrama || null);
         } else {
           setUsername('Tamu');
           setRole('');
@@ -131,9 +137,21 @@ export default function DashboardPage() {
           <p className="text-green-300 font-extrabold mt-3 text-xl drop-shadow-sm">
             {username}
           </p>
-          <span className="bg-[#022c22]/80 text-green-300 text-[10px] px-3 py-1 rounded-full mt-1 font-bold border border-green-800/50 uppercase tracking-wide">
-            {role}
-          </span>
+          <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
+            <span className="bg-[#022c22]/80 text-green-300 text-[10px] px-3 py-1 rounded-full font-bold border border-green-800/50 uppercase tracking-wide">
+              {role}
+            </span>
+            {isPengasuh && role !== 'pengasuh' && (
+              <span className="bg-emerald-900/80 text-emerald-300 text-[10px] px-3 py-1 rounded-full font-bold border border-emerald-700/50 uppercase tracking-wide">
+                + PENGASUH {asramaName ? `(${asramaName})` : ''}
+              </span>
+            )}
+            {isPengurusAsrama && role !== 'pengurus_asrama' && (
+              <span className="bg-teal-900/80 text-teal-300 text-[10px] px-3 py-1 rounded-full font-bold border border-teal-700/50 uppercase tracking-wide">
+                + PENGURUS {asramaName ? `(${asramaName})` : ''}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Tanggal — rata tengah Masehi | Hijriyah */}
@@ -169,13 +187,13 @@ export default function DashboardPage() {
         <div className={`grid gap-3 ${
           role === 'tamu'
             ? 'grid-cols-2'
-            : (role === 'admin' || role === 'pengurus_asrama' || role === 'pengasuh' || role === 'staff')
+            : (role === 'admin' || role === 'pengurus_asrama' || role === 'pengasuh' || role === 'staff' || isPengasuh || isPengurusAsrama)
             ? 'grid-cols-4'
             : role !== 'wali_murid'
             ? 'grid-cols-4'
             : 'grid-cols-3'
         }`}>
-          {(role === 'admin' || role === 'pengurus_asrama' || role === 'pengasuh' || role === 'staff') && (
+          {(role === 'admin' || role === 'pengurus_asrama' || role === 'pengasuh' || role === 'staff' || isPengasuh || isPengurusAsrama) && (
             <Link 
               href="/dashboard/scan-absen" 
               className="col-span-full flex flex-row items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-2xl border border-green-100 dark:border-green-800/50 shadow-sm hover:bg-green-100 dark:hover:bg-green-900/50 transition"
@@ -211,9 +229,9 @@ export default function DashboardPage() {
 
       {/* Pintasan cepat — Kebersihan, Inventaris, Tagihan — horizontal grid mengisi penuh */}
       {(() => {
-        const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role);
-        const showInventaris = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(role);
-        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(role);
+        const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role) || isPengasuh || isPengurusAsrama;
+        const showInventaris = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(role) || isPengasuh || isPengurusAsrama;
+        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(role) || isPengasuh || isPengurusAsrama;
         const visibleCount = [showKebersihan, showInventaris, showTagihan].filter(Boolean).length;
         if (visibleCount === 0) return null;
         return (
