@@ -21,12 +21,14 @@ export async function GET() {
       return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
     }
 
+    const userId = payload.userId || payload.id;
+
     // Check if user has fingerprint registered
     let hasFingerprint = false;
-    if (payload.userId) {
+    if (userId) {
       const [creds] = await pool.execute<RowDataPacket[]>(
         'SELECT id FROM webauthn_credentials WHERE user_id = ? LIMIT 1',
-        [payload.userId]
+        [userId]
       );
       if (creds.length > 0) hasFingerprint = true;
     }
@@ -51,10 +53,10 @@ export async function GET() {
         if (murids.length > 0) {
           realName = murids[0].nama_wali || ('Wali dari ' + murids[0].nama) || payload.username;
         }
-      } else if (payload.userId) {
+      } else if (userId) {
         const [users] = await pool.execute<RowDataPacket[]>(
           'SELECT nama FROM users WHERE id = ? LIMIT 1',
-          [payload.userId]
+          [userId]
         );
         if (users.length > 0 && users[0].nama) {
           realName = users[0].nama;
@@ -70,9 +72,9 @@ export async function GET() {
     let isPengurusAsrama = !!(payload.isPengurusAsrama);
     let asramaVal = payload.asrama || payload.namaAsrama || null;
     try {
-      if (payload.userId) {
+      if (userId) {
         await ensureUserColumns();
-        const [uRows] = await pool.execute<RowDataPacket[]>('SELECT is_pengasuh, is_pengurus_asrama, asrama FROM users WHERE id = ? LIMIT 1', [payload.userId]);
+        const [uRows] = await pool.execute<RowDataPacket[]>('SELECT is_pengasuh, is_pengurus_asrama, asrama FROM users WHERE id = ? LIMIT 1', [userId]);
         if (uRows.length > 0) {
           isPengasuh = !!uRows[0].is_pengasuh;
           isPengurusAsrama = !!uRows[0].is_pengurus_asrama;

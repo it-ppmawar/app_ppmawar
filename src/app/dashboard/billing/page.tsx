@@ -32,17 +32,26 @@ export default function BillingPage() {
   // Modal Detail Santri / Tagihan State
   const [selectedDetailItem, setSelectedDetailItem] = useState<any | null>(null);
 
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const fetchBilling = (kategori?: string) => {
     setLoading(true);
+    setErrorMsg(null);
     const params = kategori && kategori !== 'Semua' ? `?kategori=${kategori}` : '';
     fetch(`/api/billing${params}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
           setTagihan(data.data);
+        } else {
+          setErrorMsg(data.error || 'Gagal mengambil data tagihan');
+          setTagihan([]);
         }
       })
-      .catch(console.error)
+      .catch(err => {
+        setErrorMsg('Terjadi kesalahan jaringan: ' + err.message);
+        setTagihan([]);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -215,7 +224,7 @@ export default function BillingPage() {
   }
 
   // pengurus_asrama TIDAK mendapat akses billing; hanya pengasuh (atau guru yg juga pengasuh) yang boleh
-  const isAccessAllowed = userRole && (['admin', 'staff', 'wali_murid', 'pengasuh', 'guru'].includes(userRole) || isPengasuhUser);
+  const isAccessAllowed = userRole && (['admin', 'staff', 'wali_murid', 'pengasuh'].includes(userRole) || isPengasuhUser);
 
   if (!isAccessAllowed) {
     return (
@@ -273,6 +282,15 @@ export default function BillingPage() {
           <strong>Perhatian:</strong> Data tagihan ini disinkronisasikan langsung dari sistem pusat Smart Pesantren. Jika terdapat ketidaksesuaian data, silakan hubungi pihak tata usaha (TU) pesantren.
         </p>
       </div>
+
+      {errorMsg && (
+        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-2xl p-4 flex gap-3 text-sm text-red-800 dark:text-red-300">
+          <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
+          <div>
+            <strong>Gagal Memuat Data:</strong> {errorMsg}
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="bg-white dark:bg-gray-800/90 rounded-3xl shadow-md border border-gray-200/80 dark:border-gray-700/80 overflow-hidden backdrop-blur-sm">

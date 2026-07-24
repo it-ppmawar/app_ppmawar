@@ -16,23 +16,28 @@ export async function GET(request: Request) {
     const payload = verifyToken(token) as any;
     if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
-    const { id: userId, role, username } = payload;
+    const userId = payload.userId || payload.id;
+    const role = payload.role;
+    const username = payload.username;
+
     // isPengasuhUser: hanya pengasuh (is_pengasuh=true) yang dapat akses billing
     // is_pengurus_asrama TIDAK termasuk karena pengurus_asrama tidak punya hak akses billing
     let isPengasuhUser = !!(payload.isPengasuh || payload.is_pengasuh || role === 'pengasuh');
 
-    // Refresh dari DB agar selalu up-to-date (token mungkin sudah lama)
-    if (userId && !isPengasuhUser && role !== 'pengasuh') {
+    // Refresh dari DB agar selalu up-to-date (token mungkin dibuat sebelum flag set)
+    if (userId) {
       try {
         const [uRows] = await pool.execute<RowDataPacket[]>('SELECT is_pengasuh FROM users WHERE id = ? LIMIT 1', [userId]);
-        if (uRows.length > 0) isPengasuhUser = !!uRows[0].is_pengasuh;
+        if (uRows.length > 0 && uRows[0].is_pengasuh) {
+          isPengasuhUser = true;
+        }
       } catch (_) {}
     }
 
     // pengurus_asrama TIDAK mendapat akses billing
-    const allowedRoles = ['admin', 'staff', 'wali_murid', 'pengasuh', 'guru'];
+    const allowedRoles = ['admin', 'staff', 'wali_murid', 'pengasuh'];
     if (!allowedRoles.includes(role) && !isPengasuhUser) {
-      return NextResponse.json({ error: 'Akses ditolak: Peran tidak diizinkan' }, { status: 403 });
+      return NextResponse.json({ error: 'Akses ditolak: Peran Anda tidak memiliki izin mengakses info tagihan.' }, { status: 403 });
     }
 
     // JOIN dengan tabel murid untuk mendapatkan info nama_wali, no_wali/no_hp_wali, foto_url, alamat
