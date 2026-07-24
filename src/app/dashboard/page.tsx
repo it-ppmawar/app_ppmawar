@@ -36,8 +36,8 @@ export default function DashboardPage() {
         if (data.success && data.user) {
           setUsername(data.user.real_name || data.user.username);
           setRole(data.user.role);
-          setIsPengasuh(!!(data.user.is_pengasuh || data.user.isPengasuh));
-          setIsPengurusAsrama(!!(data.user.is_pengurus_asrama || data.user.isPengurusAsrama));
+          setIsPengasuh(!!(data.user.is_pengasuh || data.user.isPengasuh || data.user.role === 'pengasuh'));
+          setIsPengurusAsrama(!!(data.user.is_pengurus_asrama || data.user.isPengurusAsrama || data.user.role === 'pengurus_asrama'));
           setAsramaName(data.user.asrama || null);
         } else {
           setUsername('Tamu');
@@ -229,9 +229,9 @@ export default function DashboardPage() {
 
       {/* Pintasan cepat — Kebersihan, Inventaris, Tagihan — horizontal grid mengisi penuh */}
       {(() => {
-        const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role) || isPengasuh || isPengurusAsrama;
-        const showInventaris = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(role) || isPengasuh || isPengurusAsrama;
-        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(role) || isPengasuh;
+        const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role) || isPengasuh || isPengurusAsrama;
+        const showInventaris = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(role) || isPengasuh || isPengurusAsrama;
+        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama', 'guru'].includes(role) || isPengasuh || isPengurusAsrama;
         const visibleCount = [showKebersihan, showInventaris, showTagihan].filter(Boolean).length;
         if (visibleCount === 0) return null;
         return (

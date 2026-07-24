@@ -17,9 +17,10 @@ export async function GET(request: Request) {
     if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
     const { id: userId, role, username } = payload;
+    const isPengasuhUser = !!(payload.isPengasuh || payload.is_pengasuh || payload.isPengurusAsrama || payload.is_pengurus_asrama || ['pengasuh', 'pengurus_asrama'].includes(role));
 
-    const allowedRoles = ['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama'];
-    if (!allowedRoles.includes(role)) {
+    const allowedRoles = ['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama', 'guru'];
+    if (!allowedRoles.includes(role) && !isPengasuhUser) {
       return NextResponse.json({ error: 'Akses ditolak: Peran tidak diizinkan' }, { status: 403 });
     }
 
@@ -55,23 +56,22 @@ export async function GET(request: Request) {
       const nis = userRows[0].nis;
       conditions.push('b.nis = ?');
       params.push(nis);
-    } else if (role === 'pengasuh' || role === 'pengurus_asrama') {
+    } else if ((role === 'pengasuh' || role === 'pengurus_asrama' || isPengasuhUser) && !['admin', 'staff'].includes(role)) {
       // Pengasuh hanya bisa melihat tagihan pesantren (asrama/kamar)
       conditions.push("b.kategori = 'pesantren'");
 
       // Dapatkan nama asrama yang dikelola
-      const namaAsrama = await resolveAsrama(userId, role, username, null);
-      if (!namaAsrama) {
-        return NextResponse.json({ success: true, data: [], total_lunas: 0, total_belum: 0 });
+      const namaAsrama = await resolveAsrama(userId, role, username, payload.asrama || payload.namaAsrama || null);
+      if (namaAsrama) {
+        // Ambil huruf asrama (misal "A" dari "Asrama A")
+        const matches = namaAsrama.match(/asrama\s+([a-z0-9_]+)/i);
+        const hurufAsrama = matches ? matches[1].toUpperCase() : '';
+
+        conditions.push('(b.asrama = ? OR b.asrama = ? OR b.asrama LIKE ?)');
+        params.push(namaAsrama);
+        params.push(hurufAsrama || namaAsrama);
+        params.push(`%${hurufAsrama || namaAsrama}%`);
       }
-
-      // Ambil huruf asrama (misal "A" dari "Asrama A")
-      const matches = namaAsrama.match(/asrama\s+([a-z])/i);
-      const hurufAsrama = matches ? matches[1].toUpperCase() : '';
-
-      conditions.push('(b.asrama = ? OR b.asrama = ?)');
-      params.push(namaAsrama);
-      params.push(hurufAsrama || namaAsrama);
     }
 
     // Filter NIS spesifik jika ada dari query params

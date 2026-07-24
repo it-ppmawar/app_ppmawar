@@ -15,6 +15,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true);
   const [tagihan, setTagihan] = useState<any[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isPengasuhUser, setIsPengasuhUser] = useState<boolean>(false);
   const [filterStatus, setFilterStatus] = useState('Semua'); // Semua, Lunas, Belum
   const [filterKategori, setFilterKategori] = useState('Semua'); // Semua, pesantren, madrasah
   const [selectedSubTab, setSelectedSubTab] = useState('Semua');
@@ -211,7 +212,7 @@ export default function BillingPage() {
     );
   }
 
-  const isAccessAllowed = userRole && ['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama'].includes(userRole);
+  const isAccessAllowed = userRole && (['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama', 'guru'].includes(userRole) || isPengasuhUser);
 
   if (!isAccessAllowed) {
     return (
