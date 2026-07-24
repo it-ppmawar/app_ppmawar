@@ -6,8 +6,6 @@ import { CreditCard, CheckCircle2, XCircle, Search, Calendar, FileText, AlertCir
 export default function BillingPage() {
   const [loading, setLoading] = useState(true);
   const [tagihan, setTagihan] = useState<any[]>([]);
-  const [totalLunas, setTotalLunas] = useState(0);
-  const [totalBelum, setTotalBelum] = useState(0);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState('Semua'); // Semua, Lunas, Belum
   const [filterKategori, setFilterKategori] = useState('Semua'); // Semua, pesantren, madrasah
@@ -23,8 +21,6 @@ export default function BillingPage() {
       .then(data => {
         if (data.success) {
           setTagihan(data.data);
-          setTotalLunas(data.total_lunas || 0);
-          setTotalBelum(data.total_belum || 0);
         }
       })
       .catch(console.error)
@@ -74,16 +70,13 @@ export default function BillingPage() {
     }
   }, [filterKategori]);
 
-
-  const filteredTagihan = tagihan.filter(t => {
-    // 1. Status Filter
-    if (filterStatus !== 'Semua' && t.status !== filterStatus) return false;
-
-    // 2. Kategori Filter
+  // === FILTER DATA ACCORDING TO SELECTED CATEGORY, SUB-TAB, AND SEARCH ===
+  const tabFilteredTagihan = tagihan.filter(t => {
+    // 1. Kategori Filter
     if (filterKategori !== 'Semua') {
       if (t.kategori !== filterKategori) return false;
 
-      // 3. Sub Tab Filter
+      // 2. Sub Tab Filter
       if (selectedSubTab !== 'Semua') {
         if (filterKategori === 'pesantren') {
           // Pesantren: filter berdasarkan asrama (A-F)
@@ -95,11 +88,10 @@ export default function BillingPage() {
             cleanAsrama.endsWith(` ${targetLetter}`);
           if (!isMatch) return false;
         } else if (filterKategori === 'madrasah') {
-          // Madrasah: filter berdasarkan nama kelas (KELAS I/II/III)
-          // Field 'asrama' pada kategori madrasah berisi nama kelas (misal: "KELAS I")
-          const cleanAsrama     = (t.asrama || '').trim().toUpperCase();
+          // Madrasah: filter berdasarkan nama kelas (KELAS I/II/III) atau unit
+          const cleanAsrama      = (t.asrama || '').trim().toUpperCase();
           const cleanNamaTagihan = (t.nama_tagihan || '').trim().toUpperCase();
-          const cleanKamar      = (t.kamar || '').trim().toUpperCase();
+          const cleanKamar       = (t.kamar || '').trim().toUpperCase();
           const target = selectedSubTab.toUpperCase();
           const isMatch =
             cleanAsrama.includes(target) ||
@@ -110,7 +102,7 @@ export default function BillingPage() {
       }
     }
 
-    // 4. Search Query
+    // 3. Search Query
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
@@ -124,6 +116,26 @@ export default function BillingPage() {
     return true;
   });
 
+  // Dynamic Total calculation for the active tab selection
+  const dynamicTotalBelum = tabFilteredTagihan
+    .filter(t => t.status === 'Belum')
+    .reduce((sum, t) => sum + Number(t.nominal || 0), 0);
+
+  const dynamicTotalLunas = tabFilteredTagihan
+    .filter(t => t.status === 'Lunas')
+    .reduce((sum, t) => sum + Number(t.nominal || 0), 0);
+
+  // Status counts for buttons
+  const countSemua = tabFilteredTagihan.length;
+  const countBelum = tabFilteredTagihan.filter(t => t.status === 'Belum').length;
+  const countLunas = tabFilteredTagihan.filter(t => t.status === 'Lunas').length;
+
+  // Final table list further filtered by status dropdown/button
+  const filteredTagihan = tabFilteredTagihan.filter(t => {
+    if (filterStatus !== 'Semua' && t.status !== filterStatus) return false;
+    return true;
+  });
+
   const formatRupiah = (angka: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
   };
@@ -131,7 +143,7 @@ export default function BillingPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
         <p className="mt-4 text-gray-500 font-medium animate-pulse">Menghubungkan ke server tagihan...</p>
       </div>
     );
@@ -152,6 +164,11 @@ export default function BillingPage() {
       </div>
     );
   }
+
+  // Label konteks filter aktif untuk kartu ringkasan
+  const activeTabLabel = filterKategori === 'Semua' 
+    ? 'Semua Kategori' 
+    : `${filterKategori === 'pesantren' ? 'Pesantren' : 'Madrasah'}${selectedSubTab !== 'Semua' ? ` • ${selectedSubTab}` : ''}`;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
@@ -181,28 +198,6 @@ export default function BillingPage() {
               {syncing ? 'Menyinkronkan...' : 'Sinkron Google Sheets'}
             </button>
           )}
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4 transition-transform hover:scale-[1.02]">
-          <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl flex items-center justify-center shrink-0">
-            <XCircle size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Tunggakan (Belum Lunas)</p>
-            <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{formatRupiah(totalBelum)}</p>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4 transition-transform hover:scale-[1.02]">
-          <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-xl flex items-center justify-center shrink-0">
-            <CheckCircle2 size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Pembayaran Lunas</p>
-            <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{formatRupiah(totalLunas)}</p>
-          </div>
         </div>
       </div>
 
@@ -351,7 +346,7 @@ export default function BillingPage() {
                 <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50/70 dark:bg-blue-900/20 p-2.5 rounded-xl border border-blue-100 dark:border-blue-800/40 flex items-center gap-2">
                   <AlertCircle size={15} className="shrink-0 text-blue-500" />
                   <span>
-                    <strong>Struktur Tingkatan:</strong> <u>Wustho</u> = MA & SMK | <u>Ula</u> = MTs & SMP. Currently payment integration is prioritized for formal <strong>MA</strong> students.
+                    <strong>Struktur Tingkatan:</strong> <u>Wustho</u> = MA & SMK | <u>Ula</u> = MTs & SMP. Sistem pembayaran saat ini diprioritaskan untuk sekolah formal <strong>MA</strong>.
                   </span>
                 </div>
               </div>
@@ -374,7 +369,7 @@ export default function BillingPage() {
                     : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
                 }`}
               >
-                Semua ({tagihan.length})
+                Semua ({countSemua})
               </button>
             </div>
 
@@ -388,7 +383,7 @@ export default function BillingPage() {
                     : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
                 }`}
               >
-                Belum Lunas ({tagihan.filter(t => t.status === 'Belum').length})
+                Belum Lunas ({countBelum})
               </button>
               <button 
                 onClick={() => setFilterStatus('Lunas')}
@@ -398,7 +393,7 @@ export default function BillingPage() {
                     : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
                 }`}
               >
-                Sudah Lunas ({tagihan.filter(t => t.status === 'Lunas').length})
+                Sudah Lunas ({countLunas})
               </button>
             </div>
           </div>
@@ -414,6 +409,35 @@ export default function BillingPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm bg-gray-50 dark:bg-gray-800 text-gray-850 dark:text-gray-200 border border-gray-200 dark:border-gray-705 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500 transition-all"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic Summary Cards (Positioned AFTER all Tab & Status Filters) */}
+        <div className="p-4 md:p-5 bg-gray-50/70 dark:bg-gray-850/50 border-b dark:border-gray-700">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              📊 Ringkasan Nilai ({activeTabLabel})
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4 transition-transform hover:scale-[1.01]">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl flex items-center justify-center shrink-0">
+                <XCircle size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Total Tunggakan (Belum Lunas)</p>
+                <p className="text-xl sm:text-2xl font-extrabold text-red-600 dark:text-red-400 mt-0.5">{formatRupiah(dynamicTotalBelum)}</p>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4 transition-transform hover:scale-[1.01]">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-xl flex items-center justify-center shrink-0">
+                <CheckCircle2 size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Total Pembayaran Lunas</p>
+                <p className="text-xl sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">{formatRupiah(dynamicTotalLunas)}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -448,57 +472,53 @@ export default function BillingPage() {
                       </div>
                     </div>
                     <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between border-t sm:border-0 border-gray-100 dark:border-gray-700 pt-3 sm:pt-0">
-                      <span className="text-sm font-medium text-gray-500 dark:text-gray-400 sm:hidden">Total Bayar:</span>
-                      <span className="text-lg font-bold text-gray-800 dark:text-gray-100">{formatRupiah(t.nominal)}</span>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full mt-1 ${t.status === 'Lunas' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                        {t.status}
+                      <span className="text-xs text-gray-400 dark:text-gray-500 sm:mb-1">Nominal Tagihan</span>
+                      <span className={`text-lg font-bold ${t.status === 'Lunas' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {formatRupiah(t.nominal)}
                       </span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              /* TABLE VIEW FOR ADMIN/STAFF/PENGASUH */
+              /* TABLE VIEW FOR ADMIN, STAFF & PENGASUH */
               <div className="overflow-x-auto">
-                <table className="w-full whitespace-nowrap">
-                  <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-700/50 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-left border-b border-gray-200 dark:border-gray-700">
-                      <th className="px-4 py-3 rounded-tl-xl">Nama Santri / NIS</th>
-                      <th className="px-4 py-3">Asrama / Kamar</th>
-                      <th className="px-4 py-3">Nama Tagihan</th>
-                      <th className="px-4 py-3">Periode</th>
+                <table className="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+                  <thead className="bg-gray-50 dark:bg-gray-800/80 text-xs uppercase font-bold text-gray-400 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                    <tr>
+                      <th className="px-4 py-3">Santri</th>
+                      <th className="px-4 py-3">Tagihan</th>
+                      <th className="px-4 py-3">Asrama / Kelas</th>
                       <th className="px-4 py-3">Nominal</th>
-                      {userRole && ['admin', 'staff'].includes(userRole) && (
-                        <th className="px-4 py-3">Kategori</th>
-                      )}
-                      <th className="px-4 py-3 rounded-tr-xl text-center">Status</th>
+                      <th className="px-4 py-3">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {filteredTagihan.map((t) => (
-                      <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <tr key={t.id} className="hover:bg-gray-50/60 dark:hover:bg-gray-700/40 transition-colors">
                         <td className="px-4 py-3">
-                          <div className="font-medium text-gray-800 dark:text-gray-200">{t.nama_santri}</div>
-                          <div className="text-xs text-gray-500 font-mono">NIS: {t.nis}</div>
+                          <div className="font-bold text-gray-800 dark:text-gray-100">{t.nama_santri}</div>
+                          <div className="text-xs text-gray-400 dark:text-gray-500">NIS: {t.nis}</div>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.asrama}</div>
-                          {t.kamar && t.kamar !== '-' && <div className="text-xs text-gray-500">{t.kamar}</div>}
+                          <div className="font-semibold text-gray-700 dark:text-gray-200">{t.nama_tagihan}</div>
+                          <div className="text-xs text-gray-400 dark:text-gray-500">Periode: {t.periode}</div>
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-800 dark:text-gray-200">{t.nama_tagihan}</td>
-                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{t.periode}</td>
-                        <td className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-gray-200">{formatRupiah(t.nominal)}</td>
-                        {userRole && ['admin', 'staff'].includes(userRole) && (
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${t.kategori === 'pesantren' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                              {t.kategori === 'pesantren' ? <Building2 size={11} /> : <GraduationCap size={11} />}
-                              {t.kategori === 'pesantren' ? 'Pesantren' : 'Madrasah'}
-                            </span>
-                          </td>
-                        )}
-                        <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${t.status === 'Lunas' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                            {t.status === 'Lunas' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                            {t.asrama} {t.kamar ? `(${t.kamar})` : ''}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-bold text-gray-800 dark:text-gray-100">
+                          {formatRupiah(t.nominal)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                            t.status === 'Lunas'
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                              : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                          }`}>
+                            {t.status === 'Lunas' ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
                             {t.status}
                           </span>
                         </td>
