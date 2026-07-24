@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
     const { id: userId, role, username } = payload;
 
-    const allowedRoles = ['admin', 'staff', 'wali_murid', 'pengasuh', 'pengurus_asrama'];
+    const allowedRoles = ['admin', 'staff', 'wali_murid', 'pengasuh'];
     if (!allowedRoles.includes(role)) {
       return NextResponse.json({ error: 'Akses ditolak: Peran tidak diizinkan' }, { status: 403 });
     }

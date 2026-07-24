@@ -231,7 +231,7 @@ export default function DashboardPage() {
       {(() => {
         const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role) || isPengasuh || isPengurusAsrama;
         const showInventaris = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(role) || isPengasuh || isPengurusAsrama;
-        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(role) || isPengasuh || isPengurusAsrama;
+        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(role) || isPengasuh;
         const visibleCount = [showKebersihan, showInventaris, showTagihan].filter(Boolean).length;
         if (visibleCount === 0) return null;
         return (
