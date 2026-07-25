@@ -229,9 +229,13 @@ export default function DashboardPage() {
 
       {/* Pintasan cepat — Kebersihan, Inventaris, Tagihan — horizontal grid mengisi penuh */}
       {(() => {
-        const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role) || isPengasuh || isPengurusAsrama;
-        const showInventaris = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(role) || isPengasuh || isPengurusAsrama;
-        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh', 'guru'].includes(role) || isPengasuh; // pengurus_asrama tidak punya akses billing
+        const lowerRole = (role || '').toLowerCase();
+        const isPengasuhAny = lowerRole.includes('pengasuh') || isPengasuh;
+        const isPengurusAny = lowerRole.includes('pengurus') || isPengurusAsrama;
+
+        const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(lowerRole) || isPengasuhAny || isPengurusAny;
+        const showInventaris = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(lowerRole) || isPengasuhAny || isPengurusAny;
+        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh', 'guru'].includes(lowerRole) || isPengasuhAny; // pengurus_asrama tidak punya akses billing
         const visibleCount = [showKebersihan, showInventaris, showTagihan].filter(Boolean).length;
         if (visibleCount === 0) return null;
         return (

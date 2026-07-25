@@ -68,16 +68,18 @@ export async function GET() {
     }
 
     // Fetch double-role flags and asrama from DB (to ensure up-to-date even if token is old)
-    let isPengasuh = !!(payload.isPengasuh);
-    let isPengurusAsrama = !!(payload.isPengurusAsrama);
+    const roleStr = (payload.role || '').toLowerCase();
+    let isPengasuh = !!(payload.isPengasuh || roleStr.includes('pengasuh'));
+    let isPengurusAsrama = !!(payload.isPengurusAsrama || roleStr.includes('pengurus'));
     let asramaVal = payload.asrama || payload.namaAsrama || null;
     try {
       if (userId) {
         await ensureUserColumns();
-        const [uRows] = await pool.execute<RowDataPacket[]>('SELECT is_pengasuh, is_pengurus_asrama, asrama FROM users WHERE id = ? LIMIT 1', [userId]);
+        const [uRows] = await pool.execute<RowDataPacket[]>('SELECT role, is_pengasuh, is_pengurus_asrama, asrama FROM users WHERE id = ? LIMIT 1', [userId]);
         if (uRows.length > 0) {
-          isPengasuh = !!uRows[0].is_pengasuh;
-          isPengurusAsrama = !!uRows[0].is_pengurus_asrama;
+          const dbRole = (uRows[0].role || roleStr).toLowerCase();
+          isPengasuh = !!(uRows[0].is_pengasuh || dbRole.includes('pengasuh'));
+          isPengurusAsrama = !!(uRows[0].is_pengurus_asrama || dbRole.includes('pengurus'));
           if (uRows[0].asrama) asramaVal = uRows[0].asrama;
         }
       }
@@ -90,6 +92,7 @@ export async function GET() {
         real_name: realName, 
         has_fingerprint: hasFingerprint, 
         is_pengasuh: isPengasuh,
+        isPengasuh: isPengasuh,
         is_pengurus_asrama: isPengurusAsrama,
         isPengurusAsrama: isPengurusAsrama,
         asrama: asramaVal
