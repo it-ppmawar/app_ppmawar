@@ -81,9 +81,14 @@ export async function POST(request: Request) {
     const token = cookieStore.get('token')?.value;
     const payload = token ? verifyToken(token) as any : null;
     
-    // HANYA Admin dan Staff yang boleh menambah inventaris baru
-    if (!payload || (payload.role !== 'admin' && payload.role !== 'staff')) {
-      return NextResponse.json({ error: 'Hanya admin dan staff yang dapat menambahkan data inventaris' }, { status: 403 });
+    const isAllowedToAdd = payload && (
+      ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(payload.role)
+      || payload.isPengasuh || payload.is_pengasuh
+      || payload.isPengurusAsrama || payload.is_pengurus_asrama
+    );
+
+    if (!payload || !isAllowedToAdd) {
+      return NextResponse.json({ error: 'Akses ditolak: Hanya admin, staff, pengasuh, dan pengurus asrama yang dapat menambahkan data inventaris' }, { status: 403 });
     }
 
     const data = await request.json();

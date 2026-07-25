@@ -267,8 +267,10 @@ export default function InventarisPage() {
 
   const canAddDelete = user?.role === 'admin' || user?.role === 'staff';
   const uRoleLower = (user?.role || '').toLowerCase();
+  const isPengasuhOrPengurus = ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || user?.is_pengasuh || user?.isPengasuh || user?.is_pengurus_asrama || user?.isPengurusAsrama || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama));
+  const canAdd = canAddDelete || isPengasuhOrPengurus;
   const isPetugas = uRoleLower.includes('petugas');
-  const canEdit = canAddDelete || isPetugas || ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama));
+  const canEdit = canAddDelete || isPetugas || isPengasuhOrPengurus;
   const canUpdateLaporan = canAddDelete || isPetugas;
   // Petugas umum, inventaris umum dan sarpras lihat semua tab asrama seperti admin
   // pengasuh & pengurus_asrama hanya lihat tab asrama mereka sendiri
@@ -304,7 +306,7 @@ export default function InventarisPage() {
               <button onClick={() => handleExport('excel', false)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 rounded-xl text-xs font-bold hover:bg-emerald-500/30 transition-colors flex items-center gap-1.5" title="Export Excel">
                 <Download size={14} /> Excel
               </button>
-              {canAddDelete && (
+              {canAdd && (
                 <>
                   <button
                     onClick={() => downloadTemplate('inventaris')}
@@ -321,7 +323,7 @@ export default function InventarisPage() {
                     <Upload size={14} /> Impor
                   </button>
                   <button onClick={() => { setEditingItem(null); setItemForm({ nama_barang: '', kategori: 'alat', asrama: activeTab !== 'Semua' ? activeTab : 'A', jumlah: 1, kondisi: 'Baik', keterangan: '' }); setShowItemModal(true); }} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1" title="Tambah Barang">
-                    <Plus size={16} />
+                    <Plus size={16} /> <span className="hidden md:inline">Tambah</span>
                   </button>
                 </>
               )}
@@ -428,7 +430,7 @@ export default function InventarisPage() {
                 <option value="Rusak Ringan">Rusak Ringan</option>
                 <option value="Rusak Berat">Rusak Berat</option>
               </select>
-              {canAddDelete && (
+              {canAdd && (
                 <button
                   onClick={() => {
                     setEditingItem(null);

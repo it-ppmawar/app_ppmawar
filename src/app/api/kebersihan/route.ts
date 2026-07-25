@@ -67,8 +67,14 @@ export async function POST(request: Request) {
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = verifyToken(token) as any;
-    if (!payload || !['admin', 'staff'].includes(payload.role)) {
-      return NextResponse.json({ error: 'Hanya admin/staff yang dapat menambah item kebersihan' }, { status: 403 });
+    const isAllowedToAdd = payload && (
+      ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(payload.role)
+      || payload.isPengasuh || payload.is_pengasuh
+      || payload.isPengurusAsrama || payload.is_pengurus_asrama
+    );
+
+    if (!payload || !isAllowedToAdd) {
+      return NextResponse.json({ error: 'Akses ditolak: Hanya admin, staff, pengasuh, dan pengurus asrama yang dapat menambah item kebersihan' }, { status: 403 });
     }
 
     const body = await request.json();

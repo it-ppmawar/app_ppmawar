@@ -95,10 +95,10 @@ export default function KebersIhanPage() {
   const [pdfUrl, setPdfUrl] = useState('');
 
   const isAdmin = user?.role === 'admin' || user?.role === 'staff';
-  // Petugas umum dan sarpras lihat semua tab asrama seperti admin
-  // pengasuh & pengurus_asrama hanya lihat tab asrama mereka sendiri
   const isDoubleRoleAsrama = user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama);
   const uRoleLower = (user?.role || '').toLowerCase();
+  const isPengasuhOrPengurus = ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || user?.is_pengasuh || user?.isPengasuh || user?.is_pengurus_asrama || user?.isPengurusAsrama || isDoubleRoleAsrama;
+  const canAdd = isAdmin || isPengasuhOrPengurus;
   const isPetugas = uRoleLower.includes('petugas');
   const showAllTabs = isAdmin || isPetugas;
   const isPengasuhOrAdmin = isAdmin || isPetugas || ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || isDoubleRoleAsrama;
@@ -349,7 +349,7 @@ export default function KebersIhanPage() {
           >
             <TableProperties size={14} /> Excel
           </button>
-          {isAdmin && (
+          {canAdd && (
             <>
               <button
                 onClick={() => downloadTemplate('kebersihan')}
@@ -469,7 +469,7 @@ export default function KebersIhanPage() {
             <div className="bg-white dark:bg-gray-900 rounded-2xl p-12 text-center border border-dashed border-gray-200 dark:border-gray-700">
               <Trash2 size={40} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
               <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Belum ada item kebersihan</p>
-              {isAdmin && <button onClick={openAddItem} className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors">+ Tambah Item</button>}
+              {canAdd && <button onClick={openAddItem} className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors">+ Tambah Item</button>}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
