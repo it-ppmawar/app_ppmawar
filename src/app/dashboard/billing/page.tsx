@@ -35,6 +35,16 @@ export default function BillingPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [userAsrama, setUserAsrama] = useState<string | null>(null);
 
+  const displayAsramaName = React.useMemo(() => {
+    if (!userAsrama) return 'Asrama A';
+    const clean = userAsrama.trim();
+    if (/^asrama\s+/i.test(clean)) {
+      const letter = clean.replace(/^asrama\s+/i, '').trim();
+      return letter.toLowerCase() === 'tahfid' ? 'Asrama Tahfid' : `Asrama ${letter.toUpperCase()}`;
+    }
+    return clean.toLowerCase() === 'tahfid' ? 'Asrama Tahfid' : `Asrama ${clean.toUpperCase()}`;
+  }, [userAsrama]);
+
   const fetchBilling = (kategori?: string) => {
     setLoading(true);
     setErrorMsg(null);
@@ -245,16 +255,6 @@ export default function BillingPage() {
   const activeTabLabel = filterKategori === 'Semua' 
     ? 'Semua Kategori' 
     : `${filterKategori === 'pesantren' ? 'Pesantren' : 'Madrasah'}${selectedSubTab !== 'Semua' ? ` • ${selectedSubTab}` : ''}`;
-
-  const displayAsramaName = React.useMemo(() => {
-    if (!userAsrama) return 'Asrama A';
-    const clean = userAsrama.trim();
-    if (/^asrama\s+/i.test(clean)) {
-      const letter = clean.replace(/^asrama\s+/i, '').trim();
-      return letter.toLowerCase() === 'tahfid' ? 'Asrama Tahfid' : `Asrama ${letter.toUpperCase()}`;
-    }
-    return clean.toLowerCase() === 'tahfid' ? 'Asrama Tahfid' : `Asrama ${clean.toUpperCase()}`;
-  }, [userAsrama]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
