@@ -32,23 +32,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Profil', href: '/dashboard/profil', icon: User },
   ];
 
-  if (user?.role === 'petugas_sarpras' || user?.role === 'petugas_inventaris' || user?.role === 'petugas_inventaris_umum') {
+  const userRoleLower = (user?.role || '').toLowerCase();
+  if (userRoleLower.includes('petugas')) {
+    const showKeb = userRoleLower.includes('kebersihan') || userRoleLower === 'petugas_umum' || userRoleLower === 'petugas';
+    const showInv = userRoleLower.includes('inventaris') || userRoleLower.includes('sarpras') || userRoleLower === 'petugas_umum' || userRoleLower === 'petugas';
     navItems = [
       { name: 'Beranda', href: '/dashboard', icon: Home },
-      { name: 'Inventaris', href: '/dashboard/inventaris', icon: Archive },
-      { name: 'Profil', href: '/dashboard/profil', icon: User },
-    ];
-  } else if (user?.role === 'petugas_kebersihan' || user?.role === 'petugas_kebersihan_umum') {
-    navItems = [
-      { name: 'Beranda', href: '/dashboard', icon: Home },
-      { name: 'Kebersihan', href: '/dashboard/kebersihan', icon: Trash2 },
-      { name: 'Profil', href: '/dashboard/profil', icon: User },
-    ];
-  } else if (user?.role === 'petugas' || user?.role === 'petugas_umum') {
-    navItems = [
-      { name: 'Beranda', href: '/dashboard', icon: Home },
-      { name: 'Kebersihan', href: '/dashboard/kebersihan', icon: Trash2 },
-      { name: 'Inventaris', href: '/dashboard/inventaris', icon: Archive },
+      ...(showKeb ? [{ name: 'Kebersihan', href: '/dashboard/kebersihan', icon: Trash2 }] : []),
+      ...(showInv ? [{ name: 'Inventaris', href: '/dashboard/inventaris', icon: Archive }] : []),
       { name: 'Profil', href: '/dashboard/profil', icon: User },
     ];
   }
@@ -487,7 +478,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             </li>
             {/* Khusus Petugas Kebersihan / Kebersihan Umum / Petugas Umum */}
-            {['petugas_kebersihan', 'petugas_kebersihan_umum', 'petugas', 'petugas_umum'].includes(user?.role || '') && (
+            {((user?.role || '').toLowerCase().includes('kebersihan') || (user?.role || '').toLowerCase() === 'petugas_umum' || (user?.role || '').toLowerCase() === 'petugas') && (
               <li>
                 <Link href="/dashboard/kebersihan" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/kebersihan') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
                   <Trash2 size={18} /> <span className="text-sm">Kebersihan & Sampah</span>
@@ -495,14 +486,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </li>
             )}
             {/* Khusus Petugas Inventaris / Sarpras / Petugas Umum */}
-            {['petugas_inventaris', 'petugas_inventaris_umum', 'petugas_sarpras', 'petugas', 'petugas_umum'].includes(user?.role || '') && (
+            {((user?.role || '').toLowerCase().includes('inventaris') || (user?.role || '').toLowerCase().includes('sarpras') || (user?.role || '').toLowerCase() === 'petugas_umum' || (user?.role || '').toLowerCase() === 'petugas') && (
               <li>
                 <Link href="/dashboard/inventaris" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/inventaris') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
                   <Archive size={18} /> <span className="text-sm">Inventaris Asrama</span>
                 </Link>
               </li>
             )}
-            {!['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum', 'petugas', 'petugas_umum'].includes(user?.role || '') && (
+            {!(user?.role || '').toLowerCase().includes('petugas') && (
               <>
             <li>
               <Link href="/dashboard/tabel-jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/tabel-jadwal' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
@@ -555,7 +546,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
           </ul>
 
-          {!isTamu && !['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum', 'petugas', 'petugas_umum'].includes(user?.role || '') && (
+          {!isTamu && !(user?.role || '').toLowerCase().includes('petugas') && (
           <>
           <div className="px-5 mb-2">
             <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Manajemen Data</p>

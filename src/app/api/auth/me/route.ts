@@ -67,8 +67,9 @@ export async function GET() {
       console.warn('[auth/me] Could not fetch real_name:', nameErr);
     }
 
-    // Fetch double-role flags and asrama from DB (to ensure up-to-date even if token is old)
+    // Fetch double-role flags, fresh role, and asrama from DB (to ensure up-to-date even if token is old)
     const roleStr = (payload.role || '').toLowerCase();
+    let currentRole = payload.role;
     let isPengasuh = !!(payload.isPengasuh || roleStr.includes('pengasuh'));
     let isPengurusAsrama = !!(payload.isPengurusAsrama || roleStr.includes('pengurus'));
     let asramaVal = payload.asrama || payload.namaAsrama || null;
@@ -77,7 +78,8 @@ export async function GET() {
         await ensureUserColumns();
         const [uRows] = await pool.execute<RowDataPacket[]>('SELECT role, is_pengasuh, is_pengurus_asrama, asrama FROM users WHERE id = ? LIMIT 1', [userId]);
         if (uRows.length > 0) {
-          const dbRole = (uRows[0].role || roleStr).toLowerCase();
+          if (uRows[0].role) currentRole = uRows[0].role;
+          const dbRole = (currentRole || '').toLowerCase();
           isPengasuh = !!(uRows[0].is_pengasuh || dbRole.includes('pengasuh'));
           isPengurusAsrama = !!(uRows[0].is_pengurus_asrama || dbRole.includes('pengurus'));
           if (uRows[0].asrama) asramaVal = uRows[0].asrama;
@@ -89,6 +91,7 @@ export async function GET() {
       success: true,
       user: { 
         ...payload, 
+        role: currentRole,
         real_name: realName, 
         has_fingerprint: hasFingerprint, 
         is_pengasuh: isPengasuh,

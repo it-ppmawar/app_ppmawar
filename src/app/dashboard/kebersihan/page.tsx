@@ -98,13 +98,10 @@ export default function KebersIhanPage() {
   // Petugas umum dan sarpras lihat semua tab asrama seperti admin
   // pengasuh & pengurus_asrama hanya lihat tab asrama mereka sendiri
   const isDoubleRoleAsrama = user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama);
-  const showAllTabs = isAdmin
-    || user?.role === 'petugas_kebersihan'
-    || user?.role === 'petugas_kebersihan_umum'
-    || user?.role === 'petugas'
-    || user?.role === 'petugas_umum'
-    || user?.role === 'petugas_sarpras';
-  const isPengasuhOrAdmin = isAdmin || ['pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || isDoubleRoleAsrama;
+  const uRoleLower = (user?.role || '').toLowerCase();
+  const isPetugas = uRoleLower.includes('petugas');
+  const showAllTabs = isAdmin || isPetugas;
+  const isPengasuhOrAdmin = isAdmin || isPetugas || ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || isDoubleRoleAsrama;
 
   useEffect(() => {
     fetch('/api/auth/me')
