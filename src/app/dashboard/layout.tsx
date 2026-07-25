@@ -190,9 +190,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const hasMadin = userSchedules.some(s => s.tipe === 'madin');
   const hasKegiatan = userSchedules.some(s => s.tipe === 'kegiatan');
 
-  const isPengasuhRole = ['pengasuh', 'pengurus_asrama'].includes(userRoleLower) || !!user?.is_pengasuh || !!user?.isPengasuh || !!user?.is_pengurus_asrama || !!user?.isPengurusAsrama;
+  const isPengasuhRole = userRoleLower.includes('pengasuh') || userRoleLower.includes('pengurus') || !!user?.is_pengasuh || !!user?.isPengasuh || !!user?.is_pengurus_asrama || !!user?.isPengurusAsrama;
   // canAccessBilling: pengurus_asrama & guru TIDAK termasuk — hanya admin, staff, wali_murid, pengasuh (role atau is_pengasuh=true)
-  const canAccessBilling = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(userRoleLower) || !!user?.is_pengasuh || !!user?.isPengasuh;
+  const canAccessBilling = ['admin', 'staff', 'wali_murid'].includes(userRoleLower) || userRoleLower.includes('pengasuh') || !!user?.is_pengasuh || !!user?.isPengasuh;
 
   const showQuranMadin = user?.role === 'admin' || user?.role === 'staff' || hasQuran || hasMadin;
   const showKamarAsrama = userRoleLower === 'admin' || userRoleLower === 'staff' || isPengasuhRole || hasKegiatan;

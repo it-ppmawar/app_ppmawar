@@ -58,9 +58,11 @@ export async function GET(request: Request) {
              m.nama_wali, 
              m.no_wali, 
              m.foto as foto_url, 
-             m.alamat 
+             m.alamat,
+             k.nama_asrama as real_asrama,
+             k.nama_kamar as real_kamar
       FROM billing b
-      LEFT JOIN murid m ON b.nis = m.nis
+      LEFT JOIN murid m ON (b.nis IS NOT NULL AND b.nis != '' AND b.nis = m.nis) OR (b.nama_santri IS NOT NULL AND LOWER(TRIM(b.nama_santri)) = LOWER(TRIM(m.nama)))
       LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
     `;
     let params: any[] = [];
@@ -97,13 +99,13 @@ export async function GET(request: Request) {
 
         if (asramaLetter.toLowerCase() === 'tahfid') {
           conditions.push(`(
-            CASE WHEN k.nama_asrama IS NOT NULL THEN (k.nama_asrama LIKE '%Tahfid%')
+            CASE WHEN k.nama_asrama IS NOT NULL AND k.nama_asrama != '' THEN (k.nama_asrama LIKE '%Tahfid%')
             ELSE (b.asrama LIKE '%Tahfid%' OR b.kamar LIKE '%Tahfid%') END
           )`);
         } else {
           const letter = asramaLetter.toUpperCase();
           conditions.push(`(
-            CASE WHEN k.nama_asrama IS NOT NULL THEN (
+            CASE WHEN k.nama_asrama IS NOT NULL AND k.nama_asrama != '' THEN (
               k.nama_asrama = ? OR k.nama_asrama = ? OR k.nama_asrama LIKE ?
             )
             ELSE (
@@ -152,23 +154,27 @@ export async function GET(request: Request) {
     const [rows] = await pool.execute<RowDataPacket[]>(query, params);
 
     // Format data billing + santri
-    const resultData = rows.map((r: any) => ({
-      id: r.id,
-      nis: r.nis,
-      nama_santri: r.nama_santri,
-      nama_tagihan: r.nama_tagihan,
-      nominal: Number(r.nominal),
-      status: r.status,
-      periode: r.periode,
-      asrama: r.asrama,
-      kamar: r.kamar,
-      kategori: r.kategori || 'pesantren',
-      // Info Tambahan Santri & Wali
-      nama_wali: r.nama_wali || '-',
-      no_wali: r.no_wali || '',
-      foto_url: r.foto_url || null,
-      alamat: r.alamat || '-'
-    }));
+    const resultData = rows.map((r: any) => {
+      const realAsramaName = r.real_asrama ? (r.real_asrama.startsWith('Asrama ') ? r.real_asrama : `Asrama ${r.real_asrama}`) : r.asrama;
+      const realKamarName = r.real_kamar || r.kamar;
+      return {
+        id: r.id,
+        nis: r.nis,
+        nama_santri: r.nama_santri,
+        nama_tagihan: r.nama_tagihan,
+        nominal: Number(r.nominal),
+        status: r.status,
+        periode: r.periode,
+        asrama: realAsramaName,
+        kamar: realKamarName,
+        kategori: r.kategori || 'pesantren',
+        // Info Tambahan Santri & Wali
+        nama_wali: r.nama_wali || '-',
+        no_wali: r.no_wali || '',
+        foto_url: r.foto_url || null,
+        alamat: r.alamat || '-'
+      };
+    });
 
     const totalLunas = resultData
       .filter((r: any) => r.status === 'Lunas')

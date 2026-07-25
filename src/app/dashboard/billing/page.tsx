@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   CreditCard, CheckCircle2, XCircle, Search, Calendar, FileText, AlertCircle, 
   Building2, GraduationCap, RefreshCw, MessageCircle, User, MapPin, Phone, 
-  X, ArrowUpDown, ArrowUp, ArrowDown, Eye
+  X, ArrowUpDown, ArrowUp, ArrowDown, Lightbulb
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -717,7 +717,7 @@ export default function BillingPage() {
                                 title="Lihat Detail Lengkap Santri"
                                 className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors"
                               >
-                                <Eye size={16} />
+                                <Lightbulb size={16} />
                               </button>
 
                               {/* WhatsApp Direct / Direct Notification */}
