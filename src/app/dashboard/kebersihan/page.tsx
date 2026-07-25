@@ -99,7 +99,9 @@ export default function KebersIhanPage() {
   // pengasuh & pengurus_asrama hanya lihat tab asrama mereka sendiri
   const isDoubleRoleAsrama = user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama);
   const showAllTabs = isAdmin
+    || user?.role === 'petugas_kebersihan'
     || user?.role === 'petugas_kebersihan_umum'
+    || user?.role === 'petugas'
     || user?.role === 'petugas_umum'
     || user?.role === 'petugas_sarpras';
   const isPengasuhOrAdmin = isAdmin || ['pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || isDoubleRoleAsrama;

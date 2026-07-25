@@ -179,7 +179,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Menu Cepat */}
-      {!['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role) && (
+      {!['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum', 'petugas', 'petugas_umum'].includes(role) && (
       <section>
         <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
           <Activity size={18} className="text-green-600 dark:text-green-400" /> Menu Cepat
@@ -235,7 +235,7 @@ export default function DashboardPage() {
 
         const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(lowerRole) || isPengasuhAny || isPengurusAny;
         const showInventaris = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(lowerRole) || isPengasuhAny || isPengurusAny;
-        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh', 'guru'].includes(lowerRole) || isPengasuhAny; // pengurus_asrama tidak punya akses billing
+        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(lowerRole) || isPengasuhAny; // pengurus_asrama & guru tidak punya akses billing
         const visibleCount = [showKebersihan, showInventaris, showTagihan].filter(Boolean).length;
         if (visibleCount === 0) return null;
         return (
@@ -275,7 +275,7 @@ export default function DashboardPage() {
       })()}
 
       {/* Daftar Jadwal Hari Ini */}
-      {!['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role) && (
+      {!['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum', 'petugas', 'petugas_umum'].includes(role) && (
       <>
       <section className="space-y-4">
         {['kegiatan', 'quran', 'madin'].filter(tipe => role === 'admin' || role === 'staff' || allSchedules.some(s => s.tipe === tipe)).map(tipe => {
@@ -403,7 +403,7 @@ export default function DashboardPage() {
       )}
 
       {/* Info Tambahan */}
-      {!['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(role) && (
+      {!['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum', 'petugas', 'petugas_umum'].includes(role) && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-8">
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
           <div className="bg-green-800 dark:bg-green-900 px-4 py-2 text-white text-xs font-semibold">Perizinan Terbaru</div>
@@ -416,18 +416,18 @@ export default function DashboardPage() {
       </div>
       )}
 
-      {/* Info Petugas Sarpras */}
-      {role === 'petugas_sarpras' && (
+      {/* Info Petugas */}
+      {['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum', 'petugas', 'petugas_umum'].includes(role) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-8 mt-4">
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300 flex flex-col items-center justify-center p-6 text-center h-48">
              <PenTool size={48} className="text-amber-500 mb-3" />
-             <h4 className="font-bold text-gray-800 dark:text-gray-200">Laporan Kerusakan Pending</h4>
-             <p className="text-xs text-gray-500 mt-2">Buka menu Inventaris untuk melihat detail laporan kerusakan yang belum diselesaikan.</p>
+             <h4 className="font-bold text-gray-800 dark:text-gray-200">Tugas & Monitoring Petugas</h4>
+             <p className="text-xs text-gray-500 mt-2">Buka menu Kebersihan atau Inventaris untuk melihat detail tugas dan laporan yang perlu ditindaklanjuti.</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300 flex flex-col items-center justify-center p-6 text-center h-48">
              <Archive size={48} className="text-indigo-500 mb-3" />
-             <h4 className="font-bold text-gray-800 dark:text-gray-200">Total Inventaris</h4>
-             <p className="text-xs text-gray-500 mt-2">Anda bertanggung jawab atas pemantauan inventaris di seluruh asrama.</p>
+             <h4 className="font-bold text-gray-800 dark:text-gray-200">Aktivitas Harian</h4>
+             <p className="text-xs text-gray-500 mt-2">Anda bertanggung jawab atas kebersihan dan kelengkapan inventaris di seluruh fasilitas asrama.</p>
           </div>
         </div>
       )}
