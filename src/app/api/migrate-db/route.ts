@@ -69,12 +69,13 @@ export async function GET() {
       results.push('❌ Failed to update users.role ENUM: ' + e.message);
     }
 
-    // Repair roles for seeded accounts that were set to empty/invalid string due to missing enum options
+    // Repair roles for seeded accounts unconditionally if username or name matches
     try {
-      const [fixPengasuh] = await pool.execute("UPDATE users SET role = 'pengasuh' WHERE (role = '' OR role IS NULL) AND username LIKE 'pengasuh_%'");
-      const [fixInventaris] = await pool.execute("UPDATE users SET role = 'petugas_inventaris_umum' WHERE (role = '' OR role IS NULL) AND username = 'petugas_inventaris'");
-      const [fixKebersihan] = await pool.execute("UPDATE users SET role = 'petugas_kebersihan_umum' WHERE (role = '' OR role IS NULL) AND username = 'petugas_kebersihan'");
-      results.push(`✅ Fixed empty roles for seeded accounts: ${(fixPengasuh as any).affectedRows} pengasuh, ${(fixInventaris as any).affectedRows} petugas inventaris, ${(fixKebersihan as any).affectedRows} petugas kebersihan`);
+      const [fixPengasuh] = await pool.execute("UPDATE users SET role = 'pengasuh' WHERE username LIKE 'pengasuh_%'");
+      const [fixInventaris] = await pool.execute("UPDATE users SET role = 'petugas_inventaris_umum' WHERE username LIKE '%petugas_inventaris%' OR nama LIKE '%Petugas Inventaris%'");
+      const [fixKebersihan] = await pool.execute("UPDATE users SET role = 'petugas_kebersihan_umum' WHERE username LIKE '%petugas_kebersihan%' OR nama LIKE '%Petugas Kebersihan%'");
+      const [fixUmum] = await pool.execute("UPDATE users SET role = 'petugas_umum' WHERE username = 'petugas_umum' OR nama = 'Petugas Umum'");
+      results.push(`✅ Fixed roles for seeded accounts: ${(fixPengasuh as any).affectedRows} pengasuh, ${(fixInventaris as any).affectedRows} petugas inventaris, ${(fixKebersihan as any).affectedRows} petugas kebersihan, ${(fixUmum as any).affectedRows} petugas umum`);
     } catch (e: any) {
       results.push('❌ Failed to repair empty roles: ' + e.message);
     }

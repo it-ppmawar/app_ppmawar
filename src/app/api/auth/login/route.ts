@@ -92,11 +92,30 @@ export async function POST(request: Request) {
       }
     }
 
+    // Auto-repair role for petugas accounts if DB role is empty or invalid
+    let userRole = user.role;
+    const uname = (user.username || '').toLowerCase();
+    const rname = (user.nama || '').toLowerCase();
+
+    if (uname.includes('petugas_inventaris') || rname.includes('petugas inventaris')) {
+      userRole = 'petugas_inventaris_umum';
+      pool.execute("UPDATE users SET role = 'petugas_inventaris_umum' WHERE id = ?", [user.id]).catch(() => {});
+    } else if (uname.includes('petugas_kebersihan') || rname.includes('petugas kebersihan')) {
+      userRole = 'petugas_kebersihan_umum';
+      pool.execute("UPDATE users SET role = 'petugas_kebersihan_umum' WHERE id = ?", [user.id]).catch(() => {});
+    } else if (uname.includes('petugas_umum') || rname.includes('petugas umum')) {
+      userRole = 'petugas_umum';
+      pool.execute("UPDATE users SET role = 'petugas_umum' WHERE id = ?", [user.id]).catch(() => {});
+    } else if ((uname.includes('petugas') || rname.includes('petugas')) && !userRole.toLowerCase().includes('petugas')) {
+      userRole = 'petugas_umum';
+      pool.execute("UPDATE users SET role = 'petugas_umum' WHERE id = ?", [user.id]).catch(() => {});
+    }
+
     // Buat JWT Token
     const payload = {
       userId: user.id,
       username: user.username,
-      role: user.role,
+      role: userRole,
       guruId: guruId,
       muridId: user.murid_id,
       kamarId: user.kamar_id,

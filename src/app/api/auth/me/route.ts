@@ -76,12 +76,30 @@ export async function GET() {
     try {
       if (userId) {
         await ensureUserColumns();
-        const [uRows] = await pool.execute<RowDataPacket[]>('SELECT role, is_pengasuh, is_pengurus_asrama, asrama FROM users WHERE id = ? LIMIT 1', [userId]);
+        const [uRows] = await pool.execute<RowDataPacket[]>('SELECT username, nama, role, is_pengasuh, is_pengurus_asrama, asrama FROM users WHERE id = ? LIMIT 1', [userId]);
         if (uRows.length > 0) {
-          if (uRows[0].role) currentRole = uRows[0].role;
-          const dbRole = (currentRole || '').toLowerCase();
-          isPengasuh = !!(uRows[0].is_pengasuh || dbRole.includes('pengasuh'));
-          isPengurusAsrama = !!(uRows[0].is_pengurus_asrama || dbRole.includes('pengurus'));
+          let dbRole = uRows[0].role || currentRole || '';
+          const uname = (uRows[0].username || payload.username || '').toLowerCase();
+          const rname = (uRows[0].nama || realName || '').toLowerCase();
+
+          if (uname.includes('petugas_inventaris') || rname.includes('petugas inventaris')) {
+            dbRole = 'petugas_inventaris_umum';
+            pool.execute("UPDATE users SET role = 'petugas_inventaris_umum' WHERE id = ?", [userId]).catch(() => {});
+          } else if (uname.includes('petugas_kebersihan') || rname.includes('petugas kebersihan')) {
+            dbRole = 'petugas_kebersihan_umum';
+            pool.execute("UPDATE users SET role = 'petugas_kebersihan_umum' WHERE id = ?", [userId]).catch(() => {});
+          } else if (uname.includes('petugas_umum') || rname.includes('petugas umum')) {
+            dbRole = 'petugas_umum';
+            pool.execute("UPDATE users SET role = 'petugas_umum' WHERE id = ?", [userId]).catch(() => {});
+          } else if ((uname.includes('petugas') || rname.includes('petugas')) && !dbRole.toLowerCase().includes('petugas')) {
+            dbRole = 'petugas_umum';
+            pool.execute("UPDATE users SET role = 'petugas_umum' WHERE id = ?", [userId]).catch(() => {});
+          }
+
+          currentRole = dbRole;
+          const roleLower = (dbRole || '').toLowerCase();
+          isPengasuh = !!(uRows[0].is_pengasuh || roleLower.includes('pengasuh'));
+          isPengurusAsrama = !!(uRows[0].is_pengurus_asrama || roleLower.includes('pengurus'));
           if (uRows[0].asrama) asramaVal = uRows[0].asrama;
         }
       }
