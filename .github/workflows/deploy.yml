@@ -60,4 +60,5 @@ jobs:
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
           dangerous-clean-slate: false
           log-level: verbose
+          security: loose
           timeout: 300000
