@@ -97,23 +97,31 @@ export async function GET(request: Request) {
 
         if (asramaLetter.toLowerCase() === 'tahfid') {
           conditions.push(`(
-            b.asrama LIKE '%Tahfid%' OR k.nama_asrama LIKE '%Tahfid%' OR b.kamar LIKE '%Tahfid%'
+            CASE WHEN k.nama_asrama IS NOT NULL THEN (k.nama_asrama LIKE '%Tahfid%')
+            ELSE (b.asrama LIKE '%Tahfid%' OR b.kamar LIKE '%Tahfid%') END
           )`);
         } else {
           const letter = asramaLetter.toUpperCase();
           conditions.push(`(
-            b.asrama = ? OR b.asrama = ? OR b.asrama LIKE ? OR b.asrama LIKE ? OR
-            k.nama_asrama = ? OR k.nama_asrama = ? OR k.nama_asrama LIKE ? OR
-            b.kamar LIKE ? OR b.kamar LIKE ? OR b.kamar LIKE ? OR b.kamar LIKE ?
+            CASE WHEN k.nama_asrama IS NOT NULL THEN (
+              k.nama_asrama = ? OR k.nama_asrama = ? OR k.nama_asrama LIKE ?
+            )
+            ELSE (
+              b.asrama = ? OR b.asrama = ? OR b.asrama LIKE ? OR b.asrama LIKE ? OR
+              b.kamar LIKE ? OR b.kamar LIKE ? OR b.kamar LIKE ? OR b.kamar LIKE ?
+            ) END
           )`);
           params.push(
+            // FOR k.nama_asrama
+            fullAsramaName,          // 'Asrama A'
+            letter,                  // 'A'
+            `Asrama ${letter}%`,     // 'Asrama A%'
+            
+            // FOR ELSE (b.asrama, b.kamar)
             fullAsramaName,          // 'Asrama A'
             letter,                  // 'A'
             `Asrama ${letter}%`,     // 'Asrama A%'
             `${letter} (%`,          // 'A (%'
-            fullAsramaName,          // 'Asrama A'
-            letter,                  // 'A'
-            `Asrama ${letter}%`,     // 'Asrama A%'
             `Asrama ${letter}%`,     // 'Asrama A%'
             `${letter} (%`,          // 'A (%' e.g. 'A (A1)'
             `${letter}/%`,           // 'A/%'
