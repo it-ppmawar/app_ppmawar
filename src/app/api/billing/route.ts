@@ -91,25 +91,35 @@ export async function GET(request: Request) {
     let resolvedAsrama: string | null = null;
     if (!['admin', 'staff', 'wali_murid'].includes(role)) {
       resolvedAsrama = await resolveAsrama(userId, role, username, payload.asrama || payload.namaAsrama || null);
-      if (resolvedAsrama) {
+      if (resolvedAsrama && resolvedAsrama !== 'Semua') {
         const asramaLetter = resolvedAsrama.replace(/asrama\s+/i, '').trim();
-        
-        conditions.push(`(
-          b.asrama = ? OR b.asrama = ? OR b.asrama LIKE ? OR b.asrama LIKE ? OR
-          k.nama_asrama = ? OR k.nama_asrama = ? OR k.nama_asrama LIKE ? OR
-          b.kamar LIKE ? OR b.kamar LIKE ?
-        )`);
-        params.push(
-          resolvedAsrama, 
-          asramaLetter, 
-          `%${resolvedAsrama}%`, 
-          `%Asrama ${asramaLetter}%`,
-          resolvedAsrama,
-          asramaLetter,
-          `%${asramaLetter}%`,
-          `%Asrama ${asramaLetter}%`,
-          `%${asramaLetter} /%`
-        );
+        const fullAsramaName = asramaLetter.toLowerCase() === 'tahfid' ? 'Asrama Tahfid' : `Asrama ${asramaLetter.toUpperCase()}`;
+
+        if (asramaLetter.toLowerCase() === 'tahfid') {
+          conditions.push(`(
+            b.asrama LIKE '%Tahfid%' OR k.nama_asrama LIKE '%Tahfid%' OR b.kamar LIKE '%Tahfid%'
+          )`);
+        } else {
+          const letter = asramaLetter.toUpperCase();
+          conditions.push(`(
+            b.asrama = ? OR b.asrama = ? OR b.asrama LIKE ? OR b.asrama LIKE ? OR
+            k.nama_asrama = ? OR k.nama_asrama = ? OR k.nama_asrama LIKE ? OR
+            b.kamar LIKE ? OR b.kamar LIKE ? OR b.kamar LIKE ? OR b.kamar LIKE ?
+          )`);
+          params.push(
+            fullAsramaName,          // 'Asrama A'
+            letter,                  // 'A'
+            `Asrama ${letter}%`,     // 'Asrama A%'
+            `${letter} (%`,          // 'A (%'
+            fullAsramaName,          // 'Asrama A'
+            letter,                  // 'A'
+            `Asrama ${letter}%`,     // 'Asrama A%'
+            `Asrama ${letter}%`,     // 'Asrama A%'
+            `${letter} (%`,          // 'A (%' e.g. 'A (A1)'
+            `${letter}/%`,           // 'A/%'
+            `${letter}-%`            // 'A-%' e.g. 'A-1'
+          );
+        }
       }
     }
 
