@@ -178,22 +178,26 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {(() => {
+        const lowerRole = (role || '').toLowerCase();
+        return (
+          <>
       {/* Menu Cepat */}
-      {!(role || '').toLowerCase().includes('petugas') && (
+      {!lowerRole.includes('petugas') && (
       <section>
         <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
           <Activity size={18} className="text-green-600 dark:text-green-400" /> Menu Cepat
         </h3>
         <div className={`grid gap-3 ${
-          role === 'tamu'
+          lowerRole === 'tamu'
             ? 'grid-cols-2'
-            : (role === 'admin' || role === 'pengurus_asrama' || role === 'pengasuh' || role === 'staff' || isPengasuh || isPengurusAsrama)
+            : (['admin', 'pengurus_asrama', 'pengasuh', 'staff'].includes(lowerRole) || isPengasuh || isPengurusAsrama)
             ? 'grid-cols-4'
-            : role !== 'wali_murid'
+            : lowerRole !== 'wali_murid'
             ? 'grid-cols-4'
             : 'grid-cols-3'
         }`}>
-          {(role === 'admin' || role === 'pengurus_asrama' || role === 'pengasuh' || role === 'staff' || isPengasuh || isPengurusAsrama) && (
+          {(['admin', 'pengurus_asrama', 'pengasuh', 'staff'].includes(lowerRole) || isPengasuh || isPengurusAsrama) && (
             <Link 
               href="/dashboard/scan-absen" 
               className="col-span-full flex flex-row items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-2xl border border-green-100 dark:border-green-800/50 shadow-sm hover:bg-green-100 dark:hover:bg-green-900/50 transition"
@@ -202,7 +206,7 @@ export default function DashboardPage() {
               <span className="text-[10px] font-semibold text-center">Scan Absen</span>
             </Link>
           )}
-          {role !== 'wali_murid' && role !== 'tamu' && (
+          {lowerRole !== 'wali_murid' && lowerRole !== 'tamu' && (
             <Link href="/dashboard/absen" className="flex flex-col items-center justify-center p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-2xl border border-blue-100 dark:border-blue-800/50 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
               <ClipboardCheck size={24} className="mb-2" />
               <span className="text-[10px] font-semibold text-center">Input Absen</span>
@@ -213,7 +217,7 @@ export default function DashboardPage() {
             <CalendarDays size={24} className="mb-2" />
             <span className="text-[10px] font-semibold text-center">Lihat Jadwal</span>
           </Link>
-          {role !== 'tamu' && (
+          {lowerRole !== 'tamu' && (
             <Link href="/dashboard/murid" className="flex flex-col items-center justify-center p-3 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-2xl border border-orange-100 dark:border-orange-800/50 shadow-sm hover:bg-orange-100 dark:hover:bg-orange-900/50 transition">
               <Users size={24} className="mb-2" />
               <span className="text-[10px] font-semibold text-center">Data Murid</span>
@@ -229,7 +233,6 @@ export default function DashboardPage() {
 
       {/* Pintasan cepat — Kebersihan, Inventaris, Tagihan — horizontal grid mengisi penuh */}
       {(() => {
-        const lowerRole = (role || '').toLowerCase();
         const isPengasuhAny = lowerRole.includes('pengasuh') || isPengasuh;
         const isPengurusAny = lowerRole.includes('pengurus') || isPengurusAsrama;
         const isPetugasKeb = lowerRole.includes('kebersihan') || lowerRole === 'petugas_umum' || lowerRole === 'petugas';
@@ -237,7 +240,7 @@ export default function DashboardPage() {
 
         const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(lowerRole) || isPengasuhAny || isPengurusAny || isPetugasKeb;
         const showInventaris = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(lowerRole) || isPengasuhAny || isPengurusAny || isPetugasInv;
-        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(lowerRole) || isPengasuhAny; // pengurus_asrama & guru tidak punya akses billing
+        const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(lowerRole) || isPengasuhAny;
         const visibleCount = [showKebersihan, showInventaris, showTagihan].filter(Boolean).length;
         if (visibleCount === 0) return null;
         return (
@@ -277,10 +280,10 @@ export default function DashboardPage() {
       })()}
 
       {/* Daftar Jadwal Hari Ini */}
-      {!(role || '').toLowerCase().includes('petugas') && (
+      {!lowerRole.includes('petugas') && (
       <>
       <section className="space-y-4">
-        {['kegiatan', 'quran', 'madin'].filter(tipe => role === 'admin' || role === 'staff' || allSchedules.some(s => s.tipe === tipe)).map(tipe => {
+        {['kegiatan', 'quran', 'madin'].filter(tipe => lowerRole === 'admin' || lowerRole === 'staff' || allSchedules.some(s => s.tipe === tipe)).map(tipe => {
           const tipeName = tipe === 'kegiatan' ? 'Kegiatan' : tipe === 'quran' ? "Qur'an" : 'Madin';
           const Icon = tipe === 'kegiatan' ? Clock : BookOpen;
           const tipeSchedules = schedules.filter(s => s.tipe === tipe);
@@ -455,6 +458,9 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+          </>
+        );
+      })()}
 
     </div>
   );

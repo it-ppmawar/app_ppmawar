@@ -190,14 +190,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const hasMadin = userSchedules.some(s => s.tipe === 'madin');
   const hasKegiatan = userSchedules.some(s => s.tipe === 'kegiatan');
 
-  const isPengasuhRole = ['pengasuh', 'pengurus_asrama'].includes(user?.role || '') || !!user?.is_pengasuh || !!user?.isPengasuh || !!user?.is_pengurus_asrama || !!user?.isPengurusAsrama;
+  const isPengasuhRole = ['pengasuh', 'pengurus_asrama'].includes(userRoleLower) || !!user?.is_pengasuh || !!user?.isPengasuh || !!user?.is_pengurus_asrama || !!user?.isPengurusAsrama;
   // canAccessBilling: pengurus_asrama & guru TIDAK termasuk — hanya admin, staff, wali_murid, pengasuh (role atau is_pengasuh=true)
-  const canAccessBilling = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(user?.role || '') || !!user?.is_pengasuh || !!user?.isPengasuh;
+  const canAccessBilling = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(userRoleLower) || !!user?.is_pengasuh || !!user?.isPengasuh;
 
   const showQuranMadin = user?.role === 'admin' || user?.role === 'staff' || hasQuran || hasMadin;
-  const showKamarAsrama = user?.role === 'admin' || user?.role === 'staff' || isPengasuhRole || hasKegiatan;
-  const showDataSantri = user?.role === 'admin' || user?.role === 'staff' || isPengasuhRole || hasQuran || hasMadin || hasKegiatan;
-  const showDataGuru = user?.role === 'admin' || user?.role === 'staff' || isPengasuhRole || hasQuran || hasMadin || hasKegiatan;
+  const showKamarAsrama = userRoleLower === 'admin' || userRoleLower === 'staff' || isPengasuhRole || hasKegiatan;
+  const showDataSantri = userRoleLower === 'admin' || userRoleLower === 'staff' || isPengasuhRole || hasQuran || hasMadin || hasKegiatan;
+  const showDataGuru = userRoleLower === 'admin' || userRoleLower === 'staff' || isPengasuhRole || hasQuran || hasMadin || hasKegiatan;
 
   const toggleTheme = () => {
     if (isDark) {
@@ -522,20 +522,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             </li>
             )}
-            {(user?.role === 'admin' || user?.role === 'pengurus_asrama' || user?.role === 'pengasuh' || user?.role === 'staff' || user?.role === 'guru' || isPengasuhRole) && (
+            {['admin', 'pengurus_asrama', 'pengasuh', 'staff', 'guru'].includes(userRoleLower) || isPengasuhRole ? (
             <li>
               <Link href="/dashboard/scan-absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/scan-absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
                 <QrCode size={18} /> <span className="text-sm">Scan Absensi</span>
               </Link>
             </li>
-            )}
+            ) : null}
             <li>
               <Link href="/dashboard/ketertiban" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/ketertiban' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold' : 'hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 font-bold'}`}>
                 <FileWarning size={18} /> <span className="text-sm">Ketertiban Murid</span>
               </Link>
             </li>
             {/* Kebersihan & Sampah - di bawah Ketertiban Murid */}
-            {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || isPengasuhRole ? (
+            {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(userRoleLower) || isPengasuhRole ? (
             <li>
               <Link href="/dashboard/kebersihan" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/kebersihan') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
                 <Trash2 size={18} /> <span className="text-sm">Kebersihan & Sampah</span>
@@ -588,7 +588,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </li>
             )}
             {/* Inventaris Asrama - di bawah Kamar Asrama */}
-            {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '') || isPengasuhRole ? (
+            {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(userRoleLower) || isPengasuhRole ? (
               <li>
                 <Link href="/dashboard/inventaris" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/inventaris') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
                   <Archive size={18} /> <span className="text-sm">Inventaris Asrama</span>
@@ -600,7 +600,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
 
           {/* Manajemen Sistem - Hanya untuk Admin / Staff Penuh */}
-          {(user?.role === 'admin' || user?.role === 'staff') && (
+          {['admin', 'staff'].includes(userRoleLower) && (
             <>
               <div className="px-5 mb-2 mt-4">
                 <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Manajemen Sistem</p>
