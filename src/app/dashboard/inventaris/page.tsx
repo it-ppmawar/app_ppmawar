@@ -265,15 +265,14 @@ export default function InventarisPage() {
 
   const dorms = ['Semua', 'A', 'B', 'C', 'D', 'E', 'F', 'Tahfid'];
 
-  const canAddDelete = user?.role === 'admin' || user?.role === 'staff'
-    || ['petugas_inventaris', 'petugas_inventaris_umum', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh'].includes(user?.role || '')
-    || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama));
-  const canEdit = canAddDelete || true; // semua role yang punya akses halaman inventaris boleh edit kondisi laporan
-  const canUpdateLaporan = canAddDelete || ['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(user?.role || '');
-  // Petugas inventaris umum dan sarpras lihat semua tab asrama seperti admin
+  const canAddDelete = user?.role === 'admin' || user?.role === 'staff';
+  const canEdit = canAddDelete || ['petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_umum'].includes(user?.role || '') || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama));
+  const canUpdateLaporan = canAddDelete || ['petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_umum'].includes(user?.role || '');
+  // Petugas umum, inventaris umum dan sarpras lihat semua tab asrama seperti admin
   // pengasuh & pengurus_asrama hanya lihat tab asrama mereka sendiri
   const showAllTabs = canAddDelete
     || user?.role === 'petugas_inventaris_umum'
+    || user?.role === 'petugas_umum'
     || user?.role === 'petugas_sarpras';
 
   return (

@@ -85,20 +85,30 @@ export async function GET(request: Request) {
       const nis = userRows[0].nis;
       conditions.push('b.nis = ?');
       params.push(nis);
-    } else if (isPengasuhUser && !['admin', 'staff'].includes(role)) {
-      // Batasi tagihan hanya untuk asrama yang dikelola oleh pengasuh ini
-      const namaAsrama = await resolveAsrama(userId, role, username, payload.asrama || payload.namaAsrama || null);
-      if (namaAsrama) {
-        const asramaLetter = namaAsrama.replace(/asrama\s+/i, '').trim();
+    }
+
+    // Resolve asrama pengasuh/pengurus
+    let resolvedAsrama: string | null = null;
+    if (!['admin', 'staff', 'wali_murid'].includes(role)) {
+      resolvedAsrama = await resolveAsrama(userId, role, username, payload.asrama || payload.namaAsrama || null);
+      if (resolvedAsrama) {
+        const asramaLetter = resolvedAsrama.replace(/asrama\s+/i, '').trim();
         
-        conditions.push('(b.asrama = ? OR b.asrama = ? OR b.asrama LIKE ? OR b.asrama LIKE ? OR k.nama_asrama = ? OR k.nama_asrama = ?)');
+        conditions.push(`(
+          b.asrama = ? OR b.asrama = ? OR b.asrama LIKE ? OR b.asrama LIKE ? OR
+          k.nama_asrama = ? OR k.nama_asrama = ? OR k.nama_asrama LIKE ? OR
+          b.kamar LIKE ? OR b.kamar LIKE ?
+        )`);
         params.push(
-          namaAsrama, 
+          resolvedAsrama, 
           asramaLetter, 
-          `%${namaAsrama}%`, 
-          `%Asrama ${asramaLetter} %`, // Contoh: "Asrama A (A-1)"
-          namaAsrama,
-          asramaLetter
+          `%${resolvedAsrama}%`, 
+          `%Asrama ${asramaLetter}%`,
+          resolvedAsrama,
+          asramaLetter,
+          `%${asramaLetter}%`,
+          `%Asrama ${asramaLetter}%`,
+          `%${asramaLetter} /%`
         );
       }
     }
@@ -154,7 +164,8 @@ export async function GET(request: Request) {
       success: true,
       data: resultData,
       total_lunas: totalLunas,
-      total_belum: totalBelum
+      total_belum: totalBelum,
+      user_asrama: resolvedAsrama
     });
 
   } catch (error: any) {

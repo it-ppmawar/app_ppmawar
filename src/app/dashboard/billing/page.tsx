@@ -33,6 +33,7 @@ export default function BillingPage() {
   const [selectedDetailItem, setSelectedDetailItem] = useState<any | null>(null);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [userAsrama, setUserAsrama] = useState<string | null>(null);
 
   const fetchBilling = (kategori?: string) => {
     setLoading(true);
@@ -43,6 +44,7 @@ export default function BillingPage() {
       .then(data => {
         if (data.success) {
           setTagihan(data.data);
+          if (data.user_asrama) setUserAsrama(data.user_asrama);
         } else {
           setErrorMsg(data.error || 'Gagal mengambil data tagihan');
           setTagihan([]);
@@ -295,6 +297,16 @@ export default function BillingPage() {
       {/* Main Content Area */}
       <div className="bg-white dark:bg-gray-800/90 rounded-3xl shadow-md border border-gray-200/80 dark:border-gray-700/80 overflow-hidden backdrop-blur-sm">
         
+        {/* Single Tab Asrama — Khusus Pengasuh / Pengurus Asrama (Sesuai Halaman Kebersihan & Inventaris) */}
+        {userRole && !['admin', 'staff'].includes(userRole) && (
+          <div className="p-4 border-b border-gray-200/80 dark:border-gray-700/80">
+            <div className="flex bg-emerald-600 dark:bg-emerald-700 p-2.5 rounded-2xl text-white font-extrabold text-xs items-center justify-center gap-2 shadow-sm w-full">
+              <MapPin size={16} />
+              <span>{userAsrama ? (userAsrama.startsWith('Asrama ') ? userAsrama : `Asrama ${userAsrama}`) : 'Asrama A'}</span>
+            </div>
+          </div>
+        )}
+
         {/* Category Filters (for admin/staff only) */}
         {userRole && ['admin', 'staff'].includes(userRole) && (
           <div className="p-4 md:p-5 border-b border-gray-200/80 dark:border-gray-700/80 flex flex-col gap-3">

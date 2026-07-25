@@ -100,6 +100,7 @@ export default function KebersIhanPage() {
   const isDoubleRoleAsrama = user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama);
   const showAllTabs = isAdmin
     || user?.role === 'petugas_kebersihan_umum'
+    || user?.role === 'petugas_umum'
     || user?.role === 'petugas_sarpras';
   const isPengasuhOrAdmin = isAdmin || ['pengurus_asrama', 'pengasuh', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(user?.role || '') || isDoubleRoleAsrama;
 
@@ -349,7 +350,7 @@ export default function KebersIhanPage() {
           >
             <TableProperties size={14} /> Excel
           </button>
-          {isPengasuhOrAdmin && (
+          {isAdmin && (
             <>
               <button
                 onClick={() => downloadTemplate('kebersihan')}
@@ -469,7 +470,7 @@ export default function KebersIhanPage() {
             <div className="bg-white dark:bg-gray-900 rounded-2xl p-12 text-center border border-dashed border-gray-200 dark:border-gray-700">
               <Trash2 size={40} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
               <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Belum ada item kebersihan</p>
-              {isPengasuhOrAdmin && <button onClick={openAddItem} className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors">+ Tambah Item</button>}
+              {isAdmin && <button onClick={openAddItem} className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors">+ Tambah Item</button>}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
