@@ -97,7 +97,13 @@ export async function POST(request: Request) {
     const uname = (user.username || '').toLowerCase();
     const rname = (user.nama || '').toLowerCase();
 
-    if (uname.includes('petugas_inventaris') || rname.includes('petugas inventaris')) {
+    if (uname.includes('pengasuh') || rname.includes('pengasuh')) {
+      userRole = 'pengasuh';
+      pool.execute("UPDATE users SET role = 'pengasuh', is_pengasuh = 1 WHERE id = ?", [user.id]).catch(() => {});
+    } else if (uname.includes('pengurus') || rname.includes('pengurus')) {
+      userRole = 'pengurus_asrama';
+      pool.execute("UPDATE users SET role = 'pengurus_asrama', is_pengurus_asrama = 1 WHERE id = ?", [user.id]).catch(() => {});
+    } else if (uname.includes('petugas_inventaris') || rname.includes('petugas inventaris')) {
       userRole = 'petugas_inventaris_umum';
       pool.execute("UPDATE users SET role = 'petugas_inventaris_umum' WHERE id = ?", [user.id]).catch(() => {});
     } else if (uname.includes('petugas_kebersihan') || rname.includes('petugas kebersihan')) {

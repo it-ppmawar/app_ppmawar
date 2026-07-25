@@ -71,13 +71,38 @@ export async function GET() {
 
     // Repair roles for seeded accounts unconditionally if username or name matches
     try {
-      const [fixPengasuh] = await pool.execute("UPDATE users SET role = 'pengasuh' WHERE username LIKE 'pengasuh_%'");
+      const [fixPengasuh] = await pool.execute("UPDATE users SET role = 'pengasuh', is_pengasuh = 1 WHERE username LIKE 'pengasuh_%' OR nama LIKE 'Pengasuh %'");
+      const [fixPengurus] = await pool.execute("UPDATE users SET role = 'pengurus_asrama', is_pengurus_asrama = 1 WHERE username LIKE 'pengurus_%' OR nama LIKE 'Pengurus %'");
       const [fixInventaris] = await pool.execute("UPDATE users SET role = 'petugas_inventaris_umum' WHERE username LIKE '%petugas_inventaris%' OR nama LIKE '%Petugas Inventaris%'");
       const [fixKebersihan] = await pool.execute("UPDATE users SET role = 'petugas_kebersihan_umum' WHERE username LIKE '%petugas_kebersihan%' OR nama LIKE '%Petugas Kebersihan%'");
       const [fixUmum] = await pool.execute("UPDATE users SET role = 'petugas_umum' WHERE username = 'petugas_umum' OR nama = 'Petugas Umum'");
-      results.push(`✅ Fixed roles for seeded accounts: ${(fixPengasuh as any).affectedRows} pengasuh, ${(fixInventaris as any).affectedRows} petugas inventaris, ${(fixKebersihan as any).affectedRows} petugas kebersihan, ${(fixUmum as any).affectedRows} petugas umum`);
+      results.push(`✅ Fixed roles for seeded accounts: ${(fixPengasuh as any).affectedRows} pengasuh, ${(fixPengurus as any).affectedRows} pengurus, ${(fixInventaris as any).affectedRows} petugas inventaris, ${(fixKebersihan as any).affectedRows} petugas kebersihan, ${(fixUmum as any).affectedRows} petugas umum`);
     } catch (e: any) {
       results.push('❌ Failed to repair empty roles: ' + e.message);
+    }
+
+    // Repair billing table corrupted asrama records (where billing.asrama was incorrectly assigned or defaulted to Asrama A)
+    try {
+      const [repairLink] = await pool.execute(`
+        UPDATE billing b
+        JOIN murid m ON (b.nis IS NOT NULL AND b.nis != '' AND b.nis = m.nis) OR (b.nama_santri IS NOT NULL AND LOWER(TRIM(b.nama_santri)) = LOWER(TRIM(m.nama)))
+        JOIN kamar k ON m.kamar_id = k.kamar_id
+        SET b.asrama = CASE WHEN k.nama_asrama LIKE 'Asrama %' THEN k.nama_asrama ELSE CONCAT('Asrama ', k.nama_asrama) END,
+            b.kamar = k.nama_kamar
+        WHERE (b.asrama = 'Asrama A' OR b.asrama = 'Asrama A (-)' OR b.asrama IS NULL OR b.asrama = '')
+          AND k.nama_asrama IS NOT NULL AND k.nama_asrama != '' AND k.nama_asrama NOT LIKE '%A%'
+      `);
+
+      const [repairPattern] = await pool.execute(`
+        UPDATE billing 
+        SET asrama = CONCAT('Asrama ', UPPER(SUBSTRING(kamar, 1, 1)))
+        WHERE (asrama = 'Asrama A' OR asrama = 'Asrama A (-)' OR asrama IS NULL OR asrama = '')
+          AND kamar REGEXP '^[B-Fb-f][0-9\\-]'
+      `);
+
+      results.push(`✅ Repaired corrupted billing asrama records: ${(repairLink as any).affectedRows} linked to murid/kamar, ${(repairPattern as any).affectedRows} fixed by kamar pattern`);
+    } catch (e: any) {
+      results.push('❌ Failed to repair billing asrama: ' + e.message);
     }
 
     return NextResponse.json({ success: true, results });

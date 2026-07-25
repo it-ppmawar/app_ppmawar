@@ -82,7 +82,15 @@ export async function GET() {
           const uname = (uRows[0].username || payload.username || '').toLowerCase();
           const rname = (uRows[0].nama || realName || '').toLowerCase();
 
-          if (uname.includes('petugas_inventaris') || rname.includes('petugas inventaris')) {
+          if (uname.includes('pengasuh') || rname.includes('pengasuh')) {
+            if (!dbRole.toLowerCase().includes('pengasuh')) dbRole = 'pengasuh';
+            isPengasuh = true;
+            pool.execute("UPDATE users SET role = 'pengasuh', is_pengasuh = 1 WHERE id = ?", [userId]).catch(() => {});
+          } else if (uname.includes('pengurus') || rname.includes('pengurus')) {
+            if (!dbRole.toLowerCase().includes('pengurus')) dbRole = 'pengurus_asrama';
+            isPengurusAsrama = true;
+            pool.execute("UPDATE users SET role = 'pengurus_asrama', is_pengurus_asrama = 1 WHERE id = ?", [userId]).catch(() => {});
+          } else if (uname.includes('petugas_inventaris') || rname.includes('petugas inventaris')) {
             dbRole = 'petugas_inventaris_umum';
             pool.execute("UPDATE users SET role = 'petugas_inventaris_umum' WHERE id = ?", [userId]).catch(() => {});
           } else if (uname.includes('petugas_kebersihan') || rname.includes('petugas kebersihan')) {
