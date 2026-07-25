@@ -52,6 +52,7 @@ export async function GET(request: Request) {
     } catch (_) {}
 
     // JOIN dengan tabel murid untuk mendapatkan info nama_wali, no_wali/no_hp_wali, foto_url, alamat
+    // JOIN dengan tabel kamar untuk mendapatkan nama asrama sebenarnya jika dari data tagihan madrasah
     let query = `
       SELECT b.*, 
              m.nama_wali, 
@@ -60,6 +61,7 @@ export async function GET(request: Request) {
              m.alamat 
       FROM billing b
       LEFT JOIN murid m ON b.nis = m.nis
+      LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
     `;
     let params: any[] = [];
     const conditions: string[] = [];
@@ -83,6 +85,22 @@ export async function GET(request: Request) {
       const nis = userRows[0].nis;
       conditions.push('b.nis = ?');
       params.push(nis);
+    } else if (isPengasuhUser && !['admin', 'staff'].includes(role)) {
+      // Batasi tagihan hanya untuk asrama yang dikelola oleh pengasuh ini
+      const namaAsrama = await resolveAsrama(userId, role, username, payload.asrama || payload.namaAsrama || null);
+      if (namaAsrama) {
+        const asramaLetter = namaAsrama.replace(/asrama\s+/i, '').trim();
+        
+        conditions.push('(b.asrama = ? OR b.asrama = ? OR b.asrama LIKE ? OR b.asrama LIKE ? OR k.nama_asrama = ? OR k.nama_asrama = ?)');
+        params.push(
+          namaAsrama, 
+          asramaLetter, 
+          `%${namaAsrama}%`, 
+          `%Asrama ${asramaLetter} %`, // Contoh: "Asrama A (A-1)"
+          namaAsrama,
+          asramaLetter
+        );
+      }
     }
 
     // Filter NIS spesifik jika ada dari query params
