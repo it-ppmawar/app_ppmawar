@@ -86,8 +86,8 @@ export default function BillingPage() {
       .then(data => {
         if (data.success) {
           setUserRole(data.user.role);
-          // Hanya is_pengasuh yang memberi akses ke billing, bukan is_pengurus_asrama
-          setIsPengasuhUser(!!(data.user.is_pengasuh || data.user.isPengasuh));
+          setIsPengasuhUser(!!(data.user.is_pengasuh || data.user.isPengasuh || data.user.is_pengurus_asrama || data.user.isPengurusAsrama || (data.user.role || '').includes('pengasuh')));
+          if (data.user.asrama) setUserAsrama(data.user.asrama);
         }
       })
       .catch(console.error);
@@ -246,6 +246,16 @@ export default function BillingPage() {
     ? 'Semua Kategori' 
     : `${filterKategori === 'pesantren' ? 'Pesantren' : 'Madrasah'}${selectedSubTab !== 'Semua' ? ` • ${selectedSubTab}` : ''}`;
 
+  const displayAsramaName = React.useMemo(() => {
+    if (!userAsrama) return 'Asrama A';
+    const clean = userAsrama.trim();
+    if (/^asrama\s+/i.test(clean)) {
+      const letter = clean.replace(/^asrama\s+/i, '').trim();
+      return letter.toLowerCase() === 'tahfid' ? 'Asrama Tahfid' : `Asrama ${letter.toUpperCase()}`;
+    }
+    return clean.toLowerCase() === 'tahfid' ? 'Asrama Tahfid' : `Asrama ${clean.toUpperCase()}`;
+  }, [userAsrama]);
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
       {/* Header */}
@@ -294,18 +304,18 @@ export default function BillingPage() {
         </div>
       )}
 
+      {/* Single Tab Asrama Standalone — Khusus Pengasuh / Pengurus Asrama / Peran Terbatas (Sesuai Halaman Kebersihan & Inventaris) */}
+      {(userRole && !['admin', 'staff'].includes(userRole)) || isPengasuhUser ? (
+        <div className="bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full text-center">
+          <div className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow-sm w-full">
+            <MapPin size={16} />
+            <span>{displayAsramaName}</span>
+          </div>
+        </div>
+      ) : null}
+
       {/* Main Content Area */}
       <div className="bg-white dark:bg-gray-800/90 rounded-3xl shadow-md border border-gray-200/80 dark:border-gray-700/80 overflow-hidden backdrop-blur-sm">
-        
-        {/* Single Tab Asrama — Khusus Pengasuh / Pengurus Asrama (Sesuai Halaman Kebersihan & Inventaris) */}
-        {userRole && !['admin', 'staff'].includes(userRole) && (
-          <div className="p-4 border-b border-gray-200/80 dark:border-gray-700/80">
-            <div className="flex bg-emerald-600 dark:bg-emerald-700 p-2.5 rounded-2xl text-white font-extrabold text-xs items-center justify-center gap-2 shadow-sm w-full">
-              <MapPin size={16} />
-              <span>{userAsrama ? (userAsrama.startsWith('Asrama ') ? userAsrama : `Asrama ${userAsrama}`) : 'Asrama A'}</span>
-            </div>
-          </div>
-        )}
 
         {/* Category Filters (for admin/staff only) */}
         {userRole && ['admin', 'staff'].includes(userRole) && (
