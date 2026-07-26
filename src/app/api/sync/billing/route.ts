@@ -111,6 +111,7 @@ export async function POST(request: Request) {
     const token = cookieStore.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const payload = verifyToken(token) as any;
     const isAllowedToSync = payload && (
       ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(payload.role) ||
       payload.isPengasuh || payload.is_pengasuh || payload.isPengurusAsrama || payload.is_pengurus_asrama
