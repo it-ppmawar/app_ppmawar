@@ -493,7 +493,7 @@ export default function KebersIhanPage() {
                         <AlertTriangle size={13} /> Laporkan
                       </button>
                     )}
-                    {isAdmin && (
+                    {canAdd && (
                       <>
                         <button onClick={() => openEditItem(item)} className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 rounded-xl transition-colors">
                           <Edit size={13} />

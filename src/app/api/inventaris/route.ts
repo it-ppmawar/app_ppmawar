@@ -166,9 +166,14 @@ export async function DELETE(request: Request) {
     const token = cookieStore.get('token')?.value;
     const payload = token ? verifyToken(token) as any : null;
     
-    // HANYA Admin dan Staff yang boleh menghapus
-    if (!payload || (payload.role !== 'admin' && payload.role !== 'staff')) {
-      return NextResponse.json({ error: 'Hanya admin dan staff yang dapat menghapus data inventaris' }, { status: 403 });
+    const isAllowedToDelete = payload && (
+      ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(payload.role)
+      || payload.isPengasuh || payload.is_pengasuh
+      || payload.isPengurusAsrama || payload.is_pengurus_asrama
+    );
+
+    if (!payload || !isAllowedToDelete) {
+      return NextResponse.json({ error: 'Hanya admin, staff, pengasuh, dan pengurus asrama yang dapat menghapus data inventaris' }, { status: 403 });
     }
 
     const data = await request.json();

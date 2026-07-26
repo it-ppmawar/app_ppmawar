@@ -100,7 +100,14 @@ export async function GET() {
           AND kamar REGEXP '^[B-Fb-f][0-9\\-]'
       `);
 
-      results.push(`✅ Repaired corrupted billing asrama records: ${(repairLink as any).affectedRows} linked to murid/kamar, ${(repairPattern as any).affectedRows} fixed by kamar pattern`);
+      // Explicit repair for Azqiyatul Imamiyah & similar unmatched cases
+      const [fixAzqiyatul] = await pool.execute(`
+        UPDATE billing 
+        SET asrama = 'Asrama D', kamar = 'D-5'
+        WHERE (nama_santri LIKE '%AZQIYATUL IMAMIYAH%' OR nis = '2026050098')
+      `);
+
+      results.push(`✅ Repaired corrupted billing asrama records: ${(repairLink as any).affectedRows} linked to murid/kamar, ${(repairPattern as any).affectedRows} fixed by kamar pattern, ${(fixAzqiyatul as any).affectedRows} specific records fixed`);
     } catch (e: any) {
       results.push('❌ Failed to repair billing asrama: ' + e.message);
     }

@@ -214,12 +214,42 @@ export async function POST(request: Request) {
         const nama = dbMurid?.nama || namaFromSheet;
 
         let asrama = colAsrama !== -1 ? String(row[colAsrama] || '').trim() : '';
-        if (!asrama || asrama === '0' || asrama === '-') asrama = dbMurid?.nama_asrama || '';
         if (/^[A-F]$/i.test(asrama)) asrama = `Asrama ${asrama.toUpperCase()}`;
-        if (!asrama) asrama = 'Asrama A';
 
         let kamar = colKamar !== -1 ? String(row[colKamar] || '').trim() : '';
+
+        // Auto-detect asrama from kamar (e.g. kamar "D-5" -> "Asrama D") if asrama is missing
+        if ((!asrama || asrama === '0' || asrama === '-') && kamar && /^[A-F]/i.test(kamar)) {
+          asrama = `Asrama ${kamar.charAt(0).toUpperCase()}`;
+        }
+
+        if (!asrama || asrama === '0' || asrama === '-') asrama = dbMurid?.nama_asrama || '-';
         if (!kamar || kamar === '0' || kamar === '-') kamar = dbMurid?.nama_kamar || '-';
+
+        // Auto-enrich murid table: update murid.kamar_id if murid has no kamar assigned
+        if (asrama && asrama !== '-' && kamar && kamar !== '-') {
+          try {
+            const asramaCode = asrama.replace(/asrama\s+/i, '').trim().toUpperCase();
+            const [kRows] = await pool.execute<RowDataPacket[]>(
+              `SELECT kamar_id FROM kamar WHERE (nama_asrama = ? OR nama_asrama = ?) AND (nama_kamar = ? OR nama_kamar = ?) LIMIT 1`,
+              [`Asrama ${asramaCode}`, asramaCode, kamar, `${asramaCode}-${kamar}`]
+            );
+            let kId = kRows.length > 0 ? kRows[0].kamar_id : null;
+            if (!kId) {
+              const [insK] = await pool.execute(
+                `INSERT INTO kamar (nama_kamar, nama_asrama, kapasitas) VALUES (?, ?, 20)`,
+                [kamar, asramaCode]
+              );
+              kId = (insK as any).insertId;
+            }
+            if (kId) {
+              await pool.execute(
+                `UPDATE murid SET kamar_id = ? WHERE (nis = ? OR LOWER(TRIM(nama)) = LOWER(TRIM(?))) AND (kamar_id IS NULL OR kamar_id = 0)`,
+                [kId, nis, nama]
+              );
+            }
+          } catch (e) {}
+        }
 
         const sekolah   = colSekolah   !== -1 ? String(row[colSekolah]   || '').trim() : '';
         const madrasiah = colMadrasiah !== -1 ? String(row[colMadrasiah] || '').trim() : '';

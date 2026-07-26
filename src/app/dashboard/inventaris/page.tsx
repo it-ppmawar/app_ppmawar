@@ -265,10 +265,10 @@ export default function InventarisPage() {
 
   const dorms = ['Semua', 'A', 'B', 'C', 'D', 'E', 'F', 'Tahfid'];
 
-  const canAddDelete = user?.role === 'admin' || user?.role === 'staff';
   const uRoleLower = (user?.role || '').toLowerCase();
   const isPengasuhOrPengurus = ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || user?.is_pengasuh || user?.isPengasuh || user?.is_pengurus_asrama || user?.isPengurusAsrama || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama));
-  const canAdd = canAddDelete || isPengasuhOrPengurus;
+  const canAddDelete = user?.role === 'admin' || user?.role === 'staff' || isPengasuhOrPengurus;
+  const canAdd = canAddDelete;
   const isPetugas = uRoleLower.includes('petugas');
   const canEdit = canAddDelete || isPetugas || isPengasuhOrPengurus;
   const canUpdateLaporan = canAddDelete || isPetugas;

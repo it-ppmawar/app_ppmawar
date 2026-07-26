@@ -134,11 +134,15 @@ export async function DELETE(request: Request) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const payload = token ? (verifyToken(token) as any) : null;
+    const isAllowedToDelete = payload && (
+      ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(payload.role)
+      || payload.isPengasuh || payload.is_pengasuh
+      || payload.isPengurusAsrama || payload.is_pengurus_asrama
+    );
 
-    const payload = verifyToken(token) as any;
-    if (!payload || !['admin', 'staff'].includes(payload.role)) {
-      return NextResponse.json({ error: 'Hanya admin/staff yang dapat menghapus item kebersihan' }, { status: 403 });
+    if (!payload || !isAllowedToDelete) {
+      return NextResponse.json({ error: 'Hanya admin, staff, pengasuh, dan pengurus asrama yang dapat menghapus item kebersihan' }, { status: 403 });
     }
 
     const body = await request.json();
