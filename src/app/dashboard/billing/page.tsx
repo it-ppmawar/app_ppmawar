@@ -252,7 +252,7 @@ export default function BillingPage() {
     );
   }
 
-  if (userRole === 'wali_alumni' && !loading && totalBelum === 0) {
+  if (userRole === 'wali_alumni' && !loading && dynamicTotalBelum === 0) {
     return (
       <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-3xl p-8 border border-emerald-200 dark:border-emerald-800 text-center max-w-lg mx-auto my-12">
         <div className="bg-emerald-100 dark:bg-emerald-900/50 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-4 text-emerald-600 dark:text-emerald-400">
