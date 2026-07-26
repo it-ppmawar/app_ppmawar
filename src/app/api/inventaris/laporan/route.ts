@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const tokenAsrama = payload.namaAsrama || null;
 
     // Cek akses
-    const allowedRoles = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama'];
+    const allowedRoles = ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'petugas_inventaris', 'petugas_inventaris_umum'];
     if (!allowedRoles.includes(role)) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
@@ -29,8 +29,8 @@ export async function GET(request: Request) {
     let whereClause = 'WHERE 1=1';
     let params: any[] = [];
 
-    // Jika pengurus asrama, batasi hanya laporan dari barang di asramanya sendiri
-    if (role === 'pengurus_asrama') {
+    // Jika pengurus asrama atau petugas inventaris asrama, batasi hanya laporan dari barang di asramanya sendiri
+    if (['pengurus_asrama', 'petugas_inventaris'].includes(role)) {
       const myAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
       if (!myAsrama) {
         return NextResponse.json({ error: 'Asrama tidak ditemukan untuk akun ini' }, { status: 403 });
@@ -125,8 +125,8 @@ export async function PUT(request: Request) {
     if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const role = payload.role;
-    // Boleh Edit Status Laporan: Admin, Staff, Petugas Sarpras
-    if (!['admin', 'staff', 'petugas_sarpras'].includes(role)) {
+    // Boleh Edit Status Laporan: Admin, Staff, Petugas Sarpras, Pengurus Asrama, Petugas Inventaris
+    if (!['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(role)) {
       return NextResponse.json({ error: 'Akses ditolak, Anda bukan petugas perbaikan/admin' }, { status: 403 });
     }
 

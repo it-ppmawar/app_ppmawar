@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   let navItems = [
     { name: 'Beranda', href: '/dashboard', icon: Home },
     { name: 'Jadwal', href: '/dashboard/jadwal', icon: CalendarDays },
-    ...(user?.role !== 'wali_murid' && user?.role !== 'tamu' ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
+    ...(user?.role !== 'wali_murid' && user?.role !== 'wali_alumni' && user?.role !== 'tamu' ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
     ...(user?.role !== 'tamu' ? [{ name: 'Notifikasi', href: '/dashboard/notifikasi', icon: Bell }] : []),
     { name: 'Profil', href: '/dashboard/profil', icon: User },
   ];
@@ -173,6 +173,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
   }, []);
 
+  const [hasAlumniTunggakan, setHasAlumniTunggakan] = useState(false);
+
   useEffect(() => {
     if (user && user.role !== 'admin' && user.role !== 'staff') {
       fetch('/api/jadwal')
@@ -184,6 +186,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         })
         .catch(console.error);
     }
+
+    if (user && user.role === 'wali_alumni') {
+      fetch('/api/billing')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && Number(data.total_belum) > 0) {
+            setHasAlumniTunggakan(true);
+          } else {
+            setHasAlumniTunggakan(false);
+          }
+        })
+        .catch(console.error);
+    }
   }, [user]);
 
   const hasQuran = userSchedules.some(s => s.tipe === 'quran');
@@ -191,8 +206,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const hasKegiatan = userSchedules.some(s => s.tipe === 'kegiatan');
 
   const isPengasuhRole = userRoleLower.includes('pengasuh') || userRoleLower.includes('pengurus') || !!user?.is_pengasuh || !!user?.isPengasuh || !!user?.is_pengurus_asrama || !!user?.isPengurusAsrama;
-  // canAccessBilling: pengurus_asrama & guru TIDAK termasuk — hanya admin, staff, wali_murid, pengasuh (role atau is_pengasuh=true)
-  const canAccessBilling = ['admin', 'staff', 'wali_murid'].includes(userRoleLower) || userRoleLower.includes('pengasuh') || !!user?.is_pengasuh || !!user?.isPengasuh;
+  // canAccessBilling: wali_alumni HANYA bisa akses billing jika masih punya tunggakan
+  const canAccessBilling = ['admin', 'staff', 'wali_murid'].includes(userRoleLower)
+    || (userRoleLower === 'wali_alumni' && hasAlumniTunggakan)
+    || userRoleLower.includes('pengasuh') || !!user?.is_pengasuh || !!user?.isPengasuh;
 
   const showQuranMadin = user?.role === 'admin' || user?.role === 'staff' || hasQuran || hasMadin;
   const showKamarAsrama = userRoleLower === 'admin' || userRoleLower === 'staff' || isPengasuhRole || hasKegiatan;

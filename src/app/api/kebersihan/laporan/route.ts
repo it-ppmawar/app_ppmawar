@@ -47,10 +47,10 @@ export async function GET(request: Request) {
       params.push(kebersihan_id);
     }
 
-    if (['admin', 'staff'].includes(role)) {
+    if (['admin', 'staff', 'petugas_kebersihan_umum', 'petugas_umum', 'petugas_sarpras'].includes(role)) {
       if (asramaFilter && asramaFilter !== 'semua') {
-        conditions.push('k.asrama = ?');
-        params.push(asramaFilter);
+        conditions.push('(k.asrama = ? OR k.asrama = ?)');
+        params.push(asramaFilter, asramaFilter.replace('Asrama ', ''));
       }
     } else {
       const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
@@ -58,8 +58,8 @@ export async function GET(request: Request) {
       if (!namaAsrama) {
         return NextResponse.json({ success: true, data: [] });
       }
-      conditions.push('k.asrama = ?');
-      params.push(namaAsrama);
+      conditions.push('(k.asrama = ? OR k.asrama = ?)');
+      params.push(namaAsrama, namaAsrama.replace('Asrama ', ''));
     }
 
     if (conditions.length > 0) {

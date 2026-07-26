@@ -37,8 +37,8 @@ export default function RekapitulasiPage() {
       .then(d => {
         if (d.success && d.user) {
           setRole(d.user.role);
-          if (d.user.role === 'wali_murid') {
-            // Auto fetch for wali murid
+          if (d.user.role === 'wali_murid' || d.user.role === 'wali_alumni') {
+            // Auto fetch for wali murid / wali alumni
             fetchRekap(true);
           } else {
             // Load options for the first time for teachers/admins
@@ -170,7 +170,7 @@ export default function RekapitulasiPage() {
     }
   };
 
-  if (role === 'wali_murid') {
+  if (role === 'wali_murid' || role === 'wali_alumni') {
     return (
       <div className="space-y-6 max-w-4xl mx-auto pb-20">
         <div className="bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-indigo-900/40 dark:to-blue-900/40 rounded-3xl p-6 shadow-sm border border-indigo-200 dark:border-indigo-800/50 relative overflow-hidden transition-colors duration-300">
@@ -179,10 +179,10 @@ export default function RekapitulasiPage() {
           </div>
           <div className="relative z-10">
             <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2">
-              <FileText size={28} /> Rekapitulasi Anak Anda
+              <FileText size={28} /> Rekapitulasi {role === 'wali_alumni' ? 'Alumni' : 'Anak'} Anda
             </h1>
             <p className="text-indigo-600 dark:text-indigo-300 text-sm mt-1 font-medium max-w-md">
-              Laporan ringkas kehadiran santri bulan ini.
+              {role === 'wali_alumni' ? 'Laporan ringkas kehadiran anak Anda semasa masih aktif di pesantren.' : 'Laporan ringkas kehadiran santri bulan ini.'}
             </p>
           </div>
         </div>

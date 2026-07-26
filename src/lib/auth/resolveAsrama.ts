@@ -62,9 +62,8 @@ export async function resolveAsrama(
   }
 
   // Tebak dari username - pola yang lebih presisi:
-  // staff_asrama_a, ketua_asrama_a, pengurus_asrama_a, pengasuh_a, asrama_a, asrama-a, dll.
-  // Harus diikuti separator (`_`, `-`, spasi) baru huruf a-f
-  const usernameMatch = username.match(/(?:asrama|pengasuh)[_\-\s]+([a-f])(?:[_\-\s]|$)/i);
+  // staff_asrama_a, ketua_asrama_a, pengurus_asrama_a, pengasuh_a, petugas_inventaris_asrama_a, petugas_kebersihan_asrama_a, dll.
+  const usernameMatch = username.match(/(?:asrama|pengasuh|petugas|petugas_inventaris|petugas_kebersihan)[_\-\s]+(?:asrama[_\-\s]+)?([a-f])(?:[_\-\s]|$)/i);
   if (usernameMatch) {
     return `Asrama ${usernameMatch[1].toUpperCase()}`;
   }

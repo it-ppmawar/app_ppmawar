@@ -19,8 +19,8 @@ export async function GET(request: Request) {
     const bulan = searchParams.get('bulan'); // 1-12
     const tahun = searchParams.get('tahun');
 
-    // Wali Murid Logic
-    if (payload.role === 'wali_murid') {
+    // Wali Murid & Wali Alumni Logic (akses rekap anak masing-masing)
+    if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
       if (!payload.muridId) return NextResponse.json({ error: 'Murid ID tidak valid' }, { status: 400 });
       
       const muridId = payload.muridId;

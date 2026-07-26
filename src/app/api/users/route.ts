@@ -45,6 +45,8 @@ export async function GET(request: Request) {
       query += " WHERE role = 'pengasuh'";
     } else if (roleFilter === 'petugas') {
       query += " WHERE role IN ('petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_inventaris', 'petugas_inventaris_umum', 'petugas_kebersihan', 'petugas_kebersihan_umum')";
+    } else if (roleFilter === 'wali_alumni') {
+      query += " WHERE role = 'wali_alumni'";
     }
 
     let rows: RowDataPacket[] = [];
@@ -88,8 +90,8 @@ export async function POST(request: Request) {
     if (existing.length > 0) return NextResponse.json({ error: 'Username sudah terdaftar' }, { status: 400 });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const isPengasuhVal = (role === 'guru' && is_pengasuh) ? 1 : 0;
-    const isPengurusVal = (role === 'guru' && is_pengurus_asrama) ? 1 : 0;
+    const isPengasuhVal = (role === 'pengasuh' || is_pengasuh) ? 1 : 0;
+    const isPengurusVal = (role === 'pengurus_asrama' || is_pengurus_asrama) ? 1 : 0;
     await pool.execute(
       'INSERT INTO users (username, password, role, nama, nip, kamar_id, is_pengasuh, is_pengurus_asrama, asrama) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [username, hashedPassword, role, nama, nip || null, kamar_id || null, isPengasuhVal, isPengurusVal, asrama || null]
@@ -133,8 +135,8 @@ export async function PUT(request: Request) {
     const [existing] = await pool.execute<RowDataPacket[]>('SELECT id FROM users WHERE username = ? AND id != ?', [username, id]);
     if (existing.length > 0) return NextResponse.json({ error: 'Username sudah digunakan oleh user lain' }, { status: 400 });
 
-    const isPengasuhVal = (role === 'guru' && is_pengasuh) ? 1 : 0;
-    const isPengurusVal = (role === 'guru' && is_pengurus_asrama) ? 1 : 0;
+    const isPengasuhVal = (role === 'pengasuh' || is_pengasuh) ? 1 : 0;
+    const isPengurusVal = (role === 'pengurus_asrama' || is_pengurus_asrama) ? 1 : 0;
     let query = 'UPDATE users SET username = ?, role = ?, nama = ?, nip = ?, kamar_id = ?, is_pengasuh = ?, is_pengurus_asrama = ?, asrama = ?';
     let params: any[] = [username, role, nama, nip || null, kamar_id || null, isPengasuhVal, isPengurusVal, asrama || null];
 

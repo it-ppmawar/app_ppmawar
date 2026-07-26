@@ -236,7 +236,7 @@ export default function BillingPage() {
   }
 
   // pengurus_asrama TIDAK mendapat akses billing; hanya pengasuh (atau guru yg juga pengasuh) yang boleh
-  const isAccessAllowed = userRole && (['admin', 'staff', 'wali_murid', 'pengasuh'].includes(userRole) || isPengasuhUser);
+  const isAccessAllowed = userRole && (['admin', 'staff', 'wali_murid', 'wali_alumni', 'pengasuh'].includes(userRole) || isPengasuhUser);
 
   if (!isAccessAllowed) {
     return (
@@ -248,6 +248,23 @@ export default function BillingPage() {
         <p className="text-sm text-red-600 dark:text-red-300 mb-6">
           Halaman Informasi Tagihan hanya dapat diakses oleh Admin, Staff, Wali Murid, dan Pengasuh.
         </p>
+      </div>
+    );
+  }
+
+  if (userRole === 'wali_alumni' && !loading && totalBelum === 0) {
+    return (
+      <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-3xl p-8 border border-emerald-200 dark:border-emerald-800 text-center max-w-lg mx-auto my-12">
+        <div className="bg-emerald-100 dark:bg-emerald-900/50 p-4 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-4 text-emerald-600 dark:text-emerald-400">
+          <CheckCircle2 size={40} />
+        </div>
+        <h3 className="text-xl font-bold text-emerald-800 dark:text-emerald-300 mb-2">Seluruh Tagihan Telah LUNAS</h3>
+        <p className="text-sm text-emerald-700 dark:text-emerald-400 mb-6">
+          Alhamdulillah, akun Alumni / Wali Alumni Anda tidak memiliki tanggungan tagihan administrasi yang belum ditunaikan. Terima kasih atas ketaatan dan kerja samanya.
+        </p>
+        <Link href="/dashboard" className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-colors inline-flex items-center gap-2">
+          Kembali ke Beranda
+        </Link>
       </div>
     );
   }
@@ -267,8 +284,10 @@ export default function BillingPage() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">Informasi Tagihan & Pembayaran</h1>
             <p className="text-emerald-50 opacity-90 text-sm sm:text-base max-w-xl">
-              {userRole === 'wali_murid' 
-                ? 'Pantau status pembayaran administrasi putra/putri Anda secara langsung dari sistem.' 
+              {userRole === 'wali_murid' || userRole === 'wali_alumni'
+                ? (userRole === 'wali_alumni'
+                  ? 'Lihat riwayat tagihan administrasi putra/putri Anda yang telah lulus/alumni.'
+                  : 'Pantau status pembayaran administrasi putra/putri Anda secara langsung dari sistem.') 
                 : (userRole === 'pengasuh' || isPengasuhUser)
                 ? 'Pantau status tagihan santri di asrama Anda secara langsung dari sistem keuangan.'
                 : 'Dasbor pemantauan status tagihan santri secara menyeluruh dari sistem keuangan pusat.'}
@@ -562,7 +581,7 @@ export default function BillingPage() {
               <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Tidak ditemukan data tagihan untuk filter yang dipilih.</p>
             </div>
           ) : (
-            userRole === 'wali_murid' ? (
+            userRole === 'wali_murid' || userRole === 'wali_alumni' ? (
               /* CARD VIEW FOR WALI MURID (Mobile-Friendly) */
               <div className="space-y-4">
                 {filteredTagihan.map((t) => (

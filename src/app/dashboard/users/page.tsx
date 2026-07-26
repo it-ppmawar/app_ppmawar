@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, ShieldAlert, Edit, Trash2, Plus, Search, Shield, UserCog, User, BookOpen, KeyRound, FileText, Download, X, Fingerprint, RefreshCw, Upload, TableProperties, ChevronDown } from 'lucide-react';
+import { Users, ShieldAlert, Edit, Trash2, Plus, Search, Shield, UserCog, User, BookOpen, KeyRound, FileText, Download, X, Fingerprint, RefreshCw, Upload, TableProperties, ChevronDown, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 import { downloadTemplate } from '@/lib/downloadTemplate';
 
@@ -269,7 +269,7 @@ export default function UsersManagementPage() {
   };
 
   const handleSyncAllUsers = async () => {
-    if (!confirm('Apakah Anda yakin ingin melakukan sinkronisasi & konversi akun otomatis untuk seluruh Guru dan Wali Murid?\n\n- Akun baru akan otomatis dibuat untuk guru/murid yang belum punya akun.\n- Informasi nama/NIP akan disinkronkan (tanpa mereset password atau username yang sudah ada/diganti).\n- Akun dari guru/murid yang tidak aktif/alumni/dihapus akan otomatis dibersihkan.')) return;
+    if (!confirm('Apakah Anda yakin ingin melakukan sinkronisasi & konversi akun otomatis untuk seluruh Guru dan Wali Murid?\n\n- Akun baru akan otomatis dibuat untuk guru/murid yang belum punya akun.\n- Informasi nama/NIP akan disinkronkan (tanpa mereset password atau username yang sudah ada/diganti).\n- Akun Wali Murid dari santri alumni akan otomatis dikonversi menjadi Akun Wali Alumni / Alumni (tidak dihapus).\n- Akun guru tidak aktif akan dibersihkan.')) return;
     
     setSyncing(true);
     try {
@@ -292,12 +292,54 @@ export default function UsersManagementPage() {
     }
   };
 
+  const [generatingPetugas, setGeneratingPetugas] = useState(false);
+  const [generatingPengurus, setGeneratingPengurus] = useState(false);
+
+  const handleGeneratePetugas = async () => {
+    if (!confirm('Apakah Anda ingin men-generate akun Petugas Inventaris Asrama & Petugas Kebersihan Asrama untuk seluruh asrama secara otomatis?\n\n(Username: petugas_inventaris_asrama_a, petugas_kebersihan_asrama_a, dst. | Password default: asrama123)')) return;
+    setGeneratingPetugas(true);
+    try {
+      const res = await fetch('/api/users/generate-petugas', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        fetchUsers();
+      } else {
+        alert(data.error);
+      }
+    } catch (e) {
+      alert('Gagal menghubungi server');
+    } finally {
+      setGeneratingPetugas(false);
+    }
+  };
+
+  const handleGeneratePengurus = async () => {
+    if (!confirm('Apakah Anda ingin men-generate akun Pengurus Asrama untuk seluruh kamar secara otomatis?\n\n(Password default: asrama123)')) return;
+    setGeneratingPengurus(true);
+    try {
+      const res = await fetch('/api/users/generate-pengurus', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        fetchUsers();
+      } else {
+        alert(data.error);
+      }
+    } catch (e) {
+      alert('Gagal menghubungi server');
+    } finally {
+      setGeneratingPengurus(false);
+    }
+  };
+
   const tabs = [
     { id: 'pengelola', label: 'Pengelola (Admin/Staff)', icon: Shield },
     { id: 'pengasuh', label: 'Pengasuh Asrama', icon: UserCog },
     { id: 'pengurus_asrama', label: 'Pengurus Asrama', icon: ShieldAlert },
     { id: 'guru', label: 'Akun Guru', icon: UserCog },
     { id: 'wali_murid', label: 'Akun Wali Murid', icon: Users },
+    { id: 'wali_alumni', label: 'Akun Wali Alumni / Alumni', icon: GraduationCap },
     { id: 'petugas', label: 'Akun Petugas', icon: User }
   ];
 
@@ -356,15 +398,37 @@ export default function UsersManagementPage() {
                 </button>
               </>
             )}
-            {(activeTab === 'pengelola' || activeTab === 'guru' || activeTab === 'pengurus_asrama' || activeTab === 'pengasuh' || activeTab === 'petugas') && (
+            {(activeTab === 'pengelola' || activeTab === 'guru' || activeTab === 'pengurus_asrama' || activeTab === 'pengasuh' || activeTab === 'petugas' || activeTab === 'wali_murid' || activeTab === 'wali_alumni') && (
               <button
                 onClick={() => handleOpenModal()}
                 className="flex-1 md:flex-none justify-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
-                title={`Tambah ${activeTab === 'pengelola' ? 'Pengelola' : activeTab === 'pengurus_asrama' ? 'Pengurus Asrama' : activeTab === 'pengasuh' ? 'Pengasuh' : activeTab === 'petugas' ? 'Petugas' : 'Guru'}`}
+                title={`Tambah ${activeTab === 'pengelola' ? 'Pengelola' : activeTab === 'pengurus_asrama' ? 'Pengurus Asrama' : activeTab === 'pengasuh' ? 'Pengasuh' : activeTab === 'petugas' ? 'Petugas' : activeTab === 'wali_alumni' ? 'Wali Alumni' : 'Guru'}`}
               >
                 <Plus size={14} />
                 <span>Tambah</span>
               </button>
+            )}
+            {myRole === 'admin' && (activeTab === 'petugas' || activeTab === 'pengurus_asrama' || activeTab === 'pengasuh') && (
+              <>
+                <button
+                  onClick={handleGeneratePetugas}
+                  disabled={generatingPetugas}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-800 rounded-xl text-xs font-bold hover:bg-teal-100 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                  title="Generate Akun Petugas Inventaris & Kebersihan per Asrama"
+                >
+                  <RefreshCw size={14} className={generatingPetugas ? 'animate-spin' : ''} />
+                  {generatingPetugas ? 'Membuat...' : 'Generate Petugas Asrama'}
+                </button>
+                <button
+                  onClick={handleGeneratePengurus}
+                  disabled={generatingPengurus}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800 rounded-xl text-xs font-bold hover:bg-purple-100 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                  title="Generate Akun Pengurus Asrama per Kamar"
+                >
+                  <RefreshCw size={14} className={generatingPengurus ? 'animate-spin' : ''} />
+                  {generatingPengurus ? 'Membuat...' : 'Generate Pengurus Asrama'}
+                </button>
+              </>
             )}
             <button
               onClick={handleSyncAllUsers}
@@ -507,10 +571,11 @@ export default function UsersManagementPage() {
                         {u.username}
                       </td>
                       <td className="px-5 py-4">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
                           u.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                           u.role === 'staff' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                           u.role === 'guru' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                          u.role === 'wali_alumni' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800' :
                           u.role === 'pengasuh' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
                           u.role.startsWith('petugas_inventaris') ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' :
                           u.role.startsWith('petugas_kebersihan') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
@@ -518,13 +583,14 @@ export default function UsersManagementPage() {
                           u.role === 'petugas_umum' ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' :
                           'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                         }`}>
-                          {u.role === 'pengasuh' ? 'Pengasuh' :
+                          {u.role === 'pengasuh' ? `Pengasuh ${u.asrama ? `(${u.asrama})` : ''}` :
+                           u.role === 'wali_alumni' ? 'Wali Alumni / Alumni' :
                            u.role === 'petugas' ? 'Petugas' :
                            u.role === 'petugas_umum' ? 'Petugas Umum' :
                            u.role === 'petugas_sarpras' ? 'Petugas Sarpras' :
-                           u.role === 'petugas_inventaris' ? 'Petugas Inventaris' :
+                           u.role === 'petugas_inventaris' ? `Petugas Inventaris ${u.asrama ? `(${u.asrama})` : ''}` :
                            u.role === 'petugas_inventaris_umum' ? 'Petugas Inventaris Umum' :
-                           u.role === 'petugas_kebersihan' ? 'Petugas Kebersihan' :
+                           u.role === 'petugas_kebersihan' ? `Petugas Kebersihan ${u.asrama ? `(${u.asrama})` : ''}` :
                            u.role === 'petugas_kebersihan_umum' ? 'Petugas Kebersihan Umum' :
                            u.role.includes('asrama') ? u.role.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') :
                            u.role.replace('_', ' ')}
@@ -671,6 +737,7 @@ export default function UsersManagementPage() {
                     )}
                     {activeTab === 'guru' && <option value="guru">Guru</option>}
                     {activeTab === 'wali_murid' && <option value="wali_murid">Wali Murid</option>}
+                    {activeTab === 'wali_alumni' && <option value="wali_alumni">Wali Alumni / Alumni</option>}
                     {activeTab === 'petugas' && (
                       <>
                         <option value="petugas_inventaris">Petugas Inventaris (perorangan, bisa sidik jari)</option>
@@ -727,11 +794,11 @@ export default function UsersManagementPage() {
                 </div>
               )}
 
-              {/* Selection Asrama Binaan / Kelolaan */}
-              {(formData.role === 'pengurus_asrama' || formData.role === 'pengasuh' || (formData.role === 'guru' && (formData.is_pengasuh || formData.is_pengurus_asrama))) && (
+              {/* Selection Asrama Binaan / Kelolaan / Lokasi Tugas */}
+              {(formData.role === 'pengurus_asrama' || formData.role === 'pengasuh' || formData.role === 'petugas_inventaris' || formData.role === 'petugas_kebersihan' || (formData.role === 'guru' && (formData.is_pengasuh || formData.is_pengurus_asrama))) && (
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">
-                    Asrama Binaan / Kelolaan
+                    Asrama Binaan / Lokasi Tugas
                   </label>
                   <select
                     value={formData.asrama}

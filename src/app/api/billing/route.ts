@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 
     // pengurus_asrama TIDAK mendapat akses billing
     // Otorisasi peran
-    const allowedRoles = ['admin', 'staff', 'wali_murid', 'pengasuh'];
+    const allowedRoles = ['admin', 'staff', 'wali_murid', 'wali_alumni', 'pengasuh'];
     if (!allowedRoles.includes(role) && !isPengasuhUser) {
       return NextResponse.json({ error: 'Akses ditolak: Peran Anda tidak memiliki izin mengakses info tagihan.' }, { status: 403 });
     }
@@ -73,8 +73,8 @@ export async function GET(request: Request) {
     const kategoriFilter = url.searchParams.get('kategori'); // 'pesantren' | 'madrasah' | null
     const nisFilter = url.searchParams.get('nis');
 
-    if (role === 'wali_murid') {
-      // Dapatkan NIS santri yang terhubung dengan akun wali murid ini
+    if (role === 'wali_murid' || role === 'wali_alumni') {
+      // Dapatkan NIS santri yang terhubung dengan akun wali murid/wali alumni ini
       const [userRows] = await pool.execute<RowDataPacket[]>(
         `SELECT m.nis FROM users u 
          JOIN murid m ON u.murid_id = m.murid_id 
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
 
     // Resolve asrama pengasuh/pengurus
     let resolvedAsrama: string | null = null;
-    if (!['admin', 'staff', 'wali_murid'].includes(role)) {
+    if (!['admin', 'staff', 'wali_murid', 'wali_alumni'].includes(role)) {
       resolvedAsrama = await resolveAsrama(userId, role, username, payload.asrama || payload.namaAsrama || null);
       if (resolvedAsrama && resolvedAsrama !== 'Semua') {
         const asramaLetter = resolvedAsrama.replace(/asrama\s+/i, '').trim();

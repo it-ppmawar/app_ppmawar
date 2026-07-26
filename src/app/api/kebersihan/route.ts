@@ -36,10 +36,10 @@ export async function GET(request: Request) {
     `;
     let params: any[] = [];
 
-    if (['admin', 'staff'].includes(role)) {
+    if (['admin', 'staff', 'petugas_kebersihan_umum', 'petugas_umum', 'petugas_sarpras'].includes(role)) {
       if (asramaFilter && asramaFilter !== 'semua') {
-        query += ' WHERE k.asrama = ?';
-        params.push(asramaFilter);
+        query += ' WHERE (k.asrama = ? OR k.asrama = ?)';
+        params.push(asramaFilter, asramaFilter.replace('Asrama ', ''));
       }
     } else {
       // Resolve asrama for non-admin users
@@ -48,8 +48,8 @@ export async function GET(request: Request) {
       if (!namaAsrama) {
         return NextResponse.json({ success: true, data: [] });
       }
-      query += ' WHERE k.asrama = ?';
-      params.push(namaAsrama);
+      query += ' WHERE (k.asrama = ? OR k.asrama = ?)';
+      params.push(namaAsrama, namaAsrama.replace('Asrama ', ''));
     }
 
     query += ' ORDER BY k.asrama ASC, k.nama_item ASC';
@@ -68,13 +68,13 @@ export async function POST(request: Request) {
 
     const payload = verifyToken(token) as any;
     const isAllowedToAdd = payload && (
-      ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(payload.role)
+      ['admin', 'staff', 'pengasuh', 'pengurus_asrama', 'petugas_kebersihan', 'petugas_kebersihan_umum', 'petugas_umum'].includes(payload.role)
       || payload.isPengasuh || payload.is_pengasuh
       || payload.isPengurusAsrama || payload.is_pengurus_asrama
     );
 
     if (!payload || !isAllowedToAdd) {
-      return NextResponse.json({ error: 'Akses ditolak: Hanya admin, staff, pengasuh, dan pengurus asrama yang dapat menambah item kebersihan' }, { status: 403 });
+      return NextResponse.json({ error: 'Akses ditolak: Hanya admin, staff, pengasuh, pengurus asrama, dan petugas kebersihan yang dapat menambah item kebersihan' }, { status: 403 });
     }
 
     const body = await request.json();

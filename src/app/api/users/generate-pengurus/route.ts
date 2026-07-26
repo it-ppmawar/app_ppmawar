@@ -16,6 +16,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const { ensureUserColumns } = await import('@/lib/ensureColumns');
+    await ensureUserColumns();
+
     const [kamars] = await pool.execute<RowDataPacket[]>('SELECT * FROM kamar');
     let createdCount = 0;
 
@@ -23,11 +26,12 @@ export async function POST(request: Request) {
       const username = `pengurus_${kamar.nama_kamar.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
       const passwordHash = await bcrypt.hash('asrama123', 10);
       const namaLengkap = `Pengurus ${kamar.nama_kamar}`;
+      const asramaVal = kamar.nama_asrama || null;
 
       try {
         await pool.execute(
-          'INSERT INTO users (username, password, role, nama_lengkap, kamar_id) VALUES (?, ?, ?, ?, ?)',
-          [username, passwordHash, 'pengurus_asrama', namaLengkap, kamar.kamar_id]
+          'INSERT INTO users (username, password, role, nama, nama_lengkap, kamar_id, asrama, is_pengurus_asrama) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+          [username, passwordHash, 'pengurus_asrama', namaLengkap, namaLengkap, kamar.kamar_id, asramaVal]
         );
         createdCount++;
       } catch (e: any) {

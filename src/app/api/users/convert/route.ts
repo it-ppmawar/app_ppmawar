@@ -92,13 +92,14 @@ export async function POST(request: Request) {
           const namaWali = murid.nama_wali || `Wali dari ${murid.nama}`;
 
           const [existing] = await connection.execute<RowDataPacket[]>(
-            'SELECT id FROM users WHERE murid_id = ? OR username = ?',
+            'SELECT id, role FROM users WHERE murid_id = ? OR username = ?',
             [murid.murid_id, username]
           );
 
           if (existing.length > 0) {
             const userId = existing[0].id;
             // Akun sudah ada: HANYA perbarui nama, role, murid_id — JANGAN ubah username/password
+            // Jika sebelumnya wali_alumni (murid re-enroll), upgrade kembali ke wali_murid
             await connection.execute(
               'UPDATE users SET role = ?, nama = ?, murid_id = ? WHERE id = ?',
               ['wali_murid', namaWali, murid.murid_id, userId]
@@ -115,12 +116,17 @@ export async function POST(request: Request) {
           }
         }
 
-        const [waliUsers] = await connection.execute<RowDataPacket[]>("SELECT id, murid_id FROM users WHERE role = 'wali_murid'");
-        let deletedWaliCount = 0;
+        // Cek akun wali_murid dan wali_alumni yang muridnya tidak aktif
+        const [waliUsers] = await connection.execute<RowDataPacket[]>("SELECT id, murid_id FROM users WHERE role IN ('wali_murid', 'wali_alumni')");
+        let convertedWaliCount = 0;
         for (const user of waliUsers) {
           if (!user.murid_id || !activeMuridIds.has(user.murid_id)) {
-            await connection.execute('DELETE FROM users WHERE id = ?', [user.id]);
-            deletedWaliCount++;
+            // Jangan hapus — ubah role ke wali_alumni agar riwayat tetap terjaga
+            const [currentRole] = await connection.execute<RowDataPacket[]>('SELECT role FROM users WHERE id = ?', [user.id]);
+            if (currentRole.length > 0 && currentRole[0].role === 'wali_murid') {
+              await connection.execute("UPDATE users SET role = 'wali_alumni' WHERE id = ?", [user.id]);
+              convertedWaliCount++;
+            }
           }
         }
 
@@ -129,7 +135,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
           success: true,
-          message: `Berhasil sinkronisasi: ${gurus.length} Akun Guru & ${murids.length} Akun Wali Murid aktif. Dihapus: ${deletedGuruCount} Akun Guru & ${deletedWaliCount} Akun Wali tidak aktif.`
+          message: `Berhasil sinkronisasi: ${gurus.length} Akun Guru & ${murids.length} Akun Wali Murid aktif. Dihapus: ${deletedGuruCount} Akun Guru tidak aktif. Dikonversi ke Wali Alumni: ${convertedWaliCount} Akun.`
         });
 
       } catch (err: any) {

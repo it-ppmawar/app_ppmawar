@@ -63,7 +63,7 @@ export async function GET() {
 
     // Modify users.role enum to support all specialized roles
     try {
-      await pool.execute("ALTER TABLE users MODIFY COLUMN role ENUM('admin','wali_kelas','wali_murid','guru','staff','pengurus_asrama','tamu','pengasuh','petugas_sarpras','petugas','petugas_umum','petugas_inventaris','petugas_inventaris_umum','petugas_kebersihan','petugas_kebersihan_umum') NOT NULL");
+      await pool.execute("ALTER TABLE users MODIFY COLUMN role ENUM('admin','wali_kelas','wali_murid','guru','staff','pengurus_asrama','tamu','pengasuh','petugas_sarpras','petugas','petugas_umum','petugas_inventaris','petugas_inventaris_umum','petugas_kebersihan','petugas_kebersihan_umum','wali_alumni') NOT NULL");
       results.push('✅ Updated users.role ENUM definition to support all new roles');
     } catch (e: any) {
       results.push('❌ Failed to update users.role ENUM: ' + e.message);

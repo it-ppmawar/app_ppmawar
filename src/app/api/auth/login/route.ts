@@ -104,14 +104,20 @@ export async function POST(request: Request) {
       userRole = 'pengurus_asrama';
       pool.execute("UPDATE users SET role = 'pengurus_asrama', is_pengurus_asrama = 1 WHERE id = ?", [user.id]).catch(() => {});
     } else if (uname.includes('petugas_inventaris') || rname.includes('petugas inventaris')) {
-      userRole = 'petugas_inventaris_umum';
-      pool.execute("UPDATE users SET role = 'petugas_inventaris_umum' WHERE id = ?", [user.id]).catch(() => {});
+      if (!userRole || userRole === 'petugas') {
+        userRole = (user.asrama || uname.includes('asrama')) ? 'petugas_inventaris' : 'petugas_inventaris_umum';
+        pool.execute("UPDATE users SET role = ? WHERE id = ?", [userRole, user.id]).catch(() => {});
+      }
     } else if (uname.includes('petugas_kebersihan') || rname.includes('petugas kebersihan')) {
-      userRole = 'petugas_kebersihan_umum';
-      pool.execute("UPDATE users SET role = 'petugas_kebersihan_umum' WHERE id = ?", [user.id]).catch(() => {});
+      if (!userRole || userRole === 'petugas') {
+        userRole = (user.asrama || uname.includes('asrama')) ? 'petugas_kebersihan' : 'petugas_kebersihan_umum';
+        pool.execute("UPDATE users SET role = ? WHERE id = ?", [userRole, user.id]).catch(() => {});
+      }
     } else if (uname.includes('petugas_umum') || rname.includes('petugas umum')) {
-      userRole = 'petugas_umum';
-      pool.execute("UPDATE users SET role = 'petugas_umum' WHERE id = ?", [user.id]).catch(() => {});
+      if (!userRole || userRole === 'petugas') {
+        userRole = 'petugas_umum';
+        pool.execute("UPDATE users SET role = 'petugas_umum' WHERE id = ?", [user.id]).catch(() => {});
+      }
     } else if ((uname.includes('petugas') || rname.includes('petugas')) && !userRole.toLowerCase().includes('petugas')) {
       userRole = 'petugas_umum';
       pool.execute("UPDATE users SET role = 'petugas_umum' WHERE id = ?", [user.id]).catch(() => {});

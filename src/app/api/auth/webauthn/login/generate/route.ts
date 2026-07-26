@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       const [users] = await pool.execute<RowDataPacket[]>('SELECT id, role FROM users WHERE username = ? LIMIT 1', [username]);
       if (users.length > 0) {
         const user = users[0];
-        const allowedBiometricRoles = ['guru', 'wali_murid', 'pengasuh', 'pengurus_asrama', 'petugas', 'petugas_umum', 'petugas_sarpras'];
+        const allowedBiometricRoles = ['guru', 'wali_murid', 'wali_alumni', 'pengasuh', 'pengurus_asrama', 'petugas', 'petugas_umum', 'petugas_sarpras'];
         if (!allowedBiometricRoles.includes(user.role)) {
           return NextResponse.json({ error: 'Login biometrik tidak diizinkan untuk akun ini.' }, { status: 403 });
         }

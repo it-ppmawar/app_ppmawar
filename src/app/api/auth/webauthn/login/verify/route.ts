@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
     const authenticator = creds[0];
     
-    const allowedBiometricRoles = ['guru', 'wali_murid', 'pengasuh', 'pengurus_asrama', 'petugas', 'petugas_umum', 'petugas_sarpras'];
+    const allowedBiometricRoles = ['guru', 'wali_murid', 'wali_alumni', 'pengasuh', 'pengurus_asrama', 'petugas', 'petugas_umum', 'petugas_sarpras'];
     if (!allowedBiometricRoles.includes(authenticator.role)) {
       return NextResponse.json({ error: 'Login biometrik tidak diizinkan untuk akun ini.' }, { status: 403 });
     }
