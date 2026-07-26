@@ -274,7 +274,7 @@ export default function BillingPage() {
                 : 'Dasbor pemantauan status tagihan santri secara menyeluruh dari sistem keuangan pusat.'}
             </p>
           </div>
-          {userRole && ['admin', 'staff'].includes(userRole) && (
+          {userRole && ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(userRole) && (
             <button
               onClick={handleSyncBilling}
               disabled={syncing}

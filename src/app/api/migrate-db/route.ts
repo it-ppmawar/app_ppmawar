@@ -100,14 +100,27 @@ export async function GET() {
           AND kamar REGEXP '^[B-Fb-f][0-9\\-]'
       `);
 
-      // Explicit repair for Azqiyatul Imamiyah & similar unmatched cases
+      // Explicit repair for Azqiyatul Imamiyah, Adiba Izdihar & similar unmatched cases
       const [fixAzqiyatul] = await pool.execute(`
         UPDATE billing 
         SET asrama = 'Asrama D', kamar = 'D-5'
         WHERE (nama_santri LIKE '%AZQIYATUL IMAMIYAH%' OR nis = '2026050098')
       `);
 
-      results.push(`✅ Repaired corrupted billing asrama records: ${(repairLink as any).affectedRows} linked to murid/kamar, ${(repairPattern as any).affectedRows} fixed by kamar pattern, ${(fixAzqiyatul as any).affectedRows} specific records fixed`);
+      const [fixAdiba] = await pool.execute(`
+        UPDATE billing 
+        SET asrama = 'Asrama E', kamar = 'E-8'
+        WHERE (nama_santri LIKE '%ADIBA IZDIHAR%' OR nis = '2026050118')
+      `);
+
+      // Clean up any remaining fake "Asrama A (-)" default fallback records so they don't clog Asrama A
+      const [fixUnassigned] = await pool.execute(`
+        UPDATE billing 
+        SET asrama = '-'
+        WHERE asrama = 'Asrama A (-)' AND (kamar = '-' OR kamar IS NULL OR kamar = '' OR kamar = '0')
+      `);
+
+      results.push(`✅ Repaired corrupted billing asrama records: ${(repairLink as any).affectedRows} linked, ${(repairPattern as any).affectedRows} pattern fixed, ${(fixAzqiyatul as any).affectedRows + (fixAdiba as any).affectedRows} specific fixed, ${(fixUnassigned as any).affectedRows} fake Asrama A defaults reset`);
     } catch (e: any) {
       results.push('❌ Failed to repair billing asrama: ' + e.message);
     }

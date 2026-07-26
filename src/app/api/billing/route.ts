@@ -105,13 +105,14 @@ export async function GET(request: Request) {
         } else {
           const letter = asramaLetter.toUpperCase();
           conditions.push(`(
-            CASE WHEN k.nama_asrama IS NOT NULL AND k.nama_asrama != '' THEN (
+            (k.nama_asrama IS NOT NULL AND k.nama_asrama != '' AND (
               k.nama_asrama = ? OR k.nama_asrama = ? OR k.nama_asrama LIKE ?
-            )
-            ELSE (
-              b.asrama = ? OR b.asrama = ? OR b.asrama LIKE ? OR b.asrama LIKE ? OR
-              b.kamar LIKE ? OR b.kamar LIKE ? OR b.kamar LIKE ? OR b.kamar LIKE ?
-            ) END
+            ))
+            OR
+            ((k.nama_asrama IS NULL OR k.nama_asrama = '') AND (
+              ((b.asrama = ? OR b.asrama = ?) AND b.asrama NOT LIKE '%(-)' AND (b.kamar IS NOT NULL AND b.kamar != '' AND b.kamar != '-'))
+              OR (b.kamar LIKE ? OR b.kamar LIKE ? OR b.kamar LIKE ?)
+            ))
           )`);
           params.push(
             // FOR k.nama_asrama
@@ -119,15 +120,14 @@ export async function GET(request: Request) {
             letter,                  // 'A'
             `Asrama ${letter}%`,     // 'Asrama A%'
             
-            // FOR ELSE (b.asrama, b.kamar)
+            // FOR b.asrama when kamar != '-'
             fullAsramaName,          // 'Asrama A'
             letter,                  // 'A'
-            `Asrama ${letter}%`,     // 'Asrama A%'
-            `${letter} (%`,          // 'A (%'
-            `Asrama ${letter}%`,     // 'Asrama A%'
-            `${letter} (%`,          // 'A (%' e.g. 'A (A1)'
-            `${letter}/%`,           // 'A/%'
-            `${letter}-%`            // 'A-%' e.g. 'A-1'
+            
+            // FOR b.kamar specific room prefix
+            `${letter}-%`,           // 'A-1', 'A-2'
+            `${letter}/%`,           // 'A/1'
+            `${letter} (%`           // 'A (A1)'
           );
         }
       }
