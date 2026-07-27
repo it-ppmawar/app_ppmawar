@@ -135,17 +135,33 @@ export default function BillingPage() {
       // 2. Sub Tab Filter
       if (selectedSubTab !== 'Semua') {
         if (filterKategori === 'pesantren') {
-          const cleanAsrama = (t.asrama || '').replace(/asrama\s*/i, '').trim().toUpperCase();
-          const targetLetter = selectedSubTab.replace(/asrama\s*/i, '').trim().toUpperCase();
           const rawAsrama = (t.asrama || '').trim().toUpperCase();
-          const isMatch =
-            cleanAsrama === targetLetter ||
-            rawAsrama === targetLetter ||
-            rawAsrama === `ASRAMA ${targetLetter}` ||
-            rawAsrama.endsWith(` ${targetLetter}`) ||
-            (t.kamar || '').toUpperCase().startsWith(targetLetter + '-') ||
-            (t.kamar || '').toUpperCase().startsWith(targetLetter + '/');
-          if (!isMatch) return false;
+          const rawKamar  = (t.kamar || '').trim().toUpperCase();
+          const cleanAsrama = rawAsrama.replace(/^ASRAMA\s*/i, '').trim();
+          const targetLetter = selectedSubTab.replace(/^ASRAMA\s*/i, '').trim().toUpperCase();
+
+          if (selectedSubTab === 'Lainnya') {
+            const isUnassigned =
+              rawAsrama === '-' ||
+              rawAsrama === '' ||
+              rawAsrama.includes('(-)') ||
+              (!rawKamar.match(/^[A-F]/i) && cleanAsrama.length > 1);
+            if (!isUnassigned) return false;
+          } else {
+            // Jika record asrama berisi "(-)" atau "-" atau kosong:
+            if (rawAsrama.includes('(-)') || rawAsrama === '-' || !rawAsrama) {
+              const matchesKamar = rawKamar.startsWith(`${targetLetter}-`) || rawKamar.startsWith(`${targetLetter}/`);
+              if (!matchesKamar) return false;
+            } else {
+              const isMatch =
+                cleanAsrama === targetLetter ||
+                rawAsrama === targetLetter ||
+                rawAsrama === `ASRAMA ${targetLetter}` ||
+                rawKamar.startsWith(`${targetLetter}-`) ||
+                rawKamar.startsWith(`${targetLetter}/`);
+              if (!isMatch) return false;
+            }
+          }
         } else if (filterKategori === 'madrasah') {
           const cleanAsrama      = (t.asrama || '').trim().toUpperCase();
           const cleanNamaTagihan = (t.nama_tagihan || '').trim().toUpperCase();
@@ -509,7 +525,7 @@ export default function BillingPage() {
               <div className="flex flex-col gap-2 w-full pt-1">
                 <span className="text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">Sub-Kategori: Asrama</span>
                 <div className="flex bg-gray-100/70 dark:bg-gray-900/60 p-1.5 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 overflow-x-auto scrollbar-none gap-1.5 w-full">
-                  {['Semua', 'A', 'B', 'C', 'D', 'E', 'F'].map((dorm) => (
+                  {['Semua', 'A', 'B', 'C', 'D', 'E', 'F', 'Lainnya'].map((dorm) => (
                     <button
                       key={dorm}
                       onClick={() => setSelectedSubTab(dorm)}
@@ -519,7 +535,7 @@ export default function BillingPage() {
                           : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
                       }`}
                     >
-                      {dorm === 'Semua' ? 'Semua Asrama' : `Asrama ${dorm}`}
+                      {dorm === 'Semua' ? 'Semua Asrama' : dorm === 'Lainnya' ? 'Tanpa Asrama' : `Asrama ${dorm}`}
                     </button>
                   ))}
                 </div>

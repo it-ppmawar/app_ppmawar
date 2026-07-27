@@ -42,8 +42,36 @@ export async function GET(request: Request) {
     }
 
     // Bersihkan otomatis record rekap ganda 'Total Tagihan%' jika ada
+    // dan perbaiki record asrama yang salah/corrupt di tabel billing
     try {
       await pool.execute(`DELETE FROM billing WHERE nama_tagihan LIKE 'Total Tagihan%'`);
+
+      // Auto-repair 1: Sync billing.asrama & billing.kamar dari tabel murid -> kamar jika terhubung
+      await pool.execute(`
+        UPDATE billing b
+        JOIN murid m ON (b.nis IS NOT NULL AND b.nis != '' AND b.nis = m.nis) OR (b.nama_santri IS NOT NULL AND LOWER(TRIM(b.nama_santri)) = LOWER(TRIM(m.nama)))
+        JOIN kamar k ON m.kamar_id = k.kamar_id
+        SET b.asrama = CASE WHEN k.nama_asrama LIKE 'Asrama %' THEN k.nama_asrama ELSE CONCAT('Asrama ', k.nama_asrama) END,
+            b.kamar = k.nama_kamar
+        WHERE k.nama_asrama IS NOT NULL AND k.nama_asrama != ''
+          AND (b.asrama = 'Asrama A' OR b.asrama = 'Asrama A (-)' OR b.asrama IS NULL OR b.asrama = '' OR b.asrama = '-')
+          AND k.nama_asrama NOT LIKE '%A%'
+      `);
+
+      // Auto-repair 2: Perbaiki billing.asrama berdasarkan pola kolom kamar (misal 'D-5' -> 'Asrama D')
+      await pool.execute(`
+        UPDATE billing
+        SET asrama = CONCAT('Asrama ', UPPER(SUBSTRING(kamar, 1, 1)))
+        WHERE (asrama = 'Asrama A' OR asrama = 'Asrama A (-)' OR asrama IS NULL OR asrama = '' OR asrama = '-')
+          AND kamar REGEXP '^[B-Fb-f][0-9\\-]'
+      `);
+
+      // Auto-repair 3: Bersihkan sisa record 'Asrama A (-)' yang tidak berpola menjadi '-'
+      await pool.execute(`
+        UPDATE billing
+        SET asrama = '-'
+        WHERE asrama = 'Asrama A (-)' AND (kamar = '-' OR kamar IS NULL OR kamar = '' OR kamar = '0')
+      `);
     } catch (_) {}
 
     // JOIN dengan tabel murid untuk mendapatkan info nama_wali, no_wali/no_hp_wali, foto_url, alamat
@@ -150,8 +178,15 @@ export async function GET(request: Request) {
 
     // Format data billing + santri
     const resultData = rows.map((r: any) => {
-      const realAsramaName = r.real_asrama ? (r.real_asrama.startsWith('Asrama ') ? r.real_asrama : `Asrama ${r.real_asrama}`) : r.asrama;
-      const realKamarName = r.real_kamar || r.kamar;
+      let realAsramaName = r.real_asrama ? (r.real_asrama.startsWith('Asrama ') ? r.real_asrama : `Asrama ${r.real_asrama}`) : r.asrama;
+      let realKamarName = r.real_kamar || r.kamar;
+
+      // Auto-detect & sanitize asrama name if it is currently 'Asrama A (-)' or default 'Asrama A' but room shows another dorm
+      if ((!realAsramaName || realAsramaName === 'Asrama A (-)' || realAsramaName === 'Asrama A') && realKamarName && /^[B-Fb-f]/i.test(realKamarName)) {
+        realAsramaName = `Asrama ${realKamarName.charAt(0).toUpperCase()}`;
+      } else if (realAsramaName === 'Asrama A (-)' && (!realKamarName || realKamarName === '-' || realKamarName === '0')) {
+        realAsramaName = '-';
+      }
       return {
         id: r.id,
         nis: r.nis,
