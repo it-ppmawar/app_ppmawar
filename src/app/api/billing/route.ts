@@ -41,14 +41,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Akses ditolak: Peran Anda tidak memiliki izin mengakses info tagihan.' }, { status: 403 });
     }
 
-    // Bersihkan otomatis record ganda (format lama vs format baru) jika ada
+    // Bersihkan otomatis record rekap ganda 'Total Tagihan%' jika ada
     try {
-      await pool.execute(`
-        DELETE b1 FROM billing b1
-        JOIN billing b2 ON b1.nis = b2.nis AND b1.periode = b2.periode AND b1.kategori = b2.kategori
-        WHERE b1.nama_tagihan LIKE 'Tagihan KELAS%' 
-          AND b2.nama_tagihan LIKE 'Total Tagihan KELAS%'
-      `);
+      await pool.execute(`DELETE FROM billing WHERE nama_tagihan LIKE 'Total Tagihan%'`);
     } catch (_) {}
 
     // JOIN dengan tabel murid untuk mendapatkan info nama_wali, no_wali/no_hp_wali, foto_url, alamat

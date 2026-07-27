@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   CreditCard, CheckCircle2, XCircle, Search, Calendar, FileText, AlertCircle, 
   Building2, GraduationCap, RefreshCw, MessageCircle, User, MapPin, Phone, 
-  X, ArrowUpDown, ArrowUp, ArrowDown, Lightbulb
+  X, ArrowUpDown, ArrowUp, ArrowDown, Lightbulb, ChevronRight, Layers, ListFilter
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -22,6 +22,9 @@ export default function BillingPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [syncing, setSyncing] = useState(false);
 
+  // View Mode: 'ringkasan' (Total per Santri) vs 'rincian' (Detail per Item Tagihan)
+  const [viewMode, setViewMode] = useState<'ringkasan' | 'rincian'>('ringkasan');
+
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('nama_santri');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
@@ -31,6 +34,7 @@ export default function BillingPage() {
 
   // Modal Detail Santri / Tagihan State
   const [selectedDetailItem, setSelectedDetailItem] = useState<any | null>(null);
+  const [selectedDetailGroup, setSelectedDetailGroup] = useState<any | null>(null);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [userAsrama, setUserAsrama] = useState<string | null>(null);
@@ -167,7 +171,7 @@ export default function BillingPage() {
     return true;
   });
 
-  // Dynamic Total calculation for the active tab selection
+  // Dynamic Total calculation for active selection (bebas double counting)
   const dynamicTotalBelum = tabFilteredTagihan
     .filter(t => t.status === 'Belum')
     .reduce((sum, t) => sum + Number(t.nominal || 0), 0);
@@ -176,12 +180,97 @@ export default function BillingPage() {
     .filter(t => t.status === 'Lunas')
     .reduce((sum, t) => sum + Number(t.nominal || 0), 0);
 
-  // Status counts for buttons
-  const countSemua = tabFilteredTagihan.length;
-  const countBelum = tabFilteredTagihan.filter(t => t.status === 'Belum').length;
-  const countLunas = tabFilteredTagihan.filter(t => t.status === 'Lunas').length;
+  // Grouping Per Santri (untuk Mode Ringkasan Total)
+  const groupedSantriList = React.useMemo(() => {
+    const map = new Map<string, {
+      key: string;
+      nis: string;
+      nama_santri: string;
+      nama_wali: string;
+      no_wali: string;
+      foto_url: string | null;
+      alamat: string;
+      asrama: string;
+      kamar: string;
+      totalBelum: number;
+      totalLunas: number;
+      overallStatus: string;
+      items: any[];
+    }>();
 
-  // Final table list further filtered by status & sorted
+    tabFilteredTagihan.forEach(item => {
+      const key = (item.nis && item.nis !== '-' ? item.nis : item.nama_santri || '').trim().toLowerCase();
+      if (!key) return;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          nis: item.nis || '-',
+          nama_santri: item.nama_santri || 'Tanpa Nama',
+          nama_wali: item.nama_wali || '-',
+          no_wali: item.no_wali || '',
+          foto_url: item.foto_url || null,
+          alamat: item.alamat || '-',
+          asrama: item.asrama || '-',
+          kamar: item.kamar || '-',
+          totalBelum: 0,
+          totalLunas: 0,
+          overallStatus: 'Lunas',
+          items: []
+        });
+      }
+      const entry = map.get(key)!;
+      entry.items.push(item);
+      if (item.status === 'Belum') {
+        entry.totalBelum += Number(item.nominal || 0);
+      } else {
+        entry.totalLunas += Number(item.nominal || 0);
+      }
+    });
+
+    map.forEach(entry => {
+      entry.overallStatus = entry.totalBelum > 0 ? 'Belum' : 'Lunas';
+    });
+
+    let list = Array.from(map.values());
+
+    // Filter status pada mode ringkasan santri
+    if (filterStatus !== 'Semua') {
+      list = list.filter(s => s.overallStatus === filterStatus);
+    }
+
+    // Sort list santri
+    list.sort((a, b) => {
+      let aVal: any = a.nama_santri;
+      let bVal: any = b.nama_santri;
+      if (sortField === 'nominal') {
+        aVal = a.totalBelum;
+        bVal = b.totalBelum;
+      } else if (sortField === 'status') {
+        aVal = a.overallStatus;
+        bVal = b.overallStatus;
+      } else if (sortField === 'asrama') {
+        aVal = a.asrama;
+        bVal = b.asrama;
+      }
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return list;
+  }, [tabFilteredTagihan, filterStatus, sortField, sortOrder]);
+
+  // Status counts untuk tombol filter
+  const countSemua = viewMode === 'ringkasan' ? groupedSantriList.length : tabFilteredTagihan.length;
+  const countBelum = viewMode === 'ringkasan' 
+    ? groupedSantriList.filter(s => s.overallStatus === 'Belum').length 
+    : tabFilteredTagihan.filter(t => t.status === 'Belum').length;
+  const countLunas = viewMode === 'ringkasan' 
+    ? groupedSantriList.filter(s => s.overallStatus === 'Lunas').length 
+    : tabFilteredTagihan.filter(t => t.status === 'Lunas').length;
+
+  // Final list rincian tagihan (Mode Rincian)
   const filteredTagihan = tabFilteredTagihan
     .filter(t => {
       if (filterStatus !== 'Semua' && t.status !== filterStatus) return false;
@@ -208,7 +297,7 @@ export default function BillingPage() {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
   };
 
-  // Helper untuk format URL WhatsApp
+  // Helper untuk format URL WhatsApp tunggal
   const formatWaUrl = (noHp: string, namaSantri: string, namaTagihan: string, nominal: number, periode: string) => {
     if (!noHp) return '#';
     let cleanNumber = noHp.replace(/[^0-9]/g, '');
@@ -226,6 +315,27 @@ export default function BillingPage() {
     return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
   };
 
+  // Helper untuk format URL WhatsApp gabungan (Ringkasan per Santri)
+  const formatWaUrlGrouped = (noHp: string, namaSantri: string, items: any[], totalNominal: number) => {
+    if (!noHp) return '#';
+    let cleanNumber = noHp.replace(/[^0-9]/g, '');
+    if (cleanNumber.startsWith('0')) {
+      cleanNumber = '62' + cleanNumber.slice(1);
+    }
+    const belumItems = items.filter(i => i.status === 'Belum');
+    const itemLines = belumItems.length > 0
+      ? belumItems.map(i => `• ${i.nama_tagihan}: *${formatRupiah(i.nominal)}* (${i.periode})`).join('\n')
+      : '• Seluruh Tagihan TELAH LUNAS';
+    
+    const message = `Assalamu'alaikum Wr. Wb. Yth. Bapak/Ibu Wali dari Ananda *${namaSantri}*.\n\n` +
+      `Melalui pesan ini kami menginformasikan rincian tunggakan administrasi ananda:\n` +
+      `${itemLines}\n\n` +
+      `📌 *TOTAL TUNGGAKAN*: *${formatRupiah(totalNominal)}*\n\n` +
+      `Informasi selengkapnya dapat dilihat pada tautan berikut: https://app.ppmawar.or.id/dashboard/billing\n\n` +
+      `Atas perhatian dan kerjasamanya kami ucapkan terima kasih.\nWassalamu'alaikum Wr. Wb.`;
+    return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -235,7 +345,7 @@ export default function BillingPage() {
     );
   }
 
-  // pengurus_asrama TIDAK mendapat akses billing; hanya pengasuh (atau guru yg juga pengasuh) yang boleh
+  // Otorisasi Akses
   const isAccessAllowed = userRole && (['admin', 'staff', 'wali_murid', 'wali_alumni', 'pengasuh'].includes(userRole) || isPengasuhUser);
 
   if (!isAccessAllowed) {
@@ -323,7 +433,7 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* Single Tab Asrama Standalone — Khusus Pengasuh / Pengurus Asrama / Peran Terbatas (Sesuai Halaman Kebersihan & Inventaris) */}
+      {/* Single Tab Asrama Standalone — Khusus Pengasuh / Peran Terbatas */}
       {(userRole && !['admin', 'staff'].includes(userRole)) || isPengasuhUser ? (
         <div className="bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full text-center">
           <div className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow-sm w-full">
@@ -414,7 +524,6 @@ export default function BillingPage() {
 
             {filterKategori === 'madrasah' && (
               <div className="flex flex-col gap-3 w-full pt-1">
-                {/* Sub-tab Tingkat Kelas */}
                 <div>
                   <span className="text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider block mb-1.5">Tingkat Kelas</span>
                   <div className="flex bg-gray-100/70 dark:bg-gray-900/60 p-1.5 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 overflow-x-auto scrollbar-none gap-1.5 w-full">
@@ -439,7 +548,6 @@ export default function BillingPage() {
                   </div>
                 </div>
 
-                {/* Sub-tab Unit Sekolah & Diniyah */}
                 <div>
                   <span className="text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider block mb-1.5">Unit Sekolah & Diniyah</span>
                   <div className="flex bg-gray-100/70 dark:bg-gray-900/60 p-1.5 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 overflow-x-auto scrollbar-none gap-1.5 w-full">
@@ -466,7 +574,6 @@ export default function BillingPage() {
                   </div>
                 </div>
 
-                {/* Catatan Edukasi */}
                 <div className="text-xs text-blue-800 dark:text-blue-200 bg-blue-50/80 dark:bg-blue-900/30 p-2.5 rounded-xl border border-blue-200/80 dark:border-blue-800/50 flex items-center gap-2">
                   <AlertCircle size={15} className="shrink-0 text-blue-500" />
                   <span>
@@ -478,8 +585,38 @@ export default function BillingPage() {
           </div>
         )}
 
-        {/* Status Filters + Search */}
-        <div className="p-4 md:p-5 border-b border-gray-200/80 dark:border-gray-700/80 flex flex-col gap-3">
+        {/* View Mode Switcher + Status Filters + Search */}
+        <div className="p-4 md:p-5 border-b border-gray-200/80 dark:border-gray-700/80 flex flex-col gap-4">
+          
+          {/* SAKELAR MODE TAMPILAN: TOTAL PER SANTRI VS RINCIAN DETAIL */}
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">Mode Tampilan Data</span>
+            <div className="grid grid-cols-2 bg-slate-100 dark:bg-slate-900/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700/80 gap-1.5 w-full">
+              <button
+                onClick={() => setViewMode('ringkasan')}
+                className={`flex items-center justify-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-extrabold rounded-xl transition-all ${
+                  viewMode === 'ringkasan'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/60'
+                }`}
+              >
+                <Layers size={16} />
+                <span>Total Per Santri</span>
+              </button>
+              <button
+                onClick={() => setViewMode('rincian')}
+                className={`flex items-center justify-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-extrabold rounded-xl transition-all ${
+                  viewMode === 'rincian'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/60'
+                }`}
+              >
+                <ListFilter size={16} />
+                <span>Rincian Tagihan</span>
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-2 w-full">
             <span className="text-xs font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">Filter Status</span>
             
@@ -537,7 +674,7 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Dynamic Summary Cards - NEW SLEEK DESIGN */}
+        {/* Dynamic Summary Cards */}
         <div className="p-4 md:p-5 bg-slate-900/90 dark:bg-slate-950/90 border-b border-gray-700/80 backdrop-blur-md">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -572,22 +709,266 @@ export default function BillingPage() {
 
         {/* Content List / Table */}
         <div className="p-4 md:p-5">
-          {filteredTagihan.length === 0 ? (
-            <div className="text-center py-10">
-              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700/60 rounded-full flex items-center justify-center mx-auto mb-3">
-                <FileText className="text-gray-400" size={32} />
+          {viewMode === 'ringkasan' ? (
+            /* === MODE RINGKASAN: TOTAL PER SANTRI === */
+            groupedSantriList.length === 0 ? (
+              <div className="text-center py-10">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700/60 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <FileText className="text-gray-400" size={32} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">Tidak ada santri</h3>
+                <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Tidak ditemukan data santri untuk filter yang dipilih.</p>
               </div>
-              <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">Tidak ada tagihan</h3>
-              <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Tidak ditemukan data tagihan untuk filter yang dipilih.</p>
-            </div>
-          ) : (
-            userRole === 'wali_murid' || userRole === 'wali_alumni' ? (
+            ) : userRole === 'wali_murid' || userRole === 'wali_alumni' ? (
               /* CARD VIEW FOR WALI MURID (Mobile-Friendly) */
+              <div className="space-y-4">
+                {groupedSantriList.map((group) => {
+                  const waUrlGroup = formatWaUrlGrouped(group.no_wali, group.nama_santri, group.items, group.totalBelum);
+                  return (
+                    <div key={group.key} className="border border-gray-200/80 dark:border-gray-700/80 rounded-2xl p-5 bg-gray-50/50 dark:bg-gray-900/40 hover:bg-white dark:hover:bg-gray-700/50 transition-all space-y-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex gap-3.5 items-center">
+                          <button 
+                            onClick={() => group.foto_url && setPreviewImage({ url: group.foto_url, title: group.nama_santri })}
+                            className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center group relative cursor-pointer"
+                          >
+                            {group.foto_url ? (
+                              <img src={group.foto_url} alt={group.nama_santri} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                            ) : (
+                              <User size={22} className="text-emerald-600 dark:text-emerald-400" />
+                            )}
+                          </button>
+                          <div>
+                            <h4 className="font-bold text-gray-900 dark:text-gray-100 text-base">{group.nama_santri}</h4>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">NIS: {group.nis} • {group.asrama}</p>
+                          </div>
+                        </div>
+
+                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold shrink-0 ${
+                          group.overallStatus === 'Lunas'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                            : 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-800'
+                        }`}>
+                          {group.overallStatus === 'Lunas' ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
+                          {group.overallStatus}
+                        </span>
+                      </div>
+
+                      {/* Rincian Komponen Tagihan Pills */}
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {group.items.map((item: any, idx: number) => (
+                          <div 
+                            key={idx} 
+                            className={`text-xs px-2.5 py-1 rounded-lg font-medium border flex items-center gap-1.5 ${
+                              item.status === 'Lunas'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800/60 text-red-700 dark:text-red-300'
+                            }`}
+                          >
+                            <span>{item.nama_tagihan}:</span>
+                            <span className="font-bold">{formatRupiah(item.nominal)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="border-t border-gray-200 dark:border-gray-700 pt-3 flex items-center justify-between">
+                        <div>
+                          <span className="text-xs text-gray-400 block">Total Tunggakan</span>
+                          <span className={`text-lg font-black ${group.totalBelum > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {formatRupiah(group.totalBelum)}
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => setSelectedDetailGroup(group)}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors flex items-center gap-1"
+                        >
+                          <span>Rincian</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* TABLE VIEW FOR ADMIN, STAFF & PENGASUH (RINGKASAN TOTAL PER SANTRI) */
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-gray-700 dark:text-gray-200">
+                  <thead className="bg-gray-100/80 dark:bg-gray-900/80 text-xs uppercase font-bold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                    <tr>
+                      <th className="px-4 py-3.5 cursor-pointer hover:bg-gray-200/60 dark:hover:bg-gray-800 transition-colors select-none" onClick={() => handleSort('nama_santri')}>
+                        <div className="flex items-center gap-1.5">
+                          <span>Santri & Wali</span>
+                          {sortField === 'nama_santri' ? (sortOrder === 'asc' ? <ArrowUp size={14} className="text-emerald-500" /> : <ArrowDown size={14} className="text-emerald-500" />) : <ArrowUpDown size={13} className="opacity-40" />}
+                        </div>
+                      </th>
+                      <th className="px-4 py-3.5">
+                        <span>Rincian Tagihan</span>
+                      </th>
+                      <th className="px-4 py-3.5 cursor-pointer hover:bg-gray-200/60 dark:hover:bg-gray-800 transition-colors select-none" onClick={() => handleSort('asrama')}>
+                        <div className="flex items-center gap-1.5">
+                          <span>Asrama / Kelas</span>
+                          {sortField === 'asrama' ? (sortOrder === 'asc' ? <ArrowUp size={14} className="text-emerald-500" /> : <ArrowDown size={14} className="text-emerald-500" />) : <ArrowUpDown size={13} className="opacity-40" />}
+                        </div>
+                      </th>
+                      <th className="px-4 py-3.5 cursor-pointer hover:bg-gray-200/60 dark:hover:bg-gray-800 transition-colors select-none" onClick={() => handleSort('nominal')}>
+                        <div className="flex items-center gap-1.5">
+                          <span>Total Tunggakan</span>
+                          {sortField === 'nominal' ? (sortOrder === 'asc' ? <ArrowUp size={14} className="text-emerald-500" /> : <ArrowDown size={14} className="text-emerald-500" />) : <ArrowUpDown size={13} className="opacity-40" />}
+                        </div>
+                      </th>
+                      <th className="px-4 py-3.5 cursor-pointer hover:bg-gray-200/60 dark:hover:bg-gray-800 transition-colors select-none" onClick={() => handleSort('status')}>
+                        <div className="flex items-center gap-1.5">
+                          <span>Status</span>
+                          {sortField === 'status' ? (sortOrder === 'asc' ? <ArrowUp size={14} className="text-emerald-500" /> : <ArrowDown size={14} className="text-emerald-500" />) : <ArrowUpDown size={13} className="opacity-40" />}
+                        </div>
+                      </th>
+                      <th className="px-4 py-3.5 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200/70 dark:divide-gray-700/70">
+                    {groupedSantriList.map((group) => {
+                      const waUrlGroup = formatWaUrlGrouped(group.no_wali, group.nama_santri, group.items, group.totalBelum);
+                      return (
+                        <tr key={group.key} className="hover:bg-gray-50/80 dark:hover:bg-gray-700/50 transition-colors">
+                          {/* Santri & Wali */}
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <button 
+                                onClick={() => group.foto_url && setPreviewImage({ url: group.foto_url, title: group.nama_santri })}
+                                title="Klik untuk memperbesar foto"
+                                className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center group relative cursor-pointer"
+                              >
+                                {group.foto_url ? (
+                                  <img src={group.foto_url} alt={group.nama_santri} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                ) : (
+                                  <User size={18} className="text-emerald-600 dark:text-emerald-400" />
+                                )}
+                              </button>
+
+                              <div>
+                                <div className="font-bold text-gray-900 dark:text-gray-100">{group.nama_santri}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                  <span>NIS: {group.nis}</span>
+                                  {group.nama_wali && group.nama_wali !== '-' && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">Wali: {group.nama_wali}</span>
+                                    </>
+                                  )}
+                                </div>
+                                {group.alamat && group.alamat !== '-' && (
+                                  <div className="text-[11px] text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-0.5">
+                                    <MapPin size={11} className="shrink-0" />
+                                    <span className="truncate max-w-[180px]">{group.alamat}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Rincian Komponen Tagihan (Pills) */}
+                          <td className="px-4 py-3.5">
+                            <div className="flex flex-wrap gap-1.5 max-w-[260px]">
+                              {group.items.map((item: any, idx: number) => (
+                                <span 
+                                  key={idx} 
+                                  className={`text-[11px] px-2 py-0.5 rounded-md font-semibold border ${
+                                    item.status === 'Lunas'
+                                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
+                                      : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                                  }`}
+                                >
+                                  {item.nama_tagihan}: {formatRupiah(item.nominal)}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+
+                          {/* Asrama / Kelas */}
+                          <td className="px-4 py-3.5">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                              {group.asrama} {group.kamar ? `(${group.kamar})` : ''}
+                            </span>
+                          </td>
+
+                          {/* Total Tunggakan */}
+                          <td className="px-4 py-3.5 font-extrabold text-gray-900 dark:text-gray-100">
+                            <span className={group.totalBelum > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}>
+                              {formatRupiah(group.totalBelum)}
+                            </span>
+                          </td>
+
+                          {/* Status Overall */}
+                          <td className="px-4 py-3.5">
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                              group.overallStatus === 'Lunas'
+                                ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                                : 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-800'
+                            }`}>
+                              {group.overallStatus === 'Lunas' ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                              {group.overallStatus}
+                            </span>
+                          </td>
+
+                          {/* Aksi */}
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center justify-center gap-2">
+                              {/* Detail Group Modal */}
+                              <button
+                                onClick={() => setSelectedDetailGroup(group)}
+                                title="Lihat Rincian Lengkap Santri"
+                                className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors"
+                              >
+                                <Lightbulb size={16} />
+                              </button>
+
+                              {/* WhatsApp Direct Group Message */}
+                              {group.totalBelum > 0 && group.no_wali ? (
+                                <a
+                                  href={waUrlGroup}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={`Kirim WA Rincian ke Wali (${group.nama_wali})`}
+                                  className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-800/50 transition-colors"
+                                >
+                                  <MessageCircle size={16} />
+                                </a>
+                              ) : (
+                                <Link
+                                  href={`/dashboard/notifikasi?tab=pembayaran&nis=${group.nis}`}
+                                  title="Buka Halaman Notifikasi"
+                                  className="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                  <MessageCircle size={16} />
+                                </Link>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          ) : (
+            /* === MODE RINCIAN: ITEM RINCIAN PER TAGIHAN === */
+            filteredTagihan.length === 0 ? (
+              <div className="text-center py-10">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700/60 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <FileText className="text-gray-400" size={32} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200">Tidak ada tagihan</h3>
+                <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Tidak ditemukan data tagihan untuk filter yang dipilih.</p>
+              </div>
+            ) : userRole === 'wali_murid' || userRole === 'wali_alumni' ? (
+              /* CARD VIEW FOR WALI MURID */
               <div className="space-y-4">
                 {filteredTagihan.map((t) => (
                   <div key={t.id} className="border border-gray-200/80 dark:border-gray-700/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/40 hover:bg-white dark:hover:bg-gray-700/50 transition-colors">
                     <div className="flex gap-4 items-start sm:items-center">
-                      {/* Avatar / Foto Santri */}
                       <button 
                         onClick={() => t.foto_url && setPreviewImage({ url: t.foto_url, title: t.nama_santri })}
                         className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center group relative cursor-pointer"
@@ -617,7 +998,7 @@ export default function BillingPage() {
                 ))}
               </div>
             ) : (
-              /* TABLE VIEW FOR ADMIN, STAFF & PENGASUH WITH SORTING & SANTRI DETAILS */
+              /* TABLE VIEW FOR ADMIN, STAFF & PENGASUH (MODE RINCIAN ITEM) */
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-gray-700 dark:text-gray-200">
                   <thead className="bg-gray-100/80 dark:bg-gray-900/80 text-xs uppercase font-bold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
@@ -660,10 +1041,8 @@ export default function BillingPage() {
                       const waUrl = formatWaUrl(t.no_wali, t.nama_santri, t.nama_tagihan, t.nominal, t.periode);
                       return (
                         <tr key={t.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-700/50 transition-colors">
-                          {/* Santri & Wali */}
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
-                              {/* Thumbnail Foto Santri */}
                               <button 
                                 onClick={() => t.foto_url && setPreviewImage({ url: t.foto_url, title: t.nama_santri })}
                                 title="Klik untuk memperbesar foto"
@@ -697,25 +1076,21 @@ export default function BillingPage() {
                             </div>
                           </td>
 
-                          {/* Tagihan */}
                           <td className="px-4 py-3">
                             <div className="font-semibold text-gray-800 dark:text-gray-200">{t.nama_tagihan}</div>
                             <div className="text-xs text-gray-500 dark:text-gray-400">Periode: {t.periode}</div>
                           </td>
 
-                          {/* Asrama / Kelas */}
                           <td className="px-4 py-3">
                             <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                               {t.asrama} {t.kamar ? `(${t.kamar})` : ''}
                             </span>
                           </td>
 
-                          {/* Nominal */}
                           <td className="px-4 py-3 font-extrabold text-gray-900 dark:text-gray-100">
                             {formatRupiah(t.nominal)}
                           </td>
 
-                          {/* Status */}
                           <td className="px-4 py-3">
                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
                               t.status === 'Lunas'
@@ -727,10 +1102,8 @@ export default function BillingPage() {
                             </span>
                           </td>
 
-                          {/* Aksi (Detail & WhatsApp Direct) */}
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-center gap-2">
-                              {/* Detail Modal Trigger */}
                               <button
                                 onClick={() => setSelectedDetailItem(t)}
                                 title="Lihat Detail Lengkap Santri"
@@ -739,7 +1112,6 @@ export default function BillingPage() {
                                 <Lightbulb size={16} />
                               </button>
 
-                              {/* WhatsApp Direct / Direct Notification */}
                               {t.status === 'Belum' && t.no_wali ? (
                                 <a
                                   href={waUrl}
@@ -796,7 +1168,118 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* MODAL 2: DETAIL LENGKAP SANTRI & TAGIHAN */}
+      {/* MODAL 2: DETAIL GROUP SANTRI & RINCIAN TAGIHAN (MODE RINGKASAN) */}
+      {selectedDetailGroup && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 space-y-0">
+            {/* Header Modal */}
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 text-white flex items-center justify-between relative">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => selectedDetailGroup.foto_url && setPreviewImage({ url: selectedDetailGroup.foto_url, title: selectedDetailGroup.nama_santri })}
+                  className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/80 bg-white/20 shrink-0 flex items-center justify-center cursor-pointer shadow-md"
+                >
+                  {selectedDetailGroup.foto_url ? (
+                    <img src={selectedDetailGroup.foto_url} alt={selectedDetailGroup.nama_santri} className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={28} className="text-white" />
+                  )}
+                </button>
+                <div>
+                  <h3 className="font-extrabold text-lg text-white leading-tight">{selectedDetailGroup.nama_santri}</h3>
+                  <p className="text-xs text-emerald-100 mt-0.5">NIS: {selectedDetailGroup.nis} • {selectedDetailGroup.asrama}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedDetailGroup(null)}
+                className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content Detail Group */}
+            <div className="p-6 space-y-4 text-sm text-gray-700 dark:text-gray-200">
+              <div className="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-900/50 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-700/60">
+                <div>
+                  <span className="text-xs text-gray-400 block font-semibold">Nama Wali</span>
+                  <span className="font-bold text-gray-800 dark:text-gray-100">{selectedDetailGroup.nama_wali || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-400 block font-semibold">No HP / WA Wali</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <Phone size={13} />
+                    {selectedDetailGroup.no_wali || '-'}
+                  </span>
+                </div>
+              </div>
+
+              {selectedDetailGroup.alamat && selectedDetailGroup.alamat !== '-' && (
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-700/60">
+                  <span className="text-xs text-gray-400 block font-semibold">Alamat Santri</span>
+                  <span className="font-medium text-gray-800 dark:text-gray-200 flex items-start gap-1.5 mt-0.5">
+                    <MapPin size={15} className="shrink-0 text-emerald-500 mt-0.5" />
+                    {selectedDetailGroup.alamat}
+                  </span>
+                </div>
+              )}
+
+              {/* Rincian Komponen Tagihan */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2.5">
+                <span className="text-xs font-extrabold uppercase text-gray-400 tracking-wider block">Rincian Komponen Tagihan</span>
+                <div className="space-y-2">
+                  {selectedDetailGroup.items.map((item: any, idx: number) => (
+                    <div key={idx} className="flex justify-between items-center bg-gray-50 dark:bg-gray-900/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/50">
+                      <div>
+                        <div className="font-bold text-gray-800 dark:text-gray-100 text-xs">{item.nama_tagihan}</div>
+                        <div className="text-[11px] text-gray-400">Periode: {item.periode}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`font-black text-xs ${item.status === 'Lunas' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {formatRupiah(item.nominal)}
+                        </div>
+                        <span className={`text-[10px] font-extrabold uppercase ${item.status === 'Lunas' ? 'text-emerald-500' : 'text-red-500'}`}>
+                          {item.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center pt-3 border-t border-dashed border-gray-200 dark:border-gray-700">
+                  <span className="text-sm font-bold text-gray-800 dark:text-gray-100">Total Tunggakan</span>
+                  <span className={`text-xl font-black ${selectedDetailGroup.totalBelum > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                    {formatRupiah(selectedDetailGroup.totalBelum)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Modal Action */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-900/60 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+              <button
+                onClick={() => setSelectedDetailGroup(null)}
+                className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-2xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                Tutup
+              </button>
+              {selectedDetailGroup.no_wali && (
+                <a
+                  href={formatWaUrlGrouped(selectedDetailGroup.no_wali, selectedDetailGroup.nama_santri, selectedDetailGroup.items, selectedDetailGroup.totalBelum)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl transition-colors flex items-center justify-center gap-2 shadow-md"
+                >
+                  <MessageCircle size={18} />
+                  Kirim WA Wali
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: DETAIL SINGLE ITEM TAGIHAN */}
       {selectedDetailItem && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-800 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 space-y-0">

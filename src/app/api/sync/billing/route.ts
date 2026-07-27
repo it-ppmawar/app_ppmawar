@@ -330,24 +330,14 @@ export async function POST(request: Request) {
           });
         }
 
-        // 4. REKAP TOTAL TAGIHAN MADRASAH (per kelas)
-        //    - JUMLAH TOTAL TUNGGAKAN = akumulasi semua komponen yang belum lunas
-        //    - Jika = 0 → santri sudah Lunas semua, nominal = TAGIHAN ACTUAL (referensi)
-        const nominalMadrasah = jumlahTotal > 0 ? jumlahTotal : tagihanActual;
-        if (nominalMadrasah > 0) {
-          const unitInfo = [sekolah, madrasiah ? `[${madrasiah}]` : '', tingkatan].filter(Boolean).join(' ');
-          billingsToUpsert.push({
-            namaTagihan: `Total Tagihan ${sheet.name}${unitInfo ? ` (${unitInfo})` : ''}`,
-            nominal: nominalMadrasah,
-            kategori: 'madrasah',
-            asrama: sheet.name,
-            kamar: unitInfo || `${asrama} / ${kamar}`,
-            status: statusKeseluruhan,
-          });
-        }
-
         // === UPSERT KE DATABASE ===
         try {
+          // Hapus semua record 'Total Tagihan%' lama agar tidak terjadi double counting
+          await pool.execute(
+            `DELETE FROM billing WHERE nis = ? AND nama_tagihan LIKE 'Total Tagihan%'`,
+            [nis]
+          );
+
           // Hapus record tagihan google_sheet lama yang sudah tidak aktif/berubah nama untuk santri & periode ini
           if (billingsToUpsert.length > 0) {
             const validNames = billingsToUpsert.map(b => b.namaTagihan);
