@@ -176,9 +176,9 @@ export async function POST(request: Request) {
       const colJumlahTotal       = findColIdx(headers, ['JUMLAH TOTAL TUNGGAKAN']);
       // TAGIHAN ACTUAL = besaran iuran standar bulan ini (referensi rate)
       const colTagihanActual     = findColIdx(headers, ['TAGIHAN ACTUAL']);
-      // ASRAMA & KAMAR: ambil kemunculan TERAKHIR (dekat TAGIHAN ACTUAL)
-      const colAsrama = headers.lastIndexOf('ASRAMA') !== -1 ? headers.lastIndexOf('ASRAMA') : findColIdx(headers, ['ASRAMA']);
-      const colKamar  = headers.lastIndexOf('KAMAR')  !== -1 ? headers.lastIndexOf('KAMAR')  : findColIdx(headers, ['KAMAR']);
+      // ASRAMA & KAMAR: ambil kemunculan PERTAMA (kolom ASRAMA & KAMAR utama setelah SEKOLAH)
+      const colAsrama = headers.indexOf('ASRAMA') !== -1 ? headers.indexOf('ASRAMA') : findColIdx(headers, ['ASRAMA']);
+      const colKamar  = headers.indexOf('KAMAR')  !== -1 ? headers.indexOf('KAMAR')  : findColIdx(headers, ['KAMAR']);
 
       if (colNIS === -1 || colNama === -1) {
         result.errors.push(`Sheet ${sheet.name}: kolom NIS/NAMA tidak ditemukan`);
