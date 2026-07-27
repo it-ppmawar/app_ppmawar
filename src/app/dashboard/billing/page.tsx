@@ -135,12 +135,16 @@ export default function BillingPage() {
       // 2. Sub Tab Filter
       if (selectedSubTab !== 'Semua') {
         if (filterKategori === 'pesantren') {
-          const cleanAsrama = (t.asrama || '').trim().toUpperCase();
-          const targetLetter = selectedSubTab.toUpperCase();
+          const cleanAsrama = (t.asrama || '').replace(/asrama\s*/i, '').trim().toUpperCase();
+          const targetLetter = selectedSubTab.replace(/asrama\s*/i, '').trim().toUpperCase();
+          const rawAsrama = (t.asrama || '').trim().toUpperCase();
           const isMatch =
             cleanAsrama === targetLetter ||
-            cleanAsrama === `ASRAMA ${targetLetter}` ||
-            cleanAsrama.endsWith(` ${targetLetter}`);
+            rawAsrama === targetLetter ||
+            rawAsrama === `ASRAMA ${targetLetter}` ||
+            rawAsrama.endsWith(` ${targetLetter}`) ||
+            (t.kamar || '').toUpperCase().startsWith(targetLetter + '-') ||
+            (t.kamar || '').toUpperCase().startsWith(targetLetter + '/');
           if (!isMatch) return false;
         } else if (filterKategori === 'madrasah') {
           const cleanAsrama      = (t.asrama || '').trim().toUpperCase();
@@ -634,27 +638,29 @@ export default function BillingPage() {
               </button>
             </div>
 
-            {/* Belum Lunas & Sudah Lunas */}
-            <div className="flex bg-gray-100/70 dark:bg-gray-900/60 p-1.5 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 gap-1.5 w-full">
+            {/* Belum Lunas & Sudah Lunas - grid 2 kolom agar tidak meluber di HP */}
+            <div className="grid grid-cols-2 bg-gray-100/70 dark:bg-gray-900/60 p-1.5 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 gap-1.5 w-full">
               <button 
                 onClick={() => setFilterStatus('Belum')}
-                className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2.5 text-xs font-bold rounded-xl transition-all text-center ${
                   filterStatus === 'Belum' 
                     ? 'bg-red-600 text-white shadow-md' 
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
                 }`}
               >
-                Belum Lunas ({countBelum})
+                <span className="text-[11px] font-extrabold leading-tight">Belum Lunas</span>
+                <span className="text-base font-black leading-tight">({countBelum})</span>
               </button>
               <button 
                 onClick={() => setFilterStatus('Lunas')}
-                className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-2.5 text-xs font-bold rounded-xl transition-all text-center ${
                   filterStatus === 'Lunas' 
                     ? 'bg-emerald-600 text-white shadow-md' 
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
                 }`}
               >
-                Sudah Lunas ({countLunas})
+                <span className="text-[11px] font-extrabold leading-tight">Sudah Lunas</span>
+                <span className="text-base font-black leading-tight">({countLunas})</span>
               </button>
             </div>
           </div>
@@ -1170,8 +1176,8 @@ export default function BillingPage() {
 
       {/* MODAL 2: DETAIL GROUP SANTRI & RINCIAN TAGIHAN (MODE RINGKASAN) */}
       {selectedDetailGroup && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 space-y-0">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl max-w-md w-full max-h-[88vh] flex flex-col shadow-2xl border border-gray-200 dark:border-gray-700">
             {/* Header Modal */}
             <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 text-white flex items-center justify-between relative">
               <div className="flex items-center gap-3">
@@ -1199,7 +1205,7 @@ export default function BillingPage() {
             </div>
 
             {/* Content Detail Group */}
-            <div className="p-6 space-y-4 text-sm text-gray-700 dark:text-gray-200">
+            <div className="p-5 space-y-4 text-sm text-gray-700 dark:text-gray-200 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-900/50 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-700/60">
                 <div>
                   <span className="text-xs text-gray-400 block font-semibold">Nama Wali</span>
@@ -1256,7 +1262,7 @@ export default function BillingPage() {
             </div>
 
             {/* Footer Modal Action */}
-            <div className="p-4 bg-gray-50 dark:bg-gray-900/60 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+            <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] bg-gray-50 dark:bg-gray-900/60 border-t border-gray-200 dark:border-gray-700 flex gap-3 shrink-0">
               <button
                 onClick={() => setSelectedDetailGroup(null)}
                 className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-2xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
@@ -1281,8 +1287,8 @@ export default function BillingPage() {
 
       {/* MODAL 3: DETAIL SINGLE ITEM TAGIHAN */}
       {selectedDetailItem && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 space-y-0">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl max-w-md w-full max-h-[88vh] flex flex-col shadow-2xl border border-gray-200 dark:border-gray-700">
             {/* Header Modal */}
             <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 text-white flex items-center justify-between relative">
               <div className="flex items-center gap-3">
@@ -1310,7 +1316,7 @@ export default function BillingPage() {
             </div>
 
             {/* Content Detail */}
-            <div className="p-6 space-y-4 text-sm text-gray-700 dark:text-gray-200">
+            <div className="p-5 space-y-4 text-sm text-gray-700 dark:text-gray-200 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-900/50 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-700/60">
                 <div>
                   <span className="text-xs text-gray-400 block font-semibold">Nama Wali</span>
@@ -1356,7 +1362,7 @@ export default function BillingPage() {
             </div>
 
             {/* Footer Modal Action */}
-            <div className="p-4 bg-gray-50 dark:bg-gray-900/60 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+            <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] bg-gray-50 dark:bg-gray-900/60 border-t border-gray-200 dark:border-gray-700 flex gap-3 shrink-0">
               <button
                 onClick={() => setSelectedDetailItem(null)}
                 className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-2xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
