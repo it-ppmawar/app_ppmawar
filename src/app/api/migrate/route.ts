@@ -156,7 +156,28 @@ export async function GET() {
         CONSTRAINT fk_laporan_kebersihan FOREIGN KEY (kebersihan_id) REFERENCES kebersihan(id) ON DELETE CASCADE,
         CONSTRAINT fk_laporan_keb_pelapor FOREIGN KEY (pelapor_id) REFERENCES users(id) ON DELETE CASCADE,
         CONSTRAINT fk_laporan_keb_petugas FOREIGN KEY (petugas_id) REFERENCES users(id) ON DELETE SET NULL
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      // 23. Konversi tabel-tabel utama ke utf8mb4 agar karakter Arab dapat tersimpan dan terbaca
+      "ALTER TABLE users CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE guru CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE murid CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE alumni CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE kamar CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE kelas_madin CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE kelas_quran CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE jadwal_madin CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE jadwal_quran CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE jadwal_kegiatan CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE absensi CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE absensi_quran CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE absensi_kegiatan CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE absensi_guru CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE billing CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE webauthn_credentials CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+
+      // 24. Konversi database level ke utf8mb4
+      "ALTER DATABASE ppmawaro_app_ppma CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     ];
 
     let results = [];

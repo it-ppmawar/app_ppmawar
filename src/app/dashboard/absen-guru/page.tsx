@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Users, CheckCircle2, XCircle, Clock, AlertCircle,
   BookOpen, RefreshCw, ChevronDown, ChevronUp, Calendar,
-  ClipboardList, Wifi, WifiOff, UserCheck, UserX, MinusCircle,
+  ClipboardList, Wifi, WifiOff, UserCheck, UserX, MinusCircle, Search,
 } from 'lucide-react';
 
 type JadwalGuru = {
@@ -33,20 +33,12 @@ type GuruData = {
   jadwal: JadwalGuru[];
 };
 
-const STATUS_COLOR = {
+const STATUS_COLOR: Record<string, string> = {
   Hadir: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
   Izin: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
   Sakit: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
   Alpha: 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800',
   default: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700',
-};
-
-const STATUS_ICON = {
-  Hadir: <CheckCircle2 size={13} className="text-emerald-500" />,
-  Izin: <MinusCircle size={13} className="text-blue-500" />,
-  Sakit: <AlertCircle size={13} className="text-amber-500" />,
-  Alpha: <XCircle size={13} className="text-red-500" />,
-  default: <Clock size={13} className="text-gray-400" />,
 };
 
 export default function AbsenGuruPage() {
@@ -55,8 +47,12 @@ export default function AbsenGuruPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<GuruData[]>([]);
   const [hari, setHari] = useState('');
-  const [tanggal, setTanggal] = useState(() => new Date().toLocaleDateString('en-CA'));
+  const [tanggal, setTanggal] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  });
   const [expandedGuruId, setExpandedGuruId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'semua' | 'madin' | 'quran'>('semua');
   const [filterStatus, setFilterStatus] = useState<'semua' | 'belum' | 'hadir' | 'alpha'>('semua');
   const [search, setSearch] = useState('');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -110,6 +106,53 @@ export default function AbsenGuruPage() {
     setExpandedGuruId(prev => (prev === id ? null : id));
   };
 
+  // Helper: parse HH:mm:ss to seconds
+  const parseTime = (t: string) => {
+    const [h, m, s] = (t || '00:00:00').split(':').map(Number);
+    return (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
+  };
+
+  // Current time in seconds
+  const nowSecs = useMemo(() => {
+    const n = new Date();
+    return n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds();
+  }, [data]); // recalculate when data refreshes
+
+  const isToday = useMemo(() => {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    return tanggal === todayStr;
+  }, [tanggal]);
+
+  // Check if a guru has an active schedule right now
+  const guruHasActiveSchedule = useCallback((guru: GuruData) => {
+    if (!isToday) return false;
+    return guru.jadwal.some(j => {
+      const mulai = parseTime(j.jam_mulai);
+      const selesai = parseTime(j.jam_selesai);
+      const windowStart = mulai - 30 * 60; // 30 min before
+      const windowEnd = selesai + 60 * 60; // 1 hour after
+      return nowSecs >= windowStart && nowSecs <= windowEnd;
+    });
+  }, [nowSecs, isToday]);
+
+  // Filter by tab (madin/quran/semua)
+  const filteredByTab = useMemo(() => {
+    if (activeTab === 'semua') return data;
+    return data.filter(g =>
+      g.jadwal.some(j => j.tipe === activeTab)
+    ).map(g => ({
+      ...g,
+      jadwal: g.jadwal.filter(j => j.tipe === activeTab),
+      totalJadwal: g.jadwal.filter(j => j.tipe === activeTab).length,
+      hadirCount: g.jadwal.filter(j => j.tipe === activeTab && j.status === 'Hadir').length,
+      izinCount: g.jadwal.filter(j => j.tipe === activeTab && j.status === 'Izin').length,
+      sakitCount: g.jadwal.filter(j => j.tipe === activeTab && j.status === 'Sakit').length,
+      alphaCount: g.jadwal.filter(j => j.tipe === activeTab && j.status === 'Alpha').length,
+      belumAbsenCount: g.jadwal.filter(j => j.tipe === activeTab && j.status === null).length,
+    }));
+  }, [data, activeTab]);
+
   const getStatusLabel = (g: GuruData) => {
     if (g.totalJadwal === 0) return 'libur';
     if (g.belumAbsenCount > 0) return 'belum';
@@ -117,37 +160,74 @@ export default function AbsenGuruPage() {
     return 'hadir';
   };
 
-  const filteredData = data.filter(g => {
-    const matchSearch = !search || g.nama.toLowerCase().includes(search.toLowerCase()) || g.nip?.includes(search);
-    const statusLabel = getStatusLabel(g);
-    const matchFilter =
-      filterStatus === 'semua' ||
-      (filterStatus === 'belum' && statusLabel === 'belum') ||
-      (filterStatus === 'hadir' && statusLabel === 'hadir') ||
-      (filterStatus === 'alpha' && statusLabel === 'alpha');
-    return matchSearch && matchFilter;
-  });
+  // Filter by search + status, then sort: active schedule first
+  const filteredData = useMemo(() => {
+    let result = filteredByTab.filter(g => {
+      const matchSearch = !search || g.nama.toLowerCase().includes(search.toLowerCase()) || g.nip?.includes(search);
+      const statusLabel = getStatusLabel(g);
+      const matchFilter =
+        filterStatus === 'semua' ||
+        (filterStatus === 'belum' && statusLabel === 'belum') ||
+        (filterStatus === 'hadir' && statusLabel === 'hadir') ||
+        (filterStatus === 'alpha' && statusLabel === 'alpha');
+      return matchSearch && matchFilter;
+    });
 
-  // Summary counts
-  const totalGuru = data.length;
-  const guruBelum = data.filter(g => g.totalJadwal > 0 && g.belumAbsenCount > 0).length;
-  const guruHadir = data.filter(g => g.totalJadwal > 0 && g.belumAbsenCount === 0 && g.hadirCount > 0).length;
-  const guruAlpha = data.filter(g => g.alphaCount > 0).length;
-  const guruLibur = data.filter(g => g.totalJadwal === 0).length;
+    // Sort: guru with active schedule goes first, then by belumAbsen desc, then by name
+    result.sort((a, b) => {
+      const aActive = guruHasActiveSchedule(a) ? 1 : 0;
+      const bActive = guruHasActiveSchedule(b) ? 1 : 0;
+      if (bActive !== aActive) return bActive - aActive;
+      // Then sort by who has pending absensi (belum) first
+      const aBelum = a.belumAbsenCount > 0 ? 1 : 0;
+      const bBelum = b.belumAbsenCount > 0 ? 1 : 0;
+      if (bBelum !== aBelum) return bBelum - aBelum;
+      return a.nama.localeCompare(b.nama);
+    });
+
+    return result;
+  }, [filteredByTab, search, filterStatus, guruHasActiveSchedule]);
+
+  // Summary counts (from filtered tab)
+  const totalGuru = filteredByTab.length;
+  const guruBelum = filteredByTab.filter(g => g.totalJadwal > 0 && g.belumAbsenCount > 0).length;
+  const guruHadir = filteredByTab.filter(g => g.totalJadwal > 0 && g.belumAbsenCount === 0 && g.hadirCount > 0).length;
+  const guruAlpha = filteredByTab.filter(g => g.alphaCount > 0).length;
+  const guruLibur = filteredByTab.filter(g => g.totalJadwal === 0).length;
 
   const formatTime = (t: string) => (t || '').slice(0, 5);
+
+  // Status badge color for card border
+  const getBorderColor = (g: GuruData) => {
+    const isActive = guruHasActiveSchedule(g);
+    const label = getStatusLabel(g);
+    if (isActive) return 'border-emerald-400 dark:border-emerald-500 ring-1 ring-emerald-300/50';
+    if (label === 'alpha') return 'border-red-300 dark:border-red-700';
+    if (label === 'belum') return 'border-amber-300 dark:border-amber-700';
+    if (label === 'hadir') return 'border-emerald-200 dark:border-emerald-800/50';
+    return 'border-gray-200 dark:border-gray-800';
+  };
+
+  // Compact status dot
+  const getStatusDotColor = (g: GuruData) => {
+    const label = getStatusLabel(g);
+    if (label === 'hadir') return 'bg-emerald-500';
+    if (label === 'alpha') return 'bg-red-500';
+    if (label === 'belum') return 'bg-amber-400';
+    return 'bg-gray-400';
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
       {/* Header */}
       <div className="sticky top-0 z-30 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 px-4 py-3">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <ClipboardList size={20} className="text-emerald-600 dark:text-emerald-400" />
             <div>
               <h1 className="text-sm font-extrabold text-gray-900 dark:text-white">Absen Guru</h1>
               <p className="text-[11px] text-gray-400">
-                {hari ? `${hari}, ` : ''}{new Date(tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                {hari ? `${hari}, ` : ''}{new Date(tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             </div>
           </div>
@@ -155,7 +235,6 @@ export default function AbsenGuruPage() {
             <input
               type="date"
               value={tanggal}
-              max={new Date().toLocaleDateString('en-CA')}
               onChange={e => setTanggal(e.target.value)}
               className="text-xs border border-gray-200 dark:border-gray-700 rounded-xl px-2 py-1.5 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-400"
             />
@@ -170,7 +249,7 @@ export default function AbsenGuruPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 pt-4 space-y-4">
+      <div className="max-w-7xl mx-auto px-4 pt-4 space-y-4">
         {/* Summary Cards */}
         <div className="grid grid-cols-4 gap-2">
           {[
@@ -191,24 +270,47 @@ export default function AbsenGuruPage() {
           ))}
         </div>
 
-        {/* Last updated + Libur info */}
-        {lastUpdated && (
-          <p className="text-[11px] text-gray-400 text-right flex items-center justify-end gap-1">
-            <Wifi size={11} className="text-emerald-500" />
-            Diperbarui: {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            {guruLibur > 0 && <span className="ml-2 text-gray-300">• {guruLibur} guru tidak punya jadwal hari ini</span>}
-          </p>
-        )}
+        {/* Tab Klasifikasi: Semua / Kelas Madin / Kelas Qur'an */}
+        <div className="flex rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
+          {[
+            { key: 'semua' as const, label: 'Semua Guru' },
+            { key: 'madin' as const, label: 'Kelas Madin' },
+            { key: 'quran' as const, label: "Kelas Qur'an" },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 py-2.5 text-xs font-bold text-center transition-all ${
+                activeTab === tab.key
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-        {/* Search */}
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Cari nama guru atau NIP..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-          />
+        {/* Info bar */}
+        <div className="flex items-center justify-between gap-2">
+          {lastUpdated && (
+            <p className="text-[11px] text-gray-400 flex items-center gap-1">
+              <Wifi size={11} className="text-emerald-500" />
+              {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {guruLibur > 0 && <span className="ml-1 text-gray-300">• {guruLibur} libur</span>}
+            </p>
+          )}
+          {/* Search */}
+          <div className="relative flex-1 max-w-xs ml-auto">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Cari guru..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-xl pl-8 pr-3 py-2 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            />
+          </div>
         </div>
 
         {/* Error */}
@@ -221,147 +323,155 @@ export default function AbsenGuruPage() {
 
         {/* Loading skeleton */}
         {loading && (
-          <div className="space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 animate-pulse">
-                <div className="flex items-center gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+            {[...Array(16)].map((_, i) => (
+              <div key={i} className="bg-white dark:bg-gray-900 rounded-2xl p-3 border border-gray-100 dark:border-gray-800 animate-pulse">
+                <div className="flex flex-col items-center gap-2">
                   <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full w-1/3" />
-                    <div className="h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full w-1/5" />
-                  </div>
+                  <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full w-full" />
+                  <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full w-2/3" />
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Guru List */}
+        {/* Guru Grid - 8 kolom horizontal */}
         {!loading && !error && (
-          <div className="space-y-3">
+          <>
             {filteredData.length === 0 && (
               <div className="text-center py-12 text-gray-400">
                 <Users size={40} className="mx-auto mb-3 opacity-30" />
                 <p className="text-sm font-medium">Tidak ada data yang cocok</p>
               </div>
             )}
-            {filteredData.map((guru) => {
-              const statusLabel = getStatusLabel(guru);
-              const isExpanded = expandedGuruId === guru.guru_id;
 
-              const cardBorder =
-                statusLabel === 'hadir'
-                  ? 'border-emerald-200 dark:border-emerald-800/50'
-                  : statusLabel === 'alpha'
-                  ? 'border-red-200 dark:border-red-800/50'
-                  : statusLabel === 'belum'
-                  ? 'border-amber-200 dark:border-amber-800/50'
-                  : 'border-gray-200 dark:border-gray-800';
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+              {filteredData.map((guru) => {
+                const statusLabel = getStatusLabel(guru);
+                const isActive = guruHasActiveSchedule(guru);
+                const isExpanded = expandedGuruId === guru.guru_id;
 
-              return (
-                <div
-                  key={guru.guru_id}
-                  className={`bg-white dark:bg-gray-900 rounded-2xl border ${cardBorder} overflow-hidden shadow-sm transition-all`}
-                >
-                  {/* Guru header row */}
-                  <button
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+                return (
+                  <div
+                    key={guru.guru_id}
+                    className={`bg-white dark:bg-gray-900 rounded-2xl border ${getBorderColor(guru)} overflow-hidden shadow-sm transition-all cursor-pointer hover:shadow-md ${
+                      isActive ? 'relative' : ''
+                    } ${isExpanded ? 'col-span-2 sm:col-span-4 md:col-span-6 lg:col-span-8' : ''}`}
                     onClick={() => toggleExpand(guru.guru_id)}
                   >
-                    {/* Avatar */}
-                    <div className="relative shrink-0">
-                      {guru.foto ? (
-                        <img src={guru.foto} alt={guru.nama} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center">
-                          <Users size={18} className="text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                      )}
-                      {/* Status dot */}
-                      <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900 ${
-                        statusLabel === 'hadir' ? 'bg-emerald-500' :
-                        statusLabel === 'alpha' ? 'bg-red-500' :
-                        statusLabel === 'belum' ? 'bg-amber-400' : 'bg-gray-400'
-                      }`} />
-                    </div>
+                    {/* Active badge */}
+                    {isActive && (
+                      <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    )}
 
-                    {/* Name + NIP */}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm text-gray-900 dark:text-white truncate">{guru.nama}</div>
-                      <div className="text-[11px] text-gray-400">{guru.nip || 'NIP tidak tersedia'}</div>
-                    </div>
-
-                    {/* Stats chips */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {guru.totalJadwal === 0 ? (
-                        <span className="text-[11px] px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-semibold border border-gray-200 dark:border-gray-700">
-                          Libur
-                        </span>
-                      ) : (
-                        <>
-                          {guru.hadirCount > 0 && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800">
-                              {guru.hadirCount} Hadir
-                            </span>
-                          )}
-                          {guru.alphaCount > 0 && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 font-semibold border border-red-200 dark:border-red-800">
-                              {guru.alphaCount} Alpha
-                            </span>
-                          )}
-                          {guru.izinCount > 0 && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">
-                              {guru.izinCount} Izin
-                            </span>
-                          )}
-                          {guru.belumAbsenCount > 0 && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-semibold border border-amber-200 dark:border-amber-800">
-                              {guru.belumAbsenCount} Belum
-                            </span>
-                          )}
-                        </>
-                      )}
-                      {isExpanded ? <ChevronUp size={15} className="text-gray-400 ml-1" /> : <ChevronDown size={15} className="text-gray-400 ml-1" />}
-                    </div>
-                  </button>
-
-                  {/* Jadwal detail (collapsible) */}
-                  {isExpanded && (
-                    <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-2 bg-gray-50/50 dark:bg-gray-950/30">
-                      {guru.totalJadwal === 0 ? (
-                        <p className="text-xs text-gray-400 text-center py-2">Tidak ada jadwal mengajar hari ini</p>
-                      ) : (
-                        <>
-                          <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider mb-2">
-                            Jadwal Hari Ini ({guru.totalJadwal} sesi)
-                          </p>
-                          {guru.jadwal.map((j, idx) => {
-                            const sc = (STATUS_COLOR as any)[j.status || 'default'] || STATUS_COLOR.default;
-                            const si = (STATUS_ICON as any)[j.status || 'default'] || STATUS_ICON.default;
-                            return (
-                              <div key={idx} className="flex items-center justify-between gap-2 bg-white dark:bg-gray-900 rounded-xl p-2.5 border border-gray-100 dark:border-gray-800">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <BookOpen size={13} className="text-gray-400 shrink-0" />
-                                  <div className="min-w-0">
-                                    <div className="text-xs font-bold text-gray-800 dark:text-gray-100 truncate">{j.mata_pelajaran}</div>
-                                    <div className="text-[10px] text-gray-400">{j.nama_kelas} • {formatTime(j.jam_mulai)}–{formatTime(j.jam_selesai)}</div>
-                                  </div>
-                                </div>
-                                <span className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-lg font-semibold border shrink-0 ${sc}`}>
-                                  {si}
-                                  {j.status || 'Belum'}
-                                </span>
+                    {isExpanded ? (
+                      /* ===== EXPANDED VIEW (full width) ===== */
+                      <div>
+                        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                          {/* Avatar */}
+                          <div className="relative shrink-0">
+                            {guru.foto ? (
+                              <img src={guru.foto} alt={guru.nama} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center">
+                                <Users size={18} className="text-emerald-600 dark:text-emerald-400" />
                               </div>
-                            );
-                          })}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                            )}
+                            <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900 ${getStatusDotColor(guru)}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-sm text-gray-900 dark:text-white truncate">{guru.nama}</div>
+                            <div className="text-[11px] text-gray-400">{guru.nip || '-'}</div>
+                          </div>
+                          {/* Status chips */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {guru.totalJadwal === 0 ? (
+                              <span className="text-[11px] px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 font-semibold border border-gray-200 dark:border-gray-700">Libur</span>
+                            ) : (
+                              <>
+                                {guru.hadirCount > 0 && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800">{guru.hadirCount} Hadir</span>}
+                                {guru.alphaCount > 0 && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 font-semibold border border-red-200 dark:border-red-800">{guru.alphaCount} Alpha</span>}
+                                {guru.izinCount > 0 && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">{guru.izinCount} Izin</span>}
+                                {guru.belumAbsenCount > 0 && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-semibold border border-amber-200 dark:border-amber-800">{guru.belumAbsenCount} Belum</span>}
+                              </>
+                            )}
+                            <ChevronUp size={15} className="text-gray-400 ml-1" />
+                          </div>
+                        </div>
+
+                        {/* Jadwal detail grid */}
+                        <div className="px-4 py-3 bg-gray-50/50 dark:bg-gray-950/30">
+                          {guru.totalJadwal === 0 ? (
+                            <p className="text-xs text-gray-400 text-center py-2">Tidak ada jadwal mengajar hari ini</p>
+                          ) : (
+                            <>
+                              <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider mb-2">
+                                Jadwal Hari Ini ({guru.totalJadwal} sesi)
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                {guru.jadwal.map((j, idx) => {
+                                  const sc = STATUS_COLOR[j.status || 'default'] || STATUS_COLOR.default;
+                                  const jMulai = parseTime(j.jam_mulai);
+                                  const jSelesai = parseTime(j.jam_selesai);
+                                  const isActiveNow = isToday && nowSecs >= jMulai - 30 * 60 && nowSecs <= jSelesai + 60 * 60;
+                                  return (
+                                    <div key={idx} className={`flex items-center justify-between gap-2 bg-white dark:bg-gray-900 rounded-xl p-2.5 border ${isActiveNow ? 'border-emerald-400 dark:border-emerald-500 ring-1 ring-emerald-300/40' : 'border-gray-100 dark:border-gray-800'}`}>
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <BookOpen size={13} className="text-gray-400 shrink-0" />
+                                        <div className="min-w-0">
+                                          <div className="text-xs font-bold text-gray-800 dark:text-gray-100 truncate">{j.mata_pelajaran}</div>
+                                          <div className="text-[10px] text-gray-400">{j.nama_kelas} • {formatTime(j.jam_mulai)}–{formatTime(j.jam_selesai)}</div>
+                                        </div>
+                                      </div>
+                                      <span className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-lg font-semibold border shrink-0 ${sc}`}>
+                                        {j.status || 'Belum'}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      /* ===== COMPACT CARD VIEW ===== */
+                      <div className="p-3 flex flex-col items-center text-center gap-1.5">
+                        {/* Avatar */}
+                        <div className="relative">
+                          {guru.foto ? (
+                            <img src={guru.foto} alt={guru.nama} className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center">
+                              <Users size={16} className="text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                          )}
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900 ${getStatusDotColor(guru)}`} />
+                        </div>
+
+                        {/* Name */}
+                        <div className="font-bold text-[11px] text-gray-900 dark:text-white leading-tight truncate w-full">{guru.nama}</div>
+
+                        {/* Mini status */}
+                        {guru.totalJadwal === 0 ? (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-400 font-semibold">Libur</span>
+                        ) : (
+                          <div className="flex flex-wrap justify-center gap-0.5">
+                            {guru.hadirCount > 0 && <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold">{guru.hadirCount}H</span>}
+                            {guru.belumAbsenCount > 0 && <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 font-bold">{guru.belumAbsenCount}B</span>}
+                            {guru.alphaCount > 0 && <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-bold">{guru.alphaCount}A</span>}
+                            {guru.izinCount > 0 && <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold">{guru.izinCount}I</span>}
+                            {guru.sakitCount > 0 && <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 font-bold">{guru.sakitCount}S</span>}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>
