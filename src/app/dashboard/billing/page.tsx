@@ -1168,7 +1168,7 @@ export default function BillingPage() {
 
       {/* MODAL 1: PREVIEW FOTO SANTRI LAYAR PENUH */}
       {previewImage && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="relative max-w-lg w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-700">
             <div className="p-4 bg-slate-800/80 flex items-center justify-between border-b border-slate-700">
               <span className="font-bold text-white text-base">{previewImage.title}</span>
@@ -1192,8 +1192,8 @@ export default function BillingPage() {
 
       {/* MODAL 2: DETAIL GROUP SANTRI & RINCIAN TAGIHAN (MODE RINGKASAN) */}
       {selectedDetailGroup && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl max-w-md w-full max-h-[88vh] flex flex-col shadow-2xl border border-gray-200 dark:border-gray-700">
+        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 pb-20 sm:pb-0 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl max-w-md w-full max-h-[78vh] sm:max-h-[88vh] flex flex-col shadow-2xl border border-gray-200 dark:border-gray-700">
             {/* Header Modal */}
             <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 text-white flex items-center justify-between relative">
               <div className="flex items-center gap-3">
@@ -1303,8 +1303,8 @@ export default function BillingPage() {
 
       {/* MODAL 3: DETAIL SINGLE ITEM TAGIHAN */}
       {selectedDetailItem && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl max-w-md w-full max-h-[88vh] flex flex-col shadow-2xl border border-gray-200 dark:border-gray-700">
+        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 pb-20 sm:pb-0 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl max-w-md w-full max-h-[78vh] sm:max-h-[88vh] flex flex-col shadow-2xl border border-gray-200 dark:border-gray-700">
             {/* Header Modal */}
             <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 text-white flex items-center justify-between relative">
               <div className="flex items-center gap-3">
