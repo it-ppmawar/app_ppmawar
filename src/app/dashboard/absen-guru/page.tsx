@@ -195,43 +195,46 @@ export default function AbsenGuruPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-28">
 
-      {/* ── Banner topbar monitoring ────────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-teal-700 via-emerald-700 to-green-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-          <div className="flex items-center gap-2">
-            <ClipboardList size={18} />
+      <div className="max-w-7xl mx-auto px-4 pt-4 space-y-3">
+
+        {/* ── Header card — persis seperti tabel-jadwal ──────────────────────── */}
+        <div className="bg-gradient-to-br from-teal-50 to-emerald-100 dark:from-teal-950/40 dark:to-emerald-950/40 rounded-3xl p-5 border border-teal-200 dark:border-teal-900/50 relative overflow-hidden">
+          {/* Decorative background icon */}
+          <div className="absolute top-0 right-0 -mt-3 -mr-3 text-teal-200/40 dark:text-teal-900/20 pointer-events-none">
+            <ClipboardList size={110} />
+          </div>
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Title */}
             <div>
-              <div className="font-extrabold text-sm leading-tight">Monitoring Kehadiran Guru / Pembina</div>
-              <div className="text-white/70 text-[11px] font-medium">PP. Matholi'ul Anwar</div>
+              <h1 className="text-xl font-extrabold text-teal-800 dark:text-teal-400 flex items-center gap-2 drop-shadow-sm">
+                <ClipboardList size={24} /> Monitoring Kehadiran Guru
+              </h1>
+              <p className="text-teal-600 dark:text-teal-300 text-sm mt-0.5 font-medium">
+                PP. Matholi'ul Anwar
+              </p>
+              <p className="text-teal-500 dark:text-teal-400 text-xs mt-0.5">
+                {hari}{hari ? ', ' : ''}{new Date(tanggal + 'T00:00:00').toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'})}
+              </p>
+            </div>
+            {/* Controls + Real-time clock */}
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="text-right hidden sm:block">
+                <div className="text-teal-500 dark:text-teal-400 text-[11px] font-medium">{dateHeaderStr}</div>
+                <div className="font-mono font-extrabold text-2xl text-teal-800 dark:text-teal-300 tracking-widest leading-tight">{clockStr}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)}
+                  className="text-xs border border-teal-200 dark:border-teal-800 rounded-xl px-2 py-1.5 bg-white/70 dark:bg-teal-950/50 text-teal-800 dark:text-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+                <button onClick={fetchData} disabled={loading}
+                  className="p-2 rounded-xl bg-white/70 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 hover:bg-white border border-teal-200 dark:border-teal-800 transition-colors shadow-sm">
+                  <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                </button>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-white/70 text-[11px]">{dateHeaderStr}</div>
-              <div className="font-mono font-extrabold text-yellow-300 text-xl tracking-widest leading-tight">{clockStr}</div>
-            </div>
-          </div>
+          {/* Clock on mobile (below title) */}
+          <div className="sm:hidden mt-2 font-mono font-extrabold text-xl text-teal-800 dark:text-teal-300 tracking-widest">{clockStr}</div>
         </div>
-      </div>
-
-      {/* ── Sticky controls ─────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
-          <div className="text-xs text-gray-400 font-medium">
-            {hari}{hari ? ', ' : ''}{new Date(tanggal + 'T00:00:00').toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'})}
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)}
-              className="text-xs border border-gray-200 dark:border-gray-700 rounded-xl px-2 py-1.5 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-            <button onClick={fetchData} disabled={loading}
-              className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800 transition-colors">
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 pt-3 space-y-3">
 
         {/* ── Summary cards ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-4 gap-2">
@@ -370,7 +373,7 @@ export default function AbsenGuruPage() {
 
         {/* ── Loading skeleton ───────────────────────────────────────────────── */}
         {loading && (
-          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
             {[...Array(12)].map((_,i) => (
               <div key={i} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 animate-pulse overflow-hidden">
                 <div className="h-10 bg-gray-200 dark:bg-gray-700" />
@@ -393,7 +396,7 @@ export default function AbsenGuruPage() {
               <p className="text-xs text-gray-300 mt-1">Coba ubah filter tab atau waktu</p>
             </div>
           ) : (
-            <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {filteredCards.map((card, idx) => {
                 const sc = STATUS_COLOR[card.status || 'default'] || STATUS_COLOR.default;
                 const hc = TIPE_HEADER[card.tipe] || 'bg-gray-500';
