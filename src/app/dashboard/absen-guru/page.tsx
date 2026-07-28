@@ -371,23 +371,35 @@ export default function AbsenGuruPage() {
           </div>
         )}
 
-        {/* ── Loading skeleton ───────────────────────────────────────────────── */}
+        {/* ── Loading skeleton ─────────────────────────────────────────────────── */}
         {loading && (
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-            {[...Array(12)].map((_,i) => (
-              <div key={i} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 animate-pulse overflow-hidden">
-                <div className="h-10 bg-gray-200 dark:bg-gray-700" />
-                <div className="p-3 space-y-2">
-                  <div className="flex gap-2 items-center"><div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0"/><div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full flex-1"/></div>
-                  <div className="h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full w-3/4"/>
-                  <div className="h-6 bg-gray-100 dark:bg-gray-800 rounded-xl w-full mt-1"/>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+            <table className="w-full min-w-[600px] border-collapse text-sm">
+              <thead>
+                <tr className="bg-gray-100 dark:bg-gray-800 text-gray-500 text-[11px] uppercase tracking-wide">
+                  <th className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 px-3 py-2.5 text-left font-bold w-32">Kelas / Kamar</th>
+                  <th className="px-3 py-2.5 text-left font-bold w-16">Jam</th>
+                  <th className="px-3 py-2.5 text-left font-bold min-w-[150px]">Guru</th>
+                  <th className="px-3 py-2.5 text-left font-bold min-w-[150px]">Mata Pelajaran</th>
+                  <th className="px-3 py-2.5 text-left font-bold w-28">Status</th>
+                </tr>
+              </thead>
+              <tbody className="animate-pulse">
+                {[...Array(10)].map((_,i) => (
+                  <tr key={i} className="border-t border-gray-100 dark:border-gray-800">
+                    <td className="sticky left-0 bg-white dark:bg-gray-900 px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"/></td>
+                    <td className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-10"/></td>
+                    <td className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-36"/></td>
+                    <td className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"/></td>
+                    <td className="px-3 py-3"><div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-20"/></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 
-        {/* ── Jadwal Cards Grid (auto-fill, lebar mengisi layar) ───────────────── */}
+        {/* ── Jadwal Tabel (horizontal scroll, berdampingan di HP) ─────────────── */}
         {!loading && !error && (
           filteredCards.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
@@ -396,70 +408,81 @@ export default function AbsenGuruPage() {
               <p className="text-xs text-gray-300 mt-1">Coba ubah filter tab atau waktu</p>
             </div>
           ) : (
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-              {filteredCards.map((card, idx) => {
-                const sc = STATUS_COLOR[card.status || 'default'] || STATUS_COLOR.default;
-                const hc = TIPE_HEADER[card.tipe] || 'bg-gray-500';
-                return (
-                  <div key={`${card.guru_id}-${card.jadwal_id}-${card.jam_mulai}-${idx}`}
-                    onClick={() => setSelectedCard(card)}
-                    className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col">
+            <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
+              <table className="w-full min-w-[600px] border-collapse text-sm">
+                <thead>
+                  <tr className="bg-gray-100 dark:bg-gray-800 text-gray-500 text-[11px] uppercase tracking-wide">
+                    <th className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 px-3 py-3 text-left font-bold min-w-[130px]">Kelas / Kamar</th>
+                    <th className="px-3 py-3 text-left font-bold whitespace-nowrap w-16">Jam</th>
+                    <th className="px-3 py-3 text-left font-bold min-w-[160px]">Guru</th>
+                    <th className="px-3 py-3 text-left font-bold min-w-[150px]">Mata Pelajaran</th>
+                    <th className="px-3 py-3 text-left font-bold whitespace-nowrap min-w-[110px]">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCards.map((card, idx) => {
+                    const sc = STATUS_COLOR[card.status || 'default'] || STATUS_COLOR.default;
+                    const hc = TIPE_HEADER[card.tipe] || 'bg-gray-500';
+                    return (
+                      <tr
+                        key={`${card.guru_id}-${card.jadwal_id}-${card.jam_mulai}-${idx}`}
+                        onClick={() => setSelectedCard(card)}
+                        className="border-t border-gray-100 dark:border-gray-800 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 cursor-pointer transition-colors"
+                      >
+                        {/* Sticky first col — Kelas (berwarna sesuai tipe) */}
+                        <td className={`sticky left-0 z-10 px-3 py-2.5 ${hc}`}>
+                          <span className="text-white text-[11px] font-extrabold whitespace-nowrap leading-tight block">
+                            {card.nama_kelas || '—'}
+                          </span>
+                          {card.tipe === 'kegiatan' && card.nama_asrama && (
+                            <span className="text-white/70 text-[9px] flex items-center gap-0.5 mt-0.5">
+                              <Home size={8}/> {card.nama_asrama}
+                            </span>
+                          )}
+                        </td>
 
-                    {/* Card header — colored, shows nama_kelas */}
-                    <div className={`${hc} px-3 py-2 flex items-center justify-between gap-1`}>
-                      <span className="text-white text-[11px] font-extrabold leading-tight flex-1"
-                        style={{ display:'-webkit-box', WebkitLineClamp:1, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
-                        {card.nama_kelas || '—'}
-                      </span>
-                      <span className="text-white/80 text-[10px] font-mono shrink-0 ml-1 bg-black/20 rounded px-1">
-                        {fmt(card.jam_mulai)}
-                      </span>
-                    </div>
+                        {/* Jam */}
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className="text-[11px] font-mono text-gray-600 dark:text-gray-300">
+                            {fmt(card.jam_mulai)}
+                          </span>
+                          <span className="text-[9px] text-gray-400 block">–{fmt(card.jam_selesai)}</span>
+                        </td>
 
-                    {/* Card body */}
-                    <div className="p-3 flex-1 space-y-2">
-                      {/* Guru row */}
-                      <div className="flex items-start gap-2">
-                        {card.guru_foto ? (
-                          <img src={card.guru_foto} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700 shrink-0 mt-0.5" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0 mt-0.5">
-                            <Users size={14} className="text-gray-400" />
+                        {/* Guru */}
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-2">
+                            {card.guru_foto ? (
+                              <img src={card.guru_foto} alt="" className="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-gray-700 shrink-0" />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                                <Users size={11} className="text-gray-400" />
+                              </div>
+                            )}
+                            <span className="text-[11px] font-semibold text-gray-800 dark:text-gray-100 whitespace-nowrap">
+                              {card.guru_nama}
+                            </span>
                           </div>
-                        )}
-                        <span className="text-[12px] font-bold text-gray-800 dark:text-gray-100 leading-tight"
-                          style={{ display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
-                          {card.guru_nama}
-                        </span>
-                      </div>
+                        </td>
 
-                      {/* Mata pelajaran */}
-                      <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium truncate">
-                        {card.mata_pelajaran || '—'}
-                      </div>
+                        {/* Mata Pelajaran */}
+                        <td className="px-3 py-2.5">
+                          <span className="text-[11px] text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                            {card.mata_pelajaran || '—'}
+                          </span>
+                        </td>
 
-                      {/* Asrama info for kegiatan */}
-                      {card.tipe === 'kegiatan' && card.nama_asrama && (
-                        <div className="flex items-center gap-1 text-[10px] text-blue-500">
-                          <Home size={10} /> {card.nama_asrama}
-                        </div>
-                      )}
-
-                      {/* Jam */}
-                      <div className="text-[10px] text-gray-400 font-mono">
-                        {fmt(card.jam_mulai)} – {fmt(card.jam_selesai)}
-                      </div>
-                    </div>
-
-                    {/* Status badge footer */}
-                    <div className="px-3 pb-3">
-                      <span className={`block text-center text-[11px] px-2 py-1 rounded-xl font-bold border ${sc}`}>
-                        {card.status || 'Belum Absen'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                        {/* Status */}
+                        <td className="px-3 py-2.5">
+                          <span className={`inline-block text-[10px] px-2 py-0.5 rounded-lg font-bold border whitespace-nowrap ${sc}`}>
+                            {card.status || 'Belum Absen'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )
         )}

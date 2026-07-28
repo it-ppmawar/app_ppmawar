@@ -364,11 +364,11 @@ export default function JadwalAlumniPage() {
                 </button>
                 <button
                   onClick={handleAdd}
-                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
+                  className="w-full flex-1 md:flex-none justify-center bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center gap-1.5"
                   title="Tambah Jadwal"
                 >
-                  <span className="hidden sm:inline">+ Tambah Jadwal</span>
-                  <span className="sm:hidden text-lg leading-none">+</span>
+                  <span className="text-lg leading-none">+</span>
+                  <span>Tambah Jadwal</span>
                 </button>
               </>
             )}
