@@ -113,6 +113,9 @@ export async function GET(request: Request) {
       `;
       params = [bulan, tahun, target_id];
     } else if (tipe === 'guru') {
+      if (payload.role !== 'admin' && payload.role !== 'staff') {
+        return NextResponse.json({ error: 'Akses ditolak. Rekapitulasi/monitoring kehadiran guru hanya khusus Admin dan Staf.' }, { status: 403 });
+      }
       if (target_id && target_id !== 'all') {
         query = `
           SELECT g.guru_id as id, g.nip as identifier, g.nama,

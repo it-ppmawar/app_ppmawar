@@ -317,6 +317,72 @@ export default function BillingPage() {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
   };
 
+  // Helper pengelompokan badge tagihan & perhitungan (X bulan) otomatis jika >1 periode
+  const getGroupedItemBadges = (items: any[]) => {
+    const belumCountMap: Record<string, number> = {};
+    const totalNominalMap: Record<string, number> = {};
+    const statusMap: Record<string, string> = {};
+
+    items.forEach((it: any) => {
+      const key = (it.nama_tagihan || '').trim();
+      if (!key) return;
+
+      if (!totalNominalMap[key]) totalNominalMap[key] = 0;
+      totalNominalMap[key] += Number(it.nominal || 0);
+
+      if (it.status !== 'Lunas') {
+        belumCountMap[key] = (belumCountMap[key] || 0) + 1;
+        statusMap[key] = 'Belum';
+      } else if (!statusMap[key]) {
+        statusMap[key] = 'Lunas';
+      }
+    });
+
+    const seen: Record<string, boolean> = {};
+    const result: {
+      nama_tagihan: string;
+      totalNominal: number;
+      status: string;
+      bulanCount: number;
+    }[] = [];
+
+    items.forEach((it: any) => {
+      const key = (it.nama_tagihan || '').trim();
+      if (!key || seen[key]) return;
+      seen[key] = true;
+
+      const totalNominal = totalNominalMap[key] || Number(it.nominal || 0);
+      const countFromItems = belumCountMap[key] || 0;
+      let months = countFromItems;
+
+      const isSyahriyah = /syahriyah/i.test(key);
+      if (isSyahriyah && totalNominal > 0) {
+        let calcMonths = 0;
+        if (totalNominal % 160000 === 0 && totalNominal / 160000 >= 1) {
+          calcMonths = totalNominal / 160000;
+        } else if (totalNominal % 150000 === 0 && totalNominal / 150000 >= 1) {
+          calcMonths = totalNominal / 150000;
+        } else if (totalNominal % 200000 === 0 && totalNominal / 200000 >= 1) {
+          calcMonths = totalNominal / 200000;
+        } else if (totalNominal > 160000) {
+          calcMonths = Math.round(totalNominal / 160000);
+        }
+        if (calcMonths > months) {
+          months = calcMonths;
+        }
+      }
+
+      result.push({
+        nama_tagihan: key,
+        totalNominal,
+        status: statusMap[key] || it.status || 'Belum',
+        bulanCount: months
+      });
+    });
+
+    return result;
+  };
+
   // Helper untuk format URL WhatsApp tunggal
   const formatWaUrl = (noHp: string, namaSantri: string, namaTagihan: string, nominal: number, periode: string) => {
     if (!noHp) return '#';
@@ -342,9 +408,9 @@ export default function BillingPage() {
     if (cleanNumber.startsWith('0')) {
       cleanNumber = '62' + cleanNumber.slice(1);
     }
-    const belumItems = items.filter(i => i.status === 'Belum');
+    const belumItems = getGroupedItemBadges(items).filter(b => b.status === 'Belum');
     const itemLines = belumItems.length > 0
-      ? belumItems.map(i => `• ${i.nama_tagihan}: *${formatRupiah(i.nominal)}* (${i.periode})`).join('\n')
+      ? belumItems.map(b => `• ${b.nama_tagihan}: *${formatRupiah(b.totalNominal)}*${b.bulanCount > 1 ? ` (${b.bulanCount} bulan)` : ''}`).join('\n')
       : '• Seluruh Tagihan TELAH LUNAS';
     
     const message = `Assalamu'alaikum Wr. Wb. Yth. Bapak/Ibu Wali dari Ananda *${namaSantri}*.\n\n` +
@@ -778,45 +844,22 @@ export default function BillingPage() {
 
                       {/* Rincian Komponen Tagihan Pills */}
                       <div className="flex flex-wrap gap-2 pt-1">
-                        {(() => {
-                          // Kelompokkan item Belum berdasarkan nama_tagihan untuk hitung jumlah bulan
-                          const belumCountMap: Record<string, number> = {};
-                          group.items.forEach((it: any) => {
-                            if (it.status !== 'Lunas') {
-                              const key = (it.nama_tagihan || '').trim();
-                              belumCountMap[key] = (belumCountMap[key] || 0) + 1;
-                            }
-                          });
-                          // Tampilkan 1 badge per nama_tagihan (gabungkan duplikat)
-                          const seen: Record<string, boolean> = {};
-                          return group.items.map((item: any, idx: number) => {
-                            const namaKey = (item.nama_tagihan || '').trim();
-                            if (seen[namaKey]) return null;
-                            seen[namaKey] = true;
-                            const isLunas = item.status === 'Lunas' && (belumCountMap[namaKey] || 0) === 0;
-                            const bulanBelum = belumCountMap[namaKey] || 0;
-                            // Hitung total nominal untuk nama_tagihan ini
-                            const totalNominalItem = group.items
-                              .filter((it: any) => (it.nama_tagihan || '').trim() === namaKey)
-                              .reduce((sum: number, it: any) => sum + Number(it.nominal || 0), 0);
-                            return (
-                              <div
-                                key={idx}
-                                className={`text-xs px-2.5 py-1 rounded-lg font-medium border flex items-center gap-1.5 ${
-                                  isLunas
-                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300'
-                                    : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800/60 text-red-700 dark:text-red-300'
-                                }`}
-                              >
-                                <span>{namaKey}:</span>
-                                <span className="font-bold">{formatRupiah(bulanBelum > 1 ? totalNominalItem : item.nominal)}</span>
-                                {bulanBelum > 1 && (
-                                  <span className="font-bold opacity-80">({bulanBelum} bulan)</span>
-                                )}
-                              </div>
-                            );
-                          });
-                        })()}
+                        {getGroupedItemBadges(group.items).map((badge, idx) => (
+                          <div
+                            key={idx}
+                            className={`text-xs px-2.5 py-1 rounded-lg font-medium border flex items-center gap-1.5 ${
+                              badge.status === 'Lunas'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800/60 text-red-700 dark:text-red-300'
+                            }`}
+                          >
+                            <span>{badge.nama_tagihan}:</span>
+                            <span className="font-bold">{formatRupiah(badge.totalNominal)}</span>
+                            {badge.bulanCount > 1 && (
+                              <span className="font-bold opacity-80">({badge.bulanCount} bulan)</span>
+                            )}
+                          </div>
+                        ))}
                       </div>
 
                       <div className="border-t border-gray-200 dark:border-gray-700 pt-3 flex items-center justify-between">
@@ -918,17 +961,18 @@ export default function BillingPage() {
 
                           {/* Rincian Komponen Tagihan (Pills) */}
                           <td className="px-4 py-3.5">
-                            <div className="flex flex-wrap gap-1.5 max-w-[260px]">
-                              {group.items.map((item: any, idx: number) => (
+                            <div className="flex flex-wrap gap-1.5 max-w-[280px]">
+                              {getGroupedItemBadges(group.items).map((badge, idx) => (
                                 <span 
                                   key={idx} 
                                   className={`text-[11px] px-2 py-0.5 rounded-md font-semibold border ${
-                                    item.status === 'Lunas'
+                                    badge.status === 'Lunas'
                                       ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
                                       : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
                                   }`}
                                 >
-                                  {item.nama_tagihan}: {formatRupiah(item.nominal)}
+                                  {badge.nama_tagihan}: {formatRupiah(badge.totalNominal)}
+                                  {badge.bulanCount > 1 ? ` (${badge.bulanCount} bulan)` : ''}
                                 </span>
                               ))}
                             </div>
@@ -1276,18 +1320,20 @@ export default function BillingPage() {
               <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2.5">
                 <span className="text-xs font-extrabold uppercase text-gray-400 tracking-wider block">Rincian Komponen Tagihan</span>
                 <div className="space-y-2">
-                  {selectedDetailGroup.items.map((item: any, idx: number) => (
+                  {getGroupedItemBadges(selectedDetailGroup.items).map((badge, idx) => (
                     <div key={idx} className="flex justify-between items-center bg-gray-50 dark:bg-gray-900/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/50">
                       <div>
-                        <div className="font-bold text-gray-800 dark:text-gray-100 text-xs">{item.nama_tagihan}</div>
-                        <div className="text-[11px] text-gray-400">Periode: {item.periode}</div>
+                        <div className="font-bold text-gray-800 dark:text-gray-100 text-xs">{badge.nama_tagihan}</div>
+                        {badge.bulanCount > 1 && (
+                          <div className="text-[11px] text-red-500 font-semibold">Tunggakan {badge.bulanCount} Bulan</div>
+                        )}
                       </div>
                       <div className="text-right">
-                        <div className={`font-black text-xs ${item.status === 'Lunas' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {formatRupiah(item.nominal)}
+                        <div className={`font-black text-xs ${badge.status === 'Lunas' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {formatRupiah(badge.totalNominal)}
                         </div>
-                        <span className={`text-[10px] font-extrabold uppercase ${item.status === 'Lunas' ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {item.status}
+                        <span className={`text-[10px] font-extrabold uppercase ${badge.status === 'Lunas' ? 'text-emerald-500' : 'text-red-500'}`}>
+                          {badge.status}
                         </span>
                       </div>
                     </div>

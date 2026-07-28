@@ -74,6 +74,9 @@ export default function RekapitulasiPage() {
 
   const handleTipeChange = (e: any) => {
     const t = e.target.value;
+    if (t === 'guru' && role !== 'admin' && role !== 'staff') {
+      return;
+    }
     setFilter(prev => ({ ...prev, tipe: t }));
     loadOptions(t);
   };
