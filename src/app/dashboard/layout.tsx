@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2 } from 'lucide-react';
+import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -517,6 +517,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <CalendarDays size={18} /> <span className="text-sm">Tabel Jadwal</span>
               </Link>
             </li>
+            {['admin', 'staff'].includes(userRoleLower) && (
+            <li>
+              <Link href="/dashboard/absen-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/absen-guru' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
+                <ClipboardList size={18} /> <span className="text-sm">Absen Guru</span>
+              </Link>
+            </li>
+            )}
             <li>
               <Link href="/dashboard/jurnal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jurnal' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
                 <BookOpen size={18} /> <span className="text-sm">Jurnal Kegiatan</span>

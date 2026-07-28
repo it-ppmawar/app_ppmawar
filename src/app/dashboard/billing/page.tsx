@@ -317,9 +317,8 @@ export default function BillingPage() {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
   };
 
-  // Helper pengelompokan badge tagihan & perhitungan (X bulan) otomatis jika >1 periode
+  // Helper pengelompokan badge tagihan & penggabungan nominal otomatis
   const getGroupedItemBadges = (items: any[]) => {
-    const belumCountMap: Record<string, number> = {};
     const totalNominalMap: Record<string, number> = {};
     const statusMap: Record<string, string> = {};
 
@@ -331,7 +330,6 @@ export default function BillingPage() {
       totalNominalMap[key] += Number(it.nominal || 0);
 
       if (it.status !== 'Lunas') {
-        belumCountMap[key] = (belumCountMap[key] || 0) + 1;
         statusMap[key] = 'Belum';
       } else if (!statusMap[key]) {
         statusMap[key] = 'Lunas';
@@ -343,7 +341,6 @@ export default function BillingPage() {
       nama_tagihan: string;
       totalNominal: number;
       status: string;
-      bulanCount: number;
     }[] = [];
 
     items.forEach((it: any) => {
@@ -351,32 +348,10 @@ export default function BillingPage() {
       if (!key || seen[key]) return;
       seen[key] = true;
 
-      const totalNominal = totalNominalMap[key] || Number(it.nominal || 0);
-      const countFromItems = belumCountMap[key] || 0;
-      let months = countFromItems;
-
-      const isSyahriyah = /syahriyah/i.test(key);
-      if (isSyahriyah && totalNominal > 0) {
-        let calcMonths = 0;
-        if (totalNominal % 160000 === 0 && totalNominal / 160000 >= 1) {
-          calcMonths = totalNominal / 160000;
-        } else if (totalNominal % 150000 === 0 && totalNominal / 150000 >= 1) {
-          calcMonths = totalNominal / 150000;
-        } else if (totalNominal % 200000 === 0 && totalNominal / 200000 >= 1) {
-          calcMonths = totalNominal / 200000;
-        } else if (totalNominal > 160000) {
-          calcMonths = Math.round(totalNominal / 160000);
-        }
-        if (calcMonths > months) {
-          months = calcMonths;
-        }
-      }
-
       result.push({
         nama_tagihan: key,
-        totalNominal,
-        status: statusMap[key] || it.status || 'Belum',
-        bulanCount: months
+        totalNominal: totalNominalMap[key] || Number(it.nominal || 0),
+        status: statusMap[key] || it.status || 'Belum'
       });
     });
 
@@ -410,7 +385,7 @@ export default function BillingPage() {
     }
     const belumItems = getGroupedItemBadges(items).filter(b => b.status === 'Belum');
     const itemLines = belumItems.length > 0
-      ? belumItems.map(b => `• ${b.nama_tagihan}: *${formatRupiah(b.totalNominal)}*${b.bulanCount > 1 ? ` (${b.bulanCount} bulan)` : ''}`).join('\n')
+      ? belumItems.map(b => `• ${b.nama_tagihan}: *${formatRupiah(b.totalNominal)}*`).join('\n')
       : '• Seluruh Tagihan TELAH LUNAS';
     
     const message = `Assalamu'alaikum Wr. Wb. Yth. Bapak/Ibu Wali dari Ananda *${namaSantri}*.\n\n` +
@@ -855,9 +830,6 @@ export default function BillingPage() {
                           >
                             <span>{badge.nama_tagihan}:</span>
                             <span className="font-bold">{formatRupiah(badge.totalNominal)}</span>
-                            {badge.bulanCount > 1 && (
-                              <span className="font-bold opacity-80">({badge.bulanCount} bulan)</span>
-                            )}
                           </div>
                         ))}
                       </div>
@@ -972,7 +944,6 @@ export default function BillingPage() {
                                   }`}
                                 >
                                   {badge.nama_tagihan}: {formatRupiah(badge.totalNominal)}
-                                  {badge.bulanCount > 1 ? ` (${badge.bulanCount} bulan)` : ''}
                                 </span>
                               ))}
                             </div>
@@ -1324,9 +1295,6 @@ export default function BillingPage() {
                     <div key={idx} className="flex justify-between items-center bg-gray-50 dark:bg-gray-900/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/50">
                       <div>
                         <div className="font-bold text-gray-800 dark:text-gray-100 text-xs">{badge.nama_tagihan}</div>
-                        {badge.bulanCount > 1 && (
-                          <div className="text-[11px] text-red-500 font-semibold">Tunggakan {badge.bulanCount} Bulan</div>
-                        )}
                       </div>
                       <div className="text-right">
                         <div className={`font-black text-xs ${badge.status === 'Lunas' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
