@@ -134,7 +134,7 @@ export default function DashboardPage() {
             </div>
           </button>
 
-          <p className="text-green-300 font-extrabold mt-3 text-xl drop-shadow-sm">
+          <p className="text-green-300 font-extrabold mt-3 text-xl drop-shadow-sm" dir="auto" style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", system-ui, sans-serif', wordBreak: 'break-word' }}>
             {username}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">

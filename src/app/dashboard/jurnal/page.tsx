@@ -357,11 +357,11 @@ export default function JurnalPage() {
             {canAdd && (
               <button
                 onClick={handleOpenAdd}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
+                className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
                 title="Isi Jurnal"
               >
                 <span className="hidden sm:inline">+ Isi Jurnal</span>
-                <span className="sm:hidden text-lg leading-none">+</span>
+                <span className="sm:hidden">+ Isi Jurnal</span>
               </button>
             )}
           </div>

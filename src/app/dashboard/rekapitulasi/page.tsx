@@ -238,22 +238,22 @@ export default function RekapitulasiPage() {
               Filter dan lihat laporan rekap kehadiran kelas dan guru.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
             <button
               onClick={() => handleExport('pdf', true)}
-              className="flex items-center gap-2 bg-white/50 hover:bg-white dark:bg-black/20 dark:hover:bg-black/40 text-purple-800 dark:text-purple-200 px-4 py-2.5 rounded-xl font-bold transition-all shadow-sm backdrop-blur-sm w-fit text-sm"
+              className="flex-1 md:flex-none justify-center flex items-center gap-2 bg-white/50 hover:bg-white dark:bg-black/20 dark:hover:bg-black/40 text-purple-800 dark:text-purple-200 px-4 py-2.5 rounded-xl font-bold transition-all shadow-sm backdrop-blur-sm text-sm"
             >
               <FileText size={16} /> Preview PDF
             </button>
             <button
               onClick={() => handleExport('pdf', false)}
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-purple-600/20 backdrop-blur-sm w-fit text-sm"
+              className="flex-1 md:flex-none justify-center flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-purple-600/20 backdrop-blur-sm text-sm"
             >
               <Download size={16} /> PDF
             </button>
             <button
               onClick={() => handleExport('excel', false)}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-green-600/20 backdrop-blur-sm w-fit text-sm"
+              className="flex-1 md:flex-none justify-center flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-green-600/20 backdrop-blur-sm text-sm"
             >
               <Download size={16} /> Excel
             </button>

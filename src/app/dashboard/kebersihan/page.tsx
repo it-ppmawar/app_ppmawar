@@ -370,7 +370,7 @@ export default function KebersIhanPage() {
                 className="flex-1 md:flex-none justify-center flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-extrabold transition-colors shadow-sm"
                 title="Tambah Item"
               >
-                <Plus size={14} /> <span className="hidden sm:inline">Tambah</span><span className="sm:hidden">+</span>
+                <Plus size={14} /> <span className="hidden sm:inline">Tambah</span>
               </button>
             </>
           )}

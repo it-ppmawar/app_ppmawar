@@ -778,19 +778,45 @@ export default function BillingPage() {
 
                       {/* Rincian Komponen Tagihan Pills */}
                       <div className="flex flex-wrap gap-2 pt-1">
-                        {group.items.map((item: any, idx: number) => (
-                          <div 
-                            key={idx} 
-                            className={`text-xs px-2.5 py-1 rounded-lg font-medium border flex items-center gap-1.5 ${
-                              item.status === 'Lunas'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300'
-                                : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800/60 text-red-700 dark:text-red-300'
-                            }`}
-                          >
-                            <span>{item.nama_tagihan}:</span>
-                            <span className="font-bold">{formatRupiah(item.nominal)}</span>
-                          </div>
-                        ))}
+                        {(() => {
+                          // Kelompokkan item Belum berdasarkan nama_tagihan untuk hitung jumlah bulan
+                          const belumCountMap: Record<string, number> = {};
+                          group.items.forEach((it: any) => {
+                            if (it.status !== 'Lunas') {
+                              const key = (it.nama_tagihan || '').trim();
+                              belumCountMap[key] = (belumCountMap[key] || 0) + 1;
+                            }
+                          });
+                          // Tampilkan 1 badge per nama_tagihan (gabungkan duplikat)
+                          const seen: Record<string, boolean> = {};
+                          return group.items.map((item: any, idx: number) => {
+                            const namaKey = (item.nama_tagihan || '').trim();
+                            if (seen[namaKey]) return null;
+                            seen[namaKey] = true;
+                            const isLunas = item.status === 'Lunas' && (belumCountMap[namaKey] || 0) === 0;
+                            const bulanBelum = belumCountMap[namaKey] || 0;
+                            // Hitung total nominal untuk nama_tagihan ini
+                            const totalNominalItem = group.items
+                              .filter((it: any) => (it.nama_tagihan || '').trim() === namaKey)
+                              .reduce((sum: number, it: any) => sum + Number(it.nominal || 0), 0);
+                            return (
+                              <div
+                                key={idx}
+                                className={`text-xs px-2.5 py-1 rounded-lg font-medium border flex items-center gap-1.5 ${
+                                  isLunas
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300'
+                                    : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800/60 text-red-700 dark:text-red-300'
+                                }`}
+                              >
+                                <span>{namaKey}:</span>
+                                <span className="font-bold">{formatRupiah(bulanBelum > 1 ? totalNominalItem : item.nominal)}</span>
+                                {bulanBelum > 1 && (
+                                  <span className="font-bold opacity-80">({bulanBelum} bulan)</span>
+                                )}
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
 
                       <div className="border-t border-gray-200 dark:border-gray-700 pt-3 flex items-center justify-between">
