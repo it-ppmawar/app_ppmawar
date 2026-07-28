@@ -142,7 +142,27 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ success: true, tanggal: targetDate, hari, data: guruMap });
+    // Build flat kegiatanJadwal list (ALL entries, including those with no guru)
+    const kegiatanJadwal = jadwalKegiatan.map((j: any) => {
+      const guru = (guruRows as any[]).find((g: any) => g.guru_id === j.guru_id);
+      return {
+        jadwal_id: j.jadwal_id,
+        tipe: 'kegiatan',
+        jam_mulai: j.jam_mulai,
+        jam_selesai: j.jam_selesai,
+        mata_pelajaran: j.mata_pelajaran || '—',
+        nama_kelas: j.nama_kelas || '—',
+        nama_asrama: j.nama_asrama || null,
+        status: null,
+        keterangan: null,
+        guru_id: guru?.guru_id || 0,
+        guru_nama: guru?.nama || 'Belum Ditugaskan',
+        guru_foto: guru?.foto || null,
+        guru_nip: guru?.nip || '',
+      };
+    });
+
+    return NextResponse.json({ success: true, tanggal: targetDate, hari, data: guruMap, kegiatanJadwal });
   } catch (error: any) {
     console.error('[absen-guru] Error:', error.message);
     return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });

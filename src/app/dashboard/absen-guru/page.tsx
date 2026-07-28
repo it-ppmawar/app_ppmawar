@@ -122,6 +122,9 @@ export default function AbsenGuruPage() {
     })();
   }, [router]);
 
+  // ─── Kegiatan asrama state ─────────────────────────────────────────────────
+  const [kegiatanRaw, setKegiatanRaw] = useState<JadwalCard[]>([]);
+
   // ─── Fetch ─────────────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true); setError('');
@@ -130,21 +133,27 @@ export default function AbsenGuruPage() {
       const json = await res.json();
       if (!res.ok || !json.success) { setError(json.error || 'Gagal memuat data'); return; }
       setData(json.data); setHari(json.hari);
+      setKegiatanRaw(json.kegiatanJadwal || []);
     } catch { setError('Koneksi gagal.'); }
     finally   { setLoading(false); }
   }, [tanggal]);
 
   useEffect(() => { if (role) fetchData(); }, [role, fetchData]);
 
-  // ─── Flatten guru → jadwal cards ──────────────────────────────────────────
+  // ─── Flatten guru → jadwal cards (MADIN + QURAN only) ─────────────────────
   const allCards = useMemo((): JadwalCard[] =>
     data.flatMap(g =>
-      g.jadwal.map(j => ({
-        ...j,
-        guru_id: g.guru_id, guru_nama: g.nama,
-        guru_foto: g.foto,  guru_nip:  g.nip,
-      }))
+      g.jadwal
+        .filter(j => j.tipe !== 'kegiatan')
+        .map(j => ({
+          ...j,
+          guru_id: g.guru_id, guru_nama: g.nama,
+          guru_foto: g.foto,  guru_nip:  g.nip,
+        }))
     ), [data]);
+
+  // All with kegiatan for 'semua' tab
+  const allCardsWithKegiatan = useMemo(() => [...allCards, ...kegiatanRaw], [allCards, kegiatanRaw]);
 
   // ─── Filter helpers ────────────────────────────────────────────────────────
   const madinFilter = useCallback((c: JadwalCard) => {
@@ -166,21 +175,30 @@ export default function AbsenGuruPage() {
   }, [activeAsrama]);
 
   const filteredCards = useMemo(() => {
-    let c = allCards;
-    if (activeTab !== 'semua') c = c.filter(x => x.tipe === activeTab);
-    if (activeTab === 'madin')    c = c.filter(madinFilter);
-    if (activeTab === 'quran')    c = c.filter(quranFilter);
-    if (activeTab === 'kegiatan') c = c.filter(x => x.nama_asrama === activeAsrama);
-    if (waktuFilter !== 'semua')  c = c.filter(x => waktuFilter === 'pagi' ? x.jam_mulai < '12:00:00' : x.jam_mulai >= '12:00:00');
+    let c: JadwalCard[];
+    if (activeTab === 'kegiatan') {
+      c = kegiatanRaw.filter(x => x.nama_asrama === activeAsrama);
+    } else if (activeTab === 'semua') {
+      c = allCardsWithKegiatan;
+    } else if (activeTab === 'madin') {
+      c = allCards.filter(x => x.tipe === 'madin').filter(madinFilter);
+    } else {
+      c = allCards.filter(x => x.tipe === activeTab).filter(quranFilter);
+    }
+    if (waktuFilter !== 'semua') c = c.filter(x => waktuFilter === 'pagi' ? x.jam_mulai < '12:00:00' : x.jam_mulai >= '12:00:00');
     if (search) {
       const q = search.toLowerCase();
       c = c.filter(x => x.guru_nama.toLowerCase().includes(q) || (x.nama_kelas||'').toLowerCase().includes(q) || (x.mata_pelajaran||'').toLowerCase().includes(q));
     }
     return [...c].sort((a, b) => (a.jam_mulai||'').localeCompare(b.jam_mulai||'') || (a.nama_kelas||'').localeCompare(b.nama_kelas||''));
-  }, [allCards, activeTab, madinFilter, quranFilter, activeAsrama, waktuFilter, search]);
+  }, [allCards, allCardsWithKegiatan, kegiatanRaw, activeTab, madinFilter, quranFilter, activeAsrama, waktuFilter, search]);
 
   // ─── Counts ────────────────────────────────────────────────────────────────
-  const countByTab = (tab: string) => tab === 'semua' ? allCards.length : allCards.filter(c => c.tipe === tab).length;
+  const countByTab = (tab: string) => {
+    if (tab === 'semua')    return allCardsWithKegiatan.length;
+    if (tab === 'kegiatan') return kegiatanRaw.length;
+    return allCards.filter(c => c.tipe === tab).length;
+  };
   const totalCards = filteredCards.length;
   const belumCards = filteredCards.filter(c => c.status === null).length;
   const hadirCards = filteredCards.filter(c => c.status === 'Hadir').length;
@@ -188,8 +206,8 @@ export default function AbsenGuruPage() {
 
   // All schedules of selected guru (for popup)
   const selectedGuruAll = useMemo(() =>
-    selectedCard ? allCards.filter(c => c.guru_id === selectedCard.guru_id) : [],
-    [selectedCard, allCards]);
+    selectedCard ? allCardsWithKegiatan.filter(c => c.guru_id === selectedCard.guru_id) : [],
+    [selectedCard, allCardsWithKegiatan]);
 
   // ─── JSX ──────────────────────────────────────────────────────────────────
   return (
@@ -197,43 +215,41 @@ export default function AbsenGuruPage() {
 
       <div className="max-w-7xl mx-auto px-4 pt-4 space-y-3">
 
-        {/* ── Header card — persis seperti tabel-jadwal ──────────────────────── */}
-        <div className="bg-gradient-to-br from-teal-50 to-emerald-100 dark:from-teal-950/40 dark:to-emerald-950/40 rounded-3xl p-5 border border-teal-200 dark:border-teal-900/50 relative overflow-hidden">
-          {/* Decorative background icon */}
+        {/* ── Header card — compact, persis seperti tabel-jadwal ──────────────── */}
+        <div className="bg-gradient-to-br from-teal-50 to-emerald-100 dark:from-teal-950/40 dark:to-emerald-950/40 rounded-3xl p-4 sm:p-5 border border-teal-200 dark:border-teal-900/50 relative overflow-hidden">
           <div className="absolute top-0 right-0 -mt-3 -mr-3 text-teal-200/40 dark:text-teal-900/20 pointer-events-none">
             <ClipboardList size={110} />
           </div>
-          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* Title */}
-            <div>
-              <h1 className="text-xl font-extrabold text-teal-800 dark:text-teal-400 flex items-center gap-2 drop-shadow-sm">
-                <ClipboardList size={24} /> Monitoring Kehadiran Guru
-              </h1>
-              <p className="text-teal-600 dark:text-teal-300 text-sm mt-0.5 font-medium">
-                PP. Matholi'ul Anwar
-              </p>
-              <p className="text-teal-500 dark:text-teal-400 text-xs mt-0.5">
-                {hari}{hari ? ', ' : ''}{new Date(tanggal + 'T00:00:00').toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'})}
-              </p>
-            </div>
-            {/* Controls + Real-time clock */}
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="text-right hidden sm:block">
+          <div className="relative z-10">
+            {/* Row 1: Title + desktop clock */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-xl font-extrabold text-teal-800 dark:text-teal-400 flex items-center gap-1.5 leading-tight">
+                  <ClipboardList size={18} className="shrink-0" />
+                  <span>Monitoring Kehadiran Guru</span>
+                </h1>
+                <p className="text-teal-600 dark:text-teal-300 text-xs sm:text-sm font-medium mt-0.5">
+                  PP. Matholi'ul Anwar
+                </p>
+              </div>
+              {/* Desktop clock */}
+              <div className="hidden sm:block text-right shrink-0">
                 <div className="text-teal-500 dark:text-teal-400 text-[11px] font-medium">{dateHeaderStr}</div>
                 <div className="font-mono font-extrabold text-2xl text-teal-800 dark:text-teal-300 tracking-widest leading-tight">{clockStr}</div>
               </div>
-              <div className="flex items-center gap-2">
-                <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)}
-                  className="text-xs border border-teal-200 dark:border-teal-800 rounded-xl px-2 py-1.5 bg-white/70 dark:bg-teal-950/50 text-teal-800 dark:text-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400" />
-                <button onClick={fetchData} disabled={loading}
-                  className="p-2 rounded-xl bg-white/70 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 hover:bg-white border border-teal-200 dark:border-teal-800 transition-colors shadow-sm">
-                  <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-                </button>
-              </div>
+            </div>
+            {/* Row 2: Controls + mobile clock in ONE ROW */}
+            <div className="flex items-center gap-2 mt-2">
+              <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)}
+                className="text-xs border border-teal-200 dark:border-teal-800 rounded-xl px-2 py-1.5 bg-white/70 dark:bg-teal-950/50 text-teal-800 dark:text-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+              <button onClick={fetchData} disabled={loading}
+                className="p-2 rounded-xl bg-white/70 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 hover:bg-white border border-teal-200 dark:border-teal-800 transition-colors shadow-sm">
+                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              </button>
+              {/* Mobile clock — same row as controls */}
+              <div className="sm:hidden ml-auto font-mono font-extrabold text-base text-teal-800 dark:text-teal-300 tracking-widest">{clockStr}</div>
             </div>
           </div>
-          {/* Clock on mobile (below title) */}
-          <div className="sm:hidden mt-2 font-mono font-extrabold text-xl text-teal-800 dark:text-teal-300 tracking-widest">{clockStr}</div>
         </div>
 
         {/* ── Summary cards ──────────────────────────────────────────────────── */}
@@ -268,26 +284,27 @@ export default function AbsenGuruPage() {
         {/* ── Tabs Qur'an | Madin | Kegiatan ─────────────────────────────────── */}
         <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 gap-1.5">
           {([
-            { key:'quran'    as const, label:"Kelas Qur'an",    active:'bg-emerald-500' },
-            { key:'madin'    as const, label:'Kelas Madin',      active:'bg-teal-500'   },
-            { key:'kegiatan' as const, label:'Kegiatan Asrama', active:'bg-blue-500'   },
+            { key:'quran'    as const, labelFull:"Kelas Qur'an", labelShort:"Qur'an",  active:'bg-emerald-500' },
+            { key:'madin'    as const, labelFull:'Kelas Madin',   labelShort:'Madin',    active:'bg-teal-500'   },
+            { key:'kegiatan' as const, labelFull:'Kegiatan Asrama', labelShort:'Kegiatan', active:'bg-blue-500' },
           ]).map(tab => (
             <button key={tab.key}
               onClick={() => { setActiveTab(tab.key); if (tab.key !== 'madin') setActiveAsrama('Asrama A'); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold rounded-xl transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1 px-1 sm:px-3 py-2.5 text-[11px] sm:text-xs font-bold rounded-xl transition-all ${
                 activeTab===tab.key ? `${tab.active} text-white shadow-md` : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
               }`}>
-              {tab.label}
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${activeTab===tab.key ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+              <span className="sm:hidden">{tab.labelShort}</span>
+              <span className="hidden sm:inline">{tab.labelFull}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${activeTab===tab.key ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
                 {loading ? '…' : countByTab(tab.key)}
               </span>
             </button>
           ))}
         </div>
 
-        {/* ── Sub-tabs (mirrors tabel-jadwal exactly) ─────────────────────────── */}
+        {/* ── Sub-tabs ─────────────────────────────────────────────────────────── */}
         {activeTab !== 'semua' && (
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-3">
+          <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-3">
 
             {/* Madin: PUTRA / PUTRI */}
             {activeTab === 'madin' && (
@@ -301,7 +318,7 @@ export default function AbsenGuruPage() {
               </div>
             )}
 
-            {/* Qur'an: asrama */}
+            {/* Qur'an: asrama (flex-wrap) */}
             {activeTab === 'quran' && (
               <div className="flex w-full bg-gray-100 dark:bg-gray-900 p-1 rounded-xl border border-gray-200/50 dark:border-gray-700 flex-wrap gap-1">
                 {ASRAMAS_QURAN.map(asr => (
@@ -313,12 +330,12 @@ export default function AbsenGuruPage() {
               </div>
             )}
 
-            {/* Kegiatan: asrama */}
+            {/* Kegiatan: asrama — 2 baris (grid 3 kolom) */}
             {activeTab === 'kegiatan' && (
-              <div className="flex w-full bg-gray-100 dark:bg-gray-900 p-1 rounded-xl border border-gray-200/50 dark:border-gray-700 flex-wrap gap-1">
+              <div className="grid grid-cols-3 gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-xl border border-gray-200/50 dark:border-gray-700">
                 {ASRAMAS_KEGIATAN.map(asr => (
                   <button key={asr} onClick={() => setActiveAsrama(asr)}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all text-center ${activeAsrama===asr ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+                    className={`py-2.5 text-xs font-bold rounded-lg transition-all text-center ${activeAsrama===asr ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
                     {asr}
                   </button>
                 ))}
@@ -373,33 +390,23 @@ export default function AbsenGuruPage() {
 
         {/* ── Loading skeleton ─────────────────────────────────────────────────── */}
         {loading && (
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-            <table className="w-full min-w-[600px] border-collapse text-sm">
-              <thead>
-                <tr className="bg-gray-100 dark:bg-gray-800 text-gray-500 text-[11px] uppercase tracking-wide">
-                  <th className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 px-3 py-2.5 text-left font-bold w-32">Kelas / Kamar</th>
-                  <th className="px-3 py-2.5 text-left font-bold w-16">Jam</th>
-                  <th className="px-3 py-2.5 text-left font-bold min-w-[150px]">Guru</th>
-                  <th className="px-3 py-2.5 text-left font-bold min-w-[150px]">Mata Pelajaran</th>
-                  <th className="px-3 py-2.5 text-left font-bold w-28">Status</th>
-                </tr>
-              </thead>
-              <tbody className="animate-pulse">
-                {[...Array(10)].map((_,i) => (
-                  <tr key={i} className="border-t border-gray-100 dark:border-gray-800">
-                    <td className="sticky left-0 bg-white dark:bg-gray-900 px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"/></td>
-                    <td className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-10"/></td>
-                    <td className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-36"/></td>
-                    <td className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"/></td>
-                    <td className="px-3 py-3"><div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-20"/></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="overflow-x-auto -mx-4 px-4 pb-2">
+            <div className="grid gap-3 pb-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 160px))', minWidth: 'max(100%, 530px)' }}>
+              {[...Array(12)].map((_,i) => (
+                <div key={i} className="w-40 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 animate-pulse overflow-hidden shrink-0">
+                  <div className="h-10 bg-gray-200 dark:bg-gray-700" />
+                  <div className="p-3 space-y-2">
+                    <div className="flex gap-2 items-center"><div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0"/><div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full flex-1"/></div>
+                    <div className="h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full w-3/4"/>
+                    <div className="h-6 bg-gray-100 dark:bg-gray-800 rounded-xl w-full mt-1"/>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* ── Jadwal Tabel (horizontal scroll, berdampingan di HP) ─────────────── */}
+        {/* ── Jadwal Card Grid \u2014 horizontal scroll di HP, auto-fill di desktop ───── */}
         {!loading && !error && (
           filteredCards.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
@@ -408,81 +415,70 @@ export default function AbsenGuruPage() {
               <p className="text-xs text-gray-300 mt-1">Coba ubah filter tab atau waktu</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
-              <table className="w-full min-w-[600px] border-collapse text-sm">
-                <thead>
-                  <tr className="bg-gray-100 dark:bg-gray-800 text-gray-500 text-[11px] uppercase tracking-wide">
-                    <th className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-800 px-3 py-3 text-left font-bold min-w-[130px]">Kelas / Kamar</th>
-                    <th className="px-3 py-3 text-left font-bold whitespace-nowrap w-16">Jam</th>
-                    <th className="px-3 py-3 text-left font-bold min-w-[160px]">Guru</th>
-                    <th className="px-3 py-3 text-left font-bold min-w-[150px]">Mata Pelajaran</th>
-                    <th className="px-3 py-3 text-left font-bold whitespace-nowrap min-w-[110px]">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCards.map((card, idx) => {
-                    const sc = STATUS_COLOR[card.status || 'default'] || STATUS_COLOR.default;
-                    const hc = TIPE_HEADER[card.tipe] || 'bg-gray-500';
-                    return (
-                      <tr
-                        key={`${card.guru_id}-${card.jadwal_id}-${card.jam_mulai}-${idx}`}
-                        onClick={() => setSelectedCard(card)}
-                        className="border-t border-gray-100 dark:border-gray-800 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 cursor-pointer transition-colors"
-                      >
-                        {/* Sticky first col — Kelas (berwarna sesuai tipe) */}
-                        <td className={`sticky left-0 z-10 px-3 py-2.5 ${hc}`}>
-                          <span className="text-white text-[11px] font-extrabold whitespace-nowrap leading-tight block">
-                            {card.nama_kelas || '—'}
-                          </span>
-                          {card.tipe === 'kegiatan' && card.nama_asrama && (
-                            <span className="text-white/70 text-[9px] flex items-center gap-0.5 mt-0.5">
-                              <Home size={8}/> {card.nama_asrama}
-                            </span>
-                          )}
-                        </td>
+            <div className="overflow-x-auto -mx-4 px-4 pb-2">
+              <div className="grid gap-3 pb-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', minWidth: 'max(100%, 530px)' }}>
+                {filteredCards.map((card, idx) => {
+                  const sc = STATUS_COLOR[card.status || 'default'] || STATUS_COLOR.default;
+                  const hc = TIPE_HEADER[card.tipe] || 'bg-gray-500';
+                  return (
+                    <div key={`${card.guru_id}-${card.jadwal_id}-${card.jam_mulai}-${idx}`}
+                      onClick={() => setSelectedCard(card)}
+                      className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col">
 
-                        {/* Jam */}
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <span className="text-[11px] font-mono text-gray-600 dark:text-gray-300">
-                            {fmt(card.jam_mulai)}
-                          </span>
-                          <span className="text-[9px] text-gray-400 block">–{fmt(card.jam_selesai)}</span>
-                        </td>
+                      {/* Colored header — nama kelas + jam */}
+                      <div className={`${hc} px-3 py-2 flex items-center justify-between gap-1`}>
+                        <span className="text-white text-[11px] font-extrabold leading-tight flex-1 line-clamp-1">
+                          {card.nama_kelas || '—'}
+                        </span>
+                        <span className="text-white/80 text-[10px] font-mono shrink-0 ml-1 bg-black/20 rounded px-1">
+                          {fmt(card.jam_mulai)}
+                        </span>
+                      </div>
 
+                      {/* Body */}
+                      <div className="p-2.5 flex-1 space-y-1.5">
                         {/* Guru */}
-                        <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-2">
-                            {card.guru_foto ? (
-                              <img src={card.guru_foto} alt="" className="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-gray-700 shrink-0" />
-                            ) : (
-                              <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                                <Users size={11} className="text-gray-400" />
-                              </div>
-                            )}
-                            <span className="text-[11px] font-semibold text-gray-800 dark:text-gray-100 whitespace-nowrap">
-                              {card.guru_nama}
-                            </span>
+                        <div className="flex items-center gap-1.5">
+                          {card.guru_foto ? (
+                            <img src={card.guru_foto} alt="" className="w-7 h-7 rounded-full object-cover border border-gray-200 dark:border-gray-700 shrink-0" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                              <Users size={13} className="text-gray-400" />
+                            </div>
+                          )}
+                          <span className="text-[11px] font-bold text-gray-800 dark:text-gray-100 leading-tight line-clamp-2">
+                            {card.guru_nama}
+                          </span>
+                        </div>
+
+                        {/* Mata pelajaran */}
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium line-clamp-1">
+                          {card.mata_pelajaran || '—'}
+                        </div>
+
+                        {/* Asrama (kegiatan) */}
+                        {card.tipe === 'kegiatan' && card.nama_asrama && (
+                          <div className="flex items-center gap-0.5 text-[9px] text-blue-500">
+                            <Home size={8}/> {card.nama_asrama}
                           </div>
-                        </td>
+                        )}
 
-                        {/* Mata Pelajaran */}
-                        <td className="px-3 py-2.5">
-                          <span className="text-[11px] text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                            {card.mata_pelajaran || '—'}
-                          </span>
-                        </td>
+                        {/* Jam range */}
+                        <div className="text-[9px] text-gray-400 font-mono">
+                          {fmt(card.jam_mulai)} – {fmt(card.jam_selesai)}
+                        </div>
+                      </div>
 
-                        {/* Status */}
-                        <td className="px-3 py-2.5">
-                          <span className={`inline-block text-[10px] px-2 py-0.5 rounded-lg font-bold border whitespace-nowrap ${sc}`}>
-                            {card.status || 'Belum Absen'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      {/* Status footer */}
+                      <div className="px-2.5 pb-2.5">
+                        <span className={`block text-center text-[10px] px-2 py-0.5 rounded-xl font-bold border ${sc}`}>
+                          {card.status || 'Belum Absen'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )
         )}
