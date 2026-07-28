@@ -56,7 +56,7 @@ export async function GET(request: Request) {
     let jadwalKegiatan: RowDataPacket[] = [];
     try {
       const [rows] = await pool.execute<RowDataPacket[]>(
-        `SELECT j.id as jadwal_id, j.guru_id, j.hari, j.jam_mulai, j.jam_selesai,
+        `SELECT j.kegiatan_id as jadwal_id, j.guru_id, j.hari, j.jam_mulai, j.jam_selesai,
                 j.nama_kegiatan as mata_pelajaran, k.nama_kamar as nama_kelas,
                 'kegiatan' as tipe, k.nama_asrama
          FROM jadwal_kegiatan j
@@ -66,8 +66,8 @@ export async function GET(request: Request) {
         [hari]
       );
       jadwalKegiatan = rows;
-    } catch (_e) {
-      // jadwal_kegiatan might not exist or have different schema — skip gracefully
+    } catch (e: any) {
+      console.error('[absen-guru] Error fetching jadwal_kegiatan:', e.message);
     }
 
     // Absensi guru hari ini
@@ -86,8 +86,16 @@ export async function GET(request: Request) {
        FROM absensi_guru ag
        JOIN jadwal_quran j ON ag.jadwal_quran_id = j.id
        JOIN kelas_quran q ON j.kelas_quran_id = q.id
+       WHERE ag.tanggal = ?
+       UNION ALL
+       SELECT ag.guru_id, ag.status, ag.keterangan, ag.tanggal,
+              j.nama_kegiatan as mata_pelajaran, j.jam_mulai, j.jam_selesai, k.nama_kamar as nama_kelas,
+              'kegiatan' as tipe
+       FROM absensi_guru ag
+       JOIN jadwal_kegiatan j ON ag.kegiatan_id = j.kegiatan_id
+       JOIN kamar k ON j.kamar_id = k.kamar_id
        WHERE ag.tanggal = ?`,
-      [targetDate, targetDate]
+      [targetDate, targetDate, targetDate]
     );
 
     const allJadwal = [
@@ -143,8 +151,14 @@ export async function GET(request: Request) {
     });
 
     // Build flat kegiatanJadwal list (ALL entries, including those with no guru)
-    const kegiatanJadwal = jadwalKegiatan.map((j: any) => {
+    const kegiatanJadwal = (jadwalKegiatan as any[]).map((j: any) => {
       const guru = (guruRows as any[]).find((g: any) => g.guru_id === j.guru_id);
+      const match = (absensiRows as any[]).find(
+        (a: any) =>
+          a.mata_pelajaran === j.mata_pelajaran &&
+          a.jam_mulai === j.jam_mulai &&
+          a.tipe === j.tipe
+      );
       return {
         jadwal_id: j.jadwal_id,
         tipe: 'kegiatan',
@@ -153,8 +167,8 @@ export async function GET(request: Request) {
         mata_pelajaran: j.mata_pelajaran || '—',
         nama_kelas: j.nama_kelas || '—',
         nama_asrama: j.nama_asrama || null,
-        status: null,
-        keterangan: null,
+        status: match?.status || null,
+        keterangan: match?.keterangan || null,
         guru_id: guru?.guru_id || 0,
         guru_nama: guru?.nama || 'Belum Ditugaskan',
         guru_foto: guru?.foto || null,

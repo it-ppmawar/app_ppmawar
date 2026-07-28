@@ -156,6 +156,16 @@ export default function AbsenGuruPage() {
   const allCardsWithKegiatan = useMemo(() => [...allCards, ...kegiatanRaw], [allCards, kegiatanRaw]);
 
   // ─── Filter helpers ────────────────────────────────────────────────────────
+  const matchAsrama = (asramaProp: string | null, target: string) => {
+    if (!asramaProp) return false;
+    const a = asramaProp.trim().toLowerCase();
+    const t = target.trim().toLowerCase();
+    if (a === t) return true;
+    const aClean = a.replace(/^asrama\s+/, '');
+    const tClean = t.replace(/^asrama\s+/, '');
+    return aClean === tClean;
+  };
+
   const madinFilter = useCallback((c: JadwalCard) => {
     const n = (c.nama_kelas || '').toUpperCase();
     const putri = n.includes('PUTRI') || n.includes('TQ PUTRI');
@@ -177,7 +187,7 @@ export default function AbsenGuruPage() {
   const filteredCards = useMemo(() => {
     let c: JadwalCard[];
     if (activeTab === 'kegiatan') {
-      c = kegiatanRaw.filter(x => x.nama_asrama === activeAsrama);
+      c = kegiatanRaw.filter(x => matchAsrama(x.nama_asrama, activeAsrama));
     } else if (activeTab === 'semua') {
       c = allCardsWithKegiatan;
     } else if (activeTab === 'madin') {
@@ -391,9 +401,9 @@ export default function AbsenGuruPage() {
         {/* ── Loading skeleton ─────────────────────────────────────────────────── */}
         {loading && (
           <div className="overflow-x-auto -mx-4 px-4 pb-2">
-            <div className="grid gap-3 pb-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 160px))', minWidth: 'max(100%, 530px)' }}>
+            <div className="grid gap-3 pb-1" style={{ gridTemplateColumns: 'repeat(6, minmax(150px, 1fr))', minWidth: '960px' }}>
               {[...Array(12)].map((_,i) => (
-                <div key={i} className="w-40 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 animate-pulse overflow-hidden shrink-0">
+                <div key={i} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 animate-pulse overflow-hidden">
                   <div className="h-10 bg-gray-200 dark:bg-gray-700" />
                   <div className="p-3 space-y-2">
                     <div className="flex gap-2 items-center"><div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0"/><div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full flex-1"/></div>
@@ -406,7 +416,7 @@ export default function AbsenGuruPage() {
           </div>
         )}
 
-        {/* ── Jadwal Card Grid \u2014 horizontal scroll di HP, auto-fill di desktop ───── */}
+        {/* ── Jadwal Card Grid — 6 kartu per baris di horizontal scroll ────────────── */}
         {!loading && !error && (
           filteredCards.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
@@ -416,7 +426,7 @@ export default function AbsenGuruPage() {
             </div>
           ) : (
             <div className="overflow-x-auto -mx-4 px-4 pb-2">
-              <div className="grid gap-3 pb-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', minWidth: 'max(100%, 530px)' }}>
+              <div className="grid gap-3 pb-1" style={{ gridTemplateColumns: 'repeat(6, minmax(150px, 1fr))', minWidth: '960px' }}>
                 {filteredCards.map((card, idx) => {
                   const sc = STATUS_COLOR[card.status || 'default'] || STATUS_COLOR.default;
                   const hc = TIPE_HEADER[card.tipe] || 'bg-gray-500';
