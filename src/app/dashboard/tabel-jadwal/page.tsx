@@ -54,6 +54,7 @@ export default function TabelJadwalPage() {
   const [activeAsrama, setActiveAsrama] = useState<string>('Asrama A');
   const [quranLevelTab, setQuranLevelTab] = useState<string>('jilid');
   const [kegiatanLevelTab, setKegiatanLevelTab] = useState<string>('kegiatan pagi');
+  const [waktuFilter, setWaktuFilter] = useState<'semua' | 'pagi' | 'malam'>('semua');
 
   // Lists of secondary options
   const ASRAMAS_QURAN = ['Asrama A', 'Asrama B', 'Asrama C', 'Asrama D', 'Asrama E', 'Asrama F', 'Tahfidz Putra', 'Tahfidz Putri'];
@@ -445,6 +446,15 @@ export default function TabelJadwalPage() {
   const getCellSchedule = (hari: string, tempatId: number): JadwalItem | null => {
     const list = schedulesMap[`${hari}_${tempatId}`] || [];
     if (list.length === 0) return null;
+
+    // Apply global pagi/malam filter first
+    if (waktuFilter !== 'semua') {
+      const filtered = list.filter(j => {
+        const isPagi = j.jam_mulai < '12:00:00';
+        return waktuFilter === 'pagi' ? isPagi : !isPagi;
+      });
+      return filtered[0] || null;
+    }
 
     if (activeTab === 'kegiatan') {
       // Filter by start time
@@ -890,6 +900,18 @@ export default function TabelJadwalPage() {
           </div>
         )}
 
+      </div>
+
+      {/* Pagi / Malam global filter */}
+      <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 gap-1">
+        {([['semua', 'Semua Waktu'], ['pagi', '🌅 Pagi (AM)'], ['malam', '🌙 Malam (PM)']] as const).map(([key, label]) => (
+          <button key={key}
+            onClick={() => setWaktuFilter(key)}
+            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all text-center ${
+              waktuFilter === key ? 'bg-slate-600 dark:bg-slate-700 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+            }`}
+          >{label}</button>
+        ))}
       </div>
 
       {/* Grid Highlights & Live Search */}
