@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Clock, BookOpen, Activity, FileText, CheckCircle, XCircle, AlertTriangle, Users, User, Camera, CalendarDays, ClipboardCheck, QrCode, CreditCard, Archive, PenTool, Trash2 } from 'lucide-react';
+import { Clock, BookOpen, Activity, FileText, CheckCircle, XCircle, AlertTriangle, Users, User, Camera, CalendarDays, ClipboardCheck, QrCode, CreditCard, Archive, PenTool, Trash2, Pencil, X, Check } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -20,6 +20,9 @@ export default function DashboardPage() {
   
   const [dateStr, setDateStr] = useState('');
   const [hijriDateStr, setHijriDateStr] = useState('');
+  const [showEditNama, setShowEditNama] = useState(false);
+  const [editNamaValue, setEditNamaValue] = useState('');
+  const [savingNama, setSavingNama] = useState(false);
 
   useEffect(() => {
     // Menentukan ucapan berdasarkan waktu
@@ -34,7 +37,9 @@ export default function DashboardPage() {
         const res = await fetch('/api/auth/me');
         const data = await res.json();
         if (data.success && data.user) {
-          setUsername(data.user.real_name || data.user.username);
+          const realName = data.user.real_name || data.user.username;
+          setUsername(realName);
+          setEditNamaValue(realName);
           setRole(data.user.role);
           setIsPengasuh(!!(data.user.is_pengasuh || data.user.isPengasuh || data.user.role === 'pengasuh'));
           setIsPengurusAsrama(!!(data.user.is_pengurus_asrama || data.user.isPengurusAsrama || data.user.role === 'pengurus_asrama'));
@@ -134,8 +139,15 @@ export default function DashboardPage() {
             </div>
           </button>
 
-          <p className="text-green-300 font-extrabold mt-3 text-xl drop-shadow-sm" dir="auto" style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", system-ui, sans-serif', wordBreak: 'break-word' }}>
-            {username}
+          <p className="text-green-300 font-extrabold mt-3 text-xl drop-shadow-sm flex items-center gap-2" dir="auto" style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", system-ui, sans-serif', wordBreak: 'break-word' }}>
+            <span>{username}</span>
+            <button
+              onClick={() => { setEditNamaValue(username); setShowEditNama(true); }}
+              className="p-1 rounded-full bg-green-800/50 hover:bg-green-700/70 text-green-300 transition-colors"
+              title="Edit Nama"
+            >
+              <Pencil size={13} />
+            </button>
           </p>
           <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
             <span className="bg-[#022c22]/80 text-green-300 text-[10px] px-3 py-1 rounded-full font-bold border border-green-800/50 uppercase tracking-wide">
@@ -455,6 +467,75 @@ export default function DashboardPage() {
               alt="Profile Fullscreen" 
               className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-2xl" 
             />
+          </div>
+        </div>
+      )}
+
+      {/* Modal Edit Nama */}
+      {showEditNama && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+          onClick={() => setShowEditNama(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-extrabold text-gray-900 dark:text-white text-sm">Edit Nama Tampilan</h3>
+              <button onClick={() => setShowEditNama(false)} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Masukkan nama Anda (mendukung huruf Arab, Latin, dll):
+            </p>
+            <input
+              type="text"
+              dir="auto"
+              value={editNamaValue}
+              onChange={e => setEditNamaValue(e.target.value)}
+              placeholder="Nama Anda..."
+              className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 mb-4"
+              style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", system-ui, sans-serif' }}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowEditNama(false)}
+                className="flex-1 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                disabled={savingNama || editNamaValue.trim().length < 2}
+                onClick={async () => {
+                  setSavingNama(true);
+                  try {
+                    const res = await fetch('/api/user/update-nama', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ nama: editNamaValue.trim() }),
+                    });
+                    const json = await res.json();
+                    if (json.success) {
+                      setUsername(json.nama);
+                      setShowEditNama(false);
+                    } else {
+                      alert('Gagal menyimpan: ' + (json.error || 'Error'));
+                    }
+                  } catch {
+                    alert('Koneksi gagal');
+                  } finally {
+                    setSavingNama(false);
+                  }
+                }}
+                className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors"
+              >
+                <Check size={14} />
+                {savingNama ? 'Menyimpan...' : 'Simpan'}
+              </button>
+            </div>
           </div>
         </div>
       )}
