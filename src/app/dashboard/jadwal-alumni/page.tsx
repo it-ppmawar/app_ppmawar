@@ -354,21 +354,21 @@ export default function JadwalAlumniPage() {
                 >
                   <Upload size={14} /> Impor
                 </button>
+                <button
+                  onClick={handleAdd}
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                  title="Tambah Jadwal"
+                >
+                  <span className="text-sm leading-none">+</span>
+                  <span>Tambah Jadwal</span>
+                </button>
                 {/* Tombol Pengaturan Hari Siklus */}
                 <button
                   onClick={() => { setTempHariIndex(hariSiklusIndex); setTempPasaran(pasaranSiklus); setShowSettingsModal(true); }}
-                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1.5"
+                  className="w-full flex-1 md:flex-none justify-center px-3 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1.5"
                   title="Atur Hari Siklus Alumni"
                 >
                   <Settings size={14} /> Hari Siklus
-                </button>
-                <button
-                  onClick={handleAdd}
-                  className="w-full flex-1 md:flex-none justify-center bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center gap-1.5"
-                  title="Tambah Jadwal"
-                >
-                  <span className="text-lg leading-none">+</span>
-                  <span>Tambah Jadwal</span>
                 </button>
               </>
             )}
