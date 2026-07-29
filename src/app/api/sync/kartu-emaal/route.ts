@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       stats: {
         total_file: files.length,
         file_disalin: copiedCount,
-        santri_ter-pairing: pairedCount,
+        santri_terpairing: pairedCount,
         dilewati: skippedCount
       }
     });
