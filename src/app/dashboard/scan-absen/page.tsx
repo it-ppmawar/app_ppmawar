@@ -1,12 +1,19 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Camera, CheckCircle, XCircle, QrCode, Shield, Wifi, RefreshCw, ChevronDown, FlipHorizontal } from 'lucide-react';
+import { Camera, CheckCircle, XCircle, QrCode, Shield, Wifi, RefreshCw, ChevronDown, FlipHorizontal, BookOpen, Layers } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 
+interface ScheduleOption {
+  id: string;
+  nama: string;
+  label: string;
+  tipe: 'kegiatan' | 'madin' | 'quran';
+}
+
 export default function ScanAbsenPage() {
-  const [kegiatanList, setKegiatanList] = useState<string[]>([]);
-  const [selectedKegiatan, setSelectedKegiatan] = useState<string>('');
+  const [scheduleList, setScheduleList] = useState<ScheduleOption[]>([]);
+  const [selectedSchedule, setSelectedSchedule] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
   const [isHttpWarning, setIsHttpWarning] = useState(false);
   const [popup, setPopup] = useState<{ type: 'success' | 'error' | 'warning', title: string, text: string } | null>(null);
@@ -30,7 +37,11 @@ export default function ScanAbsenPage() {
 
     fetch('/api/kegiatan/list')
       .then(res => res.json())
-      .then(data => { if (data.success) setKegiatanList(data.kegiatan); })
+      .then(data => {
+        if (data.success && Array.isArray(data.allSchedules)) {
+          setScheduleList(data.allSchedules);
+        }
+      })
       .catch(console.error);
   }, []);
 
@@ -39,7 +50,6 @@ export default function ScanAbsenPage() {
     if (html5QrCodeRef.current) {
       try {
         const state = html5QrCodeRef.current.getState();
-        // State 2 = SCANNING, State 3 = PAUSED
         if (state === 2 || state === 3) {
           await html5QrCodeRef.current.stop();
         }
@@ -54,7 +64,6 @@ export default function ScanAbsenPage() {
   // Helper: mulai scanner dengan facingMode tertentu
   const startScannerInternal = async (facing: 'environment' | 'user') => {
     try {
-      // Pastikan elemen #reader tersedia di DOM
       const readerEl = document.getElementById('reader');
       if (!readerEl) return;
 
@@ -82,7 +91,6 @@ export default function ScanAbsenPage() {
   // Efek: jalankan scanner saat isScanning berubah menjadi true
   useEffect(() => {
     if (isScanning) {
-      // Tunggu sebentar agar DOM (elemen #reader) selesai dirender
       const timer = setTimeout(() => {
         startScannerInternal(facingMode);
       }, 150);
@@ -111,18 +119,15 @@ export default function ScanAbsenPage() {
     
     const newFacing = facingMode === 'environment' ? 'user' : 'environment';
     
-    // Hentikan kamera yang sedang berjalan
     await stopScannerInternal();
     setFacingMode(newFacing);
     
-    // Tunggu sebentar lalu mulai kembali dengan kamera baru
     setTimeout(async () => {
       await startScannerInternal(newFacing);
       setIsSwitchingCamera(false);
     }, 400);
   };
 
-  // Cleanup saat komponen di-unmount
   useEffect(() => {
     return () => { stopScannerInternal(); };
   }, []);
@@ -132,7 +137,7 @@ export default function ScanAbsenPage() {
       const res = await fetch('/api/scan-absen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barcodeData, nama_kegiatan: selectedKegiatan })
+        body: JSON.stringify({ barcodeData, selectedSchedule })
       });
       const data = await res.json();
       
@@ -155,6 +160,11 @@ export default function ScanAbsenPage() {
     setPopup(null);
     setTimeout(() => startScanner(), 300);
   };
+
+  // Grouping schedules by type for optgroups
+  const kegiatanSchedules = scheduleList.filter(s => s.tipe === 'kegiatan');
+  const madinSchedules = scheduleList.filter(s => s.tipe === 'madin');
+  const quranSchedules = scheduleList.filter(s => s.tipe === 'quran');
 
   return (
     <div className="max-w-xl mx-auto space-y-5 pb-24 animate-[fadeIn_0.5s_ease-out]">
@@ -197,9 +207,9 @@ export default function ScanAbsenPage() {
             <div className="bg-white/20 p-2.5 rounded-xl">
               <QrCode size={24} />
             </div>
-            <h1 className="text-xl font-extrabold">Scan Absen Asrama</h1>
+            <h1 className="text-xl font-extrabold">Scan Kartu Absen Universal</h1>
           </div>
-          <p className="text-green-200 text-sm">Scan kartu QR santri/pengurus untuk absensi otomatis.</p>
+          <p className="text-green-200 text-sm">Scan kartu QR / Barcode santri & guru untuk absensi Asrama, Madin, maupun Al-Qur'an.</p>
           
           {lastScan && (
             <div className="mt-4 bg-white/15 backdrop-blur-sm rounded-2xl p-3 flex items-center gap-3">
@@ -226,23 +236,45 @@ export default function ScanAbsenPage() {
         </div>
       )}
 
-      {/* Pilih Kegiatan + Tombol Scan */}
+      {/* Pilih Jadwal/Kegiatan + Tombol Scan */}
       <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
         <div>
-          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-            Pilih Jenis Kegiatan
+          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+            <Layers size={16} className="text-green-600" />
+            Pilih Target Jadwal / Kegiatan
           </label>
           <div className="relative">
             <select
-              value={selectedKegiatan}
-              onChange={(e) => setSelectedKegiatan(e.target.value)}
+              value={selectedSchedule}
+              onChange={(e) => setSelectedSchedule(e.target.value)}
               disabled={isScanning}
               className="w-full appearance-none p-4 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-2xl font-semibold focus:ring-4 focus:ring-green-500/20 focus:border-green-500 dark:text-white transition-all pr-10"
             >
-              <option value="">📋 Absensi Harian & Kegiatan (Otomatis)</option>
-              {kegiatanList.map(k => (
-                <option key={k} value={k}>🕌 {k}</option>
-              ))}
+              <option value="">⚡ Absensi Otomatis (Semua Jadwal Aktif Saat Ini)</option>
+              
+              {kegiatanSchedules.length > 0 && (
+                <optgroup label="🕌 Kegiaatan Asrama & Pesantren">
+                  {kegiatanSchedules.map(s => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </optgroup>
+              )}
+
+              {madinSchedules.length > 0 && (
+                <optgroup label="📖 Jadwal Pelajaran Diniyah (Madin)">
+                  {madinSchedules.map(s => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </optgroup>
+              )}
+
+              {quranSchedules.length > 0 && (
+                <optgroup label="📘 Jadwal Pelajaran Al-Qur'an">
+                  {quranSchedules.map(s => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -262,7 +294,7 @@ export default function ScanAbsenPage() {
             <div className="flex justify-between items-center bg-gray-900 dark:bg-black p-3 rounded-t-2xl text-white">
               <span className="font-bold text-sm flex items-center gap-2">
                 <Camera size={16} className="animate-pulse text-red-400" />
-                Arahkan ke QR Code Kartu
+                Arahkan ke QR / Barcode Kartu
               </span>
               <div className="flex items-center gap-2">
                 {/* Tombol Toggle Kamera Depan/Belakang */}
@@ -321,12 +353,12 @@ export default function ScanAbsenPage() {
 
       {/* Info */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-2xl p-4 text-xs text-blue-700 dark:text-blue-300 space-y-1">
-        <p className="font-bold text-sm mb-2">ℹ️ Cara Penggunaan:</p>
-        <p>1. Pilih jenis kegiatan (atau biarkan default untuk absensi otomatis)</p>
-        <p>2. Klik <strong>"Buka Kamera"</strong> lalu arahkan ke QR Code di kartu</p>
-        <p>3. Scanner akan otomatis mendeteksi & menyimpan absensi</p>
-        <p>4. Klik <strong>"Scan Berikutnya"</strong> untuk lanjut ke santri berikutnya</p>
-        <p className="mt-1 text-blue-600 dark:text-blue-400">📱 Gunakan tombol <strong>Kamera Depan/Belakang</strong> untuk beralih antar kamera</p>
+        <p className="font-bold text-sm mb-2">ℹ️ Cara Penggunaan Scan Universal:</p>
+        <p>1. Pilih target jadwal spesifik (Kegiatan Asrama, Madin, Qur'an) atau biarkan <strong>Otomatis</strong></p>
+        <p>2. Klik <strong>"Buka Kamera"</strong> lalu arahkan ke QR/Barcode kartu santri/guru</p>
+        <p>3. System akan mendeteksi & mencatat absensi ke tabel terkait secara instan</p>
+        <p>4. Klik <strong>"Scan Berikutnya"</strong> untuk lanjut ke kartu santri/guru lainnya</p>
+        <p className="mt-1 text-blue-600 dark:text-blue-400">📱 Gunakan tombol <strong>Kamera Depan/Belakang</strong> untuk berpindah kamera sesuai perangkat Anda</p>
       </div>
     </div>
   );
