@@ -21,6 +21,14 @@ export async function GET() {
       results.push('murid.barcode_id already exists or error: ' + e.message);
     }
 
+    // Add kartu_emaal_url to murid
+    try {
+      await pool.execute('ALTER TABLE murid ADD COLUMN kartu_emaal_url VARCHAR(255) NULL');
+      results.push('Added kartu_emaal_url to murid');
+    } catch (e: any) {
+      results.push('murid.kartu_emaal_url already exists or error: ' + e.message);
+    }
+
     // Add barcode_id to guru
     try {
       await pool.execute('ALTER TABLE guru ADD COLUMN barcode_id VARCHAR(100) NULL');
