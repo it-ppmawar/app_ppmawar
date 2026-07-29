@@ -263,19 +263,28 @@ export default function AbsenGuruPage() {
         </div>
 
         {/* ── Summary cards ──────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { label:'Total Sesi', value:totalCards, color:'text-gray-700 dark:text-gray-200',   bg:'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700', icon:<BookOpen size={16}/> },
-            { label:'Belum',      value:belumCards, color:'text-amber-600 dark:text-amber-300', bg:'bg-amber-50 dark:bg-amber-950/50 border border-amber-100 dark:border-amber-900', icon:<Clock size={16}/> },
-            { label:'Hadir',      value:hadirCards, color:'text-emerald-600 dark:text-emerald-300', bg:'bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900', icon:<UserCheck size={16}/> },
-            { label:'Alpha',      value:alphaCards, color:'text-red-600 dark:text-red-300',     bg:'bg-red-50 dark:bg-red-950/50 border border-red-100 dark:border-red-900', icon:<UserX size={16}/> },
-          ].map((c,i) => (
-            <div key={i} className={`${c.bg} rounded-2xl p-3 flex flex-col items-center gap-0.5 shadow-sm`}>
-              <span className={c.color}>{c.icon}</span>
-              <span className={`text-xl font-black ${c.color}`}>{loading ? '—' : c.value}</span>
-              <span className={`text-[10px] font-semibold ${c.color} opacity-70 text-center leading-tight`}>{c.label}</span>
-            </div>
-          ))}
+        <div className="space-y-2">
+          {/* Total Sesi — Full Width */}
+          <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-2.5 flex items-center justify-center gap-2 shadow-sm">
+            <span className="text-gray-600 dark:text-gray-300"><BookOpen size={16}/></span>
+            <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Total Sesi:</span>
+            <span className="text-lg font-black text-gray-800 dark:text-gray-100">{loading ? '—' : totalCards}</span>
+          </div>
+
+          {/* Belum, Hadir, Alpha — 3 Kolom Sama Rata */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label:'Belum',      value:belumCards, color:'text-amber-600 dark:text-amber-300', bg:'bg-amber-50 dark:bg-amber-950/50 border border-amber-100 dark:border-amber-900', icon:<Clock size={16}/> },
+              { label:'Hadir',      value:hadirCards, color:'text-emerald-600 dark:text-emerald-300', bg:'bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900', icon:<UserCheck size={16}/> },
+              { label:'Alpha',      value:alphaCards, color:'text-red-600 dark:text-red-300',     bg:'bg-red-50 dark:bg-red-950/50 border border-red-100 dark:border-red-900', icon:<UserX size={16}/> },
+            ].map((c,i) => (
+              <div key={i} className={`${c.bg} rounded-2xl p-2.5 flex flex-col items-center gap-0.5 shadow-sm`}>
+                <span className={c.color}>{c.icon}</span>
+                <span className={`text-lg font-black ${c.color}`}>{loading ? '—' : c.value}</span>
+                <span className={`text-[10px] font-semibold ${c.color} opacity-70 text-center leading-tight`}>{c.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* ── Tab SEMUA (full width) ──────────────────────────────────────────── */}

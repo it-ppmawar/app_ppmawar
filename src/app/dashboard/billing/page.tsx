@@ -4,9 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   CreditCard, CheckCircle2, XCircle, Search, Calendar, FileText, AlertCircle, 
   Building2, GraduationCap, RefreshCw, MessageCircle, User, MapPin, Phone, 
-  X, ArrowUpDown, ArrowUp, ArrowDown, Lightbulb, ChevronRight, Layers, ListFilter
+  X, ArrowUpDown, ArrowUp, ArrowDown, Lightbulb, ChevronRight, Layers, ListFilter,
+  Download
 } from 'lucide-react';
 import Link from 'next/link';
+import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
 
 type SortField = 'nama_santri' | 'nama_tagihan' | 'asrama' | 'nominal' | 'status';
 type SortOrder = 'asc' | 'desc';
@@ -397,6 +399,63 @@ export default function BillingPage() {
     return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
   };
 
+  const handleExportBilling = (type: 'pdf' | 'excel', previewOnly: boolean = false) => {
+    const title = 'INFORMASI TAGIHAN & PEMBAYARAN SANTRI';
+    const subtitle = `Kategori: ${filterKategori} | Status: ${filterStatus} | Mode: ${viewMode === 'ringkasan' ? 'Ringkasan Santri' : 'Rincian Tagihan'}`;
+    const filename = `Laporan_Tagihan_${filterKategori}_${new Date().toISOString().slice(0, 10)}`;
+
+    let columns: string[];
+    let rows: any[][];
+
+    if (viewMode === 'ringkasan') {
+      columns = ['No', 'NIS', 'Nama Santri', 'Asrama', 'Kamar', 'Nama Wali', 'Tunggakan Belum Lunas', 'Status'];
+      rows = groupedSantriList.map((item, idx) => [
+        idx + 1,
+        item.nis || '-',
+        item.nama_santri,
+        item.asrama || '-',
+        item.kamar || '-',
+        item.nama_wali || '-',
+        `Rp ${(item.totalBelum || 0).toLocaleString('id-ID')}`,
+        item.overallStatus
+      ]);
+    } else {
+      columns = ['No', 'NIS', 'Nama Santri', 'Asrama', 'Kamar', 'Nama Tagihan', 'Nominal', 'Status'];
+      rows = tabFilteredTagihan.map((item, idx) => [
+        idx + 1,
+        item.nis || '-',
+        item.nama_santri || '-',
+        item.asrama || '-',
+        item.kamar || '-',
+        item.nama_tagihan || '-',
+        `Rp ${Number(item.nominal || 0).toLocaleString('id-ID')}`,
+        item.status || '-'
+      ]);
+    }
+
+    if (type === 'pdf') {
+      const url = exportToPDF({
+        title,
+        subtitle,
+        columns,
+        rows,
+        filename,
+        previewOnly
+      });
+      if (previewOnly && url) {
+        window.open(url, '_blank');
+      }
+    } else {
+      exportToExcel({
+        title,
+        subtitle,
+        columns,
+        rows,
+        filename
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -464,16 +523,39 @@ export default function BillingPage() {
                 : 'Dasbor pemantauan status tagihan santri secara menyeluruh dari sistem keuangan pusat.'}
             </p>
           </div>
-          {userRole && ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(userRole) && (
+          <div className="flex flex-wrap gap-2 self-start md:self-center">
             <button
-              onClick={handleSyncBilling}
-              disabled={syncing}
-              className="self-start md:self-center px-5 py-3 bg-white/20 hover:bg-white/30 text-white font-bold rounded-2xl transition-all flex items-center gap-2 border border-white/20 active:scale-95 disabled:opacity-50"
+              onClick={() => handleExportBilling('pdf', true)}
+              className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 border border-white/20 shadow-sm"
+              title="Preview PDF"
             >
-              <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
-              {syncing ? 'Menyinkronkan...' : 'Sinkron Google Sheets'}
+              <FileText size={14} /> Preview
             </button>
-          )}
+            <button
+              onClick={() => handleExportBilling('pdf')}
+              className="px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm"
+              title="Download PDF"
+            >
+              <Download size={14} /> PDF
+            </button>
+            <button
+              onClick={() => handleExportBilling('excel')}
+              className="px-3 py-2 bg-green-500/80 hover:bg-green-500 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm"
+              title="Download Excel"
+            >
+              <Download size={14} /> Excel
+            </button>
+            {userRole && ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(userRole) && (
+              <button
+                onClick={handleSyncBilling}
+                disabled={syncing}
+                className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 border border-white/20 disabled:opacity-50 shadow-sm"
+              >
+                <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+                {syncing ? 'Menyinkronkan...' : 'Sinkron'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -455,7 +455,7 @@ export default function JadwalPage() {
       )}
 
       {(role === 'admin' || role === 'staff') && (
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto">
+        <div className="relative z-20 flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
             <label className="text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2 shrink-0"><User size={16}/> Filter Guru:</label>
             <div className="relative w-full sm:w-64 shrink-0" ref={filterGuruDropdownRef}>
               <div className="relative">
@@ -479,7 +479,7 @@ export default function JadwalPage() {
                 )}
               </div>
               {showFilterGuruDropdown && (
-                <div className="absolute z-30 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
+                <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl">
                   <button
                     type="button"
                     onClick={() => { setFilterGuru(''); setFilterGuruSearch(''); setShowFilterGuruDropdown(false); }}
