@@ -155,6 +155,104 @@ export async function GET(request: Request) {
       syncedCount++;
     }
 
+    // 3. AUTO-ENRICH INFO KAMAR & ASRAMA DARI GOOGLE SHEETS
+    // Jika data dari API Bridge Mitra belum memiliki info kamar yang lengkap
+    let enrichedKamarCount = 0;
+    try {
+      const PUBLISHED_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQkk9LdLRlfmnjdlCT2d4cSU6TxdpV5x7S__kQx-lb0pSa8s6G5zKp7vYRJPN2Jrv2OJq_5expWDlAE/pub?single=true&output=csv&gid=';
+      const GIDS = ['1690459731', '0', '710078716']; // KELAS I, II, III
+
+      for (const gid of GIDS) {
+        const sheetRes = await fetch(`${PUBLISHED_BASE}${gid}`, { cache: 'no-store' });
+        if (!sheetRes.ok) continue;
+
+        const csvText = await sheetRes.text();
+        const lines = csvText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        if (lines.length < 2) continue;
+
+        const parseCsvLine = (line: string): string[] => {
+          const res: string[] = [];
+          let cur = '';
+          let inQ = false;
+          for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (c === '"') { inQ = !inQ; continue; }
+            if (c === ',' && !inQ) { res.push(cur.trim()); cur = ''; continue; }
+            cur += c;
+          }
+          res.push(cur.trim());
+          return res;
+        };
+
+        const headers = parseCsvLine(lines[0]);
+        const findColIndex = (keywords: string[]) => {
+          for (const kw of keywords) {
+            const idx = headers.findIndex(h => h.toUpperCase().includes(kw.toUpperCase()));
+            if (idx !== -1) return idx;
+          }
+          return -1;
+        };
+
+        const colNIS = findColIndex(['NIS', 'NO INDUK']);
+        const colNama = findColIndex(['NAMA', 'NAMA SANTRI']);
+        const colAsrama = findColIndex(['ASRAMA']);
+        const colKamar = findColIndex(['KAMAR']);
+
+        if (colNama === -1) continue;
+
+        for (let i = 1; i < lines.length; i++) {
+          const row = parseCsvLine(lines[i]);
+          const nis = colNIS !== -1 ? String(row[colNIS] || '').trim() : '';
+          const nama = String(row[colNama] || '').trim();
+          if (!nama || ['NAMA', 'NAMA SANTRI'].includes(nama.toUpperCase())) continue;
+
+          let asrama = colAsrama !== -1 ? String(row[colAsrama] || '').trim() : '';
+          let kamar = colKamar !== -1 ? String(row[colKamar] || '').trim() : '';
+
+          if (/^[A-F]$/i.test(asrama)) asrama = `Asrama ${asrama.toUpperCase()}`;
+          if ((!asrama || asrama === '0' || asrama === '-') && kamar && /^[A-F]/i.test(kamar)) {
+            asrama = `Asrama ${kamar.charAt(0).toUpperCase()}`;
+          }
+
+          if (asrama && asrama !== '-' && kamar && kamar !== '-') {
+            const asramaCode = asrama.replace(/asrama\s+/i, '').trim().toUpperCase();
+            
+            const [kRows]: any = await db.query(
+              `SELECT kamar_id FROM kamar WHERE (nama_asrama = ? OR nama_asrama = ?) AND (nama_kamar = ? OR nama_kamar = ?) LIMIT 1`,
+              [`Asrama ${asramaCode}`, asramaCode, kamar, `${asramaCode}-${kamar}`]
+            );
+
+            let kId = kRows.length > 0 ? kRows[0].kamar_id : null;
+            if (!kId) {
+              const [insK]: any = await db.query(
+                `INSERT INTO kamar (nama_kamar, nama_asrama, kapasitas) VALUES (?, ?, 20)`,
+                [kamar, asramaCode]
+              );
+              kId = insK.insertId;
+            }
+
+            if (kId) {
+              let updateRes: any;
+              if (nis) {
+                [updateRes] = await db.query(
+                  `UPDATE murid SET kamar_id = ? WHERE nis = ? AND (kamar_id IS NULL OR kamar_id = 0)`,
+                  [kId, nis]
+                );
+              } else {
+                [updateRes] = await db.query(
+                  `UPDATE murid SET kamar_id = ? WHERE LOWER(TRIM(nama)) = LOWER(TRIM(?)) AND (kamar_id IS NULL OR kamar_id = 0)`,
+                  [kId, nama]
+                );
+              }
+              if (updateRes?.affectedRows > 0) enrichedKamarCount++;
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn('Gagal melengkapi info kamar dari Google Sheets:', err.message);
+    }
+
     // Catat waktu sinkronisasi terakhir
     const nowStr = new Date().toISOString();
     await db.query(
@@ -169,7 +267,8 @@ export async function GET(request: Request) {
       processed: syncedCount,
       new_students: newCount,
       updated_students: updatedCount,
-      deleted_non_santri: deletedCount
+      deleted_non_santri: deletedCount,
+      enriched_kamar: enrichedKamarCount
     });
 
   } catch (error: any) {
