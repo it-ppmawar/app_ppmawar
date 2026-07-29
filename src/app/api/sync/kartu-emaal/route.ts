@@ -2,27 +2,36 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { ResultSetHeader } from 'mysql2';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
+/**
+ * GET /api/sync/kartu-emaal
+ * 
+ * Membaca file kartu eMaal dari folder public/kartu_emaal/ yang sudah di-deploy,
+ * kemudian mempairing NIS (nama file) ke database murid.
+ * 
+ * CATATAN: File kartu perlu disiapkan terlebih dahulu secara lokal menggunakan:
+ *   node scripts/pair-kartu-emaal.js
+ * lalu di-push ke Git agar terdeploy ke server.
+ */
+export async function GET() {
   try {
-    const sourceDir = 'D:\\koding\\app.ppmawar\\KARTU EMAAL 2026 2027';
-    if (!fs.existsSync(sourceDir)) {
-      return NextResponse.json({ error: 'Folder Kartu eMaal tidak ditemukan di ' + sourceDir }, { status: 404 });
+    // Baca dari public/kartu_emaal/ (folder yang sudah terdeploy ke server)
+    const kartuDir = path.join(process.cwd(), 'public', 'kartu_emaal');
+
+    if (!fs.existsSync(kartuDir)) {
+      return NextResponse.json({
+        error: 'Folder public/kartu_emaal/ belum ada di server. Pastikan file kartu sudah di-push ke Git terlebih dahulu.',
+        hint: 'Jalankan: node scripts/pair-kartu-emaal.js di komputer lokal, lalu git push.'
+      }, { status: 404 });
     }
 
-    // Destination in public folder
-    const targetDir = path.join(process.cwd(), 'public', 'kartu_emaal');
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
-    }
-
-    const files = fs.readdirSync(sourceDir);
+    const files = fs.readdirSync(kartuDir);
     let pairedCount = 0;
-    let copiedCount = 0;
     let skippedCount = 0;
+    let notFoundCount = 0;
 
     for (const filename of files) {
       const ext = path.extname(filename).toLowerCase();
@@ -34,20 +43,9 @@ export async function POST(request: Request) {
       const nis = path.basename(filename, ext).trim();
       if (!nis) continue;
 
-      const srcFile = path.join(sourceDir, filename);
-      const destFile = path.join(targetDir, `${nis}.jpg`);
-
-      // Copy file to public/kartu_emaal/
-      try {
-        fs.copyFileSync(srcFile, destFile);
-        copiedCount++;
-      } catch (e) {
-        console.error(`Gagal menyalin kartu ${filename}:`, e);
-      }
-
       const kartuUrl = `/kartu_emaal/${nis}.jpg`;
 
-      // Update murid database record
+      // Update murid database record — set kartu_emaal_url dan barcode_id (jika belum ada)
       const [res] = await pool.execute<ResultSetHeader>(
         `UPDATE murid 
          SET barcode_id = COALESCE(barcode_id, ?),
@@ -58,17 +56,19 @@ export async function POST(request: Request) {
 
       if (res.affectedRows > 0) {
         pairedCount++;
+      } else {
+        notFoundCount++;
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `Berhasil mempairing ${pairedCount} kartu santri baru eMaal (2026/2027)!`,
+      message: `Berhasil mempairing ${pairedCount} kartu santri eMaal (2026/2027)!`,
       stats: {
-        total_file: files.length,
-        file_disalin: copiedCount,
+        total_file_kartu: files.length,
         santri_terpairing: pairedCount,
-        dilewati: skippedCount
+        santri_tidak_ditemukan_di_db: notFoundCount,
+        dilewati_bukan_gambar: skippedCount
       }
     });
 
@@ -78,6 +78,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
-  return POST({} as any);
+// Alias POST → GET untuk kemudahan
+export async function POST() {
+  return GET();
 }
