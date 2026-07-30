@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     // 1. CARI PEMILIK KARTU DI TABEL MURID (SANTRI LAMA & BARU)
     // Menggunakan pencocokan fleksibel: barcode_id ATAU nis (dengan trim & digits fallback)
     let [muridRows] = await db.query<RowDataPacket[]>(
-      `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.kelas_madin_id, m.kelas_quran_id, m.kamar_id, k.nama_kamar 
+      `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.foto, m.kelas_madin_id, m.kelas_quran_id, m.kamar_id, k.nama_kamar 
        FROM murid m 
        LEFT JOIN kamar k ON m.kamar_id = k.kamar_id 
        WHERE TRIM(m.barcode_id) = ? OR TRIM(m.nis) = ? OR TRIM(m.barcode_id) = ? OR TRIM(m.nis) = ?`,
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     // Fallback jika belum ketemu: cari dengan LIKE jika digit minimal 5 karakter
     if (muridRows.length === 0 && digitsOnly.length >= 5) {
       [muridRows] = await db.query<RowDataPacket[]>(
-        `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.kelas_madin_id, m.kelas_quran_id, m.kamar_id, k.nama_kamar 
+        `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.foto, m.kelas_madin_id, m.kelas_quran_id, m.kamar_id, k.nama_kamar 
          FROM murid m 
          LEFT JOIN kamar k ON m.kamar_id = k.kamar_id 
          WHERE m.nis LIKE ? OR m.barcode_id LIKE ?`,
@@ -173,6 +173,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: `✅ ${murid.nama} (${murid.nis})\n${msgDetail} berhasil dicatat!`,
+        nama: murid.nama,
+        nis: murid.nis,
+        foto: murid.foto || null,
       });
     }
 
