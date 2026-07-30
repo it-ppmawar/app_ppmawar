@@ -7,19 +7,23 @@ export const dynamic = 'force-dynamic';
 /**
  * GET / POST /api/sync/kartu-emaal
  * 
- * Otomatis mempairing barcode_id santri baru dengan NIS mereka masing-masing.
- * Kartu eMaal (QR / Barcode) menggunakan NIS santri sebagai token absensi.
- * Tidak membutuhkan upload/penyimpanan file gambar di server.
+ * Synchronize/pair barcode_id santri baru.
+ * Mendukung:
+ * 1. POST body { mappings: [{nis: string, barcode_id: string}] } (Pairing dari QR token yang dibaca)
+ * 2. POST body { nis_list: string[] }
+ * 3. GET/POST tanpa body (Auto-pairing barcode_id = nis)
  */
 export async function GET(request?: Request) {
   try {
+    let mappings: { nis: string; barcode_id: string }[] = [];
     let nisList: string[] = [];
 
-    // Jika dipanggil via POST dengan body array NIS
     if (request && request.method === 'POST') {
       try {
         const body = await request.json();
-        if (Array.isArray(body.nis_list)) {
+        if (Array.isArray(body.mappings)) {
+          mappings = body.mappings;
+        } else if (Array.isArray(body.nis_list)) {
           nisList = body.nis_list;
         }
       } catch (e) {
@@ -29,8 +33,30 @@ export async function GET(request?: Request) {
 
     let affectedRows = 0;
 
+    // Mode 1: Multi-mapping QR Token {nis, barcode_id}
+    if (mappings.length > 0) {
+      for (const item of mappings) {
+        if (!item.nis || !item.barcode_id) continue;
+        const [res] = await pool.execute<ResultSetHeader>(
+          `UPDATE murid 
+           SET barcode_id = ? 
+           WHERE nis = ?`,
+          [item.barcode_id.trim(), item.nis.trim()]
+        );
+        if (res.affectedRows > 0) affectedRows++;
+      }
+      return NextResponse.json({
+        success: true,
+        message: `Berhasil mempairing QR token untuk ${affectedRows} santri!`,
+        stats: {
+          total_dikirim: mappings.length,
+          santri_terpairing: affectedRows
+        }
+      });
+    }
+
+    // Mode 2: Array NIS khusus
     if (nisList.length > 0) {
-      // Pairing khusus untuk NIS yang dikirim
       for (const nis of nisList) {
         const [res] = await pool.execute<ResultSetHeader>(
           `UPDATE murid 
@@ -40,22 +66,25 @@ export async function GET(request?: Request) {
         );
         if (res.affectedRows > 0) affectedRows++;
       }
-    } else {
-      // Auto-pairing seluruh santri yang belum punya barcode_id
-      const [res] = await pool.execute<ResultSetHeader>(
-        `UPDATE murid 
-         SET barcode_id = nis 
-         WHERE (barcode_id IS NULL OR barcode_id = '') AND nis IS NOT NULL AND nis != ''`
-      );
-      affectedRows = res.affectedRows;
+      return NextResponse.json({
+        success: true,
+        message: `Berhasil mempairing barcode_id untuk ${affectedRows} santri!`,
+        stats: { santri_terpairing: affectedRows }
+      });
     }
+
+    // Mode 3: Auto-pairing default (barcode_id = nis)
+    const [res] = await pool.execute<ResultSetHeader>(
+      `UPDATE murid 
+       SET barcode_id = nis 
+       WHERE (barcode_id IS NULL OR barcode_id = '') AND nis IS NOT NULL AND nis != ''`
+    );
+    affectedRows = res.affectedRows;
 
     return NextResponse.json({
       success: true,
-      message: `Berhasil mempairing barcode_id untuk ${affectedRows} santri!`,
-      stats: {
-        santri_terpairing: affectedRows
-      }
+      message: `Berhasil mempairing barcode_id default untuk ${affectedRows} santri!`,
+      stats: { santri_terpairing: affectedRows }
     });
 
   } catch (error: any) {
