@@ -273,6 +273,7 @@ export default function PairingKartuPage() {
            </div>
         )}
 
+        </div>
       )}
 
       {/* === TAB UPLOAD GAMBAR === */}
