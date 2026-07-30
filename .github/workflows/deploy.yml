@@ -32,7 +32,7 @@ jobs:
       - name: Prepare Production Files
         run: |
           mkdir -p deploy_dist/tmp
-          touch deploy_dist/tmp/restart.txt
+          echo "$(date)" > deploy_dist/tmp/restart.txt
           rm -rf .next/cache
           cp -r .next deploy_dist/
           cp -r public deploy_dist/
