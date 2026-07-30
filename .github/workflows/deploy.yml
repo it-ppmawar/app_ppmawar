@@ -1,9 +1,16 @@
 name: Deploy Next.js to cPanel
 
 on:
+  workflow_dispatch:  # Deploy manual via GitHub Actions UI
   push:
     branches:
       - main
+    paths:            # Hanya deploy jika file penting berubah
+      - 'src/**'
+      - 'public/**'
+      - 'package*.json'
+      - 'next.config.ts'
+      - 'server.js'
 
 concurrency:
   group: deploy-cpanel

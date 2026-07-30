@@ -8,8 +8,8 @@ export default function ScanAbsenPage() {
   const [selectedSchedule, setSelectedSchedule] = useState<string>(''); // default: otomatis
   const [isScanning, setIsScanning] = useState(false);
   const [isHttpWarning, setIsHttpWarning] = useState(false);
-  const [popup, setPopup] = useState<{ type: 'success' | 'error' | 'warning', title: string, text: string } | null>(null);
-  const [lastScan, setLastScan] = useState<{ nama: string; waktu: string } | null>(null);
+  const [popup, setPopup] = useState<{ type: 'success' | 'error' | 'warning', title: string, text: string, foto?: string | null } | null>(null);
+  const [lastScan, setLastScan] = useState<{ nama: string; waktu: string; foto?: string | null } | null>(null);
   
   // Kamera: 'environment' = kamera belakang (default), 'user' = kamera depan
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
@@ -127,10 +127,10 @@ export default function ScanAbsenPage() {
       const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       
       if (data.success) {
-        const namaMatch = data.message.match(/✅ (.+?) \(/);
-        const nama = namaMatch ? namaMatch[1] : 'Santri/Guru';
-        setLastScan({ nama, waktu: now });
-        setPopup({ type: 'success', title: 'Absen Berhasil! ✅', text: data.message });
+        const nama = data.nama || (data.message.match(/✅ (.+?) \(/) || [])[1] || 'Santri/Guru';
+        const foto = data.foto || null;
+        setLastScan({ nama, waktu: now, foto });
+        setPopup({ type: 'success', title: 'Absen Berhasil! ✅', text: data.message, foto });
       } else {
         setPopup({ type: 'warning', title: 'Kartu Tidak Dikenal', text: data.message });
       }
@@ -149,16 +149,31 @@ export default function ScanAbsenPage() {
       {/* Popup Modal */}
       {popup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-sm p-6 text-center">
-            <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-4 ${
-              popup.type === 'success' ? 'bg-green-100 dark:bg-green-900/50 text-green-600' 
-              : popup.type === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600' 
-              : 'bg-red-100 dark:bg-red-900/50 text-red-600'
-            }`}>
-              {popup.type === 'success' 
-                ? <CheckCircle size={40} /> 
-                : <XCircle size={40} />}
-            </div>
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-sm p-6 text-center">
+            {/* Foto Santri atau Icon Status */}
+            {popup.type === 'success' && popup.foto ? (
+              <div className="mx-auto w-24 h-24 rounded-full overflow-hidden mb-4 ring-4 ring-green-400 ring-offset-2 dark:ring-offset-gray-800 shadow-lg">
+                <img
+                  src={popup.foto}
+                  alt="Foto Santri"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const el = e.currentTarget.parentElement!;
+                    el.innerHTML = '<div class="w-full h-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center text-green-600"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>';
+                  }}
+                />
+              </div>
+            ) : (
+              <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-4 ${
+                popup.type === 'success' ? 'bg-green-100 dark:bg-green-900/50 text-green-600' 
+                : popup.type === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600' 
+                : 'bg-red-100 dark:bg-red-900/50 text-red-600'
+              }`}>
+                {popup.type === 'success' 
+                  ? <CheckCircle size={40} /> 
+                  : <XCircle size={40} />}
+              </div>
+            )}
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{popup.title}</h3>
             <p className="text-gray-600 dark:text-gray-300 text-sm mb-6 leading-relaxed whitespace-pre-line">{popup.text}</p>
             <button 
@@ -191,7 +206,13 @@ export default function ScanAbsenPage() {
           
           {lastScan && (
             <div className="mt-4 bg-white/15 backdrop-blur-sm rounded-2xl p-3 flex items-center gap-3">
-              <CheckCircle size={20} className="text-green-300 flex-shrink-0" />
+              {lastScan.foto ? (
+                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-white/40">
+                  <img src={lastScan.foto} alt={lastScan.nama} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <CheckCircle size={20} className="text-green-300 flex-shrink-0" />
+              )}
               <div>
                 <p className="text-xs text-green-200">Terakhir di-scan:</p>
                 <p className="font-bold text-sm">{lastScan.nama} — <span className="font-normal text-green-200">{lastScan.waktu}</span></p>

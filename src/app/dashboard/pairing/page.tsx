@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Camera, Save, XCircle, Search, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Camera, Save, XCircle, Search, CheckCircle, Upload, FileImage, Loader2 } from 'lucide-react';
 import Script from 'next/script';
 import { Html5Qrcode } from 'html5-qrcode';
 
@@ -11,8 +11,56 @@ export default function PairingKartuPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState<{type: 'success'|'error'|'warning', title: string, text: string} | null>(null);
+  const [activeTab, setActiveTab] = useState<'scan' | 'upload'>('scan');
+  
+  // State untuk fitur upload
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadResults, setUploadResults] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+
+  // Handler drag & drop
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); }, []);
+  const handleDragLeave = useCallback(() => setIsDragging(false), []);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const dropped = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    setUploadFiles(prev => [...prev, ...dropped]);
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setUploadFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const handleUploadPairing = async () => {
+    if (uploadFiles.length === 0) return;
+    setIsUploading(true);
+    setUploadResults([]);
+    try {
+      const formData = new FormData();
+      uploadFiles.forEach(f => formData.append('files', f));
+      const res = await fetch('/api/pairing/upload-kartu', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.results) {
+        setUploadResults(data.results);
+      }
+      setPopup({
+        type: data.berhasil > 0 ? 'success' : 'error',
+        title: data.berhasil > 0 ? 'Selesai!' : 'Semua Gagal',
+        text: data.message
+      });
+    } catch {
+      setPopup({ type: 'error', title: 'Koneksi Gagal', text: 'Koneksi ke server terputus.' });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   useEffect(() => {
     if (isScanning) {
@@ -136,20 +184,42 @@ export default function PairingKartuPage() {
       )}
 
       <div className="bg-gradient-to-br from-indigo-700 to-purple-800 rounded-3xl p-6 text-white shadow-lg text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mt-6 -mr-6 opacity-20">
-          <Camera size={150} />
-        </div>
+        <div className="absolute top-0 right-0 -mt-6 -mr-6 opacity-20"><Camera size={150} /></div>
         <div className="relative z-10">
           <h1 className="text-2xl font-extrabold flex items-center justify-center gap-2 drop-shadow-md">
             <Camera size={28} /> Pairing Kartu Santri
           </h1>
-          <p className="text-indigo-200 mt-2 text-sm font-medium">
-            Ketik NIS Santri, lalu Scan QR Card untuk mendaftarkan kartu secara instan.
-          </p>
+          <p className="text-indigo-200 mt-2 text-sm font-medium">Daftarkan kartu QR santri ke sistem absensi.</p>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 space-y-6">
+      {/* Tab Selector */}
+      <div className="bg-white dark:bg-gray-800 rounded-3xl p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex gap-2">
+        <button
+          onClick={() => setActiveTab('scan')}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm transition-all ${
+            activeTab === 'scan'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+          }`}
+        >
+          <Camera size={18} /> Scan Kamera
+        </button>
+        <button
+          onClick={() => setActiveTab('upload')}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm transition-all ${
+            activeTab === 'upload'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+          }`}
+        >
+          <Upload size={18} /> Upload Gambar
+        </button>
+      </div>
+
+      {/* === TAB SCAN KAMERA === */}
+      {activeTab === 'scan' && (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 space-y-6">
         
         {/* Step 1: Input NIS */}
         <div className={`transition-opacity duration-300 ${isScanning ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
@@ -203,7 +273,91 @@ export default function PairingKartuPage() {
            </div>
         )}
 
-      </div>
+      )}
+
+      {/* === TAB UPLOAD GAMBAR === */}
+      {activeTab === 'upload' && (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 space-y-5">
+          {/* Drag & Drop Zone */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+              isDragging
+                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 scale-[1.01]'
+                : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+            }`}
+          >
+            <FileImage size={40} className="mx-auto mb-3 text-indigo-400" />
+            <p className="font-bold text-gray-700 dark:text-gray-300">Drag & Drop atau Klik untuk Upload</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Format JPG/PNG · Nama file = NIS santri · Bisa multiple file sekaligus</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/jpg"
+              multiple
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+          </div>
+
+          {/* Daftar File Terpilih */}
+          {uploadFiles.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{uploadFiles.length} file dipilih:</p>
+                <button
+                  onClick={() => { setUploadFiles([]); setUploadResults([]); }}
+                  className="text-xs text-red-500 hover:text-red-700 font-semibold"
+                >
+                  Hapus Semua
+                </button>
+              </div>
+              <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                {uploadFiles.map((f, i) => {
+                  const result = uploadResults.find(r => r.filename === f.name);
+                  return (
+                    <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm ${
+                      result?.status === 'success' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                      : result ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}>
+                      <span className="flex items-center gap-2 truncate">
+                        {result?.status === 'success' ? '✅' : result ? '❌' : '📄'}
+                        <span className="truncate font-medium">{f.name}</span>
+                      </span>
+                      {result && (
+                        <span className="text-xs ml-2 flex-shrink-0">
+                          {result.status === 'success' ? 'Berhasil' : result.status === 'qr_not_found' ? 'QR tidak terbaca' : result.status === 'nis_not_found' ? 'NIS tidak ada' : 'Gagal'}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Tombol Proses */}
+          <button
+            onClick={handleUploadPairing}
+            disabled={uploadFiles.length === 0 || isUploading}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-bold text-lg py-4 rounded-2xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2"
+          >
+            {isUploading ? (
+              <><Loader2 size={22} className="animate-spin" /> Memproses {uploadFiles.length} file...</>
+            ) : (
+              <><Upload size={22} /> Proses & Pairing {uploadFiles.length > 0 ? `(${uploadFiles.length} file)` : ''}</>
+            )}
+          </button>
+
+          <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+            💡 Pastikan nama file = NIS santri. Contoh: <strong>2026050008.jpg</strong>
+          </p>
+        </div>
+      )}
     </div>
   );
 }
