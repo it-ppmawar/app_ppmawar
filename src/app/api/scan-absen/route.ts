@@ -14,6 +14,11 @@ export async function POST(request: NextRequest) {
     const today = new Date().toISOString().slice(0, 10);
     const now = new Date().toTimeString().slice(0, 8);
 
+    // Pembersihan String QR / Barcode
+    const rawCode = String(barcodeData).trim();
+    // Ekstrak hanya digit jika QR berisi URL atau prefix
+    const digitsOnly = rawCode.replace(/\D/g, '');
+
     const hariIni = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(new Date());
     const hariMap: Record<string, string> = {
       'Senin': 'Senin', 'Selasa': 'Selasa', 'Rabu': 'Rabu', 'Kamis': 'Kamis',
@@ -21,28 +26,36 @@ export async function POST(request: NextRequest) {
     };
     const hariDB = hariMap[hariIni] || hariIni;
 
-    // Parse pilihan jadwal jika ada (misal: "madin:12", "quran:5", "kegiatan:3", atau plain string)
-    let selectedType = '';
-    let selectedId = '';
-
-    if (selectedSchedule && selectedSchedule.includes(':')) {
-      const parts = selectedSchedule.split(':');
-      selectedType = parts[0];
-      selectedId = parts[1];
-    } else if (selectedSchedule) {
-      selectedType = 'kegiatan_name';
-      selectedId = selectedSchedule;
-    }
-
-    // 1. Cari pemilik barcode di tabel murid
-    const [muridRows] = await db.query<RowDataPacket[]>(
-      'SELECT m.murid_id, m.nama, m.nis, m.kelas_madin_id, m.kelas_quran_id, m.kamar_id, k.nama_kamar FROM murid m LEFT JOIN kamar k ON m.kamar_id = k.kamar_id WHERE m.barcode_id = ? OR m.nis = ?',
-      [barcodeData, barcodeData]
+    // 1. CARI PEMILIK KARTU DI TABEL MURID (SANTRI LAMA & BARU)
+    // Menggunakan pencocokan fleksibel: barcode_id ATAU nis (dengan trim & digits fallback)
+    let [muridRows] = await db.query<RowDataPacket[]>(
+      `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.kelas_madin_id, m.kelas_quran_id, m.kamar_id, k.nama_kamar 
+       FROM murid m 
+       LEFT JOIN kamar k ON m.kamar_id = k.kamar_id 
+       WHERE TRIM(m.barcode_id) = ? OR TRIM(m.nis) = ? OR TRIM(m.barcode_id) = ? OR TRIM(m.nis) = ?`,
+      [rawCode, rawCode, digitsOnly, digitsOnly]
     );
+
+    // Fallback jika belum ketemu: cari dengan LIKE jika digit minimal 5 karakter
+    if (muridRows.length === 0 && digitsOnly.length >= 5) {
+      [muridRows] = await db.query<RowDataPacket[]>(
+        `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.kelas_madin_id, m.kelas_quran_id, m.kamar_id, k.nama_kamar 
+         FROM murid m 
+         LEFT JOIN kamar k ON m.kamar_id = k.kamar_id 
+         WHERE m.nis LIKE ? OR m.barcode_id LIKE ?`,
+        [`%${digitsOnly}%`, `%${digitsOnly}%`]
+      );
+    }
 
     if (muridRows.length > 0) {
       const murid = muridRows[0];
       const recordedMessages: string[] = [];
+
+      // SELF-HEALING / AUTO-PAIRING INSTAN:
+      // Jika barcode_id masih NULL/kosong, langsung update barcode_id = nis santri saat ini juga!
+      if (!murid.barcode_id || murid.barcode_id.trim() === '') {
+        await db.query('UPDATE murid SET barcode_id = ? WHERE murid_id = ?', [murid.nis, murid.murid_id]);
+      }
 
       // A. Absensi Kamar (Harian)
       if (murid.kamar_id) {
@@ -62,116 +75,100 @@ export async function POST(request: NextRequest) {
             [now, 'Masuk', murid.murid_id, murid.kamar_id, today]
           );
         }
-        recordedMessages.push(`Absensi Kamar (${murid.nama_kamar || 'Asrama'})`);
+        recordedMessages.push(`Absensi kamar`);
       }
 
-      // B. Catat Jadwal Spesifik atau Auto-Detect
-      if (selectedType === 'madin') {
-        // Catat Absensi Madin
-        const [existing] = await db.query<RowDataPacket[]>(
-          'SELECT id FROM absensi WHERE murid_id = ? AND jadwal_madin_id = ? AND tanggal = ?',
-          [murid.murid_id, selectedId, today]
-        );
-        if (existing.length === 0) {
-          await db.query(
-            'INSERT INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)',
-            [selectedId, murid.murid_id, today, 'Hadir', 'Scan Kartu']
-          );
-        }
-        recordedMessages.push(`Jadwal Madin`);
-      } else if (selectedType === 'quran') {
-        // Catat Absensi Qur'an
-        const [existing] = await db.query<RowDataPacket[]>(
-          'SELECT id FROM absensi_quran WHERE murid_id = ? AND jadwal_quran_id = ? AND tanggal = ?',
-          [murid.murid_id, selectedId, today]
-        );
-        if (existing.length === 0) {
-          await db.query(
-            'INSERT INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)',
-            [selectedId, murid.murid_id, today, 'Hadir', 'Scan Kartu']
-          );
-        }
-        recordedMessages.push(`Jadwal Qur'an`);
-      } else if (selectedType === 'kegiatan') {
-        // Catat Absensi Kegiatan
-        const [existing] = await db.query<RowDataPacket[]>(
-          'SELECT absensi_kegiatan_id FROM absensi_kegiatan WHERE murid_id = ? AND kegiatan_id = ? AND tanggal = ?',
-          [murid.murid_id, selectedId, today]
-        );
-        if (existing.length === 0) {
-          await db.query(
-            'INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status) VALUES (?, ?, ?, ?)',
-            [selectedId, murid.murid_id, today, 'Hadir']
-          );
-        }
-        recordedMessages.push(`Kegiatan Asrama`);
-      } else if (selectedType === 'kegiatan_name') {
-        // Cari kegiatan berdasarkan nama
-        const [kegiatanRows] = await db.query<RowDataPacket[]>(
-          'SELECT kegiatan_id FROM jadwal_kegiatan WHERE nama_kegiatan = ? AND (kamar_id = ? OR kamar_id IS NULL) LIMIT 1',
-          [selectedId, murid.kamar_id]
-        );
-        if (kegiatanRows.length > 0) {
-          const kId = kegiatanRows[0].kegiatan_id;
-          const [existing] = await db.query<RowDataPacket[]>(
-            'SELECT absensi_kegiatan_id FROM absensi_kegiatan WHERE murid_id = ? AND kegiatan_id = ? AND tanggal = ?',
-            [murid.murid_id, kId, today]
-          );
-          if (existing.length === 0) {
-            await db.query(
-              'INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status) VALUES (?, ?, ?, ?)',
-              [kId, murid.murid_id, today, 'Hadir']
-            );
-          }
-          recordedMessages.push(`Kegiatan: "${selectedId}"`);
-        }
-      } else {
-        // MODE OTOMATIS: Auto-detect jadwal aktif berdasarkan jam & hari sekarang
-        // 1. Cek Kegiatan Asrama aktif
+      // B. KATEGORI JADWAL SESUAI 4 PILIHAN DROPDOWN
+      const targetCategory = selectedSchedule || 'otomatis';
+
+      // --- 1. KEGIATAN ASRAMA & PESANTREN ---
+      if (targetCategory === 'kegiatan' || targetCategory === 'otomatis' || targetCategory === '') {
         const [activeKegiatan] = await db.query<RowDataPacket[]>(
           'SELECT kegiatan_id, nama_kegiatan FROM jadwal_kegiatan WHERE hari = ? AND (kamar_id = ? OR kamar_id IS NULL) AND ? >= jam_mulai AND ? <= jam_selesai',
           [hariDB, murid.kamar_id, now, now]
         );
-        for (const k of activeKegiatan) {
-          const [ext] = await db.query<RowDataPacket[]>('SELECT absensi_kegiatan_id FROM absensi_kegiatan WHERE murid_id = ? AND kegiatan_id = ? AND tanggal = ?', [murid.murid_id, k.kegiatan_id, today]);
-          if (ext.length === 0) {
-            await db.query('INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status) VALUES (?, ?, ?, ?)', [k.kegiatan_id, murid.murid_id, today, 'Hadir']);
-          }
-          recordedMessages.push(`Kegiatan: ${k.nama_kegiatan}`);
-        }
 
-        // 2. Cek Jadwal Madin aktif jika santri punya kelas_madin_id
+        if (activeKegiatan.length > 0) {
+          for (const k of activeKegiatan) {
+            const [ext] = await db.query<RowDataPacket[]>(
+              'SELECT absensi_kegiatan_id FROM absensi_kegiatan WHERE murid_id = ? AND kegiatan_id = ? AND tanggal = ?',
+              [murid.murid_id, k.kegiatan_id, today]
+            );
+            if (ext.length === 0) {
+              await db.query(
+                'INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status) VALUES (?, ?, ?, ?)',
+                [k.kegiatan_id, murid.murid_id, today, 'Hadir']
+              );
+            }
+            recordedMessages.push(`kegiatan "${k.nama_kegiatan}"`);
+          }
+        } else if (targetCategory === 'kegiatan') {
+          // Jika sengaja pilih Kegiatan Asrama tapi belum ada jadwal aktif di jam tersebut
+          recordedMessages.push(`(tidak ada jadwal kegiatan aktif saat ini)`);
+        }
+      }
+
+      // --- 2. MADRASAH DINIYAH (MADIN) ---
+      if (targetCategory === 'madin' || targetCategory === 'otomatis' || targetCategory === '') {
         if (murid.kelas_madin_id) {
           const [activeMadin] = await db.query<RowDataPacket[]>(
             'SELECT j.jadwal_id, j.mata_pelajaran FROM jadwal_madin j WHERE j.kelas_madin_id = ? AND j.hari = ? AND ? >= j.jam_mulai AND ? <= j.jam_selesai',
             [murid.kelas_madin_id, hariDB, now, now]
           );
-          for (const m of activeMadin) {
-            const [ext] = await db.query<RowDataPacket[]>('SELECT id FROM absensi WHERE murid_id = ? AND jadwal_madin_id = ? AND tanggal = ?', [murid.murid_id, m.jadwal_id, today]);
-            if (ext.length === 0) {
-              await db.query('INSERT INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)', [m.jadwal_id, murid.murid_id, today, 'Hadir', 'Scan Kartu']);
-            }
-            recordedMessages.push(`Madin: ${m.mata_pelajaran}`);
-          }
-        }
 
-        // 3. Cek Jadwal Quran aktif jika santri punya kelas_quran_id
+          if (activeMadin.length > 0) {
+            for (const m of activeMadin) {
+              const [ext] = await db.query<RowDataPacket[]>(
+                'SELECT id FROM absensi WHERE murid_id = ? AND jadwal_madin_id = ? AND tanggal = ?',
+                [murid.murid_id, m.jadwal_id, today]
+              );
+              if (ext.length === 0) {
+                await db.query(
+                  'INSERT INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)',
+                  [m.jadwal_id, murid.murid_id, today, 'Hadir', 'Scan Kartu']
+                );
+              }
+              recordedMessages.push(`Madin (${m.mata_pelajaran})`);
+            }
+          } else if (targetCategory === 'madin') {
+            recordedMessages.push(`(tidak ada pelajaran Madin aktif saat ini)`);
+          }
+        } else if (targetCategory === 'madin') {
+          recordedMessages.push(`(belum terdaftar di kelas Madin)`);
+        }
+      }
+
+      // --- 3. MADRASAH AL-QUR'AN (MQ) ---
+      if (targetCategory === 'quran' || targetCategory === 'otomatis' || targetCategory === '') {
         if (murid.kelas_quran_id) {
           const [activeQuran] = await db.query<RowDataPacket[]>(
             'SELECT j.id as jadwal_id, j.mata_pelajaran FROM jadwal_quran j WHERE j.kelas_quran_id = ? AND j.hari = ? AND ? >= j.jam_mulai AND ? <= j.jam_selesai',
             [murid.kelas_quran_id, hariDB, now, now]
           );
-          for (const q of activeQuran) {
-            const [ext] = await db.query<RowDataPacket[]>('SELECT id FROM absensi_quran WHERE murid_id = ? AND jadwal_quran_id = ? AND tanggal = ?', [murid.murid_id, q.jadwal_id, today]);
-            if (ext.length === 0) {
-              await db.query('INSERT INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)', [q.jadwal_id, murid.murid_id, today, 'Hadir', 'Scan Kartu']);
+
+          if (activeQuran.length > 0) {
+            for (const q of activeQuran) {
+              const [ext] = await db.query<RowDataPacket[]>(
+                'SELECT id FROM absensi_quran WHERE murid_id = ? AND jadwal_quran_id = ? AND tanggal = ?',
+                [q.jadwal_id, murid.murid_id, today]
+              );
+              if (ext.length === 0) {
+                await db.query(
+                  'INSERT INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)',
+                  [q.jadwal_id, murid.murid_id, today, 'Hadir', 'Scan Kartu']
+                );
+              }
+              recordedMessages.push(`MQ (${q.mata_pelajaran})`);
             }
-            recordedMessages.push(`Qur'an: ${q.mata_pelajaran}`);
+          } else if (targetCategory === 'quran') {
+            recordedMessages.push(`(tidak ada pelajaran MQ aktif saat ini)`);
           }
+        } else if (targetCategory === 'quran') {
+          recordedMessages.push(`(belum terdaftar di kelas MQ)`);
         }
       }
 
-      const msgDetail = recordedMessages.length > 0 ? recordedMessages.join(', ') : 'Absensi Harian';
+      const msgDetail = recordedMessages.length > 0 ? recordedMessages.join(' ') : 'Absensi harian';
 
       return NextResponse.json({
         success: true,
@@ -179,16 +176,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 2. Cari pemilik barcode di tabel guru
+    // 2. CARI PEMILIK KARTU DI TABEL GURU / PENGURUS
     const [guruRows] = await db.query<RowDataPacket[]>(
-      'SELECT guru_id, nama FROM guru WHERE barcode_id = ? OR guru_id = ?',
-      [barcodeData, barcodeData]
+      `SELECT guru_id, nama FROM guru 
+       WHERE TRIM(barcode_id) = ? OR TRIM(barcode_id) = ? OR guru_id = ?`,
+      [rawCode, digitsOnly, digitsOnly]
     );
 
     if (guruRows.length > 0) {
       const guru = guruRows[0];
 
-      // Catat absensi_guru
       const [guruAbsen] = await db.query<RowDataPacket[]>(
         'SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ?',
         [guru.guru_id, today]
@@ -208,7 +205,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: false,
-      message: 'Kartu tidak terdaftar di sistem. Silakan lakukan pairing terlebih dahulu.',
+      message: `Kartu tidak terdaftar di sistem (Data Scan: ${rawCode}). Silakan lakukan pairing terlebih dahulu.`,
     }, { status: 404 });
 
   } catch (error: any) {
