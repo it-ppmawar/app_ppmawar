@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
@@ -92,8 +92,9 @@ export async function POST(request: NextRequest) {
         const updateResult = await updateBarcodeId(nis, barcodeId);
         results.push({ filename, nis, status: updateResult.status, barcode_id: barcodeId, message: updateResult.message });
 
-      } catch (fileErr: any) {
-        results.push({ filename, nis, status: 'error', message: `Error: ${fileErr.message}` });
+      } catch (fileErr) {
+        const msg = fileErr instanceof Error ? fileErr.message : 'Unknown error';
+        results.push({ filename, nis, status: 'error', message: `Error: ${msg}` });
       }
     }
 
@@ -109,9 +110,10 @@ export async function POST(request: NextRequest) {
       results,
     });
 
-  } catch (error: any) {
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
     console.error('API upload-kartu Error:', error);
-    return NextResponse.json({ success: false, message: 'Terjadi kesalahan server: ' + error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Terjadi kesalahan server: ' + msg }, { status: 500 });
   }
 }
 
@@ -127,7 +129,8 @@ async function updateBarcodeId(nis: string, barcodeId: string): Promise<{ status
     } else {
       return { status: 'nis_not_found', message: `NIS "${nis}" tidak ditemukan di database.` };
     }
-  } catch (dbErr: any) {
-    return { status: 'failed', message: `Gagal update DB: ${dbErr.message}` };
+  } catch (dbErr) {
+    const msg = dbErr instanceof Error ? dbErr.message : 'Unknown error';
+    return { status: 'failed', message: `Gagal update DB: ${msg}` };
   }
 }
