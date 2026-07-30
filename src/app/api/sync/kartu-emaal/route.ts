@@ -4,37 +4,22 @@ import { ResultSetHeader } from 'mysql2';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET / POST /api/sync/kartu-emaal
- * 
- * Synchronize/pair barcode_id santri baru.
- * Mendukung:
- * 1. POST body { mappings: [{nis: string, barcode_id: string}] } (Pairing dari QR token yang dibaca)
- * 2. POST body { nis_list: string[] }
- * 3. GET/POST tanpa body (Auto-pairing barcode_id = nis)
- */
-export async function GET(request?: Request) {
+export async function POST(request: Request) {
   try {
-    let mappings: { nis: string; barcode_id: string }[] = [];
-    let nisList: string[] = [];
-
-    if (request && request.method === 'POST') {
-      try {
-        const body = await request.json();
-        if (Array.isArray(body.mappings)) {
-          mappings = body.mappings;
-        } else if (Array.isArray(body.nis_list)) {
-          nisList = body.nis_list;
-        }
-      } catch (e) {
-        // abaikan jika body kosong
-      }
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch (e) {
+      body = {};
     }
+
+    const mappings: { nis: string; barcode_id: string }[] = body.mappings || [];
+    const nisList: string[] = body.nis_list || [];
 
     let affectedRows = 0;
 
-    // Mode 1: Multi-mapping QR Token {nis, barcode_id}
-    if (mappings.length > 0) {
+    // Mode 1: Bulk mappings QR token {nis, barcode_id}
+    if (Array.isArray(mappings) && mappings.length > 0) {
       for (const item of mappings) {
         if (!item.nis || !item.barcode_id) continue;
         const [res] = await pool.execute<ResultSetHeader>(
@@ -56,7 +41,7 @@ export async function GET(request?: Request) {
     }
 
     // Mode 2: Array NIS khusus
-    if (nisList.length > 0) {
+    if (Array.isArray(nisList) && nisList.length > 0) {
       for (const nis of nisList) {
         const [res] = await pool.execute<ResultSetHeader>(
           `UPDATE murid 
@@ -93,6 +78,19 @@ export async function GET(request?: Request) {
   }
 }
 
-export async function POST(request: Request) {
-  return GET(request);
+export async function GET() {
+  try {
+    const [res] = await pool.execute<ResultSetHeader>(
+      `UPDATE murid 
+       SET barcode_id = nis 
+       WHERE (barcode_id IS NULL OR barcode_id = '') AND nis IS NOT NULL AND nis != ''`
+    );
+    return NextResponse.json({
+      success: true,
+      message: `Berhasil mempairing barcode_id default untuk ${res.affectedRows} santri!`,
+      stats: { santri_terpairing: res.affectedRows }
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
