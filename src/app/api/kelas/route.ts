@@ -91,16 +91,73 @@ export async function GET(request: Request) {
       }
     }
 
-    // Auto-clean & Standarisasi nama kamar (misal: A6 -> A-6) jika ada
+    // Auto-merge & Standarisasi duplikasi nama kamar (misal: A1 [id 1] vs A-1 [id 74])
     if (actualType === 'kamar') {
       try {
-        await pool.execute(`
-          UPDATE kamar 
-          SET nama_kamar = CONCAT(SUBSTRING(nama_kamar, 1, 1), '-', SUBSTRING(nama_kamar, 2))
-          WHERE nama_kamar REGEXP '^[A-Za-F][0-9]+$' AND LENGTH(nama_kamar) <= 3
-        `);
+        const [allKamar] = await pool.execute<RowDataPacket[]>('SELECT kamar_id, nama_kamar, guru_id, nama_asrama FROM kamar');
+        const groups: Record<string, any[]> = {};
+        for (const k of allKamar) {
+          const norm = (k.nama_kamar || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+          if (!norm) continue;
+          if (!groups[norm]) groups[norm] = [];
+          groups[norm].push(k);
+        }
+
+        for (const norm in groups) {
+          const list = groups[norm];
+          if (list.length > 1) {
+            // Urutkan: utamakan yang punya guru_id/pembina, atau yang memiliki dash ('-'), atau ID terkecil
+            list.sort((a, b) => {
+              if (a.guru_id && !b.guru_id) return -1;
+              if (!a.guru_id && b.guru_id) return 1;
+              if (a.nama_kamar.includes('-') && !b.nama_kamar.includes('-')) return -1;
+              if (!a.nama_kamar.includes('-') && b.nama_kamar.includes('-')) return 1;
+              return a.kamar_id - b.kamar_id;
+            });
+
+            const primary = list[0];
+            const secondaryList = list.slice(1);
+
+            let targetName = primary.nama_kamar;
+            if (!targetName.includes('-') && /^[A-Za-F][0-9]+$/i.test(targetName)) {
+              targetName = targetName.charAt(0).toUpperCase() + '-' + targetName.slice(1);
+            }
+
+            let namaAsramaVal = primary.nama_asrama;
+            const firstChar = targetName.charAt(0).toUpperCase();
+            if (!namaAsramaVal && ['A','B','C','D','E','F'].includes(firstChar)) {
+              namaAsramaVal = firstChar;
+            }
+
+            await pool.execute(
+              'UPDATE kamar SET nama_kamar = ?, nama_asrama = ? WHERE kamar_id = ?',
+              [targetName, namaAsramaVal, primary.kamar_id]
+            );
+
+            for (const sec of secondaryList) {
+              await pool.execute('UPDATE murid SET kamar_id = ? WHERE kamar_id = ?', [primary.kamar_id, sec.kamar_id]);
+              await pool.execute('UPDATE absensi_kamar SET kamar_id = ? WHERE kamar_id = ?', [primary.kamar_id, sec.kamar_id]);
+              await pool.execute('UPDATE jadwal_kegiatan SET kamar_id = ? WHERE kamar_id = ?', [primary.kamar_id, sec.kamar_id]);
+              if (sec.guru_id && !primary.guru_id) {
+                await pool.execute('UPDATE kamar SET guru_id = ? WHERE kamar_id = ?', [sec.guru_id, primary.kamar_id]);
+                primary.guru_id = sec.guru_id;
+              }
+              await pool.execute('DELETE FROM kamar WHERE kamar_id = ?', [sec.kamar_id]);
+            }
+          } else {
+            const single = list[0];
+            if (!single.nama_kamar.includes('-') && /^[A-Za-F][0-9]+$/i.test(single.nama_kamar)) {
+              const targetName = single.nama_kamar.charAt(0).toUpperCase() + '-' + single.nama_kamar.slice(1);
+              const asr = targetName.charAt(0).toUpperCase();
+              await pool.execute(
+                'UPDATE kamar SET nama_kamar = ?, nama_asrama = COALESCE(nama_asrama, ?) WHERE kamar_id = ?',
+                [targetName, asr, single.kamar_id]
+              );
+            }
+          }
+        }
       } catch (cleanErr: any) {
-        // Ignore if regex or update failed
+        console.error('Auto-merge kamar error:', cleanErr.message);
       }
     }
 
