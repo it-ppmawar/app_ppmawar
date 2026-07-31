@@ -119,7 +119,7 @@ export async function GET(request: Request) {
             const secondaryList = list.slice(1);
 
             let targetName = primary.nama_kamar;
-            if (!targetName.includes('-') && /^[A-Za-F][0-9]+$/i.test(targetName)) {
+            if (!targetName.includes('-') && /^[A-F][0-9]+$/i.test(targetName)) {
               targetName = targetName.charAt(0).toUpperCase() + '-' + targetName.slice(1);
             }
 
@@ -146,7 +146,7 @@ export async function GET(request: Request) {
             }
           } else {
             const single = list[0];
-            if (!single.nama_kamar.includes('-') && /^[A-Za-F][0-9]+$/i.test(single.nama_kamar)) {
+            if (!single.nama_kamar.includes('-') && /^[A-F][0-9]+$/i.test(single.nama_kamar)) {
               const targetName = single.nama_kamar.charAt(0).toUpperCase() + '-' + single.nama_kamar.slice(1);
               const asr = targetName.charAt(0).toUpperCase();
               await pool.execute(
