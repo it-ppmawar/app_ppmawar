@@ -216,8 +216,8 @@ export async function GET(request: Request) {
       } else if (actualType === 'madin' || actualType === 'quran') {
         if (role === 'admin' || role === 'staff') {
           extraOptions.push({ id: 'all', nama: '✨ Semua Kelas' });
-          extraOptions.push({ id: 'putra', nama: '👦 Semua Kelas Putra' });
-          extraOptions.push({ id: 'putri', nama: '👧 Semua Kelas Putri' });
+          extraOptions.push({ id: 'putra', nama: '👳 Semua Kelas Putra' });
+          extraOptions.push({ id: 'putri', nama: '🧕 Semua Kelas Putri' });
         } else if ((role === 'pengurus_asrama' || role === 'pengasuh') && namaAsrama) {
           extraOptions.push({ id: 'all', nama: `✨ Semua Kelas (${namaAsrama})` });
         }
