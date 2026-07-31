@@ -69,6 +69,20 @@ export async function GET(request: Request) {
 
     if (tipe === 'madin') {
       if (!target_id) return NextResponse.json({ error: 'Pilih Kelas Madin' }, { status: 400 });
+      let whereCond = 'WHERE m.kelas_madin_id = ?';
+      params = [bulan, tahun, target_id];
+
+      if (target_id === 'all') {
+        whereCond = 'WHERE m.kelas_madin_id IS NOT NULL';
+        params = [bulan, tahun];
+      } else if (target_id === 'putra') {
+        whereCond = `WHERE m.kelas_madin_id IS NOT NULL AND (km.nama_kelas LIKE '%PUTRA%' OR km.nama_kelas LIKE '%PA%' OR m.jenis_kelamin = 'L')`;
+        params = [bulan, tahun];
+      } else if (target_id === 'putri') {
+        whereCond = `WHERE m.kelas_madin_id IS NOT NULL AND (km.nama_kelas LIKE '%PUTRI%' OR km.nama_kelas LIKE '%PI%' OR m.jenis_kelamin = 'P')`;
+        params = [bulan, tahun];
+      }
+
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama,
           SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
@@ -76,14 +90,28 @@ export async function GET(request: Request) {
           SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
         FROM murid m
+        LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
         LEFT JOIN absensi a ON m.murid_id = a.murid_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
-        WHERE m.kelas_madin_id = ?
+        ${whereCond}
         GROUP BY m.murid_id
         ORDER BY m.nama ASC
       `;
-      params = [bulan, tahun, target_id];
     } else if (tipe === 'quran') {
       if (!target_id) return NextResponse.json({ error: "Pilih Kelas Qur'an" }, { status: 400 });
+      let whereCond = 'WHERE m.kelas_quran_id = ?';
+      params = [bulan, tahun, target_id];
+
+      if (target_id === 'all') {
+        whereCond = 'WHERE m.kelas_quran_id IS NOT NULL';
+        params = [bulan, tahun];
+      } else if (target_id === 'putra') {
+        whereCond = `WHERE m.kelas_quran_id IS NOT NULL AND (kq.nama_kelas LIKE '%PUTRA%' OR kq.nama_kelas LIKE '%PA%' OR m.jenis_kelamin = 'L')`;
+        params = [bulan, tahun];
+      } else if (target_id === 'putri') {
+        whereCond = `WHERE m.kelas_quran_id IS NOT NULL AND (kq.nama_kelas LIKE '%PUTRI%' OR kq.nama_kelas LIKE '%PI%' OR m.jenis_kelamin = 'P')`;
+        params = [bulan, tahun];
+      }
+
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama,
           SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
@@ -91,12 +119,12 @@ export async function GET(request: Request) {
           SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
         FROM murid m
+        LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
         LEFT JOIN absensi_quran a ON m.murid_id = a.murid_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
-        WHERE m.kelas_quran_id = ?
+        ${whereCond}
         GROUP BY m.murid_id
         ORDER BY m.nama ASC
       `;
-      params = [bulan, tahun, target_id];
     } else if (tipe === 'kegiatan') {
       if (!target_id) return NextResponse.json({ error: 'Pilih Kamar Asrama' }, { status: 400 });
 
@@ -109,7 +137,6 @@ export async function GET(request: Request) {
             AND DATE(CONVERT_TZ(created_at, '+00:00', '+07:00')) != tanggal
         `);
       } catch (fixErr: any) {
-        // Fallback jika CONVERT_TZ tidak tersedia di mysql
         try {
           await pool.execute(`
             UPDATE absensi_kamar 
@@ -120,6 +147,18 @@ export async function GET(request: Request) {
         } catch (_) {}
       }
 
+      let whereCond = 'WHERE m.kamar_id = ?';
+      params = [bulan, tahun, bulan, tahun, bulan, tahun, target_id];
+
+      if (target_id === 'all') {
+        whereCond = 'WHERE m.kamar_id IS NOT NULL';
+        params = [bulan, tahun, bulan, tahun, bulan, tahun];
+      } else if (target_id.startsWith('asrama_')) {
+        const asr = target_id.replace('asrama_', '');
+        whereCond = 'WHERE km.nama_asrama = ?';
+        params = [bulan, tahun, bulan, tahun, bulan, tahun, asr];
+      }
+
       // Query rekapitulasi kegiatan: Hitung Hadir dari gabungan scan kamar (absensi_kamar) dan absensi_kegiatan
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama,
@@ -128,17 +167,17 @@ export async function GET(request: Request) {
           SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
         FROM murid m
+        LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
         LEFT JOIN (
           SELECT murid_id, tanggal FROM absensi_kegiatan WHERE status = 'Hadir' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
           UNION
           SELECT murid_id, tanggal FROM absensi_kamar WHERE MONTH(tanggal) = ? AND YEAR(tanggal) = ?
         ) att ON m.murid_id = att.murid_id
         LEFT JOIN absensi_kegiatan a ON m.murid_id = a.murid_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
-        WHERE m.kamar_id = ?
+        ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama
         ORDER BY m.nama ASC
       `;
-      params = [bulan, tahun, bulan, tahun, bulan, tahun, target_id];
     } else if (tipe === 'guru') {
       if (payload.role !== 'admin' && payload.role !== 'staff') {
         return NextResponse.json({ error: 'Akses ditolak. Rekapitulasi/monitoring kehadiran guru hanya khusus Admin dan Staf.' }, { status: 403 });

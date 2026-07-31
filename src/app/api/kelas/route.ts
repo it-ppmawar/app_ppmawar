@@ -91,6 +91,19 @@ export async function GET(request: Request) {
       }
     }
 
+    // Auto-clean & Standarisasi nama kamar (misal: A6 -> A-6) jika ada
+    if (actualType === 'kamar') {
+      try {
+        await pool.execute(`
+          UPDATE kamar 
+          SET nama_kamar = CONCAT(SUBSTRING(nama_kamar, 1, 1), '-', SUBSTRING(nama_kamar, 2))
+          WHERE nama_kamar REGEXP '^[A-Za-F][0-9]+$' AND LENGTH(nama_kamar) <= 3
+        `);
+      } catch (cleanErr: any) {
+        // Ignore if regex or update failed
+      }
+    }
+
     let query = '';
     if (actualType === 'madin') {
       query = `
@@ -127,7 +140,32 @@ export async function GET(request: Request) {
     }
 
     const [rows] = await pool.execute<RowDataPacket[]>(query, params);
-    return NextResponse.json({ success: true, data: rows });
+    let optionsList = rows;
+
+    // Inject aggregate filter options based on role & actualType
+    const extraOptions: any[] = [];
+
+    if (actualType === 'kamar') {
+      if (role === 'admin' || role === 'staff') {
+        extraOptions.push({ id: 'all', nama: '✨ Semua Kamar (Semua Asrama)' });
+        ['A', 'B', 'C', 'D', 'E', 'F'].forEach(asr => {
+          extraOptions.push({ id: `asrama_${asr}`, nama: `🏢 Seluruh Kamar - Asrama ${asr}` });
+        });
+      } else if ((role === 'pengurus_asrama' || role === 'pengasuh') && namaAsrama) {
+        extraOptions.push({ id: `asrama_${namaAsrama}`, nama: `🏢 Seluruh Kamar - Asrama ${namaAsrama}` });
+      }
+    } else if (actualType === 'madin' || actualType === 'quran') {
+      if (role === 'admin' || role === 'staff') {
+        extraOptions.push({ id: 'all', nama: '✨ Semua Kelas' });
+        extraOptions.push({ id: 'putra', nama: '👦 Semua Kelas Putra' });
+        extraOptions.push({ id: 'putri', nama: '👧 Semua Kelas Putri' });
+      } else if ((role === 'pengurus_asrama' || role === 'pengasuh') && namaAsrama) {
+        extraOptions.push({ id: 'all', nama: `✨ Semua Kelas (${namaAsrama})` });
+      }
+    }
+
+    const finalData = [...extraOptions, ...optionsList];
+    return NextResponse.json({ success: true, data: finalData });
   } catch (error: any) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
