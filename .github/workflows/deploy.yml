@@ -67,9 +67,7 @@ jobs:
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
           dangerous-clean-slate: false
           log-level: verbose
-          # Gunakan FTPS (explicit TLS) agar koneksi FTP tidak di-timeout firewall
-          protocol: ftps
-          # Mode passive lebih cocok untuk koneksi dari cloud runner ke server cPanel
+          # Gunakan FTP standar dengan passive mode untuk kompatibilitas penuh cPanel
+          protocol: ftp
           passive: true
-          security: loose
           timeout: 600000
