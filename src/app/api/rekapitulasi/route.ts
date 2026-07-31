@@ -99,6 +99,27 @@ export async function GET(request: Request) {
       params = [bulan, tahun, target_id];
     } else if (tipe === 'kegiatan') {
       if (!target_id) return NextResponse.json({ error: 'Pilih Kamar Asrama' }, { status: 400 });
+
+      // Auto-sync: tarik data scan kamar ke absensi_kegiatan yang belum tercatat
+      // untuk semua kegiatan yang terdaftar di kamar ini pada bulan & tahun yang dipilih
+      try {
+        await pool.execute(`
+          INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan)
+          SELECT jk.kegiatan_id, ak.murid_id, ak.tanggal, 'Hadir', 'Scan Kartu'
+          FROM absensi_kamar ak
+          JOIN murid m ON ak.murid_id = m.murid_id AND m.kamar_id = ?
+          JOIN jadwal_kegiatan jk ON (jk.kamar_id = m.kamar_id OR jk.kamar_id IS NULL)
+          LEFT JOIN absensi_kegiatan existing
+            ON existing.kegiatan_id = jk.kegiatan_id
+            AND existing.murid_id = ak.murid_id
+            AND existing.tanggal = ak.tanggal
+          WHERE MONTH(ak.tanggal) = ? AND YEAR(ak.tanggal) = ?
+            AND existing.absensi_kegiatan_id IS NULL
+        `, [target_id, bulan, tahun]);
+      } catch (syncErr: any) {
+        console.error('Auto-sync kamar->kegiatan error:', syncErr.message);
+      }
+
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama,
           SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,

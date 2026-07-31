@@ -117,7 +117,10 @@ export async function GET(request: Request) {
         FROM kamar k
         LEFT JOIN guru g ON k.guru_id = g.guru_id
         ${whereClause}
-        ORDER BY k.nama_kamar ASC
+        ORDER BY
+          REGEXP_SUBSTR(k.nama_kamar, '^[A-Za-z]+') ASC,
+          CAST(REGEXP_SUBSTR(k.nama_kamar, '[0-9]+') AS UNSIGNED) ASC,
+          k.nama_kamar ASC
       `;
     } else if (actualType === 'guru') {
       query = `SELECT guru_id as id, nama FROM guru ORDER BY nama ASC`;

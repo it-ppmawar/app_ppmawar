@@ -55,11 +55,37 @@ export default function RekapitulasiPage() {
       const res = await fetch(`/api/kelas?type=${tipe}`);
       const json = await res.json();
       if (json.success && json.data.length > 0) {
-        setOptions(json.data);
+        let optData = json.data as any[];
+
+        // Deduplikasi kamar: jika ada nama yang sama setelah normalisasi (misal A-1 dan A1), ambil satu saja
+        if (tipe === 'kegiatan') {
+          const seen = new Map<string, boolean>();
+          optData = optData.filter((item: any) => {
+            // Normalisasi: hilangkan strip, spasi, lowercase untuk perbandingan
+            const norm = (item.nama as string).replace(/[-\s]/g, '').toLowerCase();
+            if (seen.has(norm)) return false;
+            seen.set(norm, true);
+            return true;
+          });
+
+          // Natural sort: A-1, A-2, ..., A-10 (bukan A-1, A-10, A-2)
+          optData.sort((a: any, b: any) => {
+            const normA = (a.nama as string).replace(/[-\s]/g, '');
+            const normB = (b.nama as string).replace(/[-\s]/g, '');
+            const prefA = normA.replace(/[0-9]/g, '');
+            const prefB = normB.replace(/[0-9]/g, '');
+            if (prefA !== prefB) return prefA.localeCompare(prefB);
+            const numA = parseInt(normA.replace(/[^0-9]/g, '') || '0', 10);
+            const numB = parseInt(normB.replace(/[^0-9]/g, '') || '0', 10);
+            return numA - numB;
+          });
+        }
+
+        setOptions(optData);
         if (tipe === 'guru') {
           setFilter(prev => ({ ...prev, target_id: 'all' })); // Default to all gurus
         } else {
-          setFilter(prev => ({ ...prev, target_id: json.data[0].id.toString() }));
+          setFilter(prev => ({ ...prev, target_id: optData[0].id.toString() }));
         }
       } else {
         setOptions([]);
