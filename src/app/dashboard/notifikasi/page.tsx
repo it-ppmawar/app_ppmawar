@@ -225,7 +225,7 @@ function NotifikasiContent() {
   // Fetch daftar kelas/kamar sesuai tipePesan (terbatasi dinamis oleh API kelas sesuai role yang login)
   useEffect(() => {
     setLoadingKategori(true);
-    fetch(`/api/kelas?type=${tipePesan === 'kamar' ? 'kamar' : tipePesan}`)
+    fetch(`/api/kelas?type=${tipePesan === 'kamar' ? 'kamar' : tipePesan}&aggregate=true`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {

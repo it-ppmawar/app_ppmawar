@@ -52,7 +52,7 @@ export default function RekapitulasiPage() {
   const loadOptions = async (tipe: string) => {
     setLoadingOptions(true);
     try {
-      const res = await fetch(`/api/kelas?type=${tipe}`);
+      const res = await fetch(`/api/kelas?type=${tipe}&aggregate=true`);
       const json = await res.json();
       if (json.success && json.data.length > 0) {
         let optData = json.data as any[];
