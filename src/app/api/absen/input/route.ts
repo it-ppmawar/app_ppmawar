@@ -108,6 +108,27 @@ export async function GET(request: Request) {
     const tzOffset = d.getTimezoneOffset() * 60000;
     const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
 
+    // Auto-sync data scan kamar ke absensi_kegiatan jika belum ada
+    if (tipe === 'kegiatan') {
+      try {
+        await pool.execute(`
+          INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan)
+          SELECT ?, ak.murid_id, ak.tanggal, 'Hadir', 'Scan Kartu'
+          FROM absensi_kamar ak
+          JOIN murid m ON ak.murid_id = m.murid_id
+          LEFT JOIN absensi_kegiatan existing 
+            ON existing.kegiatan_id = ? 
+            AND existing.murid_id = ak.murid_id 
+            AND existing.tanggal = ak.tanggal
+          WHERE ak.tanggal = ? 
+            AND (m.kamar_id = ? OR ? = '') 
+            AND existing.absensi_kegiatan_id IS NULL
+        `, [jadwal_id, jadwal_id, localISOTime, kelas_id || '', kelas_id || '']);
+      } catch (e) {
+        console.error('Auto sync absensi_kamar -> absensi_kegiatan failed:', e);
+      }
+    }
+
     // Fetch existing attendance if any
     let existingQuery = '';
     let existingParams = [jadwal_id, localISOTime];
