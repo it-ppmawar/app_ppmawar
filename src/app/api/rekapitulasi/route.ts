@@ -100,39 +100,51 @@ export async function GET(request: Request) {
     } else if (tipe === 'kegiatan') {
       if (!target_id) return NextResponse.json({ error: 'Pilih Kamar Asrama' }, { status: 400 });
 
-      // Auto-sync: tarik data scan kamar ke absensi_kegiatan yang belum tercatat
-      // untuk semua kegiatan yang terdaftar di kamar ini pada bulan & tahun yang dipilih
+      // Auto-fix: Perbaiki tanggal di absensi_kamar jika sempat salah akibat timezone UTC offset
       try {
         await pool.execute(`
-          INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan)
-          SELECT jk.kegiatan_id, ak.murid_id, ak.tanggal, 'Hadir', 'Scan Kartu'
-          FROM absensi_kamar ak
-          JOIN murid m ON ak.murid_id = m.murid_id AND m.kamar_id = ?
-          JOIN jadwal_kegiatan jk ON (jk.kamar_id = m.kamar_id OR jk.kamar_id IS NULL)
-          LEFT JOIN absensi_kegiatan existing
-            ON existing.kegiatan_id = jk.kegiatan_id
-            AND existing.murid_id = ak.murid_id
-            AND existing.tanggal = ak.tanggal
-          WHERE MONTH(ak.tanggal) = ? AND YEAR(ak.tanggal) = ?
-            AND existing.absensi_kegiatan_id IS NULL
-        `, [target_id, bulan, tahun]);
-      } catch (syncErr: any) {
-        console.error('Auto-sync kamar->kegiatan error:', syncErr.message);
+          UPDATE absensi_kamar 
+          SET tanggal = DATE(CONVERT_TZ(created_at, '+00:00', '+07:00')) 
+          WHERE created_at IS NOT NULL 
+            AND DATE(CONVERT_TZ(created_at, '+00:00', '+07:00')) != tanggal
+        `);
+      } catch (fixErr: any) {
+        // Fallback jika CONVERT_TZ tidak tersedia di mysql
+        try {
+          await pool.execute(`
+            UPDATE absensi_kamar 
+            SET tanggal = DATE(created_at) 
+            WHERE created_at IS NOT NULL 
+              AND DATE(created_at) != tanggal
+          `);
+        } catch (_) {}
       }
 
+      // Query rekapitulasi kegiatan: Hitung Hadir dari gabungan scan kamar (absensi_kamar) dan absensi_kegiatan
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama,
-          SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-          SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
+          (
+            SELECT COUNT(DISTINCT att.tgl)
+            FROM (
+              SELECT tanggal as tgl FROM absensi_kegiatan WHERE murid_id = m.murid_id AND status = 'Hadir' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+              UNION
+              SELECT tanggal as tgl FROM absensi_kamar WHERE murid_id = m.murid_id AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+            ) att
+          ) as hadir,
+          (
+            SELECT COUNT(DISTINCT tanggal) FROM absensi_kegiatan WHERE murid_id = m.murid_id AND status = 'Izin' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+          ) as izin,
+          (
+            SELECT COUNT(DISTINCT tanggal) FROM absensi_kegiatan WHERE murid_id = m.murid_id AND status = 'Sakit' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+          ) as sakit,
+          (
+            SELECT COUNT(DISTINCT tanggal) FROM absensi_kegiatan WHERE murid_id = m.murid_id AND status = 'Alpha' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+          ) as alpha
         FROM murid m
-        LEFT JOIN absensi_kegiatan a ON m.murid_id = a.murid_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
         WHERE m.kamar_id = ?
-        GROUP BY m.murid_id
         ORDER BY m.nama ASC
       `;
-      params = [bulan, tahun, target_id];
+      params = [bulan, tahun, bulan, tahun, bulan, tahun, bulan, tahun, bulan, tahun, target_id];
     } else if (tipe === 'guru') {
       if (payload.role !== 'admin' && payload.role !== 'staff') {
         return NextResponse.json({ error: 'Akses ditolak. Rekapitulasi/monitoring kehadiran guru hanya khusus Admin dan Staf.' }, { status: 403 });

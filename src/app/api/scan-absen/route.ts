@@ -11,8 +11,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Barcode tidak boleh kosong.' }, { status: 400 });
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const now = new Date().toTimeString().slice(0, 8);
+    const nowObj = new Date();
+    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(nowObj);
+    const now = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', hour12: false }).format(nowObj);
 
     // Pembersihan String QR / Barcode
     const rawCode = String(barcodeData).trim();

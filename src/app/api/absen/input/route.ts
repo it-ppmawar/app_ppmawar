@@ -103,10 +103,8 @@ export async function GET(request: Request) {
 
     const [murid] = await pool.execute<RowDataPacket[]>(query, params);
 
-    // Get today's date in YYYY-MM-DD
-    const d = new Date();
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
+    // Get today's date in YYYY-MM-DD (Asia/Jakarta WIB)
+    const localISOTime = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
 
     // Auto-sync data scan kamar ke absensi_kegiatan jika belum ada
     if (tipe === 'kegiatan') {
