@@ -123,28 +123,22 @@ export async function GET(request: Request) {
       // Query rekapitulasi kegiatan: Hitung Hadir dari gabungan scan kamar (absensi_kamar) dan absensi_kegiatan
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama,
-          (
-            SELECT COUNT(DISTINCT att.tgl)
-            FROM (
-              SELECT tanggal as tgl FROM absensi_kegiatan WHERE murid_id = m.murid_id AND status = 'Hadir' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
-              UNION
-              SELECT tanggal as tgl FROM absensi_kamar WHERE murid_id = m.murid_id AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
-            ) att
-          ) as hadir,
-          (
-            SELECT COUNT(DISTINCT tanggal) FROM absensi_kegiatan WHERE murid_id = m.murid_id AND status = 'Izin' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
-          ) as izin,
-          (
-            SELECT COUNT(DISTINCT tanggal) FROM absensi_kegiatan WHERE murid_id = m.murid_id AND status = 'Sakit' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
-          ) as sakit,
-          (
-            SELECT COUNT(DISTINCT tanggal) FROM absensi_kegiatan WHERE murid_id = m.murid_id AND status = 'Alpha' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
-          ) as alpha
+          COUNT(DISTINCT att.tanggal) as hadir,
+          SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
         FROM murid m
+        LEFT JOIN (
+          SELECT murid_id, tanggal FROM absensi_kegiatan WHERE status = 'Hadir' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+          UNION
+          SELECT murid_id, tanggal FROM absensi_kamar WHERE MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+        ) att ON m.murid_id = att.murid_id
+        LEFT JOIN absensi_kegiatan a ON m.murid_id = a.murid_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
         WHERE m.kamar_id = ?
+        GROUP BY m.murid_id, m.nis, m.nama
         ORDER BY m.nama ASC
       `;
-      params = [bulan, tahun, bulan, tahun, bulan, tahun, bulan, tahun, bulan, tahun, target_id];
+      params = [bulan, tahun, bulan, tahun, bulan, tahun, target_id];
     } else if (tipe === 'guru') {
       if (payload.role !== 'admin' && payload.role !== 'staff') {
         return NextResponse.json({ error: 'Akses ditolak. Rekapitulasi/monitoring kehadiran guru hanya khusus Admin dan Staf.' }, { status: 403 });
