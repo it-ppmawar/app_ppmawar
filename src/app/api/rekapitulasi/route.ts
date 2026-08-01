@@ -127,7 +127,7 @@ export async function GET(request: Request) {
 
       params = [...dateParams, ...whereParams];
       query = `
-        SELECT m.murid_id as id, m.nis as identifier, m.nama,
+        SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
           SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
           SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
@@ -136,7 +136,7 @@ export async function GET(request: Request) {
         LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
         LEFT JOIN absensi a ON m.murid_id = a.murid_id AND ${dateCond}
         ${whereCond}
-        GROUP BY m.murid_id
+        GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
       `;
     } else if (tipe === 'quran') {
@@ -159,7 +159,7 @@ export async function GET(request: Request) {
 
       params = [...dateParams, ...whereParams];
       query = `
-        SELECT m.murid_id as id, m.nis as identifier, m.nama,
+        SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
           SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
           SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
@@ -168,7 +168,7 @@ export async function GET(request: Request) {
         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
         LEFT JOIN absensi_quran a ON m.murid_id = a.murid_id AND ${dateCond}
         ${whereCond}
-        GROUP BY m.murid_id
+        GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
       `;
     } else if (tipe === 'kegiatan') {
@@ -211,7 +211,7 @@ export async function GET(request: Request) {
 
       params = [...dateParams1, ...dateParams2, ...dateParams3, ...whereParams];
       query = `
-        SELECT m.murid_id as id, m.nis as identifier, m.nama,
+        SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
           COUNT(DISTINCT att.tanggal) as hadir,
           SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
@@ -225,7 +225,7 @@ export async function GET(request: Request) {
         ) att ON m.murid_id = att.murid_id
         LEFT JOIN absensi_kegiatan a ON m.murid_id = a.murid_id AND ${dateCond3}
         ${whereCond}
-        GROUP BY m.murid_id, m.nis, m.nama
+        GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
       `;
     } else if (tipe === 'guru') {
@@ -237,7 +237,7 @@ export async function GET(request: Request) {
 
       if (target_id && target_id !== 'all') {
         query = `
-          SELECT g.guru_id as id, g.nip as identifier, g.nama,
+          SELECT g.guru_id as id, g.nip as identifier, g.nama, g.foto, g.alamat, g.no_hp as nama_wali,
             SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
             SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
             SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
@@ -245,20 +245,20 @@ export async function GET(request: Request) {
           FROM guru g
           LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${dateCond}
           WHERE g.guru_id = ?
-          GROUP BY g.guru_id
+          GROUP BY g.guru_id, g.nip, g.nama, g.foto, g.alamat, g.no_hp
           ORDER BY g.nama ASC
         `;
         params = [...dateParams, target_id];
       } else {
         query = `
-          SELECT g.guru_id as id, g.nip as identifier, g.nama,
+          SELECT g.guru_id as id, g.nip as identifier, g.nama, g.foto, g.alamat, g.no_hp as nama_wali,
             SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
             SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
             SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
             SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
           FROM guru g
           LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${dateCond}
-          GROUP BY g.guru_id
+          GROUP BY g.guru_id, g.nip, g.nama, g.foto, g.alamat, g.no_hp
           ORDER BY g.nama ASC
         `;
         params = [...dateParams];

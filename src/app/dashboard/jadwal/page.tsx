@@ -235,7 +235,7 @@ export default function JadwalPage() {
     setSortConfig({ key, direction });
   };
 
-  const hariOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad', 'Minggu'];
+  const hariOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
 
   const sortedJadwal = [...filteredJadwal].sort((a, b) => {
     if (!sortConfig) return 0;
@@ -876,7 +876,7 @@ export default function JadwalPage() {
                 </div>
 
                 {showGuruDropdownEdit && (
-                  <div className="absolute z-[90] w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
+                  <div className="absolute z-[200] w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl mt-1 max-h-56 overflow-y-auto">
                     <button
                       type="button"
                       onMouseDown={() => {
@@ -1003,7 +1003,7 @@ export default function JadwalPage() {
                 </div>
 
                 {showGuruDropdownAdd && (
-                  <div className="absolute z-[90] w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
+                  <div className="absolute z-[200] w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl mt-1 max-h-56 overflow-y-auto">
                     <button
                       type="button"
                       onMouseDown={() => {

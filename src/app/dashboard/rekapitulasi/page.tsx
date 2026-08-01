@@ -1,10 +1,46 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight, ArrowUpDown, ArrowUp, ArrowDown, MapPin } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
+
+// ====== Avatar & Foto Helpers ======
+const AVATAR_COLORS = [
+  '#2563eb', '#16a34a', '#9333ea', '#dc2626', '#ea580c',
+  '#0891b2', '#65a30d', '#7c3aed', '#db2777', '#059669',
+  '#b45309', '#0284c7', '#be123c', '#4f46e5', '#0f766e',
+];
+const getInitials = (nama: string): string => {
+  if (!nama) return '?';
+  const words = nama.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return nama.substring(0, 2).toUpperCase();
+};
+const getAvatarColor = (nama: string): string => {
+  if (!nama) return AVATAR_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < nama.length; i++) {
+    hash = nama.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+const getFotoUrl = (fotoName: string | null) => {
+  if (!fotoName || fotoName === '-') return '';
+  if (fotoName.startsWith('http://') || fotoName.startsWith('https://')) {
+    return fotoName;
+  }
+  if (fotoName.startsWith('foto_') || fotoName.startsWith('upload_') || fotoName.startsWith('profil_')) {
+    return `/uploads/${fotoName}`;
+  }
+  const baseUrl = process.env.NEXT_PUBLIC_API_MITRA_FOTO_URL || 'https://mawar.smartpesantren.id/sekretariat/berkas/';
+  const cleanFotoName = fotoName.startsWith('/') ? fotoName.substring(1) : fotoName;
+  if (cleanFotoName.includes('sekretariat/berkas')) {
+    return `https://mawar.smartpesantren.id/${cleanFotoName}`;
+  }
+  return `${baseUrl}${cleanFotoName}`;
+};
 
 export default function RekapitulasiPage() {
   const [role, setRole] = useState('guru');
@@ -12,13 +48,14 @@ export default function RekapitulasiPage() {
   const [data, setData] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   
-  const [sortField, setSortField] = useState<'nama' | 'identifier' | 'hadir' | 'izin' | 'sakit' | 'alpha'>('nama');
+  const [sortField, setSortField] = useState<'nama' | 'identifier' | 'nama_wali' | 'alamat' | 'hadir' | 'izin' | 'sakit' | 'alpha'>('nama');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
+  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
 
-  // Filter pencarian nama (client-side)
+  // Filter pencarian nama / nis / wali / alamat (client-side)
   const [searchNama, setSearchNama] = useState('');
 
   // Mode rentang tanggal
@@ -74,14 +111,12 @@ export default function RekapitulasiPage() {
         if (tipe === 'kegiatan') {
           const seen = new Map<string, boolean>();
           optData = optData.filter((item: any) => {
-            // Normalisasi: hilangkan strip, spasi, lowercase untuk perbandingan
             const norm = (item.nama as string).replace(/[-\s]/g, '').toLowerCase();
             if (seen.has(norm)) return false;
             seen.set(norm, true);
             return true;
           });
 
-          // Natural sort: A-1, A-2, ..., A-10 (bukan A-1, A-10, A-2)
           optData.sort((a: any, b: any) => {
             const normA = (a.nama as string).replace(/[-\s]/g, '');
             const normB = (b.nama as string).replace(/[-\s]/g, '');
@@ -132,7 +167,6 @@ export default function RekapitulasiPage() {
     try {
       let qs: string;
       if (modeRentang) {
-        // Mode rentang: kirim tanggal_dari & tanggal_sampai (tanpa bulan/tahun)
         const p = new URLSearchParams({
           tipe: filter.tipe,
           target_id: filter.target_id,
@@ -141,7 +175,6 @@ export default function RekapitulasiPage() {
         });
         qs = p.toString();
       } else {
-        // Mode bulan: kirim bulan & tahun seperti biasa
         const p = new URLSearchParams({
           tipe: filter.tipe,
           target_id: filter.target_id,
@@ -165,12 +198,12 @@ export default function RekapitulasiPage() {
     }
   };
 
-  const handleSort = (field: 'nama' | 'identifier' | 'hadir' | 'izin' | 'sakit' | 'alpha') => {
+  const handleSort = (field: 'nama' | 'identifier' | 'nama_wali' | 'alamat' | 'hadir' | 'izin' | 'sakit' | 'alpha') => {
     if (sortField === field) {
       setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
-      setSortOrder(field === 'nama' || field === 'identifier' ? 'asc' : 'desc');
+      setSortOrder(field === 'nama' || field === 'identifier' || field === 'nama_wali' || field === 'alamat' ? 'asc' : 'desc');
     }
   };
 
@@ -185,6 +218,10 @@ export default function RekapitulasiPage() {
       res = (a.nama || '').localeCompare(b.nama || '');
     } else if (sortField === 'identifier') {
       res = (a.identifier || '').localeCompare(b.identifier || '', undefined, { numeric: true, sensitivity: 'base' });
+    } else if (sortField === 'nama_wali') {
+      res = (a.nama_wali || '').localeCompare(b.nama_wali || '');
+    } else if (sortField === 'alamat') {
+      res = (a.alamat || '').localeCompare(b.alamat || '');
     } else {
       const valA = Number(a[sortField] || 0);
       const valB = Number(b[sortField] || 0);
@@ -193,11 +230,13 @@ export default function RekapitulasiPage() {
     return sortOrder === 'asc' ? res : -res;
   });
 
-  // Filter client-side berdasarkan searchNama & identifier
+  // Filter client-side berdasarkan searchNama, identifier, wali, atau alamat
   const filteredData = searchNama.trim()
     ? sortedData.filter(item =>
         (item.nama || '').toLowerCase().includes(searchNama.trim().toLowerCase()) ||
-        (item.identifier || '').toLowerCase().includes(searchNama.trim().toLowerCase())
+        (item.identifier || '').toLowerCase().includes(searchNama.trim().toLowerCase()) ||
+        (item.nama_wali || '').toLowerCase().includes(searchNama.trim().toLowerCase()) ||
+        (item.alamat || '').toLowerCase().includes(searchNama.trim().toLowerCase())
       )
     : sortedData;
 
@@ -213,7 +252,6 @@ export default function RekapitulasiPage() {
   };
 
   const handleExport = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
-    // Jika ada yang di-checklist, gunakan yang di-checklist. Jika tidak ada, gunakan semua data yang tampil.
     const baseData = searchNama.trim() ? filteredData : sortedData;
     const exportData = selectedIds.length > 0 
       ? baseData.filter(d => selectedIds.includes(d.id))
@@ -240,7 +278,7 @@ export default function RekapitulasiPage() {
       : `${months[parseInt(filter.bulan) - 1]}_${filter.tahun}`;
     const filename = `Rekap_${tipeText.replace(/[^a-zA-Z0-9]/g, '')}_${safePeriod}`;
 
-    const tableColumn = ["No", "Nama Lengkap", "Identifier", "Hadir", "Izin", "Sakit", "Alpha", "% Kehadiran"];
+    const tableColumn = ["No", "Nama Lengkap", "Identifier", "Wali / No HP", "Alamat", "Hadir", "Izin", "Sakit", "Alpha", "% Kehadiran"];
     const tableRows: any[] = [];
 
     exportData.forEach((item, idx) => {
@@ -251,6 +289,8 @@ export default function RekapitulasiPage() {
         idx + 1,
         item.nama,
         item.identifier || '-',
+        item.nama_wali || '-',
+        item.alamat || '-',
         item.hadir || 0,
         item.izin || 0,
         item.sakit || 0,
@@ -542,6 +582,7 @@ export default function RekapitulasiPage() {
                     />
                   </th>
                   <th className="px-5 py-4 w-10 text-center">NO</th>
+                  <th className="px-3 py-4 text-center">FOTO</th>
                   <th 
                     onClick={() => handleSort('nama')}
                     className="px-5 py-4 cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
@@ -550,6 +591,34 @@ export default function RekapitulasiPage() {
                     <div className="flex items-center gap-1.5">
                       <span>NAMA LENGKAP</span>
                       {sortField === 'nama' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={14} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={14} className="text-purple-600 dark:text-purple-400" />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('nama_wali')}
+                    className="px-5 py-4 cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan wali / no hp"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>{filter.tipe === 'guru' ? 'NO. HP' : 'WALI'}</span>
+                      {sortField === 'nama_wali' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={14} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={14} className="text-purple-600 dark:text-purple-400" />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('alamat')}
+                    className="px-5 py-4 cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan alamat"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>ALAMAT</span>
+                      {sortField === 'alamat' ? (
                         sortOrder === 'asc' ? <ArrowUp size={14} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={14} className="text-purple-600 dark:text-purple-400" />
                       ) : (
                         <ArrowUpDown size={13} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
@@ -616,13 +685,14 @@ export default function RekapitulasiPage() {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {filteredData.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-10 text-gray-500 font-medium">
+                  <tr><td colSpan={10} className="text-center py-10 text-gray-500 font-medium">
                     {data.length === 0 ? 'Klik Tampilkan untuk memuat data.' : `Tidak ada hasil untuk "${searchNama}"`}
                   </td></tr>
                 ) : (
                   filteredData.map((item, idx) => {
                     const totalPertemuan = Number(item.hadir) + Number(item.izin) + Number(item.sakit) + Number(item.alpha);
                     const presentase = totalPertemuan === 0 ? 0 : Math.round((Number(item.hadir) / totalPertemuan) * 100);
+                    const fotoUrl = getFotoUrl(item.foto);
                     return (
                       <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                         <td className="px-5 py-4 text-center">
@@ -637,6 +707,25 @@ export default function RekapitulasiPage() {
                           />
                         </td>
                         <td className="px-5 py-4 text-center text-gray-400 font-medium">{idx + 1}</td>
+                        <td className="px-3 py-4 text-center">
+                          <div
+                            className={`w-10 h-10 rounded-full mx-auto overflow-hidden relative border border-gray-200 dark:border-gray-700 shadow-sm ${
+                              fotoUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''
+                            }`}
+                            onClick={() => (fotoUrl ? setZoomPhoto(fotoUrl) : null)}
+                          >
+                            {fotoUrl ? (
+                              <img src={fotoUrl} alt={item.nama} className="w-full h-full object-cover" />
+                            ) : (
+                              <div
+                                className="w-full h-full flex items-center justify-center text-white text-xs font-extrabold"
+                                style={{ backgroundColor: getAvatarColor(item.nama) }}
+                              >
+                                {getInitials(item.nama)}
+                              </div>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-5 py-4">
                           <div className="font-bold text-gray-900 dark:text-white">{item.nama}</div>
                           <div className="text-[11px] text-gray-400 font-mono mt-0.5">{filter.tipe === 'guru' ? 'NIP' : 'NIS'}: {item.identifier || '-'}</div>
@@ -646,6 +735,18 @@ export default function RekapitulasiPage() {
                               {presentase < 100 && <div className="bg-red-400 h-full" style={{ width: `${100 - presentase}%` }}></div>}
                             </div>
                           )}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-1.5 max-w-[180px] truncate" title={item.nama_wali || '-'}>
+                            <User size={13} className="text-purple-500 shrink-0" />
+                            <span className="truncate">{item.nama_wali || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1.5 max-w-[200px] truncate" title={item.alamat || '-'}>
+                            <MapPin size={13} className="text-blue-500 shrink-0" />
+                            <span className="truncate">{item.alamat || '-'}</span>
+                          </div>
                         </td>
                         <td className="px-5 py-4 text-center"><span className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-3 py-1 rounded-lg font-bold">{item.hadir || 0}</span></td>
                         <td className="px-5 py-4 text-center"><span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-3 py-1 rounded-lg font-bold">{item.izin || 0}</span></td>
@@ -721,6 +822,28 @@ export default function RekapitulasiPage() {
                 </a>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Zoom Photo Modal */}
+      {zoomPhoto && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]"
+          onClick={() => setZoomPhoto(null)}
+        >
+          <div className="relative max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setZoomPhoto(null)}
+              className="absolute -top-3 -right-3 z-10 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full p-1.5 shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <X size={18} />
+            </button>
+            <img
+              src={zoomPhoto}
+              alt="Foto Santri / Guru"
+              className="w-full rounded-2xl shadow-2xl object-cover"
+            />
           </div>
         </div>
       )}
