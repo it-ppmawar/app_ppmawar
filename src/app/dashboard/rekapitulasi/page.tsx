@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
+import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
@@ -12,7 +12,8 @@ export default function RekapitulasiPage() {
   const [data, setData] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   
-  const [sortBy, setSortBy] = useState<'nama' | 'identifier'>('nama');
+  const [sortField, setSortField] = useState<'nama' | 'identifier' | 'hadir' | 'izin' | 'sakit' | 'alpha'>('nama');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
@@ -164,23 +165,39 @@ export default function RekapitulasiPage() {
     }
   };
 
+  const handleSort = (field: 'nama' | 'identifier' | 'hadir' | 'izin' | 'sakit' | 'alpha') => {
+    if (sortField === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder(field === 'nama' || field === 'identifier' ? 'asc' : 'desc');
+    }
+  };
+
   const months = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ];
 
   const sortedData = [...data].sort((a, b) => {
-    if (sortBy === 'nama') return (a.nama || '').localeCompare(b.nama || '');
-    if (sortBy === 'identifier') {
-      return (a.identifier || '').localeCompare(b.identifier || '', undefined, { numeric: true, sensitivity: 'base' });
+    let res = 0;
+    if (sortField === 'nama') {
+      res = (a.nama || '').localeCompare(b.nama || '');
+    } else if (sortField === 'identifier') {
+      res = (a.identifier || '').localeCompare(b.identifier || '', undefined, { numeric: true, sensitivity: 'base' });
+    } else {
+      const valA = Number(a[sortField] || 0);
+      const valB = Number(b[sortField] || 0);
+      res = valA - valB;
     }
-    return 0;
+    return sortOrder === 'asc' ? res : -res;
   });
 
-  // Filter client-side berdasarkan searchNama
+  // Filter client-side berdasarkan searchNama & identifier
   const filteredData = searchNama.trim()
     ? sortedData.filter(item =>
-        (item.nama || '').toLowerCase().includes(searchNama.trim().toLowerCase())
+        (item.nama || '').toLowerCase().includes(searchNama.trim().toLowerCase()) ||
+        (item.identifier || '').toLowerCase().includes(searchNama.trim().toLowerCase())
       )
     : sortedData;
 
@@ -386,13 +403,29 @@ export default function RekapitulasiPage() {
             </select>
           </div>
 
-          {/* Urutkan */}
+          {/* Pencarian Manual */}
           <div className="flex-1">
-            <label className="block text-xs font-bold text-gray-500 mb-1">Urutkan Berdasarkan</label>
-            <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
-              <option value="nama">Nama (A-Z)</option>
-              <option value="identifier">{filter.tipe === 'guru' ? 'NIP' : 'NIS'} (0-9)</option>
-            </select>
+            <label className="block text-xs font-bold text-gray-500 mb-1">
+              Cari Nama / {filter.tipe === 'guru' ? 'NIP' : 'NIS'}
+            </label>
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Ketik untuk mencari..."
+                value={searchNama}
+                onChange={e => setSearchNama(e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all placeholder:font-normal placeholder:text-gray-400"
+              />
+              {searchNama && (
+                <button
+                  onClick={() => setSearchNama('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Filter Waktu: toggle mode bulan vs rentang */}
@@ -479,26 +512,15 @@ export default function RekapitulasiPage() {
 
       {!loading && !errorMsg && (
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
-          {/* Search Nama — hanya tampil jika ada data */}
+          {/* Status Bar Jumlah & Hint Sort Header */}
           {data.length > 0 && (
-            <div className="px-5 pt-4 pb-2 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3">
-              <div className="relative flex-1 max-w-xs">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Cari nama santri / guru..."
-                  value={searchNama}
-                  onChange={e => setSearchNama(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all"
-                />
-                {searchNama && (
-                  <button onClick={() => setSearchNama('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-              <span className="text-xs text-gray-400 font-medium">
-                {filteredData.length} dari {data.length} data
+            <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 flex flex-wrap justify-between items-center text-xs text-gray-500 dark:text-gray-400 gap-2 bg-gray-50/50 dark:bg-gray-900/30">
+              <span className="font-medium">
+                Menampilkan <strong className="text-gray-800 dark:text-gray-200">{filteredData.length}</strong> dari <strong className="text-gray-800 dark:text-gray-200">{data.length}</strong> data
+                {searchNama && <span> untuk kata kunci &quot;<strong className="text-purple-600 dark:text-purple-400">{searchNama}</strong>&quot;</span>}
+              </span>
+              <span className="text-[11px] text-gray-400 font-medium">
+                💡 Klik judul kolom di bawah untuk mengurutkan data
               </span>
             </div>
           )}
@@ -520,11 +542,76 @@ export default function RekapitulasiPage() {
                     />
                   </th>
                   <th className="px-5 py-4 w-10 text-center">NO</th>
-                  <th className="px-5 py-4">NAMA LENGKAP</th>
-                  <th className="px-5 py-4 text-center">HADIR</th>
-                  <th className="px-5 py-4 text-center">IZIN</th>
-                  <th className="px-5 py-4 text-center">SAKIT</th>
-                  <th className="px-5 py-4 text-center">ALPHA</th>
+                  <th 
+                    onClick={() => handleSort('nama')}
+                    className="px-5 py-4 cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan nama"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>NAMA LENGKAP</span>
+                      {sortField === 'nama' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={14} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={14} className="text-purple-600 dark:text-purple-400" />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('hadir')}
+                    className="px-5 py-4 text-center cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan jumlah hadir"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>HADIR</span>
+                      {sortField === 'hadir' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={14} className="text-green-600 dark:text-green-400" /> : <ArrowDown size={14} className="text-green-600 dark:text-green-400" />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('izin')}
+                    className="px-5 py-4 text-center cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan jumlah izin"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>IZIN</span>
+                      {sortField === 'izin' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={14} className="text-blue-600 dark:text-blue-400" /> : <ArrowDown size={14} className="text-blue-600 dark:text-blue-400" />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('sakit')}
+                    className="px-5 py-4 text-center cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan jumlah sakit"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>SAKIT</span>
+                      {sortField === 'sakit' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={14} className="text-orange-600 dark:text-orange-400" /> : <ArrowDown size={14} className="text-orange-600 dark:text-orange-400" />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('alpha')}
+                    className="px-5 py-4 text-center cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan jumlah alpha"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>ALPHA</span>
+                      {sortField === 'alpha' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={14} className="text-red-600 dark:text-red-400" /> : <ArrowDown size={14} className="text-red-600 dark:text-red-400" />
+                      ) : (
+                        <ArrowUpDown size={13} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
