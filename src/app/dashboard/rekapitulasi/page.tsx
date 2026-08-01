@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X } from 'lucide-react';
+import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
@@ -17,14 +17,26 @@ export default function RekapitulasiPage() {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
 
+  // Filter pencarian nama (client-side)
+  const [searchNama, setSearchNama] = useState('');
+
+  // Mode rentang tanggal
+  const [modeRentang, setModeRentang] = useState(false);
+
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
+
+  // Default tanggal_dari = awal bulan ini, tanggal_sampai = hari ini
+  const todayStr = new Date().toISOString().split('T')[0];
+  const firstDayStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
 
   const [filter, setFilter] = useState({
     tipe: 'madin', // madin, quran, kegiatan, guru
     target_id: '',
     bulan: currentMonth.toString(),
-    tahun: currentYear.toString()
+    tahun: currentYear.toString(),
+    tanggal_dari: firstDayStr,
+    tanggal_sampai: todayStr,
   });
 
   const [options, setOptions] = useState<any[]>([]);
@@ -115,8 +127,28 @@ export default function RekapitulasiPage() {
 
     setLoading(true);
     setErrorMsg('');
+    setSearchNama(''); // Reset pencarian saat fetch baru
     try {
-      const qs = new URLSearchParams(filter as any).toString();
+      let qs: string;
+      if (modeRentang) {
+        // Mode rentang: kirim tanggal_dari & tanggal_sampai (tanpa bulan/tahun)
+        const p = new URLSearchParams({
+          tipe: filter.tipe,
+          target_id: filter.target_id,
+          tanggal_dari: filter.tanggal_dari,
+          tanggal_sampai: filter.tanggal_sampai,
+        });
+        qs = p.toString();
+      } else {
+        // Mode bulan: kirim bulan & tahun seperti biasa
+        const p = new URLSearchParams({
+          tipe: filter.tipe,
+          target_id: filter.target_id,
+          bulan: filter.bulan,
+          tahun: filter.tahun,
+        });
+        qs = p.toString();
+      }
       const res = await fetch(`/api/rekapitulasi?${qs}`);
       const json = await res.json();
       if (json.success) {
@@ -145,11 +177,30 @@ export default function RekapitulasiPage() {
     return 0;
   });
 
+  // Filter client-side berdasarkan searchNama
+  const filteredData = searchNama.trim()
+    ? sortedData.filter(item =>
+        (item.nama || '').toLowerCase().includes(searchNama.trim().toLowerCase())
+      )
+    : sortedData;
+
+  const getPeriodText = () => {
+    if (modeRentang) {
+      const fmt = (d: string) => {
+        const dt = new Date(d);
+        return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      };
+      return `${fmt(filter.tanggal_dari)} s/d ${fmt(filter.tanggal_sampai)}`;
+    }
+    return `${months[parseInt(filter.bulan) - 1]} ${filter.tahun}`;
+  };
+
   const handleExport = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
     // Jika ada yang di-checklist, gunakan yang di-checklist. Jika tidak ada, gunakan semua data yang tampil.
+    const baseData = searchNama.trim() ? filteredData : sortedData;
     const exportData = selectedIds.length > 0 
-      ? sortedData.filter(d => selectedIds.includes(d.id))
-      : sortedData;
+      ? baseData.filter(d => selectedIds.includes(d.id))
+      : baseData;
 
     if (exportData.length === 0) {
       alert('Tidak ada data untuk di-export.');
@@ -166,8 +217,11 @@ export default function RekapitulasiPage() {
     
     const title = 'REKAPITULASI KEHADIRAN';
     const subtitle = `Tipe: ${tipeText}\n${filter.tipe === 'guru' ? 'Guru' : 'Kelas/Kamar'}: ${targetName}`;
-    const period = `${months[parseInt(filter.bulan) - 1]} ${filter.tahun}`;
-    const filename = `Rekap_${tipeText.replace(/[^a-zA-Z0-9]/g, '')}_${months[parseInt(filter.bulan) - 1]}_${filter.tahun}`;
+    const period = getPeriodText();
+    const safePeriod = modeRentang
+      ? `${filter.tanggal_dari}_sd_${filter.tanggal_sampai}`
+      : `${months[parseInt(filter.bulan) - 1]}_${filter.tahun}`;
+    const filename = `Rekap_${tipeText.replace(/[^a-zA-Z0-9]/g, '')}_${safePeriod}`;
 
     const tableColumn = ["No", "Nama Lengkap", "Identifier", "Hadir", "Izin", "Sakit", "Alpha", "% Kehadiran"];
     const tableRows: any[] = [];
@@ -290,8 +344,10 @@ export default function RekapitulasiPage() {
         </div>
       </div>
 
+      {/* Filter Panel */}
       <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors duration-300">
         <div className="flex flex-col md:flex-row gap-4">
+          {/* Pilih Tipe */}
           <div className="flex-1">
             <label className="block text-xs font-bold text-gray-500 mb-1">Pilih Tipe</label>
             <select value={filter.tipe} onChange={handleTipeChange} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
@@ -304,6 +360,7 @@ export default function RekapitulasiPage() {
             </select>
           </div>
 
+          {/* Pilih Kelas / Guru */}
           <div className="flex-1">
             <label className="block text-xs font-bold text-gray-500 mb-1">
               {filter.tipe === 'guru' ? 'Pilih Guru' : 'Pilih Kelas / Kamar'}
@@ -329,6 +386,7 @@ export default function RekapitulasiPage() {
             </select>
           </div>
 
+          {/* Urutkan */}
           <div className="flex-1">
             <label className="block text-xs font-bold text-gray-500 mb-1">Urutkan Berdasarkan</label>
             <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
@@ -337,21 +395,71 @@ export default function RekapitulasiPage() {
             </select>
           </div>
 
-          <div className="flex-1 grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1">Bulan</label>
-              <select value={filter.bulan} onChange={e => setFilter({ ...filter, bulan: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
-                {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-              </select>
+          {/* Filter Waktu: toggle mode bulan vs rentang */}
+          <div className="flex-1">
+            {/* Toggle */}
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-gray-500">
+                {modeRentang ? '📅 Rentang Tanggal' : '🗓️ Bulan / Tahun'}
+              </label>
+              <button
+                onClick={() => setModeRentang(v => !v)}
+                className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full transition-all ${
+                  modeRentang
+                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                }`}
+                title="Ganti mode waktu"
+              >
+                {modeRentang ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                {modeRentang ? 'Rentang' : 'Bulan'}
+              </button>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1">Tahun</label>
-              <select value={filter.tahun} onChange={e => setFilter({ ...filter, tahun: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
-                {[currentYear, currentYear - 1, currentYear - 2].map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
+
+            {modeRentang ? (
+              /* Mode rentang tanggal */
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">Dari</label>
+                  <input
+                    type="date"
+                    value={filter.tanggal_dari}
+                    max={filter.tanggal_sampai}
+                    onChange={e => setFilter({ ...filter, tanggal_dari: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">Sampai</label>
+                  <input
+                    type="date"
+                    value={filter.tanggal_sampai}
+                    min={filter.tanggal_dari}
+                    onChange={e => setFilter({ ...filter, tanggal_sampai: e.target.value })}
+                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all"
+                  />
+                </div>
+              </div>
+            ) : (
+              /* Mode bulan/tahun */
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">Bulan</label>
+                  <select value={filter.bulan} onChange={e => setFilter({ ...filter, bulan: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
+                    {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">Tahun</label>
+                  <select value={filter.tahun} onChange={e => setFilter({ ...filter, tahun: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
+                    {[currentYear, currentYear - 1, currentYear - 2].map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
 
+          {/* Tombol Tampilkan */}
           <div className="md:w-32 flex items-end">
             <button
               onClick={() => fetchRekap()}
@@ -371,6 +479,30 @@ export default function RekapitulasiPage() {
 
       {!loading && !errorMsg && (
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
+          {/* Search Nama — hanya tampil jika ada data */}
+          {data.length > 0 && (
+            <div className="px-5 pt-4 pb-2 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3">
+              <div className="relative flex-1 max-w-xs">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari nama santri / guru..."
+                  value={searchNama}
+                  onChange={e => setSearchNama(e.target.value)}
+                  className="w-full pl-9 pr-8 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all"
+                />
+                {searchNama && (
+                  <button onClick={() => setSearchNama('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <span className="text-xs text-gray-400 font-medium">
+                {filteredData.length} dari {data.length} data
+              </span>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
@@ -379,9 +511,9 @@ export default function RekapitulasiPage() {
                     <input 
                       type="checkbox" 
                       className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
-                      checked={data.length > 0 && selectedIds.length === data.length}
+                      checked={filteredData.length > 0 && selectedIds.length === filteredData.length}
                       onChange={(e) => {
-                        if (e.target.checked) setSelectedIds(data.map(d => d.id));
+                        if (e.target.checked) setSelectedIds(filteredData.map(d => d.id));
                         else setSelectedIds([]);
                       }}
                       title="Pilih Semua"
@@ -396,10 +528,12 @@ export default function RekapitulasiPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {data.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-10 text-gray-500 font-medium">Klik Tampilkan untuk memuat data.</td></tr>
+                {filteredData.length === 0 ? (
+                  <tr><td colSpan={7} className="text-center py-10 text-gray-500 font-medium">
+                    {data.length === 0 ? 'Klik Tampilkan untuk memuat data.' : `Tidak ada hasil untuk "${searchNama}"`}
+                  </td></tr>
                 ) : (
-                  sortedData.map((item, idx) => {
+                  filteredData.map((item, idx) => {
                     const totalPertemuan = Number(item.hadir) + Number(item.izin) + Number(item.sakit) + Number(item.alpha);
                     const presentase = totalPertemuan === 0 ? 0 : Math.round((Number(item.hadir) / totalPertemuan) * 100);
                     return (

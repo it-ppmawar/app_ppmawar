@@ -18,21 +18,42 @@ export async function GET(request: Request) {
     const target_id = searchParams.get('target_id'); // kelas_id, kamar_id
     const bulan = searchParams.get('bulan'); // 1-12
     const tahun = searchParams.get('tahun');
+    const tanggal_dari = searchParams.get('tanggal_dari'); // YYYY-MM-DD
+    const tanggal_sampai = searchParams.get('tanggal_sampai'); // YYYY-MM-DD
+
+    // Mode: rentang tanggal atau bulan/tahun
+    const isRentang = !!(tanggal_dari && tanggal_sampai);
 
     // Wali Murid & Wali Alumni Logic (akses rekap anak masing-masing)
     if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
       if (!payload.muridId) return NextResponse.json({ error: 'Murid ID tidak valid' }, { status: 400 });
       
       const muridId = payload.muridId;
-      // Ambil rekap untuk murid ini (Madin, Quran, Kegiatan) di bulan dan tahun yang dipilih
+
+      let dateCondMadin = 'MONTH(tanggal) = ? AND YEAR(tanggal) = ?';
+      let dateCondQuran = 'MONTH(tanggal) = ? AND YEAR(tanggal) = ?';
+      let dateCondKegiatan = 'MONTH(tanggal) = ? AND YEAR(tanggal) = ?';
+      let dateParamsMadin = [muridId, bulan, tahun];
+      let dateParamsQuran = [muridId, bulan, tahun];
+      let dateParamsKegiatan = [muridId, bulan, tahun];
+
+      if (isRentang) {
+        dateCondMadin = 'tanggal BETWEEN ? AND ?';
+        dateCondQuran = 'tanggal BETWEEN ? AND ?';
+        dateCondKegiatan = 'tanggal BETWEEN ? AND ?';
+        dateParamsMadin = [muridId, tanggal_dari, tanggal_sampai];
+        dateParamsQuran = [muridId, tanggal_dari, tanggal_sampai];
+        dateParamsKegiatan = [muridId, tanggal_dari, tanggal_sampai];
+      }
+
       const [madinRows] = await pool.execute<RowDataPacket[]>(
         `SELECT 'Madin' as tipe, 
           SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
           SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha
-         FROM absensi WHERE murid_id = ? AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?`,
-        [muridId, bulan, tahun]
+         FROM absensi WHERE murid_id = ? AND ${dateCondMadin}`,
+        dateParamsMadin
       );
       const [quranRows] = await pool.execute<RowDataPacket[]>(
         `SELECT 'Quran' as tipe, 
@@ -40,8 +61,8 @@ export async function GET(request: Request) {
           SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha
-         FROM absensi_quran WHERE murid_id = ? AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?`,
-        [muridId, bulan, tahun]
+         FROM absensi_quran WHERE murid_id = ? AND ${dateCondQuran}`,
+        dateParamsQuran
       );
       const [kegiatanRows] = await pool.execute<RowDataPacket[]>(
         `SELECT 'Kegiatan' as tipe, 
@@ -49,8 +70,8 @@ export async function GET(request: Request) {
           SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha
-         FROM absensi_kegiatan WHERE murid_id = ? AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?`,
-        [muridId, bulan, tahun]
+         FROM absensi_kegiatan WHERE murid_id = ? AND ${dateCondKegiatan}`,
+        dateParamsKegiatan
       );
 
       return NextResponse.json({
@@ -60,29 +81,51 @@ export async function GET(request: Request) {
     }
 
     // Admin/Staff/Guru Logic
-    if (!tipe || !bulan || !tahun) {
+    if (!tipe || (!isRentang && (!bulan || !tahun))) {
       return NextResponse.json({ error: 'Parameter tidak lengkap' }, { status: 400 });
     }
+
+    // Helper: kondisi tanggal untuk JOIN
+    const dateCond = isRentang
+      ? 'BETWEEN ? AND ?'
+      : '= ? AND YEAR({col}) = ?'; // diganti per query
+
+    // Helper params builder
+    const makeDateParams = (col: string): { cond: string; params: any[] } => {
+      if (isRentang) {
+        return {
+          cond: `${col} BETWEEN ? AND ?`,
+          params: [tanggal_dari, tanggal_sampai],
+        };
+      }
+      return {
+        cond: `MONTH(${col}) = ? AND YEAR(${col}) = ?`,
+        params: [bulan, tahun],
+      };
+    };
 
     let query = '';
     let params: any[] = [];
 
     if (tipe === 'madin') {
       if (!target_id) return NextResponse.json({ error: 'Pilih Kelas Madin' }, { status: 400 });
+      
+      const { cond: dateCond, params: dateParams } = makeDateParams('a.tanggal');
       let whereCond = 'WHERE m.kelas_madin_id = ?';
-      params = [bulan, tahun, target_id];
+      let whereParams: any[] = [target_id];
 
       if (target_id === 'all') {
         whereCond = 'WHERE m.kelas_madin_id IS NOT NULL';
-        params = [bulan, tahun];
+        whereParams = [];
       } else if (target_id === 'putra') {
         whereCond = `WHERE m.kelas_madin_id IS NOT NULL AND (km.nama_kelas LIKE '%PUTRA%' OR km.nama_kelas LIKE '%PA%' OR m.jenis_kelamin = 'L')`;
-        params = [bulan, tahun];
+        whereParams = [];
       } else if (target_id === 'putri') {
         whereCond = `WHERE m.kelas_madin_id IS NOT NULL AND (km.nama_kelas LIKE '%PUTRI%' OR km.nama_kelas LIKE '%PI%' OR m.jenis_kelamin = 'P')`;
-        params = [bulan, tahun];
+        whereParams = [];
       }
 
+      params = [...dateParams, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama,
           SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
@@ -91,27 +134,30 @@ export async function GET(request: Request) {
           SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
         FROM murid m
         LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-        LEFT JOIN absensi a ON m.murid_id = a.murid_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
+        LEFT JOIN absensi a ON m.murid_id = a.murid_id AND ${dateCond}
         ${whereCond}
         GROUP BY m.murid_id
         ORDER BY m.nama ASC
       `;
     } else if (tipe === 'quran') {
       if (!target_id) return NextResponse.json({ error: "Pilih Kelas Qur'an" }, { status: 400 });
+      
+      const { cond: dateCond, params: dateParams } = makeDateParams('a.tanggal');
       let whereCond = 'WHERE m.kelas_quran_id = ?';
-      params = [bulan, tahun, target_id];
+      let whereParams: any[] = [target_id];
 
       if (target_id === 'all') {
         whereCond = 'WHERE m.kelas_quran_id IS NOT NULL';
-        params = [bulan, tahun];
+        whereParams = [];
       } else if (target_id === 'putra') {
         whereCond = `WHERE m.kelas_quran_id IS NOT NULL AND (kq.nama_kelas LIKE '%PUTRA%' OR kq.nama_kelas LIKE '%PA%' OR m.jenis_kelamin = 'L')`;
-        params = [bulan, tahun];
+        whereParams = [];
       } else if (target_id === 'putri') {
         whereCond = `WHERE m.kelas_quran_id IS NOT NULL AND (kq.nama_kelas LIKE '%PUTRI%' OR kq.nama_kelas LIKE '%PI%' OR m.jenis_kelamin = 'P')`;
-        params = [bulan, tahun];
+        whereParams = [];
       }
 
+      params = [...dateParams, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama,
           SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
@@ -120,7 +166,7 @@ export async function GET(request: Request) {
           SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
         FROM murid m
         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-        LEFT JOIN absensi_quran a ON m.murid_id = a.murid_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
+        LEFT JOIN absensi_quran a ON m.murid_id = a.murid_id AND ${dateCond}
         ${whereCond}
         GROUP BY m.murid_id
         ORDER BY m.nama ASC
@@ -147,19 +193,23 @@ export async function GET(request: Request) {
         } catch (_) {}
       }
 
+      const { cond: dateCond1, params: dateParams1 } = makeDateParams('att_k.tanggal');
+      const { cond: dateCond2, params: dateParams2 } = makeDateParams('att_s.tanggal');
+      const { cond: dateCond3, params: dateParams3 } = makeDateParams('a.tanggal');
+
       let whereCond = 'WHERE m.kamar_id = ?';
-      params = [bulan, tahun, bulan, tahun, bulan, tahun, target_id];
+      let whereParams: any[] = [target_id];
 
       if (target_id === 'all') {
         whereCond = 'WHERE m.kamar_id IS NOT NULL';
-        params = [bulan, tahun, bulan, tahun, bulan, tahun];
+        whereParams = [];
       } else if (target_id.startsWith('asrama_')) {
         const asr = target_id.replace('asrama_', '');
         whereCond = 'WHERE km.nama_asrama = ?';
-        params = [bulan, tahun, bulan, tahun, bulan, tahun, asr];
+        whereParams = [asr];
       }
 
-      // Query rekapitulasi kegiatan: Hitung Hadir dari gabungan scan kamar (absensi_kamar) dan absensi_kegiatan
+      params = [...dateParams1, ...dateParams2, ...dateParams3, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama,
           COUNT(DISTINCT att.tanggal) as hadir,
@@ -169,11 +219,11 @@ export async function GET(request: Request) {
         FROM murid m
         LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
         LEFT JOIN (
-          SELECT murid_id, tanggal FROM absensi_kegiatan WHERE status = 'Hadir' AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+          SELECT murid_id, tanggal FROM absensi_kegiatan att_k WHERE status = 'Hadir' AND ${dateCond1}
           UNION
-          SELECT murid_id, tanggal FROM absensi_kamar WHERE MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+          SELECT murid_id, tanggal FROM absensi_kamar att_s WHERE ${dateCond2}
         ) att ON m.murid_id = att.murid_id
-        LEFT JOIN absensi_kegiatan a ON m.murid_id = a.murid_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
+        LEFT JOIN absensi_kegiatan a ON m.murid_id = a.murid_id AND ${dateCond3}
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama
         ORDER BY m.nama ASC
@@ -182,6 +232,9 @@ export async function GET(request: Request) {
       if (payload.role !== 'admin' && payload.role !== 'staff') {
         return NextResponse.json({ error: 'Akses ditolak. Rekapitulasi/monitoring kehadiran guru hanya khusus Admin dan Staf.' }, { status: 403 });
       }
+
+      const { cond: dateCond, params: dateParams } = makeDateParams('a.tanggal');
+
       if (target_id && target_id !== 'all') {
         query = `
           SELECT g.guru_id as id, g.nip as identifier, g.nama,
@@ -190,12 +243,12 @@ export async function GET(request: Request) {
             SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
             SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
           FROM guru g
-          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
+          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${dateCond}
           WHERE g.guru_id = ?
           GROUP BY g.guru_id
           ORDER BY g.nama ASC
         `;
-        params = [bulan, tahun, target_id];
+        params = [...dateParams, target_id];
       } else {
         query = `
           SELECT g.guru_id as id, g.nip as identifier, g.nama,
@@ -204,11 +257,11 @@ export async function GET(request: Request) {
             SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
             SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
           FROM guru g
-          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
+          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${dateCond}
           GROUP BY g.guru_id
           ORDER BY g.nama ASC
         `;
-        params = [bulan, tahun];
+        params = [...dateParams];
       }
     } else {
       return NextResponse.json({ error: 'Tipe rekap tidak valid' }, { status: 400 });
