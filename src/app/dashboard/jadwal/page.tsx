@@ -18,6 +18,12 @@ export default function JadwalPage() {
   const [filterGuruSearch, setFilterGuruSearch] = useState('');
   const [showFilterGuruDropdown, setShowFilterGuruDropdown] = useState(false);
   const filterGuruDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [filterTempat, setFilterTempat] = useState('');
+  const [filterTempatSearch, setFilterTempatSearch] = useState('');
+  const [showFilterTempatDropdown, setShowFilterTempatDropdown] = useState(false);
+  const filterTempatDropdownRef = useRef<HTMLDivElement>(null);
+
   const [bulkHari, setBulkHari] = useState('');
   const [bulkJamMulai, setBulkJamMulai] = useState('');
   const [bulkJamSelesai, setBulkJamSelesai] = useState('');
@@ -92,6 +98,9 @@ export default function JadwalPage() {
       }
       if (filterGuruDropdownRef.current && !filterGuruDropdownRef.current.contains(e.target as Node)) {
         setShowFilterGuruDropdown(false);
+      }
+      if (filterTempatDropdownRef.current && !filterTempatDropdownRef.current.contains(e.target as Node)) {
+        setShowFilterTempatDropdown(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -191,7 +200,9 @@ export default function JadwalPage() {
   }, [loading, jadwal, role]);
 
   const filteredJadwal = jadwal.filter(j => {
-    return j.tipe === activeTab && (filterGuru === '' || j.guru === filterGuru);
+    return j.tipe === activeTab &&
+           (filterGuru === '' || j.guru === filterGuru) &&
+           (filterTempat === '' || j.tempat === filterTempat);
   });
 
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
@@ -229,14 +240,12 @@ export default function JadwalPage() {
     return sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
   };
 
-  // Export State
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
 
   const handleExport = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
     let exportData = filteredJadwal;
     
-    // Sort default by hari and jam_mulai if no sort config
     if (!sortConfig) {
        exportData = [...filteredJadwal].sort((a, b) => {
          const hariDiff = hariOrder.indexOf(a.hari) - hariOrder.indexOf(b.hari);
@@ -257,7 +266,7 @@ export default function JadwalPage() {
     }
 
     const title = `JADWAL ${activeTab === 'quran' ? "AL-QUR'AN" : activeTab === 'madin' ? 'MADRASAH DINIYAH' : 'KEGIATAN ASRAMA'}`;
-    const subtitle = `Filter Guru: ${filterGuru || 'Semua'} | ${selectedJadwal.length > 0 ? `Export Terpilih (${selectedJadwal.length})` : 'Semua Data'}`;
+    const subtitle = `Filter Guru: ${filterGuru || 'Semua'} | Filter Kelas/Kamar: ${filterTempat || 'Semua'} | ${selectedJadwal.length > 0 ? `Export Terpilih (${selectedJadwal.length})` : 'Semua Data'}`;
     const filename = `Jadwal_${activeTab}`;
 
     const tableColumn = ["NO", "HARI", "JAM", "KEGIATAN", "TEMPAT", "GURU"];
@@ -288,6 +297,7 @@ export default function JadwalPage() {
   };
 
   const uniqueGurus = Array.from(new Set(jadwal.map(j => j.guru).filter(Boolean))).sort();
+  const uniqueTempat = Array.from(new Set(jadwal.filter(j => j.tipe === activeTab).map(j => j.tempat).filter(Boolean))).sort((a: any, b: any) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
   const groupedJadwal = filteredJadwal.reduce((acc: any, curr: any) => {
     if (!acc[curr.hari]) acc[curr.hari] = [];
@@ -313,47 +323,18 @@ export default function JadwalPage() {
     }
   };
 
-  const handleSaveBulk = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedJadwal.length === 0) return;
-    setSavingBulk(true);
-    try {
-      const payload: any = { ids: selectedJadwal, tipe: activeTab };
-      if (bulkHari) payload.hari = bulkHari;
-      if (bulkJamMulai) payload.jam_mulai = bulkJamMulai;
-      if (bulkJamSelesai) payload.jam_selesai = bulkJamSelesai;
-
-      const res = await fetch('/api/jadwal', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message);
-        setIsBulkModalOpen(false);
-        setSelectedJadwal([]);
-        fetchData();
-      } else {
-        alert(data.error);
-      }
-    } catch (err) {
-      alert('Gagal update massal');
-    } finally {
-      setSavingBulk(false);
-    }
-  };
-
   const handleEditClick = (item: any) => {
-    fetchData();
-    fetchOptions();
     setEditingJadwal({
       ...item,
-      tempat_id: item.tempat_id !== undefined && item.tempat_id !== null ? item.tempat_id.toString() : '',
-      guru_id: item.guru_id ? item.guru_id.toString() : ''
+      jam_mulai: item.jam_mulai?.substring(0, 5) || '',
+      jam_selesai: item.jam_selesai?.substring(0, 5) || '',
+      tempat_id: item.tempat_id || '',
+      guru_id: item.guru_id || ''
     });
+    fetchOptions();
     setIsEditModalOpen(true);
   };
+  const handleOpenEditModal = handleEditClick;
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -363,12 +344,13 @@ export default function JadwalPage() {
         ids: [editingJadwal.id],
         tipe: activeTab,
         hari: editingJadwal.hari,
-        jam_mulai: editingJadwal.jam_mulai,
-        jam_selesai: editingJadwal.jam_selesai,
+        jam_mulai: editingJadwal.jam_mulai + (editingJadwal.jam_mulai.length === 5 ? ':00' : ''),
+        jam_selesai: editingJadwal.jam_selesai + (editingJadwal.jam_selesai.length === 5 ? ':00' : ''),
         kegiatan: editingJadwal.kegiatan,
-        tempat_id: editingJadwal.tempat_id ? parseInt(editingJadwal.tempat_id) : null,
-        guru_id: editingJadwal.guru_id ? parseInt(editingJadwal.guru_id) : null
+        tempat_id: editingJadwal.tempat_id,
+        guru_id: editingJadwal.guru_id || null
       };
+
       const res = await fetch('/api/jadwal', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -379,24 +361,56 @@ export default function JadwalPage() {
         setIsEditModalOpen(false);
         fetchData();
       } else {
-        alert(data.error);
+        alert(data.error || 'Gagal menyimpan perubahan');
       }
-    } catch (err) {
-      alert('Gagal edit jadwal');
+    } catch (e) {
+      alert('Gagal menyimpan perubahan');
     } finally {
       setSavingEdit(false);
     }
   };
 
+  const handleSaveBulk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedJadwal.length === 0) return;
+    setSavingBulk(true);
+    try {
+      const payload: any = {
+        ids: selectedJadwal,
+        tipe: activeTab
+      };
+      if (bulkHari) payload.hari = bulkHari;
+      if (bulkJamMulai) payload.jam_mulai = bulkJamMulai + (bulkJamMulai.length === 5 ? ':00' : '');
+      if (bulkJamSelesai) payload.jam_selesai = bulkJamSelesai + (bulkJamSelesai.length === 5 ? ':00' : '');
+
+      const res = await fetch('/api/jadwal', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsBulkModalOpen(false);
+        setSelectedJadwal([]);
+        fetchData();
+      } else {
+        alert(data.error || 'Gagal memperbarui jadwal secara massal');
+      }
+    } catch (e) {
+      alert('Gagal memperbarui jadwal secara massal');
+    } finally {
+      setSavingBulk(false);
+    }
+  };
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-20">
-      <div className="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 rounded-3xl p-6 shadow-sm border border-green-200 dark:border-green-800/50 relative overflow-hidden transition-colors duration-300">
-        <div className="absolute top-0 right-0 -mt-4 -mr-4 text-green-200/50 dark:text-green-800/30">
-          <CalendarDays size={120} />
-        </div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 pb-12 max-w-7xl mx-auto">
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-green-950 dark:from-emerald-950 dark:via-teal-950 dark:to-gray-900 p-6 md:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden">
+        <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold text-green-800 dark:text-green-400 drop-shadow-sm flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold flex items-center gap-3">
               <CalendarDays size={28} /> Jadwal Kegiatan
             </h1>
             <p className="text-green-600 dark:text-green-300 text-sm mt-1 font-medium max-w-md">
@@ -404,32 +418,30 @@ export default function JadwalPage() {
             </p>
           </div>
           <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
-            <button onClick={() => handleExport('pdf', true)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-white dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5" title="Preview PDF">
+            <button onClick={() => handleExport('pdf', true)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-white/10 text-white border border-white/20 rounded-xl text-xs font-bold hover:bg-white/20 transition-colors flex items-center gap-1.5" title="Preview PDF">
               <FileText size={14} /> Preview
             </button>
-            <button onClick={() => handleExport('pdf', false)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5" title="Export PDF">
+            <button onClick={() => handleExport('pdf', false)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-red-600 text-white border border-red-500 rounded-xl text-xs font-bold hover:bg-red-700 transition-colors flex items-center gap-1.5" title="Export PDF">
               <Download size={14} /> PDF
             </button>
-            <button onClick={() => handleExport('excel', false)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5" title="Export Excel">
+            <button onClick={() => handleExport('excel', false)} className="flex-1 md:flex-none justify-center px-3 py-2 bg-green-600 text-white border border-green-500 rounded-xl text-xs font-bold hover:bg-green-700 transition-colors flex items-center gap-1.5" title="Export Excel">
               <Download size={14} /> Excel
             </button>
             {(role === 'admin' || role === 'staff') && (
               <>
                 <button
                   onClick={() => downloadTemplate(`jadwal_${activeTab}` as any)}
-                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-green-700 border border-green-200 rounded-xl text-xs font-bold hover:bg-green-50 transition-colors flex items-center gap-1.5"
-                  title="Unduh Templat Excel"
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-colors flex items-center gap-1.5"
                 >
                   <Download size={14} /> Templat
                 </button>
                 <button
                   onClick={() => setIsImportModalOpen(true)}
-                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-green-700 border border-green-200 rounded-xl text-xs font-bold hover:bg-green-50 transition-colors flex items-center gap-1.5"
-                  title="Impor Excel"
+                  className="flex-1 md:flex-none justify-center px-3 py-2 bg-white text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-colors flex items-center gap-1.5"
                 >
                   <Upload size={14} /> Impor
                 </button>
-                <button onClick={handleOpenAddModal} className="bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1" title="Tambah Jadwal">
+                <button onClick={handleOpenAddModal} className="bg-white hover:bg-emerald-50 text-emerald-900 font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1" title="Tambah Jadwal">
                   <span className="hidden sm:inline">+ Tambah Jadwal</span>
                   <span className="sm:hidden text-lg leading-none">+</span>
                 </button>
@@ -443,72 +455,133 @@ export default function JadwalPage() {
       {availableTabs.length > 0 && (
         <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto">
           {availableTabs.includes('quran') && (
-            <button onClick={() => { setActiveTab('quran'); setSelectedJadwal([]); }} className={`flex-1 min-w-[120px] py-2.5 text-sm font-bold rounded-xl transition-all ${activeTab === 'quran' ? 'bg-emerald-500 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Kelas Qur'an</button>
+            <button onClick={() => { setActiveTab('quran'); setSelectedJadwal([]); setFilterTempat(''); setFilterTempatSearch(''); }} className={`flex-1 min-w-[120px] py-2.5 text-sm font-bold rounded-xl transition-all ${activeTab === 'quran' ? 'bg-emerald-500 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Kelas Qur'an</button>
           )}
           {availableTabs.includes('madin') && (
-            <button onClick={() => { setActiveTab('madin'); setSelectedJadwal([]); }} className={`flex-1 min-w-[120px] py-2.5 text-sm font-bold rounded-xl transition-all ${activeTab === 'madin' ? 'bg-teal-500 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Kelas Madin</button>
+            <button onClick={() => { setActiveTab('madin'); setSelectedJadwal([]); setFilterTempat(''); setFilterTempatSearch(''); }} className={`flex-1 min-w-[120px] py-2.5 text-sm font-bold rounded-xl transition-all ${activeTab === 'madin' ? 'bg-teal-500 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Kelas Madin</button>
           )}
           {availableTabs.includes('kegiatan') && (
-            <button onClick={() => { setActiveTab('kegiatan'); setSelectedJadwal([]); }} className={`flex-1 min-w-[120px] py-2.5 text-sm font-bold rounded-xl transition-all ${activeTab === 'kegiatan' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Kegiatan Asrama</button>
+            <button onClick={() => { setActiveTab('kegiatan'); setSelectedJadwal([]); setFilterTempat(''); setFilterTempatSearch(''); }} className={`flex-1 min-w-[120px] py-2.5 text-sm font-bold rounded-xl transition-all ${activeTab === 'kegiatan' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>Kegiatan Asrama</button>
           )}
         </div>
       )}
 
-      {(role === 'admin' || role === 'staff') && (
-        <div className="relative z-20 flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <label className="text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2 shrink-0"><User size={16}/> Filter Guru:</label>
-            <div className="relative w-full sm:w-64 shrink-0" ref={filterGuruDropdownRef}>
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder={filterGuru || 'Semua Guru'}
-                  value={filterGuruSearch}
-                  onChange={e => { setFilterGuruSearch(e.target.value); setShowFilterGuruDropdown(true); }}
-                  onFocus={() => setShowFilterGuruDropdown(true)}
-                  className="w-full pl-9 pr-8 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
-                />
-                {filterGuru && (
-                  <button
-                    type="button"
-                    onClick={() => { setFilterGuru(''); setFilterGuruSearch(''); setShowFilterGuruDropdown(false); }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-              {showFilterGuruDropdown && (
-                <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl">
-                  <button
-                    type="button"
-                    onClick={() => { setFilterGuru(''); setFilterGuruSearch(''); setShowFilterGuruDropdown(false); }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors ${
-                      !filterGuru ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'text-gray-700 dark:text-gray-300'
-                    }`}
-                  >
-                    Semua Guru
-                  </button>
-                  {uniqueGurus
-                    .filter((g: any) => g.toLowerCase().includes(filterGuruSearch.toLowerCase()))
-                    .map((g: any) => (
-                      <button
-                        key={g}
-                        type="button"
-                        onClick={() => { setFilterGuru(g); setFilterGuruSearch(''); setShowFilterGuruDropdown(false); }}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors ${
-                          filterGuru === g ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'text-gray-700 dark:text-gray-300'
-                        }`}
-                      >
-                        {g}
-                      </button>
-                    ))
-                  }
-                </div>
+      {/* Filter Controls: Filter Guru & Filter Kelas / Kamar */}
+      <div className="relative z-20 flex flex-col md:flex-row gap-4 items-start md:items-center bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+        {/* Filter Guru */}
+        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center w-full md:w-auto">
+          <label className="text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2 shrink-0">
+            <User size={16} /> Filter Guru:
+          </label>
+          <div className="relative w-full sm:w-60 shrink-0" ref={filterGuruDropdownRef}>
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder={filterGuru || 'Semua Guru'}
+                value={filterGuruSearch}
+                onChange={e => { setFilterGuruSearch(e.target.value); setShowFilterGuruDropdown(true); }}
+                onFocus={() => setShowFilterGuruDropdown(true)}
+                className="w-full pl-9 pr-8 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+              />
+              {filterGuru && (
+                <button
+                  type="button"
+                  onClick={() => { setFilterGuru(''); setFilterGuruSearch(''); setShowFilterGuruDropdown(false); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  <X size={16} />
+                </button>
               )}
             </div>
+            {showFilterGuruDropdown && (
+              <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl">
+                <button
+                  type="button"
+                  onClick={() => { setFilterGuru(''); setFilterGuruSearch(''); setShowFilterGuruDropdown(false); }}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors ${
+                    !filterGuru ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Semua Guru
+                </button>
+                {uniqueGurus
+                  .filter((g: any) => g.toLowerCase().includes(filterGuruSearch.toLowerCase()))
+                  .map((g: any) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => { setFilterGuru(g); setFilterGuruSearch(''); setShowFilterGuruDropdown(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors ${
+                        filterGuru === g ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  ))
+                }
+              </div>
+            )}
+          </div>
         </div>
-      )}
+
+        {/* Filter Kelas / Kamar */}
+        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center w-full md:w-auto">
+          <label className="text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2 shrink-0">
+            <MapPin size={16} /> Filter {activeTab === 'kegiatan' ? 'Kamar' : 'Kelas'}:
+          </label>
+          <div className="relative w-full sm:w-60 shrink-0" ref={filterTempatDropdownRef}>
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder={filterTempat || `Semua ${activeTab === 'kegiatan' ? 'Kamar' : 'Kelas'}`}
+                value={filterTempatSearch}
+                onChange={e => { setFilterTempatSearch(e.target.value); setShowFilterTempatDropdown(true); }}
+                onFocus={() => setShowFilterTempatDropdown(true)}
+                className="w-full pl-9 pr-8 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+              />
+              {filterTempat && (
+                <button
+                  type="button"
+                  onClick={() => { setFilterTempat(''); setFilterTempatSearch(''); setShowFilterTempatDropdown(false); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+            {showFilterTempatDropdown && (
+              <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl">
+                <button
+                  type="button"
+                  onClick={() => { setFilterTempat(''); setFilterTempatSearch(''); setShowFilterTempatDropdown(false); }}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors ${
+                    !filterTempat ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Semua {activeTab === 'kegiatan' ? 'Kamar' : 'Kelas'}
+                </button>
+                {uniqueTempat
+                  .filter((t: any) => t.toLowerCase().includes(filterTempatSearch.toLowerCase()))
+                  .map((t: any) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => { setFilterTempat(t); setFilterTempatSearch(''); setShowFilterTempatDropdown(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors ${
+                        filterTempat === t ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))
+                }
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {(role === 'admin' || role === 'staff') && selectedJadwal.length > 0 && (
         <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-right-4 duration-300">

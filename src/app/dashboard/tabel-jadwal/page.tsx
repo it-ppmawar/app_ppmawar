@@ -54,7 +54,7 @@ export default function TabelJadwalPage() {
   const [activeAsrama, setActiveAsrama] = useState<string>('Asrama A');
   const [quranLevelTab, setQuranLevelTab] = useState<string>('jilid');
   const [kegiatanLevelTab, setKegiatanLevelTab] = useState<string>('kegiatan pagi');
-  const [waktuFilter, setWaktuFilter] = useState<'semua' | 'pagi' | 'malam'>('semua');
+  const [waktuFilter, setWaktuFilter] = useState<'semua' | 'pagi' | 'siang' | 'sore' | 'malam'>('semua');
 
   // Lists of secondary options
   const ASRAMAS_QURAN = ['Asrama A', 'Asrama B', 'Asrama C', 'Asrama D', 'Asrama E', 'Asrama F', 'Tahfidz Putra', 'Tahfidz Putri'];
@@ -442,17 +442,35 @@ export default function TabelJadwalPage() {
     schedulesMap[key].push(j);
   });
 
+  const matchesWaktuFilter = (jamMulai: string, filter: 'semua' | 'pagi' | 'siang' | 'sore' | 'malam') => {
+    if (filter === 'semua') return true;
+    if (!jamMulai) return false;
+    const timeStr = jamMulai.substring(0, 5);
+
+    if (filter === 'pagi') {
+      // pagi (jam 00.01 - 06.00)
+      return timeStr > '00:00' && timeStr <= '06:00';
+    } else if (filter === 'siang') {
+      // siang (jam 06.01 - 12.00)
+      return timeStr > '06:00' && timeStr <= '12:00';
+    } else if (filter === 'sore') {
+      // sore (jam 12.01 - 18.00)
+      return timeStr > '12:00' && timeStr <= '18:00';
+    } else if (filter === 'malam') {
+      // malam (jam 18.01 - 00.00)
+      return (timeStr > '18:00' && timeStr <= '23:59') || timeStr === '00:00';
+    }
+    return true;
+  };
+
   // Get matching schedule item for a cell
   const getCellSchedule = (hari: string, tempatId: number): JadwalItem | null => {
     const list = schedulesMap[`${hari}_${tempatId}`] || [];
     if (list.length === 0) return null;
 
-    // Apply global pagi/malam filter first
+    // Apply global waktu filter first
     if (waktuFilter !== 'semua') {
-      const filtered = list.filter(j => {
-        const isPagi = j.jam_mulai < '12:00:00';
-        return waktuFilter === 'pagi' ? isPagi : !isPagi;
-      });
+      const filtered = list.filter(j => matchesWaktuFilter(j.jam_mulai, waktuFilter));
       return filtered[0] || null;
     }
 
@@ -902,16 +920,41 @@ export default function TabelJadwalPage() {
 
       </div>
 
-      {/* Pagi / Malam global filter */}
-      <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 gap-1">
-        {([['semua', 'Semua Waktu'], ['pagi', '🌅 Pagi (AM)'], ['malam', '🌙 Malam (PM)']] as const).map(([key, label]) => (
-          <button key={key}
-            onClick={() => setWaktuFilter(key)}
-            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all text-center ${
-              waktuFilter === key ? 'bg-slate-600 dark:bg-slate-700 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-            }`}
-          >{label}</button>
-        ))}
+      {/* Global Waktu Filter */}
+      <div className="bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-2">
+        {/* Tab Semua Waktu (full width top) */}
+        <button
+          onClick={() => setWaktuFilter('semua')}
+          className={`w-full py-2.5 px-4 text-xs sm:text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center gap-2 ${
+            waktuFilter === 'semua'
+              ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-md'
+              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+          }`}
+        >
+          ✨ Semua Waktu
+        </button>
+
+        {/* 4 Tab Berdampingan Rapi (grid 4 kolom) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {[
+            { key: 'pagi', label: '🌅 Pagi (jam 00.01 - 06.00)' },
+            { key: 'siang', label: '☀️ Siang (jam 06.01 - 12.00)' },
+            { key: 'sore', label: '🌇 Sore (jam 12.01 - 18.00)' },
+            { key: 'malam', label: '🌙 Malam (jam 18.01 - 00.00)' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setWaktuFilter(key as any)}
+              className={`py-2.5 px-2 text-xs font-bold rounded-xl transition-all text-center flex items-center justify-center ${
+                waktuFilter === key
+                  ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-md'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-gray-50/50 dark:bg-gray-900/30'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Grid Highlights & Live Search */}
