@@ -99,7 +99,7 @@ export default function AbsenGuruPage() {
   const [genderMode,   setGenderMode]   = useState<'PUTRA'|'PUTRI'>('PUTRA');
   const [levelTab,     setLevelTab]     = useState<'WUSTHO_MAK'|'ULA'|'WUSTHO'>('WUSTHO_MAK');
   const [activeAsrama, setActiveAsrama] = useState('Asrama A');
-  const [waktuFilter,  setWaktuFilter]  = useState<'semua'|'pagi'|'malam'>('semua');
+  const [waktuFilter,  setWaktuFilter]  = useState<'semua'|'pagi'|'siang'|'sore'|'malam'>('semua');
 
   // ─── UI state ─────────────────────────────────────────────────────────────
   const [search,       setSearch]       = useState('');
@@ -184,6 +184,23 @@ export default function AbsenGuruPage() {
     return n.includes(activeAsrama.toUpperCase()) && !n.includes('TAHFIDZ PUTRI');
   }, [activeAsrama]);
 
+  const matchesWaktuFilter = (jamMulai: string | undefined, filter: 'semua' | 'pagi' | 'siang' | 'sore' | 'malam') => {
+    if (filter === 'semua') return true;
+    if (!jamMulai) return false;
+    const timeStr = jamMulai.substring(0, 5);
+
+    if (filter === 'pagi') {
+      return timeStr > '00:00' && timeStr <= '06:00';
+    } else if (filter === 'siang') {
+      return timeStr > '06:00' && timeStr <= '12:00';
+    } else if (filter === 'sore') {
+      return timeStr > '12:00' && timeStr <= '18:00';
+    } else if (filter === 'malam') {
+      return (timeStr > '18:00' && timeStr <= '23:59') || timeStr === '00:00';
+    }
+    return true;
+  };
+
   const filteredCards = useMemo(() => {
     let c: JadwalCard[];
     if (activeTab === 'kegiatan') {
@@ -195,7 +212,7 @@ export default function AbsenGuruPage() {
     } else {
       c = allCards.filter(x => x.tipe === activeTab).filter(quranFilter);
     }
-    if (waktuFilter !== 'semua') c = c.filter(x => waktuFilter === 'pagi' ? x.jam_mulai < '12:00:00' : x.jam_mulai >= '12:00:00');
+    if (waktuFilter !== 'semua') c = c.filter(x => matchesWaktuFilter(x.jam_mulai, waktuFilter));
     if (search) {
       const q = search.toLowerCase();
       c = c.filter(x => x.guru_nama.toLowerCase().includes(q) || (x.nama_kelas||'').toLowerCase().includes(q) || (x.mata_pelajaran||'').toLowerCase().includes(q));
@@ -377,14 +394,41 @@ export default function AbsenGuruPage() {
           </div>
         )}
 
-        {/* ── Pagi / Malam filter ──────────────────────────────────────────────── */}
-        <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 gap-1">
-          {([['semua','Semua Waktu'],['pagi','🌅 Pagi (AM)'],['malam','🌙 Malam (PM)']] as const).map(([k,l]) => (
-            <button key={k} onClick={() => setWaktuFilter(k)}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all text-center ${
-                waktuFilter===k ? 'bg-slate-600 dark:bg-slate-700 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-              }`}>{l}</button>
-          ))}
+        {/* ── Global Waktu Filter ──────────────────────────────────────────────── */}
+        <div className="bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-2">
+          {/* Tab Semua Waktu (full width top) */}
+          <button
+            onClick={() => setWaktuFilter('semua')}
+            className={`w-full py-2.5 px-4 text-xs sm:text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center gap-2 ${
+              waktuFilter === 'semua'
+                ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-md'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+            }`}
+          >
+            ✨ Semua Waktu
+          </button>
+
+          {/* 4 Tab Berdampingan Rapi (grid 4 kolom) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {[
+              { key: 'pagi', label: '🌅 Pagi (jam 00.01 - 06.00)' },
+              { key: 'siang', label: '☀️ Siang (jam 06.01 - 12.00)' },
+              { key: 'sore', label: '🌇 Sore (jam 12.01 - 18.00)' },
+              { key: 'malam', label: '🌙 Malam (jam 18.01 - 00.00)' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setWaktuFilter(key as any)}
+                className={`py-2.5 px-2 text-xs font-bold rounded-xl transition-all text-center flex items-center justify-center ${
+                  waktuFilter === key
+                    ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-md'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-gray-50/50 dark:bg-gray-900/30'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ── Search ────────────────────────────────────────────────────────────── */}
