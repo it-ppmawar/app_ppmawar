@@ -111,6 +111,7 @@ export async function GET(request: Request) {
       if (!target_id) return NextResponse.json({ error: 'Pilih Kelas Madin' }, { status: 400 });
       
       const { cond: dateCond, params: dateParams } = makeDateParams('a.tanggal');
+      const { cond: dateCond_scan, params: dateParams_scan } = makeDateParams('ak.tanggal');
       let whereCond = 'WHERE m.kelas_madin_id = ?';
       let whereParams: any[] = [target_id];
 
@@ -125,15 +126,26 @@ export async function GET(request: Request) {
         whereParams = [];
       }
 
-      params = [...dateParams, ...whereParams];
+      // params: dateCond (untuk JOIN absensi), dateCond_scan (untuk JOIN absensi_kamar), whereParams
+      params = [...dateParams, ...dateParams_scan, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
-          SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+          COUNT(DISTINCT att.tanggal) as hadir,
           SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
         FROM murid m
         LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+        LEFT JOIN (
+          SELECT murid_id, tanggal FROM absensi WHERE status = 'Hadir' AND ${dateCond}
+          UNION
+          SELECT ak.murid_id, ak.tanggal
+          FROM absensi_kamar ak
+          JOIN jadwal_madin jm ON jm.kelas_madin_id = (
+            SELECT kelas_madin_id FROM murid WHERE murid_id = ak.murid_id LIMIT 1
+          ) AND jm.hari = DAYNAME(ak.tanggal)
+          WHERE ${dateCond_scan}
+        ) att ON m.murid_id = att.murid_id
         LEFT JOIN absensi a ON m.murid_id = a.murid_id AND ${dateCond}
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
@@ -143,6 +155,7 @@ export async function GET(request: Request) {
       if (!target_id) return NextResponse.json({ error: "Pilih Kelas Qur'an" }, { status: 400 });
       
       const { cond: dateCond, params: dateParams } = makeDateParams('a.tanggal');
+      const { cond: dateCond_scan, params: dateParams_scan } = makeDateParams('ak.tanggal');
       let whereCond = 'WHERE m.kelas_quran_id = ?';
       let whereParams: any[] = [target_id];
 
@@ -157,15 +170,26 @@ export async function GET(request: Request) {
         whereParams = [];
       }
 
-      params = [...dateParams, ...whereParams];
+      // params: dateCond (untuk JOIN absensi_quran), dateCond_scan (untuk JOIN absensi_kamar), whereParams
+      params = [...dateParams, ...dateParams_scan, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
-          SUM(CASE WHEN a.status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+          COUNT(DISTINCT att.tanggal) as hadir,
           SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
         FROM murid m
         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+        LEFT JOIN (
+          SELECT murid_id, tanggal FROM absensi_quran WHERE status = 'Hadir' AND ${dateCond}
+          UNION
+          SELECT ak.murid_id, ak.tanggal
+          FROM absensi_kamar ak
+          JOIN jadwal_quran jq ON jq.kelas_quran_id = (
+            SELECT kelas_quran_id FROM murid WHERE murid_id = ak.murid_id LIMIT 1
+          ) AND jq.hari = DAYNAME(ak.tanggal)
+          WHERE ${dateCond_scan}
+        ) att ON m.murid_id = att.murid_id
         LEFT JOIN absensi_quran a ON m.murid_id = a.murid_id AND ${dateCond}
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
