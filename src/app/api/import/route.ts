@@ -369,13 +369,15 @@ async function importJadwal(rows: any[][], headers: string[], tipe: 'madin' | 'q
 // ─── HELPER FUNCTIONS ───────────────────────────────────────────────────────
 
 function findCol(headers: string[], aliases: string[]): number {
+  const normHeaders = headers.map(h => String(h || '').toUpperCase().replace(/[^A-Z0-9]/g, ''));
   for (const alias of aliases) {
-    const idx = headers.indexOf(alias);
+    const normAlias = alias.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const idx = normHeaders.indexOf(normAlias);
     if (idx !== -1) return idx;
   }
-  // Partial match
   for (const alias of aliases) {
-    const idx = headers.findIndex(h => h.includes(alias));
+    const normAlias = alias.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const idx = normHeaders.findIndex(h => h.length > 2 && (h.includes(normAlias) || normAlias.includes(h)));
     if (idx !== -1) return idx;
   }
   return -1;
