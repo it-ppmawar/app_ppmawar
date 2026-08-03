@@ -108,20 +108,22 @@ export default function DataMuridPage() {
   // State untuk Impor Cerdas (Upload File Excel/ZIP & Sync in-memory)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadMode, setUploadMode] = useState<string>('');
   const [uploadResult, setUploadResult] = useState<any>(null);
 
   const handleSmartUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadFile) {
-      alert('Silakan pilih file Excel (.xlsx) atau file (.zip) terlebih dahulu.');
+    if (!uploadFiles || uploadFiles.length === 0) {
+      alert('Silakan pilih minimal satu file Excel (.xlsx) atau file (.zip) terlebih dahulu.');
       return;
     }
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('file', uploadFile);
+      uploadFiles.forEach(f => {
+        formData.append('files', f);
+      });
       if (uploadMode) {
         formData.append('mode', uploadMode);
       }
@@ -756,7 +758,7 @@ export default function DataMuridPage() {
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => {
-                    setUploadFile(null);
+                    setUploadFiles([]);
                     setUploadMode('');
                     setUploadResult(null);
                     setIsUploadModalOpen(true);
@@ -1474,14 +1476,19 @@ export default function DataMuridPage() {
                       <input
                         type="file"
                         accept=".xlsx,.xls,.zip"
-                        onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                        multiple
+                        onChange={(e) => setUploadFiles(Array.from(e.target.files || []))}
                         className="hidden"
                         id="smart-upload-file-input"
                       />
                       <label htmlFor="smart-upload-file-input" className="cursor-pointer flex flex-col items-center gap-2">
                         <FileSpreadsheet size={36} className="text-emerald-500" />
                         <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                          {uploadFile ? uploadFile.name : 'Klik untuk memilih file Excel (.xlsx) atau .zip'}
+                          {uploadFiles.length > 0
+                            ? uploadFiles.length === 1
+                              ? uploadFiles[0].name
+                              : `${uploadFiles.length} file dipilih: ${uploadFiles.map(f => f.name).join(', ')}`
+                            : 'Klik atau drag untuk memilih file Excel (.xlsx) atau .zip'}
                         </span>
                         <span className="text-xs text-gray-400">Format internal madin, quran, atau kamar akan dideteksi secara otomatis</span>
                       </label>
@@ -1498,7 +1505,7 @@ export default function DataMuridPage() {
                     </button>
                     <button
                       type="submit"
-                      disabled={uploading || !uploadFile}
+                      disabled={uploading || uploadFiles.length === 0}
                       className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
                     >
                       {uploading ? (
@@ -1562,7 +1569,7 @@ export default function DataMuridPage() {
                     onClick={() => {
                       setIsUploadModalOpen(false);
                       setUploadResult(null);
-                      setUploadFile(null);
+                      setUploadFiles([]);
                     }}
                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-md transition-colors text-sm"
                   >
