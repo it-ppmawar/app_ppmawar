@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Search, Plus, Filter, User, MapPin, CheckSquare, Edit, UserPlus, Camera, RefreshCw, FileText, Download, X } from 'lucide-react';
+import { Users, Search, Plus, Filter, User, MapPin, CheckSquare, Edit, UserPlus, Camera, RefreshCw, FileText, Download, X, Upload, FileSpreadsheet } from 'lucide-react';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
 import Link from 'next/link';
 
@@ -104,6 +104,49 @@ export default function DataMuridPage() {
   const [syncingMadin, setSyncingMadin] = useState(false);
   const [madinSyncResult, setMadinSyncResult] = useState<any>(null);
   const [isMadinModalOpen, setIsMadinModalOpen] = useState(false);
+
+  // State untuk Impor Cerdas (Upload File Excel/ZIP & Sync in-memory)
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadMode, setUploadMode] = useState<string>('');
+  const [uploadResult, setUploadResult] = useState<any>(null);
+
+  const handleSmartUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadFile) {
+      alert('Silakan pilih file Excel (.xlsx) atau file (.zip) terlebih dahulu.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      if (uploadMode) {
+        formData.append('mode', uploadMode);
+      }
+      const res = await fetch('/api/sync/upload-file', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUploadResult(data);
+        const refreshRes = await fetch('/api/murid');
+        const refreshJson = await refreshRes.json();
+        if (refreshJson.success) {
+          setMurid(refreshJson.data);
+          fetchFilters();
+        }
+      } else {
+        alert(data.error || 'Gagal memproses file upload');
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const fetchFilters = async () => {
     try {
@@ -710,15 +753,31 @@ export default function DataMuridPage() {
             </div>
 
             {(role === 'admin' || role === 'staff') && (
-              <button
-                onClick={() => handleSyncMadin(false)}
-                disabled={syncingMadin}
-                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-colors flex items-center gap-2 shadow-sm disabled:opacity-70 shrink-0"
-                title="Sinkronisasi Pembagian Kelas Madin dari Excel 2026-2027"
-              >
-                <RefreshCw size={14} className={syncingMadin ? 'animate-spin' : ''} />
-                <span>{syncingMadin ? 'Sync Madin...' : 'Sync Class Madin'}</span>
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    setUploadFile(null);
+                    setUploadMode('');
+                    setUploadResult(null);
+                    setIsUploadModalOpen(true);
+                  }}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-colors flex items-center gap-2 shadow-sm shrink-0"
+                  title="Upload & Sinkronkan Cerdas Data Kelas/Kamar dari Excel atau ZIP"
+                >
+                  <Upload size={14} />
+                  <span>Impor Cerdas</span>
+                </button>
+
+                <button
+                  onClick={() => handleSyncMadin(false)}
+                  disabled={syncingMadin}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-colors flex items-center gap-2 shadow-sm disabled:opacity-70 shrink-0"
+                  title="Sinkronisasi Pembagian Kelas Madin dari Excel 2026-2027"
+                >
+                  <RefreshCw size={14} className={syncingMadin ? 'animate-spin' : ''} />
+                  <span>{syncingMadin ? 'Sync Madin...' : 'Sync Class Madin'}</span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -1365,6 +1424,152 @@ export default function DataMuridPage() {
               >
                 Tutup & Lihat Data
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Impor Cerdas (Upload & Sync in-memory) */}
+      {isUploadModalOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white text-center relative">
+              <button
+                onClick={() => setIsUploadModalOpen(false)}
+                className="absolute top-4 right-4 p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+              <div className="mx-auto w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mb-2">
+                <Upload size={28} className="text-white" />
+              </div>
+              <h2 className="text-xl font-black">Impor Cerdas & Sinkronisasi</h2>
+              <p className="text-xs text-emerald-100 mt-1">Zero-Disk Storage — File langsung diproses di memori & tanpa disimpan di server</p>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {!uploadResult ? (
+                <form onSubmit={handleSmartUpload} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                      1. Mode Sinkronisasi Data:
+                    </label>
+                    <select
+                      value={uploadMode}
+                      onChange={(e) => setUploadMode(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-gray-200"
+                    >
+                      <option value="">✨ Auto-Detect Tipe Data (Rekomendasi)</option>
+                      <option value="madin">📚 Kelas Madin (Ula, Wustho, MAK)</option>
+                      <option value="quran">📖 Kelas Qur'an (Tahfidz / TQ)</option>
+                      <option value="kamar">🏠 Kamar Asrama Santri</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                      2. Pilih File (.xlsx / .zip):
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-5 text-center hover:border-emerald-500 transition-colors bg-gray-50/50 dark:bg-gray-900/30">
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls,.zip"
+                        onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                        id="smart-upload-file-input"
+                      />
+                      <label htmlFor="smart-upload-file-input" className="cursor-pointer flex flex-col items-center gap-2">
+                        <FileSpreadsheet size={36} className="text-emerald-500" />
+                        <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                          {uploadFile ? uploadFile.name : 'Klik untuk memilih file Excel (.xlsx) atau .zip'}
+                        </span>
+                        <span className="text-xs text-gray-400">Format internal madin, quran, atau kamar akan dideteksi secara otomatis</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsUploadModalOpen(false)}
+                      className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-bold rounded-2xl transition-colors text-sm"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={uploading || !uploadFile}
+                      className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                    >
+                      {uploading ? (
+                        <>
+                          <RefreshCw size={16} className="animate-spin" />
+                          <span>Memproses In-Memory...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={16} />
+                          <span>Unggah & Sinkronkan</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-4 rounded-2xl text-center space-y-1">
+                    <h3 className="font-extrabold text-emerald-800 dark:text-emerald-300 text-base">
+                      {uploadResult.message}
+                    </h3>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                      Mode Terdeteksi: <span className="uppercase font-bold">{uploadResult.detectedMode}</span>
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold">
+                    <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl border border-gray-200 dark:border-gray-700">
+                      <div className="text-gray-400 text-[10px]">Total Parsed</div>
+                      <div className="text-base font-black text-blue-600 dark:text-blue-400 mt-1">{uploadResult.details?.totalParsed || 0}</div>
+                    </div>
+                    <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-xl border border-green-200 dark:border-green-800">
+                      <div className="text-green-500 text-[10px]">Di-update (DB)</div>
+                      <div className="text-base font-black text-green-600 dark:text-green-400 mt-1">{uploadResult.details?.updatedCount || 0}</div>
+                    </div>
+                    <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200 dark:border-amber-800">
+                      <div className="text-amber-500 text-[10px]">Belum Ada di DB</div>
+                      <div className="text-base font-black text-amber-600 dark:text-amber-400 mt-1">{uploadResult.details?.notFoundCount || 0}</div>
+                    </div>
+                  </div>
+
+                  {uploadResult.notFound && uploadResult.notFound.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                        Santri di File Belum Ada di DB ({uploadResult.notFound.length} santri):
+                      </h4>
+                      <div className="max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-xl divide-y divide-gray-100 dark:divide-gray-700/50 text-xs">
+                        {uploadResult.notFound.map((nf: any, idx: number) => (
+                          <div key={idx} className="p-2 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                            <span className="font-semibold text-gray-800 dark:text-gray-200">{nf.nama}</span>
+                            <span className="text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-[10px]">{nf.kelasKamar}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUploadModalOpen(false);
+                      setUploadResult(null);
+                      setUploadFile(null);
+                    }}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-md transition-colors text-sm"
+                  >
+                    Selesai & Tutup
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
