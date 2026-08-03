@@ -633,9 +633,67 @@ export default function DataMuridPage() {
         </div>
       )}
 
+      {/* Panel Filter Dropdown (Terpisah di Atas) */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {hasMadinJadwal && (
+            <div>
+              <label className="block text-xs font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Kelas Madin</label>
+              <select
+                value={filterMadin}
+                onChange={(e) => setFilterMadin(e.target.value)}
+                className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 dark:text-gray-200 font-medium"
+              >
+                <option value="">Semua Madin</option>
+                <option value="__none__">Belum ada data kelas madin</option>
+                {allMadin.map((k) => (
+                  <option key={k.id} value={k.nama}>
+                    {k.nama}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {hasQuranJadwal && (
+            <div>
+              <label className="block text-xs font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Kelas Qur'an</label>
+              <select
+                value={filterQuran}
+                onChange={(e) => setFilterQuran(e.target.value)}
+                className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 dark:text-gray-200 font-medium"
+              >
+                <option value="">Semua Qur'an</option>
+                <option value="__none__">Belum ada data kelas qur'an</option>
+                {allQuran.map((k) => (
+                  <option key={k.id} value={k.nama}>
+                    {k.nama}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Kamar Asrama</label>
+            <select
+              value={filterKamar}
+              onChange={(e) => setFilterKamar(e.target.value)}
+              className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 dark:text-gray-200 font-medium"
+            >
+              <option value="">Semua Kamar</option>
+              <option value="__none__">LPPM</option>
+              {allKamar.map((k) => (
+                <option key={k.id} value={k.nama}>
+                  {k.nama}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
       {/* Tabel Data Murid & Kontrol Pencarian Langsung di Atas Tabel */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
-        {/* Panel Kontrol Pencarian & Filter (Posisi Persis di Atas Tabel) */}
+        {/* Panel Kontrol Pencarian (Posisi Persis Secara Langsung di Atas Tabel) */}
         <div className="p-4 bg-gray-50/50 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700 space-y-3">
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div className="relative flex-1 w-full">
@@ -647,27 +705,21 @@ export default function DataMuridPage() {
                 placeholder="Cari Nama, NIS, Kelas, Kamar atau Alamat santri..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-200 transition-colors shadow-sm"
+                className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-200 transition-colors shadow-sm font-medium"
               />
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-              {(role === 'admin' || role === 'staff') && (
-                <button
-                  onClick={() => handleSyncMadin(false)}
-                  disabled={syncingMadin}
-                  className="px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-70"
-                  title="Sinkronisasi Pembagian Kelas Madin dari Excel 2026-2027"
-                >
-                  <RefreshCw size={14} className={syncingMadin ? 'animate-spin' : ''} />
-                  <span>{syncingMadin ? 'Sync Madin...' : 'Sync Class Madin'}</span>
-                </button>
-              )}
-
-              <button onClick={() => setShowFilters(!showFilters)} className={`px-3 py-2.5 border rounded-xl flex items-center justify-center transition-colors shrink-0 ${showFilters || filterMadin || filterQuran || filterKamar ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                <Filter size={18} /> <span className="ml-2 text-xs font-bold">Filter</span>
+            {(role === 'admin' || role === 'staff') && (
+              <button
+                onClick={() => handleSyncMadin(false)}
+                disabled={syncingMadin}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-colors flex items-center gap-2 shadow-sm disabled:opacity-70 shrink-0"
+                title="Sinkronisasi Pembagian Kelas Madin dari Excel 2026-2027"
+              >
+                <RefreshCw size={14} className={syncingMadin ? 'animate-spin' : ''} />
+                <span>{syncingMadin ? 'Sync Madin...' : 'Sync Class Madin'}</span>
               </button>
-            </div>
+            )}
           </div>
 
           {selectedMurid.length > 0 && (role === 'admin' || role === 'staff') && (
@@ -687,40 +739,6 @@ export default function DataMuridPage() {
               <button onClick={handleLuluskanBulk} className="px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5">
                 <CheckSquare size={14} /> Luluskan ({selectedMurid.length})
               </button>
-            </div>
-          )}
-
-          {/* Filter Dropdowns Panel */}
-          {showFilters && (
-            <div className="pt-2 animate-in slide-in-from-top-2 duration-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {hasMadinJadwal && (
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kelas Madin</label>
-                  <select value={filterMadin} onChange={(e) => setFilterMadin(e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-teal-500">
-                    <option value="">Semua Madin</option>
-                    <option value="__none__">Belum ada data kelas madin</option>
-                    {allMadin.map(k => <option key={k.id} value={k.nama}>{k.nama}</option>)}
-                  </select>
-                </div>
-              )}
-              {hasQuranJadwal && (
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kelas Qur'an</label>
-                  <select value={filterQuran} onChange={(e) => setFilterQuran(e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500">
-                    <option value="">Semua Qur'an</option>
-                    <option value="__none__">Belum ada data kelas qur'an</option>
-                    {allQuran.map(k => <option key={k.id} value={k.nama}>{k.nama}</option>)}
-                  </select>
-                </div>
-              )}
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kamar Asrama</label>
-                <select value={filterKamar} onChange={(e) => setFilterKamar(e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-orange-500">
-                  <option value="">Semua Kamar</option>
-                  <option value="__none__">LPPM</option>
-                  {allKamar.map(k => <option key={k.id} value={k.nama}>{k.nama}</option>)}
-                </select>
-              </div>
             </div>
           )}
         </div>

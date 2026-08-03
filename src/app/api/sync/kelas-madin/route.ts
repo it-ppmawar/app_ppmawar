@@ -23,6 +23,27 @@ function normalizeName(name: string): string {
   return name.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
+function levenshtein(a: string, b: string): number {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function similarityScore(a: string, b: string): number {
+  const normA = normalizeName(a);
+  const normB = normalizeName(b);
+  const dist = levenshtein(normA, normB);
+  const maxLen = Math.max(normA.length, normB.length);
+  return maxLen === 0 ? 1 : 1 - dist / maxLen;
+}
+
 function parseMadinSheet(sheet: XLSX.WorkSheet, gender: 'Laki-laki' | 'Perempuan') {
   const data: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
   const result: Array<{ gender: string; classInSheet: string; no: number; induk: any; nama: string; normNama: string }> = [];
@@ -92,6 +113,14 @@ export async function GET() {
 
     const [dbMurid] = await pool.execute<RowDataPacket[]>('SELECT murid_id, nis, nama, jenis_kelamin, kelas_madin_id FROM murid');
     const dbMuridMap = new Map<string, RowDataPacket[]>();
+    const dbMuridList: any[] = dbMurid.map(m => ({
+      murid_id: m.murid_id,
+      nis: m.nis,
+      nama: m.nama,
+      jenis_kelamin: m.jenis_kelamin,
+      kelas_madin_id: m.kelas_madin_id,
+      normNama: normalizeName(m.nama)
+    }));
     dbMurid.forEach(m => {
       const key = normalizeName(m.nama);
       if (!dbMuridMap.has(key)) dbMuridMap.set(key, []);
@@ -99,6 +128,7 @@ export async function GET() {
     });
 
     let matchedCount = 0;
+    let fuzzyMatchedCount = 0;
     let alreadySynced = 0;
     let needsUpdate = 0;
     const notInDb: any[] = [];
@@ -109,11 +139,30 @@ export async function GET() {
       const normExClass = (ex.classInSheet || '').toUpperCase().replace(/[\(\)]/g, '').replace(/\s+/g, ' ');
       const targetClassId = classNameToIdMap.get(normExClass) || null;
 
-      if (!matches || matches.length === 0) {
+      let dbSantri = matches ? matches[0] : null;
+
+      if (!dbSantri) {
+        // Try fuzzy match (>80%)
+        let bestMatch = null;
+        let maxScore = 0;
+        for (const db of dbMuridList) {
+          if (db.jenis_kelamin !== ex.gender) continue;
+          const score = similarityScore(ex.nama, db.nama);
+          if (score > maxScore) {
+            maxScore = score;
+            bestMatch = db;
+          }
+        }
+        if (bestMatch && maxScore >= 0.8) {
+          dbSantri = bestMatch;
+          fuzzyMatchedCount++;
+        }
+      }
+
+      if (!dbSantri) {
         notInDb.push(ex);
       } else {
         matchedCount++;
-        const dbSantri = matches[0];
         if (dbSantri.kelas_madin_id === targetClassId) {
           alreadySynced++;
         } else {
@@ -135,6 +184,7 @@ export async function GET() {
         totalExcel: allExcel.length,
         totalDbMurid: dbMurid.length,
         matchedCount,
+        fuzzyMatchedCount,
         alreadySynced,
         needsUpdate,
         notInDbCount: notInDb.length
@@ -157,6 +207,7 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}));
     const registerMissing = body.registerMissing === true;
+    const targetGender = body.targetGender; // 'Laki-laki' | 'Perempuan' | undefined (all)
 
     const excelPath = path.join(process.cwd(), 'JADWAL MADIN 2026-2027.xlsx');
     if (!fs.existsSync(excelPath)) {
@@ -164,8 +215,14 @@ export async function POST(request: Request) {
     }
 
     const workbook = XLSX.readFile(excelPath);
-    const putra = workbook.Sheets['PUTRA'] ? parseMadinSheet(workbook.Sheets['PUTRA'], 'Laki-laki') : [];
-    const putri = workbook.Sheets['PUTRI'] ? parseMadinSheet(workbook.Sheets['PUTRI'], 'Perempuan') : [];
+    let putra = workbook.Sheets['PUTRA'] ? parseMadinSheet(workbook.Sheets['PUTRA'], 'Laki-laki') : [];
+    let putri = workbook.Sheets['PUTRI'] ? parseMadinSheet(workbook.Sheets['PUTRI'], 'Perempuan') : [];
+
+    if (targetGender === 'Laki-laki') {
+      putri = [];
+    } else if (targetGender === 'Perempuan') {
+      putra = [];
+    }
     const allExcel = [...putra, ...putri];
 
     const [dbClasses] = await pool.execute<RowDataPacket[]>('SELECT * FROM kelas_madin');
@@ -177,6 +234,14 @@ export async function POST(request: Request) {
 
     const [dbMurid] = await pool.execute<RowDataPacket[]>('SELECT murid_id, nis, nama, jenis_kelamin, kelas_madin_id FROM murid');
     const dbMuridMap = new Map<string, RowDataPacket[]>();
+    const dbMuridList: any[] = dbMurid.map(m => ({
+      murid_id: m.murid_id,
+      nis: m.nis,
+      nama: m.nama,
+      jenis_kelamin: m.jenis_kelamin,
+      kelas_madin_id: m.kelas_madin_id,
+      normNama: normalizeName(m.nama)
+    }));
     dbMurid.forEach(m => {
       const key = normalizeName(m.nama);
       if (!dbMuridMap.has(key)) dbMuridMap.set(key, []);
@@ -186,14 +251,34 @@ export async function POST(request: Request) {
     let updatedCount = 0;
     let insertedCount = 0;
     let skippedCount = 0;
+    let fuzzyUpdatedCount = 0;
 
     for (const ex of allExcel) {
       const matches = dbMuridMap.get(ex.normNama);
       const normExClass = (ex.classInSheet || '').toUpperCase().replace(/[\(\)]/g, '').replace(/\s+/g, ' ');
       const targetClassId = classNameToIdMap.get(normExClass) || null;
 
-      if (matches && matches.length > 0) {
-        const dbSantri = matches[0];
+      let dbSantri = matches ? matches[0] : null;
+
+      if (!dbSantri) {
+        // Try fuzzy match (>80%)
+        let bestMatch = null;
+        let maxScore = 0;
+        for (const db of dbMuridList) {
+          if (db.jenis_kelamin !== ex.gender) continue;
+          const score = similarityScore(ex.nama, db.nama);
+          if (score > maxScore) {
+            maxScore = score;
+            bestMatch = db;
+          }
+        }
+        if (bestMatch && maxScore >= 0.8) {
+          dbSantri = bestMatch;
+          fuzzyUpdatedCount++;
+        }
+      }
+
+      if (dbSantri) {
         if (targetClassId && dbSantri.kelas_madin_id !== targetClassId) {
           await pool.execute('UPDATE murid SET kelas_madin_id = ? WHERE murid_id = ?', [targetClassId, dbSantri.murid_id]);
           updatedCount++;
@@ -214,10 +299,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Sinkronisasi berhasil: ${updatedCount} kelas santri diperbarui${insertedCount > 0 ? `, ${insertedCount} santri baru didaftarkan` : ''}.`,
-      details: { updatedCount, insertedCount, skippedCount, totalExcel: allExcel.length }
+      message: `Sinkronisasi berhasil: ${updatedCount} kelas santri diperbarui (${fuzzyUpdatedCount} via kemiripan ejaan >80%)${insertedCount > 0 ? `, ${insertedCount} santri baru didaftarkan` : ''}.`,
+      details: { updatedCount, fuzzyUpdatedCount, insertedCount, skippedCount, totalExcel: allExcel.length }
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
