@@ -92,15 +92,36 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const excelPath = path.join(process.cwd(), 'JADWAL MADIN 2026-2027.xlsx');
-    if (!fs.existsSync(excelPath)) {
-      return NextResponse.json({ error: 'File Excel JADWAL MADIN 2026-2027.xlsx tidak ditemukan di root project' }, { status: 404 });
+    const dataMadinDir = path.join(process.cwd(), 'data_madin');
+    const excelPathDefault = path.join(process.cwd(), 'JADWAL MADIN 2026-2027.xlsx');
+
+    let sources: Array<{ file: string; sheet: string; gender: 'Laki-laki' | 'Perempuan' }> = [];
+
+    if (fs.existsSync(dataMadinDir)) {
+      sources = [
+        { file: path.join(dataMadinDir, 'SANTRI BARU FIKS 2025.xlsx'), sheet: 'PEGANGAN GURU 1', gender: 'Perempuan' },
+        { file: path.join(dataMadinDir, 'SANTRI LAMA PUTRI 2 fiks.xlsx'), sheet: 'PEGANGAN GURU 1', gender: 'Perempuan' },
+        { file: path.join(dataMadinDir, 'JADWAL MADIN 2026-2027.xlsx'), sheet: 'PUTRA', gender: 'Laki-laki' }
+      ];
+    } else if (fs.existsSync(excelPathDefault)) {
+      sources = [
+        { file: excelPathDefault, sheet: 'PUTRA', gender: 'Laki-laki' },
+        { file: excelPathDefault, sheet: 'PUTRI', gender: 'Perempuan' }
+      ];
+    } else {
+      return NextResponse.json({ error: 'File Excel sinkronisasi Madin tidak ditemukan' }, { status: 404 });
     }
 
-    const workbook = XLSX.readFile(excelPath);
-    const putra = workbook.Sheets['PUTRA'] ? parseMadinSheet(workbook.Sheets['PUTRA'], 'Laki-laki') : [];
-    const putri = workbook.Sheets['PUTRI'] ? parseMadinSheet(workbook.Sheets['PUTRI'], 'Perempuan') : [];
-    const allExcel = [...putra, ...putri];
+    let allExcel: any[] = [];
+    for (const src of sources) {
+      if (fs.existsSync(src.file)) {
+        const wb = XLSX.readFile(src.file);
+        const sh = wb.Sheets[src.sheet];
+        if (sh) {
+          allExcel = allExcel.concat(parseMadinSheet(sh, src.gender));
+        }
+      }
+    }
 
     const [dbClasses] = await pool.execute<RowDataPacket[]>('SELECT * FROM kelas_madin');
     const classNameToIdMap = new Map<string, number>();
@@ -209,21 +230,40 @@ export async function POST(request: Request) {
     const registerMissing = body.registerMissing === true;
     const targetGender = body.targetGender; // 'Laki-laki' | 'Perempuan' | undefined (all)
 
-    const excelPath = path.join(process.cwd(), 'JADWAL MADIN 2026-2027.xlsx');
-    if (!fs.existsSync(excelPath)) {
-      return NextResponse.json({ error: 'File Excel JADWAL MADIN 2026-2027.xlsx tidak ditemukan' }, { status: 404 });
+    const dataMadinDir = path.join(process.cwd(), 'data_madin');
+    const excelPathDefault = path.join(process.cwd(), 'JADWAL MADIN 2026-2027.xlsx');
+
+    let sources: Array<{ file: string; sheet: string; gender: 'Laki-laki' | 'Perempuan' }> = [];
+
+    if (fs.existsSync(dataMadinDir)) {
+      sources = [
+        { file: path.join(dataMadinDir, 'SANTRI BARU FIKS 2025.xlsx'), sheet: 'PEGANGAN GURU 1', gender: 'Perempuan' },
+        { file: path.join(dataMadinDir, 'SANTRI LAMA PUTRI 2 fiks.xlsx'), sheet: 'PEGANGAN GURU 1', gender: 'Perempuan' },
+        { file: path.join(dataMadinDir, 'JADWAL MADIN 2026-2027.xlsx'), sheet: 'PUTRA', gender: 'Laki-laki' }
+      ];
+    } else if (fs.existsSync(excelPathDefault)) {
+      sources = [
+        { file: excelPathDefault, sheet: 'PUTRA', gender: 'Laki-laki' },
+        { file: excelPathDefault, sheet: 'PUTRI', gender: 'Perempuan' }
+      ];
+    } else {
+      return NextResponse.json({ error: 'File Excel sinkronisasi Madin tidak ditemukan' }, { status: 404 });
     }
 
-    const workbook = XLSX.readFile(excelPath);
-    let putra = workbook.Sheets['PUTRA'] ? parseMadinSheet(workbook.Sheets['PUTRA'], 'Laki-laki') : [];
-    let putri = workbook.Sheets['PUTRI'] ? parseMadinSheet(workbook.Sheets['PUTRI'], 'Perempuan') : [];
-
-    if (targetGender === 'Laki-laki') {
-      putri = [];
-    } else if (targetGender === 'Perempuan') {
-      putra = [];
+    if (targetGender) {
+      sources = sources.filter(s => s.gender === targetGender);
     }
-    const allExcel = [...putra, ...putri];
+
+    let allExcel: any[] = [];
+    for (const src of sources) {
+      if (fs.existsSync(src.file)) {
+        const wb = XLSX.readFile(src.file);
+        const sh = wb.Sheets[src.sheet];
+        if (sh) {
+          allExcel = allExcel.concat(parseMadinSheet(sh, src.gender));
+        }
+      }
+    }
 
     const [dbClasses] = await pool.execute<RowDataPacket[]>('SELECT * FROM kelas_madin');
     const classNameToIdMap = new Map<string, number>();
