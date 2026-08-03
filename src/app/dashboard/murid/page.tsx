@@ -1495,28 +1495,28 @@ export default function DataMuridPage() {
                     </div>
                   </div>
 
-                  <div className="pt-2 flex gap-3">
+                  <div className="pt-2 flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 items-stretch">
                     <button
                       type="button"
                       onClick={() => setIsUploadModalOpen(false)}
-                      className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-bold rounded-2xl transition-colors text-sm"
+                      className="w-full sm:w-1/3 py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-bold rounded-2xl transition-colors text-xs sm:text-sm text-center"
                     >
                       Batal
                     </button>
                     <button
                       type="submit"
                       disabled={uploading || uploadFiles.length === 0}
-                      className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                      className="w-full sm:w-2/3 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-xs sm:text-sm shrink-0"
                     >
                       {uploading ? (
                         <>
-                          <RefreshCw size={16} className="animate-spin" />
-                          <span>Memproses In-Memory...</span>
+                          <RefreshCw size={16} className="animate-spin shrink-0" />
+                          <span className="truncate">Memproses In-Memory...</span>
                         </>
                       ) : (
                         <>
-                          <Upload size={16} />
-                          <span>Unggah & Sinkronkan</span>
+                          <Upload size={16} className="shrink-0" />
+                          <span className="truncate">Unggah & Sinkronkan</span>
                         </>
                       )}
                     </button>

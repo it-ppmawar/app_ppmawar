@@ -55,17 +55,24 @@ function similarityScore(a: any, b: any): number {
   return maxLen === 0 ? 1 : 1 - dist / maxLen;
 }
 
-function findColIndex(headers: string[], aliases: string[]): number {
+function findColIndex(headers: any[], aliases: string[]): number {
   if (!Array.isArray(headers)) return -1;
-  const normHeaders = headers.map(h => normalizeName(h));
+  const cleanHeaders = Array.from(headers).map(h => safeString(h));
+  const normHeaders = cleanHeaders.map(h => normalizeName(h));
+
   for (const alias of aliases) {
     const normAlias = normalizeName(alias);
+    if (!normAlias) continue;
     const idx = normHeaders.indexOf(normAlias);
     if (idx !== -1) return idx;
   }
   for (const alias of aliases) {
     const normAlias = normalizeName(alias);
-    const idx = normHeaders.findIndex(h => h.length > 2 && (h.includes(normAlias) || normAlias.includes(h)));
+    if (!normAlias) continue;
+    const idx = normHeaders.findIndex(h => {
+      const str = safeString(h);
+      return str.length > 2 && (str.includes(normAlias) || normAlias.includes(str));
+    });
     if (idx !== -1) return idx;
   }
   return -1;
@@ -83,10 +90,10 @@ function detectSyncMode(workbook: XLSX.WorkBook): SyncMode {
     if (!sheet) continue;
     const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 }) || [];
 
-    for (let r = 0; r < Math.min(rows.length, 25); r++) {
+    for (let r = 0; r < Math.min(rows.length, 30); r++) {
       const row = rows[r];
       if (!Array.isArray(row)) continue;
-      const rowStr = row.map(c => safeString(c).toUpperCase()).join(' ');
+      const rowStr = Array.from(row).map(c => safeString(c).toUpperCase()).join(' ');
 
       if (
         rowStr.includes('KELAS MADIN') ||
@@ -95,7 +102,8 @@ function detectSyncMode(workbook: XLSX.WorkBook): SyncMode {
         rowStr.includes('WUSTHO') ||
         rowStr.includes('MAK') ||
         rowStr.includes('PEGANGAN GURU') ||
-        rowStr.includes('PEGANGAN SANTRI')
+        rowStr.includes('PEGANGAN SANTRI') ||
+        rowStr.includes('DAFTAR HADIR DAN ABSENSI SANTRI')
       ) return 'madin';
 
       if (
@@ -154,6 +162,7 @@ function parseMadinWorkbook(workbook: XLSX.WorkBook, filename: string): ParsedSa
     const sheet = workbook.Sheets[sheetName];
     if (!sheet) continue;
     const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 }) || [];
+    if (!Array.isArray(rows)) continue;
 
     let currentClass = '';
 
@@ -161,12 +170,23 @@ function parseMadinWorkbook(workbook: XLSX.WorkBook, filename: string): ParsedSa
       const row = rows[r];
       if (!Array.isArray(row) || row.length === 0) continue;
 
-      // Detect class header
-      for (let c = 0; c < row.length; c++) {
-        const cellVal = safeString(row[c]);
-        if (cellVal.toLowerCase() === 'kelas') {
-          for (let k = c + 1; k < row.length; k++) {
-            const nextVal = safeString(row[k]);
+      const cleanRow = Array.from(row);
+
+      // Detect class header in row (e.g. "Kelas : 1 Ula A Putra", "Kelas 2 Wustho", etc.)
+      for (let c = 0; c < cleanRow.length; c++) {
+        const cellVal = safeString(cleanRow[c]);
+        const upperVal = cellVal.toUpperCase();
+
+        if (upperVal.includes('KELAS')) {
+          // Check if class name is in the same cell e.g. "Kelas : 1 Ula A Putra"
+          const match = cellVal.match(/kelas\s*:\s*(.+)/i) || cellVal.match(/kelas\s+(.+)/i);
+          if (match && match[1] && match[1].trim().length > 1) {
+            currentClass = match[1].trim();
+            break;
+          }
+          // Or in subsequent cells
+          for (let k = c + 1; k < cleanRow.length; k++) {
+            const nextVal = safeString(cleanRow[k]);
             if (nextVal && nextVal !== ':' && nextVal.length > 1) {
               currentClass = nextVal;
               break;
@@ -175,18 +195,24 @@ function parseMadinWorkbook(workbook: XLSX.WorkBook, filename: string): ParsedSa
         }
       }
 
-      // Detect santri row (No Urut | Induk/Kelas | Nama)
-      const num = row[0];
-      const namaVal = safeString(row[2]);
-      if (
-        typeof num === 'number' &&
-        namaVal.length > 2 &&
-        !namaVal.toUpperCase().includes('NAMA SANTRI') &&
-        !namaVal.toUpperCase().includes('TAHUN TADRIS')
-      ) {
+      // Check for santri row (Number in col 0, Name in col 1 or 2)
+      const numCol = cleanRow[0];
+      const nameInCol1 = safeString(cleanRow[1]);
+      const nameInCol2 = safeString(cleanRow[2]);
+
+      let candidateNama = '';
+      if (typeof numCol === 'number' || (typeof numCol === 'string' && /^\d+$/.test(numCol.trim()))) {
+        if (nameInCol2.length > 2 && !nameInCol2.toUpperCase().includes('NAMA SANTRI') && !nameInCol2.toUpperCase().includes('TAHUN TADRIS')) {
+          candidateNama = nameInCol2;
+        } else if (nameInCol1.length > 2 && !nameInCol1.toUpperCase().includes('NAMA SANTRI') && !nameInCol1.toUpperCase().includes('TAHUN TADRIS') && !/^(MTS|SMP|MA|SMK)$/i.test(nameInCol1)) {
+          candidateNama = nameInCol1;
+        }
+      }
+
+      if (candidateNama && candidateNama.length > 2) {
         result.push({
-          nama: namaVal,
-          normNama: normalizeName(namaVal),
+          nama: candidateNama,
+          normNama: normalizeName(candidateNama),
           kelasOrKamar: currentClass,
           sourceFile: filename
         });
@@ -195,7 +221,8 @@ function parseMadinWorkbook(workbook: XLSX.WorkBook, filename: string): ParsedSa
 
     // Tabular format fallback
     if (result.length === 0 && rows.length > 1) {
-      const headers = Array.isArray(rows[0]) ? rows[0].map(h => safeString(h).toUpperCase()) : [];
+      const firstRow = Array.isArray(rows[0]) ? Array.from(rows[0]) : [];
+      const headers = firstRow.map(h => safeString(h).toUpperCase());
       const colNama = findColIndex(headers, ['NAMA LENGKAP', 'NAMA SANTRI', 'NAMA']);
       const colKelas = findColIndex(headers, ['KELAS MADIN', 'KELAS', 'KELAS/KAMAR']);
 
@@ -203,8 +230,9 @@ function parseMadinWorkbook(workbook: XLSX.WorkBook, filename: string): ParsedSa
         for (let r = 1; r < rows.length; r++) {
           const row = rows[r];
           if (!Array.isArray(row)) continue;
-          const nama = safeString(row[colNama]);
-          const kelas = safeString(row[colKelas]);
+          const cleanR = Array.from(row);
+          const nama = safeString(cleanR[colNama]);
+          const kelas = safeString(cleanR[colKelas]);
           if (nama && kelas) {
             result.push({ nama, normNama: normalizeName(nama), kelasOrKamar: kelas, sourceFile: filename });
           }
@@ -226,7 +254,8 @@ function parseQuranWorkbook(workbook: XLSX.WorkBook, filename: string): ParsedSa
     const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 }) || [];
 
     if (rows.length < 2) continue;
-    const headers = Array.isArray(rows[0]) ? rows[0].map(h => safeString(h).toUpperCase()) : [];
+    const firstRow = Array.isArray(rows[0]) ? Array.from(rows[0]) : [];
+    const headers = firstRow.map(h => safeString(h).toUpperCase());
     const colNama = findColIndex(headers, ['NAMA LENGKAP', 'NAMA SANTRI', 'NAMA']);
     const colKelas = findColIndex(headers, ['KELAS QURAN', 'KELAS AL QURAN', 'KELAS', 'TAHFIDZ']);
 
@@ -234,8 +263,9 @@ function parseQuranWorkbook(workbook: XLSX.WorkBook, filename: string): ParsedSa
       for (let r = 1; r < rows.length; r++) {
         const row = rows[r];
         if (!Array.isArray(row)) continue;
-        const nama = safeString(row[colNama]);
-        const kelas = safeString(row[colKelas]);
+        const cleanR = Array.from(row);
+        const nama = safeString(cleanR[colNama]);
+        const kelas = safeString(cleanR[colKelas]);
         if (nama && kelas) {
           result.push({ nama, normNama: normalizeName(nama), kelasOrKamar: kelas, sourceFile: filename });
         }
@@ -256,7 +286,8 @@ function parseKamarWorkbook(workbook: XLSX.WorkBook, filename: string): ParsedSa
     const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 }) || [];
 
     if (rows.length < 2) continue;
-    const headers = Array.isArray(rows[0]) ? rows[0].map(h => safeString(h).toUpperCase()) : [];
+    const firstRow = Array.isArray(rows[0]) ? Array.from(rows[0]) : [];
+    const headers = firstRow.map(h => safeString(h).toUpperCase());
     const colNama = findColIndex(headers, ['NAMA LENGKAP', 'NAMA SANTRI', 'NAMA']);
     const colKamar = findColIndex(headers, ['KAMAR', 'NAMA KAMAR', 'ASRAMA', 'BLOK']);
 
@@ -264,8 +295,9 @@ function parseKamarWorkbook(workbook: XLSX.WorkBook, filename: string): ParsedSa
       for (let r = 1; r < rows.length; r++) {
         const row = rows[r];
         if (!Array.isArray(row)) continue;
-        const nama = safeString(row[colNama]);
-        const kamar = safeString(row[colKamar]);
+        const cleanR = Array.from(row);
+        const nama = safeString(cleanR[colNama]);
+        const kamar = safeString(cleanR[colKamar]);
         if (nama && kamar) {
           result.push({ nama, normNama: normalizeName(nama), kelasOrKamar: kamar, sourceFile: filename });
         }
