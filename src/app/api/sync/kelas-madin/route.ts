@@ -10,17 +10,27 @@ import fs from 'fs';
 export const dynamic = 'force-dynamic';
 
 async function getAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
-  if (!token) return null;
-  const payload = verifyToken(token) as any;
-  if (!payload) return null;
-  return payload;
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+    if (!token) return null;
+    const payload = verifyToken(token) as any;
+    if (!payload) return null;
+    return payload;
+  } catch {
+    return null;
+  }
 }
 
-function normalizeName(name: string): string {
-  if (!name) return '';
-  return name.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+function safeString(val: any): string {
+  if (val === null || val === undefined) return '';
+  return String(val).trim();
+}
+
+function normalizeName(name: any): string {
+  const str = safeString(name);
+  if (!str) return '';
+  return str.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
 function levenshtein(a: string, b: string): number {
@@ -36,52 +46,125 @@ function levenshtein(a: string, b: string): number {
   return dp[a.length][b.length];
 }
 
-function similarityScore(a: string, b: string): number {
+function similarityScore(a: any, b: any): number {
   const normA = normalizeName(a);
   const normB = normalizeName(b);
+  if (!normA || !normB) return 0;
   const dist = levenshtein(normA, normB);
   const maxLen = Math.max(normA.length, normB.length);
   return maxLen === 0 ? 1 : 1 - dist / maxLen;
 }
 
 function parseMadinSheet(sheet: XLSX.WorkSheet, gender: 'Laki-laki' | 'Perempuan') {
-  const data: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+  if (!sheet) return [];
+  const rawData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 }) || [];
   const result: Array<{ gender: string; classInSheet: string; no: number; induk: any; nama: string; normNama: string }> = [];
   let currentClass = '';
 
-  for (let r = 0; r < data.length; r++) {
-    const row = data[r];
-    if (!row || row.length === 0) continue;
+  for (let r = 0; r < rawData.length; r++) {
+    const row = rawData[r];
+    if (!Array.isArray(row) || row.length === 0) continue;
 
-    const rowStr = row.join(' ');
-    if (rowStr.includes('Kelas') && rowStr.includes(':')) {
-      for (let c = 0; c < row.length; c++) {
-        if (typeof row[c] === 'string' && row[c].includes(':') && row[c + 1]) {
-          currentClass = String(row[c + 1]).trim();
+    const cleanRow = Array.from(row);
+
+    // Detect class header
+    for (let c = 0; c < cleanRow.length; c++) {
+      const cellVal = safeString(cleanRow[c]);
+      const upperVal = cellVal.toUpperCase();
+
+      if (upperVal.includes('KELAS')) {
+        const match = cellVal.match(/kelas\s*:\s*(.+)/i) || cellVal.match(/kelas\s+(.+)/i);
+        if (match && match[1] && match[1].trim().length > 1) {
+          currentClass = match[1].trim();
           break;
-        } else if (typeof row[c] === 'string' && row[c] === 'Kelas') {
-          for (let k = c + 1; k < row.length; k++) {
-            if (row[k] && typeof row[k] === 'string' && row[k].trim() !== ':' && row[k].trim().length > 1) {
-              currentClass = row[k].trim();
-              break;
-            }
+        }
+        for (let k = c + 1; k < cleanRow.length; k++) {
+          const nextVal = safeString(cleanRow[k]);
+          if (nextVal && nextVal !== ':' && nextVal.length > 1) {
+            currentClass = nextVal;
+            break;
           }
         }
       }
     }
 
-    if (typeof row[0] === 'number' && typeof row[2] === 'string' && row[2].trim().length > 1) {
+    const numCol = cleanRow[0];
+    const nameInCol1 = safeString(cleanRow[1]);
+    const nameInCol2 = safeString(cleanRow[2]);
+
+    let candidateNama = '';
+    let noVal = 0;
+    let indukVal = null;
+
+    if (typeof numCol === 'number' || (typeof numCol === 'string' && /^\d+$/.test(numCol.trim()))) {
+      noVal = Number(numCol);
+      if (nameInCol2.length > 2 && !nameInCol2.toUpperCase().includes('NAMA SANTRI') && !nameInCol2.toUpperCase().includes('TAHUN TADRIS')) {
+        candidateNama = nameInCol2;
+        indukVal = cleanRow[1];
+      } else if (nameInCol1.length > 2 && !nameInCol1.toUpperCase().includes('NAMA SANTRI') && !nameInCol1.toUpperCase().includes('TAHUN TADRIS') && !/^(MTS|SMP|MA|SMK)$/i.test(nameInCol1)) {
+        candidateNama = nameInCol1;
+      }
+    }
+
+    if (candidateNama && candidateNama.length > 2) {
       result.push({
         gender,
         classInSheet: currentClass,
-        no: row[0],
-        induk: row[1],
-        nama: row[2].trim(),
-        normNama: normalizeName(row[2].trim())
+        no: noVal,
+        induk: indukVal,
+        nama: candidateNama,
+        normNama: normalizeName(candidateNama)
       });
     }
   }
   return result;
+}
+
+// Safely load workbook from path
+function loadWorkbookSafely(filePath: string): XLSX.WorkBook | null {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const fileBuffer = fs.readFileSync(filePath);
+    return XLSX.read(fileBuffer, { type: 'buffer' });
+  } catch (err) {
+    console.error(`Error reading file at ${filePath}:`, err);
+    return null;
+  }
+}
+
+// Find source Excel files safely
+function resolveExcelSources(): Array<{ file: string; sheet: string; gender: 'Laki-laki' | 'Perempuan' }> {
+  const cwd = process.cwd();
+  const dataMadinDir = path.join(cwd, 'data_madin');
+  const defaultExcel = path.join(cwd, 'JADWAL MADIN 2026-2027.xlsx');
+
+  // Check data_madin folder first
+  if (fs.existsSync(dataMadinDir)) {
+    return [
+      { file: path.join(dataMadinDir, 'SANTRI BARU FIKS 2025.xlsx'), sheet: 'PEGANGAN GURU 1', gender: 'Perempuan' },
+      { file: path.join(dataMadinDir, 'SANTRI LAMA PUTRI 2 fiks.xlsx'), sheet: 'PEGANGAN GURU 1', gender: 'Perempuan' },
+      { file: path.join(dataMadinDir, 'JADWAL MADIN 2026-2027.xlsx'), sheet: 'PUTRA', gender: 'Laki-laki' }
+    ];
+  }
+
+  // Check default file in root
+  if (fs.existsSync(defaultExcel)) {
+    const wb = loadWorkbookSafely(defaultExcel);
+    if (wb) {
+      const sheets = wb.SheetNames.map(s => s.trim().toUpperCase());
+      const sources: Array<{ file: string; sheet: string; gender: 'Laki-laki' | 'Perempuan' }> = [];
+      if (sheets.includes('PUTRA')) sources.push({ file: defaultExcel, sheet: 'PUTRA', gender: 'Laki-laki' });
+      if (sheets.includes('PUTRI')) sources.push({ file: defaultExcel, sheet: 'PUTRI', gender: 'Perempuan' });
+      if (sources.length > 0) return sources;
+
+      // Fallback: use first sheet if sheet names differ
+      if (wb.SheetNames.length > 0) {
+        return [{ file: defaultExcel, sheet: wb.SheetNames[0], gender: 'Laki-laki' }];
+      }
+    }
+  }
+
+  return [];
 }
 
 // GET: Summary analysis of sync status
@@ -92,31 +175,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const dataMadinDir = path.join(process.cwd(), 'data_madin');
-    const excelPathDefault = path.join(process.cwd(), 'JADWAL MADIN 2026-2027.xlsx');
-
-    let sources: Array<{ file: string; sheet: string; gender: 'Laki-laki' | 'Perempuan' }> = [];
-
-    if (fs.existsSync(dataMadinDir)) {
-      sources = [
-        { file: path.join(dataMadinDir, 'SANTRI BARU FIKS 2025.xlsx'), sheet: 'PEGANGAN GURU 1', gender: 'Perempuan' },
-        { file: path.join(dataMadinDir, 'SANTRI LAMA PUTRI 2 fiks.xlsx'), sheet: 'PEGANGAN GURU 1', gender: 'Perempuan' },
-        { file: path.join(dataMadinDir, 'JADWAL MADIN 2026-2027.xlsx'), sheet: 'PUTRA', gender: 'Laki-laki' }
-      ];
-    } else if (fs.existsSync(excelPathDefault)) {
-      sources = [
-        { file: excelPathDefault, sheet: 'PUTRA', gender: 'Laki-laki' },
-        { file: excelPathDefault, sheet: 'PUTRI', gender: 'Perempuan' }
-      ];
-    } else {
-      return NextResponse.json({ error: 'File Excel sinkronisasi Madin tidak ditemukan' }, { status: 404 });
+    const sources = resolveExcelSources();
+    if (sources.length === 0) {
+      return NextResponse.json({ error: 'File Excel sinkronisasi Madin (JADWAL MADIN 2026-2027.xlsx) tidak ditemukan di server.' }, { status: 404 });
     }
 
     let allExcel: any[] = [];
     for (const src of sources) {
-      if (fs.existsSync(src.file)) {
-        const wb = XLSX.readFile(src.file);
-        const sh = wb.Sheets[src.sheet];
+      const wb = loadWorkbookSafely(src.file);
+      if (wb) {
+        const targetSheetName = wb.SheetNames.find(s => s.trim().toUpperCase() === src.sheet.toUpperCase()) || wb.SheetNames[0];
+        const sh = wb.Sheets[targetSheetName];
         if (sh) {
           allExcel = allExcel.concat(parseMadinSheet(sh, src.gender));
         }
@@ -127,9 +196,10 @@ export async function GET() {
     const classNameToIdMap = new Map<string, number>();
     const classMap = new Map<number, string>();
     dbClasses.forEach(c => {
-      const norm = c.nama_kelas.toUpperCase().replace(/[\(\)]/g, '').replace(/\s+/g, ' ');
+      const nama = safeString(c.nama_kelas);
+      const norm = nama.toUpperCase().replace(/[\(\)]/g, '').replace(/\s+/g, ' ');
       classNameToIdMap.set(norm, c.kelas_id);
-      classMap.set(c.kelas_id, c.nama_kelas);
+      classMap.set(c.kelas_id, nama);
     });
 
     const [dbMurid] = await pool.execute<RowDataPacket[]>('SELECT murid_id, nis, nama, jenis_kelamin, kelas_madin_id FROM murid');
@@ -137,8 +207,8 @@ export async function GET() {
     const dbMuridList: any[] = dbMurid.map(m => ({
       murid_id: m.murid_id,
       nis: m.nis,
-      nama: m.nama,
-      jenis_kelamin: m.jenis_kelamin,
+      nama: safeString(m.nama),
+      jenis_kelamin: safeString(m.jenis_kelamin),
       kelas_madin_id: m.kelas_madin_id,
       normNama: normalizeName(m.nama)
     }));
@@ -157,13 +227,12 @@ export async function GET() {
 
     allExcel.forEach(ex => {
       const matches = dbMuridMap.get(ex.normNama);
-      const normExClass = (ex.classInSheet || '').toUpperCase().replace(/[\(\)]/g, '').replace(/\s+/g, ' ');
+      const normExClass = safeString(ex.classInSheet).toUpperCase().replace(/[\(\)]/g, '').replace(/\s+/g, ' ');
       const targetClassId = classNameToIdMap.get(normExClass) || null;
 
       let dbSantri = matches ? matches[0] : null;
 
       if (!dbSantri) {
-        // Try fuzzy match (>80%)
         let bestMatch = null;
         let maxScore = 0;
         for (const db of dbMuridList) {
@@ -214,7 +283,7 @@ export async function GET() {
       notInDbSummary: notInDb.slice(0, 50)
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 });
   }
 }
 
@@ -228,26 +297,11 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}));
     const registerMissing = body.registerMissing === true;
-    const targetGender = body.targetGender; // 'Laki-laki' | 'Perempuan' | undefined (all)
+    const targetGender = body.targetGender;
 
-    const dataMadinDir = path.join(process.cwd(), 'data_madin');
-    const excelPathDefault = path.join(process.cwd(), 'JADWAL MADIN 2026-2027.xlsx');
-
-    let sources: Array<{ file: string; sheet: string; gender: 'Laki-laki' | 'Perempuan' }> = [];
-
-    if (fs.existsSync(dataMadinDir)) {
-      sources = [
-        { file: path.join(dataMadinDir, 'SANTRI BARU FIKS 2025.xlsx'), sheet: 'PEGANGAN GURU 1', gender: 'Perempuan' },
-        { file: path.join(dataMadinDir, 'SANTRI LAMA PUTRI 2 fiks.xlsx'), sheet: 'PEGANGAN GURU 1', gender: 'Perempuan' },
-        { file: path.join(dataMadinDir, 'JADWAL MADIN 2026-2027.xlsx'), sheet: 'PUTRA', gender: 'Laki-laki' }
-      ];
-    } else if (fs.existsSync(excelPathDefault)) {
-      sources = [
-        { file: excelPathDefault, sheet: 'PUTRA', gender: 'Laki-laki' },
-        { file: excelPathDefault, sheet: 'PUTRI', gender: 'Perempuan' }
-      ];
-    } else {
-      return NextResponse.json({ error: 'File Excel sinkronisasi Madin tidak ditemukan' }, { status: 404 });
+    let sources = resolveExcelSources();
+    if (sources.length === 0) {
+      return NextResponse.json({ error: 'File Excel sinkronisasi Madin (JADWAL MADIN 2026-2027.xlsx) tidak ditemukan di server.' }, { status: 404 });
     }
 
     if (targetGender) {
@@ -256,9 +310,10 @@ export async function POST(request: Request) {
 
     let allExcel: any[] = [];
     for (const src of sources) {
-      if (fs.existsSync(src.file)) {
-        const wb = XLSX.readFile(src.file);
-        const sh = wb.Sheets[src.sheet];
+      const wb = loadWorkbookSafely(src.file);
+      if (wb) {
+        const targetSheetName = wb.SheetNames.find(s => s.trim().toUpperCase() === src.sheet.toUpperCase()) || wb.SheetNames[0];
+        const sh = wb.Sheets[targetSheetName];
         if (sh) {
           allExcel = allExcel.concat(parseMadinSheet(sh, src.gender));
         }
@@ -268,7 +323,8 @@ export async function POST(request: Request) {
     const [dbClasses] = await pool.execute<RowDataPacket[]>('SELECT * FROM kelas_madin');
     const classNameToIdMap = new Map<string, number>();
     dbClasses.forEach(c => {
-      const norm = c.nama_kelas.toUpperCase().replace(/[\(\)]/g, '').replace(/\s+/g, ' ');
+      const nama = safeString(c.nama_kelas);
+      const norm = nama.toUpperCase().replace(/[\(\)]/g, '').replace(/\s+/g, ' ');
       classNameToIdMap.set(norm, c.kelas_id);
     });
 
@@ -277,8 +333,8 @@ export async function POST(request: Request) {
     const dbMuridList: any[] = dbMurid.map(m => ({
       murid_id: m.murid_id,
       nis: m.nis,
-      nama: m.nama,
-      jenis_kelamin: m.jenis_kelamin,
+      nama: safeString(m.nama),
+      jenis_kelamin: safeString(m.jenis_kelamin),
       kelas_madin_id: m.kelas_madin_id,
       normNama: normalizeName(m.nama)
     }));
@@ -295,13 +351,12 @@ export async function POST(request: Request) {
 
     for (const ex of allExcel) {
       const matches = dbMuridMap.get(ex.normNama);
-      const normExClass = (ex.classInSheet || '').toUpperCase().replace(/[\(\)]/g, '').replace(/\s+/g, ' ');
+      const normExClass = safeString(ex.classInSheet).toUpperCase().replace(/[\(\)]/g, '').replace(/\s+/g, ' ');
       const targetClassId = classNameToIdMap.get(normExClass) || null;
 
       let dbSantri = matches ? matches[0] : null;
 
       if (!dbSantri) {
-        // Try fuzzy match (>80%)
         let bestMatch = null;
         let maxScore = 0;
         for (const db of dbMuridList) {
@@ -343,7 +398,6 @@ export async function POST(request: Request) {
       details: { updatedCount, fuzzyUpdatedCount, insertedCount, skippedCount, totalExcel: allExcel.length }
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 });
   }
 }
-
