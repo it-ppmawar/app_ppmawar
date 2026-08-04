@@ -294,6 +294,7 @@ function ScanAbsenInner() {
   const [faceStatusMsg, setFaceStatusMsg] = useState('');
   const [faceDb, setFaceDb] = useState<FaceDescriptor[]>([]);
   const [faceDbCount, setFaceDbCount] = useState(0);
+  const [enrollStats, setEnrollStats] = useState<{ total: number; enrolled: number; percent: number } | null>(null);
   const [detectResult, setDetectResult] = useState<{ nama: string; score: number; murid_id: number } | null>(null);
   const [confirmPending, setConfirmPending] = useState(false);
   const [lastUnknownDescriptor, setLastUnknownDescriptor] = useState<number[] | undefined>();
@@ -326,6 +327,22 @@ function ScanAbsenInner() {
       setFacingMode('environment');
     }
   }, [urlMode]);
+
+  // Fetch enrollment stats for status badge
+  useEffect(() => {
+    if (scanMode === 'face') {
+      fetch('/api/murid/face-enrollment-status')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const percent = data.total > 0 ? Math.round((data.enrolled / data.total) * 100) : 0;
+            setEnrollStats({ total: data.total, enrolled: data.enrolled, percent });
+            setFaceDbCount(data.enrolled);
+          }
+        })
+        .catch(err => console.warn('Fetch enrollment status error:', err));
+    }
+  }, [scanMode]);
 
   // ── QR SCANNER ────────────────────────────────────────────────────
   const stopQrScanner = async () => {
@@ -716,7 +733,17 @@ function ScanAbsenInner() {
             <li>🔒 Pencocokan dilakukan murni di browser (tanpa kirim foto ke server)</li>
             <li>📋 Otomatis mencatat ke jadwal aktif — sinkron dengan Rekapitulasi ✅</li>
           </ul>
-          {faceDbCount === 0 && (
+          {enrollStats && enrollStats.enrolled > 0 ? (
+            <div className="flex items-center justify-between text-xs mt-3 bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800">
+              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold">
+                <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
+                <span>{enrollStats.enrolled} / {enrollStats.total} santri ter-enroll ({enrollStats.percent}%) — Face AI Siap!</span>
+              </div>
+              <Link href="/dashboard/face-enrollment" className="text-emerald-700 dark:text-emerald-300 hover:underline font-bold text-xs flex items-center gap-1 flex-shrink-0 ml-2">
+                Kelola →
+              </Link>
+            </div>
+          ) : (
             <Link href="/dashboard/face-enrollment" className="flex items-center gap-2 text-amber-600 hover:text-amber-700 hover:underline text-xs mt-2 font-bold bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800 transition">
               <Info size={16} className="flex-shrink-0" />
               <span>Belum ada santri ter-enroll. <u>Klik di sini untuk buka Batch Enrollment</u> di menu Face AI Enrollment →</span>
