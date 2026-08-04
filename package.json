@@ -4,13 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "NODE_ENV=production node server.js",
     "lint": "eslint"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.1",
+    "@vladmandic/face-api": "^1.7.15",
     "@zxing/browser": "^0.2.0",
     "@zxing/library": "^0.22.0",
     "basic-ftp": "^6.0.1",
