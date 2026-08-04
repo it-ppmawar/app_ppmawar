@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
   images: {
     remotePatterns: [
       {
@@ -11,7 +10,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Exclude browser-only libraries from server-side bundle
   serverExternalPackages: ['@vladmandic/face-api'],
 };
 
