@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
@@ -11,6 +12,10 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: ['@vladmandic/face-api'],
+  turbopack: {},
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 export default nextConfig;

@@ -36,7 +36,6 @@ jobs:
       - name: Build Next.js
         run: npm run build
         env:
-          # Tambah memory untuk build yang besar (model AI files)
           NODE_OPTIONS: '--max-old-space-size=4096'
 
       - name: Prepare Production Files
@@ -73,6 +72,3 @@ jobs:
           protocol: ftp
           passive: true
           timeout: 900000
-          # Skip model binary files jika terlalu lama — bisa upload manual 1x
-          exclude: |
-            **/models/*.bin
