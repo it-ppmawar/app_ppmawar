@@ -53,17 +53,25 @@ function getFotoUrl(fotoName: string | null, nis?: string | null): string {
     if (nis) return `/api/kartu-image/${nis}`;
     return '';
   }
-  if (fotoName.startsWith('http://') || fotoName.startsWith('https://') || fotoName.startsWith('/api/')) {
+  if (fotoName.startsWith('/api/')) {
     return fotoName;
   }
   if (fotoName.startsWith('foto_') || fotoName.startsWith('upload_') || fotoName.startsWith('profil_')) {
     return `/uploads/${fotoName}`;
   }
-  const cleanFotoName = fotoName.startsWith('/') ? fotoName.substring(1) : fotoName;
-  if (cleanFotoName.includes('sekretariat/berkas')) {
-    return `https://mawar.smartpesantren.id/${cleanFotoName}`;
+
+  let fullUrl = fotoName;
+  if (!fotoName.startsWith('http://') && !fotoName.startsWith('https://')) {
+    const cleanFotoName = fotoName.startsWith('/') ? fotoName.substring(1) : fotoName;
+    if (cleanFotoName.includes('sekretariat/berkas')) {
+      fullUrl = `https://mawar.smartpesantren.id/${cleanFotoName}`;
+    } else {
+      fullUrl = `https://mawar.smartpesantren.id/sekretariat/berkas/${cleanFotoName}`;
+    }
   }
-  return `https://mawar.smartpesantren.id/sekretariat/berkas/${cleanFotoName}`;
+
+  // Bungkus dengan proxy-image API agar tidak terblokir CORS browser
+  return `/api/proxy-image?url=${encodeURIComponent(fullUrl)}`;
 }
 
 async function computeDescriptorFromUrl(faceapi: any, imageUrl: string): Promise<number[] | null> {
