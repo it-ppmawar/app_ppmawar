@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   Camera, CheckCircle, XCircle, QrCode, Shield, Wifi, RefreshCw,
   ChevronDown, FlipHorizontal, Layers, Sparkles, Brain, ScanFace,
@@ -688,8 +689,7 @@ function ScanAbsenInner() {
           <QrCode size={16} /> Scan QR
         </button>
         <button onClick={() => handleModeSwitch('face')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${scanMode === 'face' ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}>
-          <Brain size={16} /> Face AI
-          <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-semibold">BARU</span>
+          <Brain size={16} /> Scan Wajah AI
         </button>
       </div>
 
@@ -717,9 +717,10 @@ function ScanAbsenInner() {
             <li>📋 Otomatis mencatat ke jadwal aktif — sinkron dengan Rekapitulasi ✅</li>
           </ul>
           {faceDbCount === 0 && (
-            <div className="flex items-center gap-2 text-amber-600 text-xs mt-2 font-medium">
-              <Info size={14} /> Belum ada santri ter-enroll. Jalankan Batch Enrollment di menu Face AI Enrollment.
-            </div>
+            <Link href="/dashboard/face-enrollment" className="flex items-center gap-2 text-amber-600 hover:text-amber-700 hover:underline text-xs mt-2 font-bold bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800 transition">
+              <Info size={16} className="flex-shrink-0" />
+              <span>Belum ada santri ter-enroll. <u>Klik di sini untuk buka Batch Enrollment</u> di menu Face AI Enrollment →</span>
+            </Link>
           )}
         </div>
       )}
