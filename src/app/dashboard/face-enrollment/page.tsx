@@ -148,8 +148,20 @@ export default function FaceEnrollmentPage() {
   // ── Start Batch Enrollment ───────────────────────────────────────
   const startBatch = async () => {
     if (!faceApiRef.current) {
-      setBatchLog(prev => [...prev, '⚠️ Load model AI terlebih dahulu!']);
-      return;
+      setModelsLoading(true);
+      setBatchLog(prev => [...prev, '⌛ Memuat model AI Face Recognition...']);
+      try {
+        const faceapi = await loadFaceApi();
+        faceApiRef.current = faceapi;
+        setModelsReady(true);
+        setBatchLog(prev => [...prev, '✅ Model AI berhasil dimuat (SSD MobileNet + Face Recognition)']);
+      } catch (e: any) {
+        setBatchLog(prev => [...prev, '❌ Gagal memuat model AI: ' + e.message]);
+        setModelsLoading(false);
+        return;
+      } finally {
+        setModelsLoading(false);
+      }
     }
 
     const targets = list.filter(m => !m.enrolled && m.foto);

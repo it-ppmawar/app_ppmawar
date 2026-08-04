@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       FROM murid m
       LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
       LEFT JOIN murid_face mf ON m.murid_id = mf.murid_id
-      WHERE m.status = 'Aktif' OR m.status IS NULL
+      WHERE 1=1
     `;
 
     const params: any[] = [];
