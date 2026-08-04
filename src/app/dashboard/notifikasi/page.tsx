@@ -412,12 +412,13 @@ function NotifikasiContent() {
     if (!phone) return '#';
 
     let tipeLabel = reminder.tipe === 'madin' ? 'Madin' : reminder.tipe === 'quran' ? "Al-Qur'an" : 'Asrama';
+    const linkAbsen = reminder.quick_url || 'https://app.ppmawar.or.id/dashboard/absen';
     const text = pesanGuruTemplate
       .replace(/{nama_guru}/g, reminder.guru_nama)
       .replace(/{kegiatan}/g, tipeLabel)
       .replace(/{kelas}/g, reminder.kelas_nama)
       .replace(/{jam}/g, `${reminder.jam_mulai.substring(0, 5)} - ${reminder.jam_selesai.substring(0, 5)}`)
-      .replace(/{link_absen}/g, 'https://app.ppmawar.or.id/dashboard/absen');
+      .replace(/{link_absen}/g, linkAbsen);
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };

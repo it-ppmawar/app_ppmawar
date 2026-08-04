@@ -12,7 +12,11 @@ export interface ActivePendingReminder {
   guru_nama: string;
   guru_whatsapp: string;
   hari: string;
+  quick_url?: string;
+  quick_token?: string;
 }
+
+import { signToken } from '@/lib/auth/jwt';
 
 export async function getActivePendingReminders(): Promise<ActivePendingReminder[]> {
   try {
@@ -77,6 +81,17 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
         const windowEnd = selesaiSecs + 3 * 3600;
 
         if (currentSecs >= windowStart && currentSecs <= windowEnd) {
+          const quickPayload = {
+            type: 'quick_absen',
+            guru_id: row.guru_id,
+            guru_nama: row.guru_nama || 'Tanpa Nama',
+            jadwal_id: Number(row.jadwal_id),
+            tipe,
+            date: localISOTime
+          };
+          const quick_token = signToken(quickPayload);
+          const quick_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}`;
+
           allActiveSchedules.push({
             jadwal_id: row.jadwal_id,
             tipe,
@@ -87,7 +102,9 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
             guru_id: row.guru_id,
             guru_nama: row.guru_nama || 'Tanpa Nama',
             guru_whatsapp: row.guru_whatsapp || '',
-            hari: row.hari
+            hari: row.hari,
+            quick_token,
+            quick_url
           });
         }
       }
