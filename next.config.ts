@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Exclude browser-only libraries from server-side bundle
+  serverExternalPackages: ['@vladmandic/face-api'],
 };
 
 export default nextConfig;

@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList } from 'lucide-react';
+import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -550,6 +550,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <li>
               <Link href="/dashboard/scan-absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/scan-absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
                 <QrCode size={18} /> <span className="text-sm">Scan Absensi</span>
+              </Link>
+            </li>
+            ) : null}
+            {['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) ? (
+            <li>
+              <Link href="/dashboard/face-enrollment" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/face-enrollment') ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 font-bold' : 'hover:bg-violet-50 dark:hover:bg-violet-900/20 text-violet-600 dark:text-violet-400 font-bold'}`}>
+                <Brain size={18} /> <span className="text-sm">Face AI Enrollment</span>
               </Link>
             </li>
             ) : null}
