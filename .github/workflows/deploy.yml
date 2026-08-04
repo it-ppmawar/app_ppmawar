@@ -5,12 +5,13 @@ on:
   push:
     branches:
       - main
-    paths:            # Hanya deploy jika file penting berubah
+    paths:            # Deploy jika file penting berubah
       - 'src/**'
       - 'public/**'
       - 'package*.json'
       - 'next.config.ts'
       - 'server.js'
+      - '.github/workflows/**'
 
 concurrency:
   group: deploy-cpanel
