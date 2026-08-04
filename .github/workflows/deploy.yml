@@ -35,6 +35,9 @@ jobs:
 
       - name: Build Next.js
         run: npm run build
+        env:
+          # Tambah memory untuk build yang besar (model AI files)
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
       - name: Prepare Production Files
         run: |
@@ -53,6 +56,8 @@ jobs:
           echo ""
           echo "=== Files prepared for deployment ==="
           ls -la deploy_dist/
+          echo "=== Model files in public/models ==="
+          ls -la deploy_dist/public/models/ || echo "(no models dir)"
           echo "=== Target Dir: ${{ secrets.FTP_TARGET_DIR }} ==="
 
       - name: Deploy to cPanel via FTP
@@ -61,13 +66,13 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # PENTING: harus menunjuk ke direktori aplikasi, bukan root FTP
-          # Contoh yang benar: /home/ppmawar/app.ppmawaror.id/
           local-dir: ./deploy_dist/
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
           dangerous-clean-slate: false
-          log-level: verbose
-          # Gunakan FTP standar dengan passive mode untuk kompatibilitas penuh cPanel
+          log-level: minimal
           protocol: ftp
           passive: true
-          timeout: 600000
+          timeout: 900000
+          # Skip model binary files jika terlalu lama — bisa upload manual 1x
+          exclude: |
+            **/models/*.bin
