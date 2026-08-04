@@ -26,6 +26,8 @@ export async function GET(request: Request) {
     const tanpaMadin = searchParams.get('tanpa_madin') === '1';
     const tanpaQuran = searchParams.get('tanpa_quran') === '1';
     const tanpaKamar = searchParams.get('tanpa_kamar') === '1';
+    const searchQ = searchParams.get('q') || '';       // ?q= pencarian nama/NIS
+    const limitN = parseInt(searchParams.get('limit') || '200'); // ?limit=
 
     let whereClause = '1=1';
     let queryParams: any[] = [];
@@ -122,6 +124,11 @@ export async function GET(request: Request) {
     if (tanpaKamar) {
       whereClause += ` AND m.kamar_id IS NULL`;
     }
+    // ?q= pencarian nama atau NIS (untuk Quick Pairing Panel)
+    if (searchQ.length >= 2) {
+      whereClause += ` AND (m.nama LIKE ? OR m.nis LIKE ?)`;
+      queryParams.push(`%${searchQ}%`, `%${searchQ}%`);
+    }
 
     const sql = `
       SELECT m.*,
@@ -134,6 +141,7 @@ export async function GET(request: Request) {
       LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
       WHERE ${whereClause}
       ORDER BY m.nama ASC
+      LIMIT ${Math.min(Math.max(limitN, 1), 50)}
     `;
 
     const [rows] = await pool.execute<RowDataPacket[]>(sql, queryParams);
