@@ -70,5 +70,5 @@ jobs:
           dangerous-clean-slate: false
           log-level: minimal
           protocol: ftp
-          passive: true
+          security: loose
           timeout: 900000
