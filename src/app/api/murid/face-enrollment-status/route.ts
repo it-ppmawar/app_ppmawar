@@ -10,6 +10,17 @@ import path from 'path';
  */
 export async function GET(request: Request) {
   try {
+    // Auto-create murid_face table if not exists (self-healing migration)
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS murid_face (
+        murid_id INT PRIMARY KEY,
+        descriptor JSON NOT NULL,
+        foto_source VARCHAR(255) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
     const { searchParams } = new URL(request.url);
     const jenis_kelamin = searchParams.get('jenis_kelamin');
     const kelas_madin_id = searchParams.get('kelas_madin_id');
