@@ -48,6 +48,24 @@ async function loadFaceApi() {
   return faceapi;
 }
 
+function getFotoUrl(fotoName: string | null, nis?: string | null): string {
+  if (!fotoName || fotoName === '-' || fotoName.trim() === '') {
+    if (nis) return `/api/kartu-image/${nis}`;
+    return '';
+  }
+  if (fotoName.startsWith('http://') || fotoName.startsWith('https://') || fotoName.startsWith('/api/')) {
+    return fotoName;
+  }
+  if (fotoName.startsWith('foto_') || fotoName.startsWith('upload_') || fotoName.startsWith('profil_')) {
+    return `/uploads/${fotoName}`;
+  }
+  const cleanFotoName = fotoName.startsWith('/') ? fotoName.substring(1) : fotoName;
+  if (cleanFotoName.includes('sekretariat/berkas')) {
+    return `https://mawar.smartpesantren.id/${cleanFotoName}`;
+  }
+  return `https://mawar.smartpesantren.id/sekretariat/berkas/${cleanFotoName}`;
+}
+
 async function computeDescriptorFromUrl(faceapi: any, imageUrl: string): Promise<number[] | null> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -198,8 +216,16 @@ export default function FaceEnrollmentPage() {
       const murid = targets[i];
       setBatchIdx(i + 1);
 
+      const photoUrl = getFotoUrl(murid.foto, murid.nis);
+      if (!photoUrl) {
+        noFaceCount++;
+        setBatchResults(prev => ({ ...prev, noFace: prev.noFace + 1 }));
+        setBatchLog(prev => [...prev, `⚠️ [${i + 1}/${targets.length}] ${murid.nama} — Tanpa foto`]);
+        continue;
+      }
+
       try {
-        const descriptor = await computeDescriptorFromUrl(faceApiRef.current, murid.foto!);
+        const descriptor = await computeDescriptorFromUrl(faceApiRef.current, photoUrl);
 
         if (!descriptor) {
           noFaceCount++;

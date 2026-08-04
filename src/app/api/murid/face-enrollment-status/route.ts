@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * GET /api/murid/face-enrollment-status
@@ -44,16 +46,42 @@ export async function GET(request: Request) {
 
     const [rows] = await pool.execute<RowDataPacket[]>(sql, params);
 
-    const data = rows.map(r => ({
-      murid_id: r.murid_id,
-      nama: r.nama,
-      nis: r.nis,
-      jenis_kelamin: r.jenis_kelamin,
-      foto: r.foto || null,
-      kelas_madin: r.kelas_madin || null,
-      enrolled: r.enrolled === 1,
-      descriptor_updated_at: r.descriptor_updated_at || null,
-    }));
+    // Cek ketersediaan folder lokal KARTU EMAAL 2026 2027
+    const emaalDir = path.join(process.cwd(), 'KARTU EMAAL 2026 2027');
+    const hasEmaalDir = fs.existsSync(emaalDir);
+
+    const data = rows.map(r => {
+      let fotoUrl: string | null = null;
+
+      if (r.foto && r.foto !== '-' && r.foto.trim() !== '') {
+        if (r.foto.startsWith('http://') || r.foto.startsWith('https://')) {
+          fotoUrl = r.foto;
+        } else if (r.foto.startsWith('foto_') || r.foto.startsWith('upload_') || r.foto.startsWith('profil_')) {
+          fotoUrl = `/uploads/${r.foto}`;
+        } else {
+          const clean = r.foto.startsWith('/') ? r.foto.substring(1) : r.foto;
+          fotoUrl = `https://mawar.smartpesantren.id/sekretariat/berkas/${clean}`;
+        }
+      }
+
+      // Jika belum ada fotoUrl tapi punya NIS dan ada file kartu lokal/remote
+      if (!fotoUrl && r.nis) {
+        if (hasEmaalDir && fs.existsSync(path.join(emaalDir, `${r.nis}.jpg`))) {
+          fotoUrl = `/api/kartu-image/${r.nis}`;
+        }
+      }
+
+      return {
+        murid_id: r.murid_id,
+        nama: r.nama,
+        nis: r.nis,
+        jenis_kelamin: r.jenis_kelamin,
+        foto: fotoUrl,
+        kelas_madin: r.kelas_madin || null,
+        enrolled: r.enrolled === 1,
+        descriptor_updated_at: r.descriptor_updated_at || null,
+      };
+    });
 
     const enrolled = data.filter(d => d.enrolled).length;
 
