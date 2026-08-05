@@ -274,10 +274,40 @@ function QuickAbsenContent() {
     setKehadiran(newMap);
   };
 
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        (err) => {
+          console.log('GPS error:', err);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  }, []);
+
   const handleSubmit = async () => {
     if (!data || submitting) return;
     setSubmitting(true);
     setError(null);
+
+    // Dapatkan lokasi GPS terbaru jika belum terdeteksi
+    let currentLoc = userLocation;
+    if (!currentLoc && 'geolocation' in navigator) {
+      try {
+        const pos: any = await new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { enableHighAccuracy: true, timeout: 6000 });
+        });
+        if (pos && pos.coords) {
+          currentLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(currentLoc);
+        }
+      } catch (_) {}
+    }
 
     const listAbsensi = (murid || []).map((m: any) => ({
       murid_id: m.murid_id,
@@ -289,7 +319,9 @@ function QuickAbsenContent() {
       jadwal_id: data.jadwal.jadwal_id,
       tipe: data.tipe,
       tanggal: data.date,
-      absensi: listAbsensi
+      absensi: listAbsensi,
+      lokasi_lat: currentLoc?.lat,
+      lokasi_lng: currentLoc?.lng
     };
 
     try {

@@ -175,6 +175,19 @@ export async function GET(request: Request) {
   }
 }
 
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3; // Earth radius in meters
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export async function POST(request: Request) {
   const connection = await pool.getConnection();
   try {
@@ -198,6 +211,44 @@ export async function POST(request: Request) {
     const tokenAsrama = payload.namaAsrama || null;
     const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
     const namaAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
+
+    // Validasi jangkauan radius lokasi absensi
+    if (role !== 'admin') {
+      const [settingRows] = await connection.execute<RowDataPacket[]>(
+        'SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ("lat_pesantren", "lng_pesantren", "radius_absen")'
+      );
+      const settingsMap: Record<string, string> = {};
+      settingRows.forEach(r => { settingsMap[r.nama_pengaturan] = r.nilai; });
+
+      const targetLat = parseFloat(settingsMap['lat_pesantren'] || '');
+      const targetLng = parseFloat(settingsMap['lng_pesantren'] || '');
+      const maxRadius = parseFloat(settingsMap['radius_absen'] || '');
+
+      if (!isNaN(targetLat) && !isNaN(targetLng) && !isNaN(maxRadius) && maxRadius > 0) {
+        const userLat = parseFloat(body.lokasi_lat ?? body.lat);
+        const userLng = parseFloat(body.lokasi_lng ?? body.lng);
+
+        if (isNaN(userLat) || isNaN(userLng)) {
+          return NextResponse.json({
+            error: 'Absensi Ditolak: Lokasi GPS HP/perangkat Anda belum diizinkan atau tidak terdeteksi. Aktifkan fitur lokasi (GPS) untuk melakukan absensi.'
+          }, { status: 400 });
+        }
+
+        const distanceMeters = calculateDistanceMeters(userLat, userLng, targetLat, targetLng);
+        if (distanceMeters > maxRadius) {
+          const distText = distanceMeters >= 1000 
+            ? `${(distanceMeters / 1000).toFixed(2)} km` 
+            : `${Math.round(distanceMeters)} meter`;
+          const radiusText = maxRadius >= 1000 
+            ? `${(maxRadius / 1000).toFixed(2)} km` 
+            : `${Math.round(maxRadius)} meter`;
+
+          return NextResponse.json({
+            error: `Absensi Ditolak: Jarak lokasi Anda (${distText}) berada di luar batas radius yang ditentukan (maksimal ${radiusText} dari titik lokasi).`
+          }, { status: 400 });
+        }
+      }
+    }
 
     if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (!namaAsrama) {
