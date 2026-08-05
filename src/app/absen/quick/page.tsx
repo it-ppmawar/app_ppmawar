@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, Send, Sparkles, QrCode, Brain, X, User, MapPin } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal } from 'lucide-react';
 import Link from 'next/link';
 
 // Avatar & Photo helper
@@ -48,6 +48,190 @@ function QuickAbsenContent() {
   const [submitting, setSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+
+  // Camera & Photo Upload States
+  const [photoUrl, setPhotoUrl] = useState<string>('');
+  const [showCamera, setShowCamera] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const [cameraOrientation, setCameraOrientation] = useState<'portrait' | 'landscape'>('portrait');
+  const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+
+  const stopCameraStream = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+  }, []);
+
+  const startCamera = async (mode: 'user' | 'environment') => {
+    stopCameraStream();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: mode } }
+      });
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      try {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: mode }
+        });
+        mediaStreamRef.current = fallbackStream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = fallbackStream;
+          videoRef.current.play();
+        }
+      } catch (e: any) {
+        alert('Gagal membuka kamera: ' + (e.message || 'Kamera tidak diizinkan'));
+        setShowCamera(false);
+      }
+    }
+  };
+
+  const openCamera = () => {
+    setShowCamera(true);
+    setTimeout(() => {
+      startCamera(facingMode);
+    }, 200);
+  };
+
+  const closeCamera = () => {
+    stopCameraStream();
+    setShowCamera(false);
+  };
+
+  const switchCamera = async () => {
+    setIsSwitchingCamera(true);
+    const newFacing = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(newFacing);
+    await startCamera(newFacing);
+    setIsSwitchingCamera(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+
+    let targetWidth = videoWidth;
+    let targetHeight = videoHeight;
+
+    if (cameraOrientation === 'portrait') {
+      if (videoWidth > videoHeight) {
+        targetWidth = (videoHeight * 3) / 4;
+        targetHeight = videoHeight;
+      } else {
+        targetWidth = videoWidth;
+        targetHeight = (videoWidth * 4) / 3;
+        if (targetHeight > videoHeight) {
+          targetHeight = videoHeight;
+          targetWidth = (videoHeight * 3) / 4;
+        }
+      }
+    } else {
+      if (videoHeight > videoWidth) {
+        targetWidth = videoWidth;
+        targetHeight = (videoWidth * 3) / 4;
+      } else {
+        targetHeight = videoHeight;
+        targetWidth = (videoHeight * 4) / 3;
+        if (targetWidth > videoWidth) {
+          targetWidth = videoWidth;
+          targetHeight = (videoWidth * 3) / 4;
+        }
+      }
+    }
+
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const sx = (videoWidth - targetWidth) / 2;
+      const sy = (videoHeight - targetHeight) / 2;
+      ctx.drawImage(video, sx, sy, targetWidth, targetHeight, 0, 0, targetWidth, targetHeight);
+    }
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    setPhotoUrl(dataUrl);
+    closeCamera();
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  useEffect(() => { return () => stopCameraStream(); }, [stopCameraStream]);
+
+  const generateWaGroupMessage = () => {
+    if (!data) return '';
+    const dateStr = data.date || new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const listMurid: any[] = data.murid || [];
+    const total = listMurid.length;
+
+    const hadir = listMurid.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'hadir').length;
+    const sakit = listMurid.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'sakit');
+    const izin = listMurid.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'izin');
+    const alpha = listMurid.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'alpha');
+
+    const namaKelas = data.jadwal?.nama_kelas || 'Kelas';
+
+    let msg = `*LAPORAN KEHADIRAN ${namaKelas.toUpperCase()}*\n`;
+    msg += `📅 *Hari/Tanggal:* ${dateStr}\n`;
+    msg += `👥 *Total Santri:* ${total}\n`;
+    msg += `✅ *Hadir:* ${hadir} anak\n\n`;
+
+    if (sakit.length > 0) {
+      msg += `🤒 *Sakit (${sakit.length}):*\n`;
+      sakit.forEach((m, idx) => {
+        const name = m.nama_panggilan || m.nama;
+        msg += `  ${idx + 1}. ${name}\n`;
+      });
+      msg += `\n`;
+    }
+
+    if (izin.length > 0) {
+      msg += `✉️ *Izin (${izin.length}):*\n`;
+      izin.forEach((m, idx) => {
+        const name = m.nama_panggilan || m.nama;
+        msg += `  ${idx + 1}. ${name}\n`;
+      });
+      msg += `\n`;
+    }
+
+    if (alpha.length > 0) {
+      msg += `❌ *Alpha/Tanpa Keterangan (${alpha.length}):*\n`;
+      alpha.forEach((m, idx) => {
+        const name = m.nama_panggilan || m.nama;
+        msg += `  ${idx + 1}. ${name}\n`;
+      });
+      msg += `\n`;
+    }
+
+    msg += `\n_Diinput via Quick Absen Online PPMA_\n_https://absensi.ppmawar.or.id_`;
+    return msg;
+  };
+
+  const handleShareToWA = () => {
+    const text = generateWaGroupMessage();
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank');
+  };
 
   useEffect(() => {
     if (!token) {
@@ -380,33 +564,177 @@ function QuickAbsenContent() {
         </div>
       )}
 
-      {/* Modal Pemberitahuan Sukses & Opsi Edit */}
+      {/* Modal Pemberitahuan Sukses & Form Notifikasi WA */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-5 max-w-md w-full text-center shadow-2xl space-y-4 my-auto">
+            {/* Success Icon */}
             <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/40 animate-bounce">
               <CheckCircle2 size={36} />
             </div>
+
+            {/* Arabic & Main Title */}
             <div>
-              <h3 className="text-lg font-bold text-white">MasyaAllah! Absensi Berhasil Disimpan</h3>
+              <p className="text-2xl font-serif text-emerald-400 font-bold mb-1 tracking-wide">
+                الحمد لله
+              </p>
+              <h3 className="text-xl font-extrabold text-white">Absensi Berhasil Disimpan!</h3>
               <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                Data presensi kelas <strong>{jadwal.nama_kelas}</strong> telah tersimpan di sistem.
+                Data presensi kelas <strong>{jadwal?.nama_kelas || 'Madin/Al-Qur\'an'}</strong> telah tersimpan di sistem.
               </p>
             </div>
 
-            <div className="pt-2 space-y-2">
+            {/* Section: Ambil/Upload Foto Kehadiran (Opsional) */}
+            <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 space-y-3 text-left">
+              <label className="block text-xs font-bold text-slate-200 flex items-center gap-2">
+                <Camera size={16} className="text-emerald-400 animate-pulse" />
+                Foto Kehadiran Kelas/Kamar (Opsional)
+              </label>
+
+              {/* Camera live view */}
+              {showCamera && (
+                <div className="rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black relative mb-3">
+                  {/* Camera toolbar */}
+                  <div className="flex justify-between items-center bg-slate-900 px-3 py-2 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
+                      <span className="text-xs font-semibold text-slate-300">
+                        {facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCameraOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait')}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl transition"
+                      >
+                        <span>{cameraOrientation === 'portrait' ? '📱 Potret' : '🌅 Lanskap'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={switchCamera}
+                        disabled={isSwitchingCamera}
+                        className="bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl transition"
+                      >
+                        <FlipHorizontal size={14} className={isSwitchingCamera ? 'animate-spin' : ''} />
+                        <span className="hidden sm:inline">Ganti</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={closeCamera}
+                        className="bg-rose-600 p-1 rounded-lg text-white"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Video preview */}
+                  <div className="relative min-h-[220px] bg-black">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`w-full object-cover ${cameraOrientation === 'portrait' ? 'aspect-[3/4] max-h-[380px]' : 'aspect-[4/3] max-h-[300px]'}`}
+                    />
+                  </div>
+
+                  <div className="flex justify-center bg-slate-900 py-2.5 px-4">
+                    <button
+                      type="button"
+                      onClick={capturePhoto}
+                      className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-2 rounded-full shadow-lg transition flex items-center gap-2 text-xs"
+                    >
+                      <Camera size={16} /> Ambil Foto
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <canvas ref={canvasRef} className="hidden" />
+
+              {/* Buttons side-by-side full width */}
+              <div className="grid grid-cols-2 gap-2.5 w-full">
+                {!showCamera ? (
+                  <button
+                    type="button"
+                    onClick={openCamera}
+                    className="w-full bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 font-bold py-3 rounded-xl border border-emerald-700/50 text-xs transition flex items-center justify-center gap-2"
+                  >
+                    <Camera size={16} />
+                    {photoUrl ? 'Ambil Ulang' : 'Buka Kamera'}
+                  </button>
+                ) : (
+                  <div className="w-full" />
+                )}
+
+                <div className="w-full">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    id="quick-presence-photo-input"
+                  />
+                  <label
+                    htmlFor="quick-presence-photo-input"
+                    className="w-full cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 rounded-xl border border-slate-700 text-xs transition flex items-center justify-center gap-2 text-center block"
+                  >
+                    <ImageIcon size={16} /> Upload File
+                  </label>
+                </div>
+              </div>
+
+              {photoUrl && (
+                <div className="mt-2.5 relative w-full h-44 rounded-xl overflow-hidden border-2 border-emerald-500/80 shadow-md">
+                  <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setPhotoUrl('')}
+                    className="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white rounded-full p-1 shadow-md w-7 h-7 flex items-center justify-center"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              <p className="text-[10px] text-slate-400 font-medium text-center">
+                Gunakan tombol <strong>Buka Kamera</strong> untuk foto langsung, atau <strong>Upload File</strong> jika memilih dari galeri.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2.5 pt-1">
               <button
-                onClick={() => setShowSuccessModal(false)}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs border border-slate-700 transition flex items-center justify-center gap-2"
+                onClick={handleShareToWA}
+                type="button"
+                className="w-full bg-[#128C7E] hover:bg-[#075E54] text-white px-4 py-3 rounded-xl font-bold text-xs transition shadow-md flex items-center justify-center gap-2 active:scale-95"
               >
-                ✏️ Edit / Ubah Absensi Ini
+                <Send size={15} /> Kirim Laporan & Foto ke Grup WA
               </button>
-              <button
-                onClick={() => router.push('/dashboard/absen')}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2"
+
+              <Link
+                href={`/dashboard/notifikasi?kegiatan=${tipe}&kelas=${jadwal?.kelas_id || ''}`}
+                className="block w-full bg-[#25D366] hover:bg-[#1DA851] text-white px-4 py-3 rounded-xl font-bold text-xs transition shadow-md text-center active:scale-95"
               >
-                📊 Ke Halaman Absensi Utama
-              </button>
+                Lanjut Kirim Pesan WA Wali Murid
+              </Link>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs border border-slate-700 transition"
+                >
+                  ✏️ Edit Absensi
+                </button>
+                <button
+                  onClick={() => router.push('/dashboard/absen')}
+                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold rounded-xl text-xs border border-slate-700 transition"
+                >
+                  Kembali ke Jadwal
+                </button>
+              </div>
             </div>
           </div>
         </div>
