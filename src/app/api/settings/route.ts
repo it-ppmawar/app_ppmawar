@@ -79,23 +79,26 @@ export async function PUT(request: Request) {
     }
 
     if (lat_pesantren !== undefined) {
+      const cleanLat = lat_pesantren.toString().replace(',', '.').trim();
       await pool.execute(
         'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
-        ['lat_pesantren', lat_pesantren.toString(), lat_pesantren.toString()]
+        ['lat_pesantren', cleanLat, cleanLat]
       );
     }
 
     if (lng_pesantren !== undefined) {
+      const cleanLng = lng_pesantren.toString().replace(',', '.').trim();
       await pool.execute(
         'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
-        ['lng_pesantren', lng_pesantren.toString(), lng_pesantren.toString()]
+        ['lng_pesantren', cleanLng, cleanLng]
       );
     }
 
     if (radius_absen !== undefined) {
+      const cleanRadius = radius_absen.toString().replace(',', '.').trim();
       await pool.execute(
         'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
-        ['radius_absen', radius_absen.toString(), radius_absen.toString()]
+        ['radius_absen', cleanRadius, cleanRadius]
       );
     }
 

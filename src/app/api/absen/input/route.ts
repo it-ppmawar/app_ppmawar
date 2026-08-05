@@ -212,41 +212,47 @@ export async function POST(request: Request) {
     const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
     const namaAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
 
-    // Validasi jangkauan radius lokasi absensi
-    if (role !== 'admin') {
-      const [settingRows] = await connection.execute<RowDataPacket[]>(
-        'SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ("lat_pesantren", "lng_pesantren", "radius_absen")'
-      );
-      const settingsMap: Record<string, string> = {};
-      settingRows.forEach(r => { settingsMap[r.nama_pengaturan] = r.nilai; });
+    // Validasi jangkauan radius lokasi absensi (berlaku untuk semua pengguna yang menginput absensi)
+    const [settingRows] = await connection.execute<RowDataPacket[]>(
+      'SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ("lat_pesantren", "lng_pesantren", "radius_absen")'
+    );
+    const settingsMap: Record<string, string> = {};
+    settingRows.forEach(r => { settingsMap[r.nama_pengaturan] = r.nilai; });
 
-      const targetLat = parseFloat(settingsMap['lat_pesantren'] || '');
-      const targetLng = parseFloat(settingsMap['lng_pesantren'] || '');
-      const maxRadius = parseFloat(settingsMap['radius_absen'] || '');
+    // Bersihkan format desimal koma (,) menjadi titik (.)
+    const targetLatStr = (settingsMap['lat_pesantren'] || '').toString().replace(',', '.').trim();
+    const targetLngStr = (settingsMap['lng_pesantren'] || '').toString().replace(',', '.').trim();
+    const maxRadiusStr = (settingsMap['radius_absen'] || '').toString().replace(',', '.').trim();
 
-      if (!isNaN(targetLat) && !isNaN(targetLng) && !isNaN(maxRadius) && maxRadius > 0) {
-        const userLat = parseFloat(body.lokasi_lat ?? body.lat);
-        const userLng = parseFloat(body.lokasi_lng ?? body.lng);
+    const targetLat = parseFloat(targetLatStr);
+    const targetLng = parseFloat(targetLngStr);
+    const maxRadius = parseFloat(maxRadiusStr);
 
-        if (isNaN(userLat) || isNaN(userLng)) {
-          return NextResponse.json({
-            error: 'Absensi Ditolak: Lokasi GPS HP/perangkat Anda belum diizinkan atau tidak terdeteksi. Aktifkan fitur lokasi (GPS) untuk melakukan absensi.'
-          }, { status: 400 });
-        }
+    if (!isNaN(targetLat) && !isNaN(targetLng) && !isNaN(maxRadius) && maxRadius > 0) {
+      const rawUserLat = body.lokasi_lat ?? body.lat ?? '';
+      const rawUserLng = body.lokasi_lng ?? body.lng ?? '';
 
-        const distanceMeters = calculateDistanceMeters(userLat, userLng, targetLat, targetLng);
-        if (distanceMeters > maxRadius) {
-          const distText = distanceMeters >= 1000 
-            ? `${(distanceMeters / 1000).toFixed(2)} km` 
-            : `${Math.round(distanceMeters)} meter`;
-          const radiusText = maxRadius >= 1000 
-            ? `${(maxRadius / 1000).toFixed(2)} km` 
-            : `${Math.round(maxRadius)} meter`;
+      const userLat = parseFloat(rawUserLat.toString().replace(',', '.').trim());
+      const userLng = parseFloat(rawUserLng.toString().replace(',', '.').trim());
 
-          return NextResponse.json({
-            error: `Absensi Ditolak: Jarak lokasi Anda (${distText}) berada di luar batas radius yang ditentukan (maksimal ${radiusText} dari titik lokasi).`
-          }, { status: 400 });
-        }
+      if (isNaN(userLat) || isNaN(userLng)) {
+        return NextResponse.json({
+          error: 'Absensi Ditolak: Lokasi GPS HP/perangkat Anda belum diizinkan atau tidak terdeteksi. Aktifkan fitur lokasi (GPS) untuk melakukan absensi.'
+        }, { status: 400 });
+      }
+
+      const distanceMeters = calculateDistanceMeters(userLat, userLng, targetLat, targetLng);
+      if (distanceMeters > maxRadius) {
+        const distText = distanceMeters >= 1000 
+          ? `${(distanceMeters / 1000).toFixed(2)} km` 
+          : `${Math.round(distanceMeters)} meter`;
+        const radiusText = maxRadius >= 1000 
+          ? `${(maxRadius / 1000).toFixed(2)} km` 
+          : `${Math.round(maxRadius)} meter`;
+
+        return NextResponse.json({
+          error: `Absensi Ditolak: Jarak lokasi Anda (${distText}) berada di luar batas radius yang ditentukan (maksimal ${radiusText} dari titik lokasi pesantren).`
+        }, { status: 400 });
       }
     }
 
