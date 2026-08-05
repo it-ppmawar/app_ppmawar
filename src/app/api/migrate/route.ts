@@ -8,6 +8,9 @@ export async function GET() {
       // 1. Tambah barcode_id di tabel murid
       "ALTER TABLE murid ADD COLUMN IF NOT EXISTS barcode_id VARCHAR(255) DEFAULT NULL UNIQUE;",
       
+      // 1b. Tambah kelas_madin_2_id (Dual Class Madin / Sekunder) di tabel murid
+      "ALTER TABLE murid ADD COLUMN IF NOT EXISTS kelas_madin_2_id INT NULL AFTER kelas_madin_id;",
+      
       // 2. Tambah nama_panggilan di tabel murid
       "ALTER TABLE murid ADD COLUMN IF NOT EXISTS nama_panggilan VARCHAR(50) DEFAULT NULL;",
       

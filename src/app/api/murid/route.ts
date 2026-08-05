@@ -104,8 +104,8 @@ export async function GET(request: Request) {
     }
 
     if (filterMadin) {
-      whereClause += ` AND m.kelas_madin_id = ?`;
-      queryParams.push(filterMadin);
+      whereClause += ` AND (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?)`;
+      queryParams.push(filterMadin, filterMadin);
     }
     if (filterQuran) {
       whereClause += ` AND m.kelas_quran_id = ?`;
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
     }
     // Filter santri yang belum punya kelas/kamar (untuk fitur tambah santri)
     if (tanpaMadin) {
-      whereClause += ` AND m.kelas_madin_id IS NULL`;
+      whereClause += ` AND m.kelas_madin_id IS NULL AND m.kelas_madin_2_id IS NULL`;
     }
     if (tanpaQuran) {
       whereClause += ` AND m.kelas_quran_id IS NULL`;
@@ -133,11 +133,13 @@ export async function GET(request: Request) {
 
     const sql = `
       SELECT m.*,
-             km.nama_kelas as kelas_madin, 
+             km.nama_kelas as kelas_madin,
+             km2.nama_kelas as kelas_madin_2, 
              kq.nama_kelas as kelas_quran,
              k.nama_kamar
       FROM murid m
       LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+      LEFT JOIN kelas_madin km2 ON m.kelas_madin_2_id = km2.kelas_id
       LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
       LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
       WHERE ${whereClause}
@@ -169,7 +171,7 @@ export async function PUT(request: Request) {
     const data = await request.json();
     const { 
       murid_id, murid_ids, 
-      kelas_madin_id, kelas_quran_id, kamar_id,
+      kelas_madin_id, kelas_madin_2_id, kelas_quran_id, kamar_id,
       nama, nama_panggilan, nis, nik, no_hp, alamat, nama_wali, no_wali, nilai, foto, barcode_id, jenis_kelamin
     } = data;
 
@@ -221,6 +223,7 @@ export async function PUT(request: Request) {
     };
 
     appendUpdate('kelas_madin_id', kelas_madin_id === '' ? null : kelas_madin_id);
+    appendUpdate('kelas_madin_2_id', kelas_madin_2_id === '' ? null : kelas_madin_2_id);
     appendUpdate('kelas_quran_id', kelas_quran_id === '' ? null : kelas_quran_id);
     appendUpdate('kamar_id', kamar_id === '' ? null : kamar_id);
     appendUpdate('nama', nama);

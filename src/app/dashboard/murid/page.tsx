@@ -36,7 +36,7 @@ export default function DataMuridPage() {
   // State untuk bulk actions
   const [selectedMurid, setSelectedMurid] = useState<number[]>([]);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-  const [bulkType, setBulkType] = useState<'madin' | 'quran' | 'kamar'>('madin');
+  const [bulkType, setBulkType] = useState<'madin' | 'madin2' | 'quran' | 'kamar'>('madin');
   const [bulkTargetId, setBulkTargetId] = useState('');
   const [classOptions, setClassOptions] = useState<any[]>([]);
   const [savingBulk, setSavingBulk] = useState(false);
@@ -242,7 +242,8 @@ export default function DataMuridPage() {
     if (!isBulkModalOpen) return;
     const fetchOptions = async () => {
       try {
-        const res = await fetch(`/api/kelas?type=${bulkType}`);
+        const apiType = bulkType === 'madin2' ? 'madin' : bulkType;
+        const res = await fetch(`/api/kelas?type=${apiType}`);
         const json = await res.json();
         if (json.success) setClassOptions(json.data);
       } catch (err) {
@@ -396,8 +397,8 @@ export default function DataMuridPage() {
 
     const matchMadin = filterMadin
       ? (filterMadin === '__none__' 
-          ? ((!m.kelas_madin || m.kelas_madin === '-') && (!genderConstraint || m.jenis_kelamin === genderConstraint)) 
-          : m.kelas_madin === filterMadin)
+          ? ((!m.kelas_madin || m.kelas_madin === '-') && (!m.kelas_madin_2 || m.kelas_madin_2 === '-') && (!genderConstraint || m.jenis_kelamin === genderConstraint)) 
+          : (m.kelas_madin === filterMadin || m.kelas_madin_2 === filterMadin))
       : true;
 
     const matchQuran = filterQuran
@@ -510,7 +511,7 @@ export default function DataMuridPage() {
     }
   };
 
-  const openBulkModal = (type: 'madin' | 'quran' | 'kamar') => {
+  const openBulkModal = (type: 'madin' | 'madin2' | 'quran' | 'kamar') => {
     setBulkType(type);
     setBulkTargetId('');
     setClassOptions([]);
@@ -525,6 +526,7 @@ export default function DataMuridPage() {
     try {
       const payload: any = { murid_ids: selectedMurid };
       if (bulkType === 'madin') payload.kelas_madin_id = bulkTargetId;
+      else if (bulkType === 'madin2') payload.kelas_madin_2_id = bulkTargetId;
       else if (bulkType === 'quran') payload.kelas_quran_id = bulkTargetId;
       else payload.kamar_id = bulkTargetId;
 
@@ -542,6 +544,7 @@ export default function DataMuridPage() {
         setMurid(murid.map(m => {
           if (selectedMurid.includes(m.murid_id)) {
             if (bulkType === 'madin') return { ...m, kelas_madin_id: bulkTargetId, kelas_madin: targetName };
+            if (bulkType === 'madin2') return { ...m, kelas_madin_2_id: bulkTargetId, kelas_madin_2: targetName };
             if (bulkType === 'quran') return { ...m, kelas_quran_id: bulkTargetId, kelas_quran: targetName };
             if (bulkType === 'kamar') return { ...m, kamar_id: bulkTargetId, nama_kamar: targetName };
           }
@@ -789,7 +792,10 @@ export default function DataMuridPage() {
                 <CheckSquare size={14} /> Pindah Qur'an ({selectedMurid.length})
               </button>
               <button onClick={() => openBulkModal('madin')} className="px-3 py-2 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-800 rounded-xl text-xs font-bold hover:bg-teal-100 transition-colors flex items-center gap-1.5">
-                <CheckSquare size={14} /> Pindah Madin ({selectedMurid.length})
+                <CheckSquare size={14} /> Pindah Madin 1 ({selectedMurid.length})
+              </button>
+              <button onClick={() => openBulkModal('madin2')} className="px-3 py-2 bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 rounded-xl text-xs font-bold hover:bg-cyan-100 transition-colors flex items-center gap-1.5">
+                <CheckSquare size={14} /> Set Madin 2 ({selectedMurid.length})
               </button>
               <button onClick={() => openBulkModal('kamar')} className="px-3 py-2 bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-800 rounded-xl text-xs font-bold hover:bg-orange-100 transition-colors flex items-center gap-1.5">
                 <CheckSquare size={14} /> Pindah Kamar ({selectedMurid.length})
@@ -893,8 +899,13 @@ export default function DataMuridPage() {
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-1">
                         <span className="inline-flex items-center gap-1 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded text-[10px] font-semibold w-max">
-                          Madin: {item.kelas_madin || '-'}
+                          Madin 1: {item.kelas_madin || '-'}
                         </span>
+                        {item.kelas_madin_2 && (
+                          <span className="inline-flex items-center gap-1 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 px-2 py-0.5 rounded text-[10px] font-semibold w-max">
+                            Madin 2: {item.kelas_madin_2}
+                          </span>
+                        )}
                         <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-semibold w-max">
                           Qur'an: {item.kelas_quran || '-'}
                         </span>
@@ -938,9 +949,9 @@ export default function DataMuridPage() {
       {isBulkModalOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
-            <div className={`p-4 text-white ${bulkType === 'madin' ? 'bg-teal-600' : bulkType === 'quran' ? 'bg-emerald-600' : 'bg-orange-600'}`}>
+            <div className={`p-4 text-white ${bulkType === 'madin' ? 'bg-teal-600' : bulkType === 'madin2' ? 'bg-cyan-600' : bulkType === 'quran' ? 'bg-emerald-600' : 'bg-orange-600'}`}>
               <h2 className="text-lg font-bold">
-                Pindah {bulkType === 'madin' ? 'Kelas Madin' : bulkType === 'quran' ? "Kelas Qur'an" : 'Kamar'} Massal
+                Pindah {bulkType === 'madin' ? 'Kelas Madin 1 (Utama)' : bulkType === 'madin2' ? 'Kelas Madin 2 (Sekunder)' : bulkType === 'quran' ? "Kelas Qur'an" : 'Kamar'} Massal
               </h2>
               <p className="text-xs opacity-90 mt-1">{selectedMurid.length} Santri terpilih</p>
             </div>
@@ -1042,9 +1053,15 @@ export default function DataMuridPage() {
                   <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl space-y-2 border border-gray-100 dark:border-gray-700">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Data Akademik & Asrama</p>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500">Kelas Madin:</span>
+                      <span className="text-gray-500">Kelas Madin 1:</span>
                       <span className="font-bold">{viewingMurid.kelas_madin || '-'}</span>
                     </div>
+                    {viewingMurid.kelas_madin_2 && (
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-500">Kelas Madin 2:</span>
+                        <span className="font-bold text-teal-600 dark:text-teal-400">{viewingMurid.kelas_madin_2}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-500">Kelas Qur'an:</span>
                       <span className="font-bold">{viewingMurid.kelas_quran || '-'}</span>
@@ -1194,6 +1211,40 @@ export default function DataMuridPage() {
                     onChange={(e) => setEditingMurid({ ...editingMurid, nilai: e.target.value })}
                     className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
                   />
+                </div>
+              </div>
+
+              {/* Kelas Madin 1 & 2 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">
+                    🟢 Kelas Madin 1 <span className="text-gray-400 font-normal">(Utama / Malam)</span>
+                  </label>
+                  <select
+                    value={editingMurid.kelas_madin_id || ''}
+                    onChange={(e) => setEditingMurid({ ...editingMurid, kelas_madin_id: e.target.value || null })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-green-500 dark:text-gray-200"
+                  >
+                    <option value="">-- Tidak ada --</option>
+                    {allMadin.map((k) => (
+                      <option key={k.id} value={k.id}>{k.nama}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">
+                    🩵 Kelas Madin 2 <span className="text-gray-400 font-normal">(Sekunder / Siang / MAK)</span>
+                  </label>
+                  <select
+                    value={editingMurid.kelas_madin_2_id || ''}
+                    onChange={(e) => setEditingMurid({ ...editingMurid, kelas_madin_2_id: e.target.value || null })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-teal-200 dark:border-teal-700 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 dark:text-gray-200"
+                  >
+                    <option value="">-- Tidak ada --</option>
+                    {allMadin.map((k) => (
+                      <option key={k.id} value={k.id}>{k.nama}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

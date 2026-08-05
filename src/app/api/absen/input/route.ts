@@ -39,8 +39,8 @@ export async function GET(request: Request) {
         const [check] = await pool.execute<RowDataPacket[]>(
           `SELECT 1 FROM murid m 
            JOIN kamar km ON m.kamar_id = km.kamar_id 
-           WHERE km.nama_asrama = ? AND m.kelas_madin_id = ? LIMIT 1`,
-          [namaAsrama, kelas_id]
+           WHERE km.nama_asrama = ? AND (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?) LIMIT 1`,
+          [namaAsrama, kelas_id, kelas_id]
         );
         if (check.length === 0) {
           return NextResponse.json({ error: 'Akses ditolak: Kelas Madin ini tidak memiliki santri dari asrama Anda' }, { status: 403 });
@@ -77,8 +77,8 @@ export async function GET(request: Request) {
       if (tipe === 'madin') {
         query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat FROM murid m
           JOIN kamar km ON m.kamar_id = km.kamar_id
-          WHERE m.kelas_madin_id = ? AND km.nama_asrama = ? ORDER BY m.nama ASC`;
-        params = [kelas_id, namaAsrama];
+          WHERE (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?) AND km.nama_asrama = ? ORDER BY m.nama ASC`;
+        params = [kelas_id, kelas_id, namaAsrama];
       } else if (tipe === 'quran') {
         query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat FROM murid m
           JOIN kamar km ON m.kamar_id = km.kamar_id
@@ -91,7 +91,8 @@ export async function GET(request: Request) {
       }
     } else {
       if (tipe === 'madin') {
-        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat FROM murid WHERE kelas_madin_id = ? ORDER BY nama ASC';
+        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat FROM murid WHERE kelas_madin_id = ? OR kelas_madin_2_id = ? ORDER BY nama ASC';
+        params = [kelas_id, kelas_id];
       } else if (tipe === 'quran') {
         query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat FROM murid WHERE kelas_quran_id = ? ORDER BY nama ASC';
       } else if (tipe === 'kegiatan') {
@@ -219,8 +220,8 @@ export async function POST(request: Request) {
         const [check] = await connection.execute<RowDataPacket[]>(
           `SELECT 1 FROM murid m 
            JOIN kamar km ON m.kamar_id = km.kamar_id 
-           WHERE km.nama_asrama = ? AND m.kelas_madin_id = ? LIMIT 1`,
-          [namaAsrama, kelas_id]
+           WHERE km.nama_asrama = ? AND (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?) LIMIT 1`,
+          [namaAsrama, kelas_id, kelas_id]
         );
         if (check.length === 0) {
           return NextResponse.json({ error: 'Akses ditolak: Kelas Madin ini tidak memiliki santri dari asrama Anda' }, { status: 403 });

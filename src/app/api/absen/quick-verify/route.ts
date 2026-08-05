@@ -52,9 +52,9 @@ export async function POST(request: Request) {
       if (jRows.length > 0) {
         jadwalDetail = jRows[0];
         const [mRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT murid_id, nis, nama, jenis_kelamin, kelas_madin_id
-           FROM murid WHERE kelas_madin_id = ? ORDER BY nama ASC`,
-          [jadwalDetail.kelas_id]
+          `SELECT murid_id, nis, nama, jenis_kelamin, kelas_madin_id, kelas_madin_2_id
+           FROM murid WHERE kelas_madin_id = ? OR kelas_madin_2_id = ? ORDER BY nama ASC`,
+          [jadwalDetail.kelas_id, jadwalDetail.kelas_id]
         );
         muridList = mRows;
       }
