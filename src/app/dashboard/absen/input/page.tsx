@@ -340,10 +340,12 @@ function InputAbsenContent() {
         setSudahAbsen(true);
         setIsSuccess(true);
       } else {
-        alert('Gagal: ' + data.error);
+        setErrorMsg(data.error || 'Gagal menyimpan absensi');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
-      alert('Terjadi kesalahan saat menyimpan');
+      setErrorMsg('Terjadi kesalahan saat menyimpan. Periksa koneksi internet Anda.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSaving(false);
     }
@@ -513,16 +515,14 @@ function InputAbsenContent() {
     );
   }
 
-  if (errorMsg || locationError) return (
+  if (locationError) return (
     <div className="max-w-3xl mx-auto p-6 text-center bg-red-50 dark:bg-red-900/20 rounded-3xl mt-10">
       <AlertTriangle size={48} className="mx-auto text-red-500 mb-4" />
-      <h2 className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Akses Ditolak</h2>
-      <p className="text-red-600 dark:text-red-300 mb-6">{errorMsg || locationError}</p>
-      {locationError && (
-        <p className="text-sm text-red-500 mb-6 font-bold">
-          Deteksi lokasi diwajibkan untuk menjaga ketertiban absensi. Pastikan fitur Lokasi / GPS di HP Anda menyala dan Anda mengizinkan browser mengakses lokasi.
-        </p>
-      )}
+      <h2 className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Lokasi Tidak Terdeteksi</h2>
+      <p className="text-red-600 dark:text-red-300 mb-6">{locationError}</p>
+      <p className="text-sm text-red-500 mb-6 font-bold">
+        Deteksi lokasi diwajibkan untuk menjaga ketertiban absensi. Pastikan fitur Lokasi / GPS di HP Anda menyala dan Anda mengizinkan browser mengakses lokasi.
+      </p>
       <Link href="/dashboard/absen" className="bg-red-600 text-white px-6 py-2 rounded-xl font-bold">Kembali</Link>
     </div>
   );
@@ -546,6 +546,24 @@ function InputAbsenContent() {
           </p>
         </div>
       </div>
+
+      {/* Error Banner (Radius / Simpan gagal) */}
+      {errorMsg && (
+        <div className="bg-red-50 dark:bg-red-900/30 border-2 border-red-400 dark:border-red-600 rounded-2xl p-4 flex items-start gap-3 animate-in slide-in-from-top duration-300">
+          <AlertTriangle size={22} className="text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-red-700 dark:text-red-300 font-bold text-sm">Absensi Tidak Dapat Disimpan</p>
+            <p className="text-red-600 dark:text-red-400 text-xs mt-0.5 leading-relaxed">{errorMsg}</p>
+          </div>
+          <button
+            onClick={() => setErrorMsg('')}
+            className="text-red-400 hover:text-red-600 transition-colors shrink-0 p-1"
+            aria-label="Tutup notifikasi"
+          >
+            <XIcon size={18} />
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 w-full mb-4 animate-in fade-in duration-300">
         <button
