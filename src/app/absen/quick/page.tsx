@@ -95,9 +95,10 @@ function QuickAbsenContent() {
     setSubmitting(true);
     setError(null);
 
-    const listAbsensi = Object.entries(kehadiran).map(([murid_id, status]) => ({
-      murid_id: Number(murid_id),
-      status
+    const listAbsensi = (murid || []).map((m: any) => ({
+      murid_id: m.murid_id,
+      status: kehadiran[m.murid_id] || 'hadir',
+      nama_panggilan: m.nama_panggilan || ''
     }));
 
     const payload = {
@@ -210,14 +211,38 @@ function QuickAbsenContent() {
           </div>
         )}
 
-        {/* Quick Batch Select */}
-        <div className="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-slate-800">
-          <span className="text-xs font-medium text-slate-400">Set Massal ({murid?.length || 0} Santri):</span>
-          <div className="flex items-center gap-1.5 text-xs">
-            <button onClick={() => setAllStatus('hadir')} className="px-2.5 py-1 rounded-lg bg-emerald-900/60 text-emerald-300 border border-emerald-700/50 hover:bg-emerald-800">Hadir All</button>
-            <button onClick={() => setAllStatus('izin')} className="px-2.5 py-1 rounded-lg bg-amber-900/60 text-amber-300 border border-amber-700/50 hover:bg-amber-800">Izin All</button>
-            <button onClick={() => setAllStatus('sakit')} className="px-2.5 py-1 rounded-lg bg-blue-900/60 text-blue-300 border border-blue-700/50 hover:bg-blue-800">Sakit All</button>
-            <button onClick={() => setAllStatus('alpha')} className="px-2.5 py-1 rounded-lg bg-rose-900/60 text-rose-300 border border-rose-700/50 hover:bg-rose-800">Alpha All</button>
+        {/* Quick Batch Select (Set Massal Sesuai Desain HP) */}
+        <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 space-y-2.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              ⚡ Set Massal ({murid?.length || 0} Santri)
+            </span>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5 w-full">
+            <button
+              onClick={() => setAllStatus('hadir')}
+              className="py-2 text-xs rounded-xl bg-emerald-900/70 hover:bg-emerald-800 text-emerald-300 border border-emerald-700/60 font-bold transition text-center active:scale-95"
+            >
+              Hadir All
+            </button>
+            <button
+              onClick={() => setAllStatus('izin')}
+              className="py-2 text-xs rounded-xl bg-amber-900/70 hover:bg-amber-800 text-amber-300 border border-amber-700/60 font-bold transition text-center active:scale-95"
+            >
+              Izin All
+            </button>
+            <button
+              onClick={() => setAllStatus('sakit')}
+              className="py-2 text-xs rounded-xl bg-blue-900/70 hover:bg-blue-800 text-blue-300 border border-blue-700/60 font-bold transition text-center active:scale-95"
+            >
+              Sakit All
+            </button>
+            <button
+              onClick={() => setAllStatus('alpha')}
+              className="py-2 text-xs rounded-xl bg-rose-900/70 hover:bg-rose-800 text-rose-300 border border-rose-700/60 font-bold transition text-center active:scale-95"
+            >
+              Alpha All
+            </button>
           </div>
         </div>
 
@@ -253,16 +278,30 @@ function QuickAbsenContent() {
                     )}
                   </div>
 
-                  {/* Informasi Santri: Nama, Panggilan, NIS, Wali, Alamat */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-sm text-slate-100 truncate">{m.nama}</h3>
-                      {m.nama_panggilan && (
-                        <span className="shrink-0 px-2 py-0.5 bg-emerald-900/60 text-emerald-300 border border-emerald-700/50 rounded-full text-[10px] font-semibold">
-                          {m.nama_panggilan}
-                        </span>
-                      )}
+                  {/* Informasi Santri: Nama, Panggilan (Input Instan), NIS, Wali, Alamat */}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <h3 className="font-bold text-sm text-slate-100 truncate">{m.nama}</h3>
+                    
+                    {/* Input Nama Panggilan Instan */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-slate-400 shrink-0 font-medium">Panggilan:</span>
+                      <input
+                        type="text"
+                        placeholder="Isi panggilan..."
+                        value={m.nama_panggilan || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setData((prev: any) => ({
+                            ...prev,
+                            murid: (prev.murid || []).map((item: any) =>
+                              item.murid_id === m.murid_id ? { ...item, nama_panggilan: val } : item
+                            )
+                          }));
+                        }}
+                        className="w-full max-w-[170px] px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-300 placeholder:text-slate-500 transition"
+                      />
                     </div>
+
                     <p className="text-[11px] text-slate-400 font-mono">NIS: {m.nis || '-'}</p>
                     
                     <div className="mt-1 space-y-0.5 text-[11px] text-slate-300">
