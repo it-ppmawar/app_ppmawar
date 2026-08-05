@@ -777,7 +777,7 @@ function ScanAbsenInner() {
             {!isScanning ? (
               <button onClick={startScanner}
                 className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-lg py-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3">
-                <Camera size={26} /> Buka Kamera & Mulai Scan QR
+                <Camera size={26} /> Mulai Scan QR
               </button>
             ) : (
               <div ref={cameraContainerRef} className="space-y-3 animate-[zoomIn_0.3s_ease-out]">
@@ -921,7 +921,7 @@ function ScanAbsenInner() {
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-2xl p-4 text-xs text-blue-700 dark:text-blue-300 space-y-1">
         {scanMode === 'qr' ? (
           <><p className="font-bold text-sm mb-2">ℹ️ Cara Penggunaan (Mode QR):</p>
-            <p>1. Pilih kategori absensi lalu klik &quot;Buka Kamera&quot;</p>
+            <p>1. Pilih kategori absensi lalu klik &quot;Mulai Scan QR&quot;</p>
             <p>2. Arahkan ke QR/Barcode kartu santri atau guru</p>
             <p>3. Jika kartu belum terdaftar, klik <strong>&quot;Daftarkan Kartu Ini ke Santri&quot;</strong></p>
           </>

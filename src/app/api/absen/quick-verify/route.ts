@@ -40,6 +40,8 @@ export async function POST(request: Request) {
     let jadwalDetail: any = null;
     let muridList: any[] = [];
 
+    const targetDate = date || new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
+
     if (tipe === 'madin') {
       const [jRows] = await pool.execute<RowDataPacket[]>(
         `SELECT j.jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari,
@@ -52,7 +54,7 @@ export async function POST(request: Request) {
       if (jRows.length > 0) {
         jadwalDetail = jRows[0];
         const [mRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT murid_id, nis, nama, jenis_kelamin, kelas_madin_id, kelas_madin_2_id
+          `SELECT murid_id, nis, nama, nama_panggilan, foto, nama_wali, alamat, jenis_kelamin, kelas_madin_id, kelas_madin_2_id
            FROM murid WHERE kelas_madin_id = ? OR kelas_madin_2_id = ? ORDER BY nama ASC`,
           [jadwalDetail.kelas_id, jadwalDetail.kelas_id]
         );
@@ -70,7 +72,7 @@ export async function POST(request: Request) {
       if (jRows.length > 0) {
         jadwalDetail = jRows[0];
         const [mRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT murid_id, nis, nama, jenis_kelamin, kelas_quran_id
+          `SELECT murid_id, nis, nama, nama_panggilan, foto, nama_wali, alamat, jenis_kelamin, kelas_quran_id
            FROM murid WHERE kelas_quran_id = ? ORDER BY nama ASC`,
           [jadwalDetail.kelas_id]
         );
@@ -88,7 +90,7 @@ export async function POST(request: Request) {
       if (jRows.length > 0) {
         jadwalDetail = jRows[0];
         const [mRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT murid_id, nis, nama, jenis_kelamin, kamar_id
+          `SELECT murid_id, nis, nama, nama_panggilan, foto, nama_wali, alamat, jenis_kelamin, kamar_id
            FROM murid WHERE kamar_id = ? ORDER BY nama ASC`,
           [jadwalDetail.kelas_id]
         );
@@ -100,15 +102,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Detail jadwal tidak ditemukan di DB' }, { status: 404 });
     }
 
+    // Ambil data absensi yang sudah pernah tersimpan untuk tanggal ini
+    let existingQuery = '';
+    if (tipe === 'madin') existingQuery = 'SELECT murid_id, status FROM absensi WHERE jadwal_madin_id = ? AND tanggal = ?';
+    else if (tipe === 'quran') existingQuery = 'SELECT murid_id, status FROM absensi_quran WHERE jadwal_quran_id = ? AND tanggal = ?';
+    else if (tipe === 'kamar' || tipe === 'kegiatan') existingQuery = 'SELECT murid_id, status FROM absensi_kegiatan WHERE kegiatan_id = ? AND tanggal = ?';
+
+    let existingMap: { [murid_id: number]: string } = {};
+    if (existingQuery) {
+      const [existingRows] = await pool.execute<RowDataPacket[]>(existingQuery, [jadwal_id, targetDate]);
+      (existingRows || []).forEach(r => {
+        existingMap[r.murid_id] = r.status.toLowerCase();
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         guru_id,
         guru_nama,
         tipe,
-        date: date || new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' }),
+        date: targetDate,
         jadwal: jadwalDetail,
-        murid: muridList
+        murid: muridList,
+        existingAbsensi: existingMap
       }
     });
   } catch (error: any) {

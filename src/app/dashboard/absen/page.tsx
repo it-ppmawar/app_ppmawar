@@ -85,29 +85,23 @@ export default function InputAbsenPage() {
       <div className="grid grid-cols-2 gap-3">
         <Link
           href="/dashboard/scan-absen?mode=qr"
-          className="flex items-center gap-3 p-4 bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white rounded-2xl shadow-md transition-all active:scale-95 group"
+          className="flex flex-col items-center justify-center text-center p-4 sm:p-5 bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white rounded-2xl shadow-md transition-all active:scale-95 group"
         >
-          <div className="bg-white/20 p-2.5 rounded-xl flex-shrink-0">
-            <QrCode size={22} />
+          <div className="bg-white/20 p-3 rounded-2xl mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <QrCode size={28} />
           </div>
-          <div>
-            <p className="font-extrabold text-sm">Scan QR Kartu</p>
-            <p className="text-green-200 text-xs">Absensi via barcode</p>
-          </div>
-          <ArrowRight size={16} className="ml-auto opacity-70 group-hover:translate-x-0.5 transition-transform" />
+          <p className="font-extrabold text-sm sm:text-base leading-tight">Scan QR Kartu</p>
+          <p className="text-green-200 text-xs mt-1">Absensi via barcode</p>
         </Link>
         <Link
           href="/dashboard/scan-absen?mode=face"
-          className="flex items-center gap-3 p-4 bg-gradient-to-br from-violet-600 to-indigo-700 hover:from-violet-700 hover:to-indigo-800 text-white rounded-2xl shadow-md transition-all active:scale-95 group"
+          className="flex flex-col items-center justify-center text-center p-4 sm:p-5 bg-gradient-to-br from-violet-600 to-indigo-700 hover:from-violet-700 hover:to-indigo-800 text-white rounded-2xl shadow-md transition-all active:scale-95 group"
         >
-          <div className="bg-white/20 p-2.5 rounded-xl flex-shrink-0">
-            <Brain size={22} />
+          <div className="bg-white/20 p-3 rounded-2xl mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Brain size={28} />
           </div>
-          <div>
-            <p className="font-extrabold text-sm">Scan Wajah AI</p>
-            <p className="text-violet-200 text-xs">Face recognition</p>
-          </div>
-          <ArrowRight size={16} className="ml-auto opacity-70 group-hover:translate-x-0.5 transition-transform" />
+          <p className="font-extrabold text-sm sm:text-base leading-tight">Scan Wajah AI</p>
+          <p className="text-violet-200 text-xs mt-1">Face recognition</p>
         </Link>
       </div>
 
