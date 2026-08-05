@@ -721,36 +721,6 @@ function ScanAbsenInner() {
         </div>
       )}
 
-      {/* ====== FACE AI INFO ====== */}
-      {scanMode === 'face' && !isScanning && (
-        <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/50 rounded-2xl p-4 space-y-2">
-          <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300 font-bold text-sm">
-            <Zap size={16} className="text-violet-500" /> Face AI — Cara Kerja
-          </div>
-          <ul className="text-xs text-violet-600 dark:text-violet-400 space-y-1 pl-1">
-            <li>🧠 Model AI dimuat sekali, cached di browser</li>
-            <li>⚡ Deteksi wajah real-time menggunakan WebGL GPU acceleration</li>
-            <li>🔒 Pencocokan dilakukan murni di browser (tanpa kirim foto ke server)</li>
-            <li>📋 Otomatis mencatat ke jadwal aktif — sinkron dengan Rekapitulasi ✅</li>
-          </ul>
-          {enrollStats && enrollStats.enrolled > 0 ? (
-            <div className="flex items-center justify-between text-xs mt-3 bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800">
-              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold">
-                <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
-                <span>{enrollStats.enrolled} / {enrollStats.total} santri ter-enroll ({enrollStats.percent}%) — Face AI Siap!</span>
-              </div>
-              <Link href="/dashboard/face-enrollment" className="text-emerald-700 dark:text-emerald-300 hover:underline font-bold text-xs flex items-center gap-1 flex-shrink-0 ml-2">
-                Kelola →
-              </Link>
-            </div>
-          ) : (
-            <Link href="/dashboard/face-enrollment" className="flex items-center gap-2 text-amber-600 hover:text-amber-700 hover:underline text-xs mt-2 font-bold bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800 transition">
-              <Info size={16} className="flex-shrink-0" />
-              <span>Belum ada santri ter-enroll. <u>Klik di sini untuk buka Batch Enrollment</u> di menu Face AI Enrollment →</span>
-            </Link>
-          )}
-        </div>
-      )}
 
       {/* ====== SCAN CARD ====== */}
       <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
@@ -926,12 +896,33 @@ function ScanAbsenInner() {
             <p>3. Jika kartu belum terdaftar, klik <strong>&quot;Daftarkan Kartu Ini ke Santri&quot;</strong></p>
           </>
         ) : (
-          <><p className="font-bold text-sm mb-2">ℹ️ Cara Penggunaan (Mode Face AI):</p>
-            <p>1. Klik &quot;Mulai Scan Wajah AI&quot; — model dimuat otomatis</p>
-            <p>2. Arahkan wajah ke kamera, deteksi terjadi dalam &lt;1 detik</p>
-            <p>3. Jika wajah belum terdaftar, klik <strong>&quot;Daftarkan Wajah Baru&quot;</strong></p>
-            <p>4. Absensi otomatis tercatat ke jadwal aktif & sinkron rekapitulasi ✅</p>
-          </>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-violet-700 dark:text-violet-300 font-bold text-sm">
+              <Zap size={16} className="text-violet-500" /> Face AI — Cara Kerja
+            </div>
+            <ul className="text-xs text-violet-600 dark:text-violet-400 space-y-1 pl-1">
+              <li>🧠 Model AI dimuat sekali, cached di browser</li>
+              <li>⚡ Deteksi wajah real-time menggunakan WebGL GPU acceleration</li>
+              <li>🔒 Pencocokan dilakukan murni di browser (tanpa kirim foto ke server)</li>
+              <li>📋 Otomatis mencatat ke jadwal aktif — sinkron dengan Rekapitulasi ✅</li>
+            </ul>
+            {enrollStats && enrollStats.enrolled > 0 ? (
+              <div className="flex items-center justify-between text-xs mt-3 bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold">
+                  <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
+                  <span>{enrollStats.enrolled} / {enrollStats.total} santri ter-enroll ({enrollStats.percent}%) — Face AI Siap!</span>
+                </div>
+                <Link href="/dashboard/face-enrollment" className="text-emerald-700 dark:text-emerald-300 hover:underline font-bold text-xs flex items-center gap-1 flex-shrink-0 ml-2">
+                  Kelola →
+                </Link>
+              </div>
+            ) : (
+              <Link href="/dashboard/face-enrollment" className="flex items-center gap-2 text-amber-600 hover:text-amber-700 hover:underline text-xs mt-2 font-bold bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800 transition">
+                <Info size={16} className="flex-shrink-0" />
+                <span>Belum ada santri ter-enroll. <u>Klik di sini untuk buka Batch Enrollment</u> di menu Face AI Enrollment →</span>
+              </Link>
+            )}
+          </div>
         )}
       </div>
     </div>

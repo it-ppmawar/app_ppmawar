@@ -53,8 +53,12 @@ export async function GET(request: Request) {
           if (role === 'pengasuh') {
             whereClause = `WHERE 0=1`;
           } else {
-            whereClause = `WHERE k.kelas_id IN (SELECT DISTINCT m.kelas_madin_id FROM murid m JOIN kamar km ON m.kamar_id = km.kamar_id WHERE km.nama_asrama = ? AND m.kelas_madin_id IS NOT NULL)`;
-            params = [namaAsrama];
+            whereClause = `WHERE k.kelas_id IN (
+              SELECT DISTINCT m.kelas_madin_id FROM murid m JOIN kamar km ON m.kamar_id = km.kamar_id WHERE km.nama_asrama = ? AND m.kelas_madin_id IS NOT NULL
+              UNION
+              SELECT DISTINCT m.kelas_madin_2_id FROM murid m JOIN kamar km ON m.kamar_id = km.kamar_id WHERE km.nama_asrama = ? AND m.kelas_madin_2_id IS NOT NULL
+            ) OR k.nama_kelas NOT LIKE '%AL-QUR%' AND k.nama_kelas NOT LIKE '%QURAN%'`;
+            params = [namaAsrama, namaAsrama];
           }
         } else if (actualType === 'quran') {
           if (role === 'pengasuh') {

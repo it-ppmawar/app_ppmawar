@@ -185,8 +185,8 @@ export default function KelasPage() {
   const searchTambahRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const canEdit = role === 'admin' || role === 'staff';
-  // For admin/staff, always show both tabs
-  const visibleTabs: Array<'quran' | 'madin'> = (role === 'admin' || role === 'staff')
+  // For admin/staff/pengurus_asrama, always show both tabs
+  const visibleTabs: Array<'quran' | 'madin'> = (role === 'admin' || role === 'staff' || role === 'pengurus_asrama')
     ? ['quran', 'madin']
     : availableTabs;
 
