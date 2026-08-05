@@ -11,7 +11,7 @@ export async function GET() {
       'SELECT id, nama_kelas FROM kelas_quran ORDER BY id ASC LIMIT 20'
     );
     const [muridSample] = await pool.execute<RowDataPacket[]>(
-      'SELECT murid_id, nama, kelas_madin_id, kelas_madin_2_id, kelas_quran_id FROM murid LIMIT 10'
+      'SELECT murid_id, nama, kelas_madin_id, kelas_quran_id FROM murid LIMIT 10'
     );
     return NextResponse.json({ 
       kelas_madin: madinRows, 

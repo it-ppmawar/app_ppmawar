@@ -29,6 +29,15 @@ export async function GET(request: Request) {
 
     const actualType = type === 'kegiatan' ? 'kamar' : type;
 
+    // Auto-migration: pastikan kolom kelas_madin_2_id ada di tabel murid
+    if (actualType === 'madin') {
+      try {
+        await pool.execute(
+          "ALTER TABLE murid ADD COLUMN IF NOT EXISTS kelas_madin_2_id INT NULL AFTER kelas_madin_id"
+        );
+      } catch (_) { /* kolom sudah ada, abaikan */ }
+    }
+
     let whereClause = '';
     let params: any[] = [];
 
@@ -170,7 +179,7 @@ export async function GET(request: Request) {
     if (actualType === 'madin') {
       query = `
         SELECT k.kelas_id as id, k.nama_kelas as nama, g.nama as pembina,
-               (SELECT COUNT(*) FROM murid m WHERE m.kelas_madin_id = k.kelas_id OR m.kelas_madin_2_id = k.kelas_id) as jumlah_murid
+               (SELECT COUNT(*) FROM murid m WHERE m.kelas_madin_id = k.kelas_id) as jumlah_murid
         FROM kelas_madin k
         LEFT JOIN guru g ON k.guru_id = g.guru_id
         ${whereClause}
