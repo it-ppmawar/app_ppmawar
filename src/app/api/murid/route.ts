@@ -27,7 +27,8 @@ export async function GET(request: Request) {
     const tanpaQuran = searchParams.get('tanpa_quran') === '1';
     const tanpaKamar = searchParams.get('tanpa_kamar') === '1';
     const searchQ = searchParams.get('q') || '';       // ?q= pencarian nama/NIS
-    const limitN = parseInt(searchParams.get('limit') || '200'); // ?limit=
+    const limitParam = searchParams.get('limit');
+    const limitN = limitParam ? parseInt(limitParam) : 5000; // ?limit= (default 5000 agar mengambil seluruh data)
 
     let whereClause = '1=1';
     let queryParams: any[] = [];
@@ -141,7 +142,7 @@ export async function GET(request: Request) {
       LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
       WHERE ${whereClause}
       ORDER BY m.nama ASC
-      LIMIT ${Math.min(Math.max(limitN, 1), 50)}
+      LIMIT ${Math.min(Math.max(limitN, 1), 5000)}
     `;
 
     const [rows] = await pool.execute<RowDataPacket[]>(sql, queryParams);
