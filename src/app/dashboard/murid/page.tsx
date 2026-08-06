@@ -100,6 +100,14 @@ export default function DataMuridPage() {
   const [syncResult, setSyncResult] = useState<any>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
+  // State untuk Tambah Santri Baru
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [savingAdd, setSavingAdd] = useState(false);
+  const [addForm, setAddForm] = useState({
+    nama: '', nis: '', jenis_kelamin: 'Laki-laki',
+    kelas_madin_id: '', no_hp_wali: '', nama_wali: '', alamat: ''
+  });
+
   // State untuk sinkronisasi Kelas Madin (Excel 2026-2027)
   const [syncingMadin, setSyncingMadin] = useState(false);
   const [madinSyncResult, setMadinSyncResult] = useState<any>(null);
@@ -111,6 +119,35 @@ export default function DataMuridPage() {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadMode, setUploadMode] = useState<string>('');
   const [uploadResult, setUploadResult] = useState<any>(null);
+
+  const handleAddSantri = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addForm.nama.trim()) { alert('Nama santri wajib diisi'); return; }
+    setSavingAdd(true);
+    try {
+      const res = await fetch('/api/murid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addForm)
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ ${data.message}\nNIS: ${data.nis}`);
+        setIsAddModalOpen(false);
+        setAddForm({ nama: '', nis: '', jenis_kelamin: 'Laki-laki', kelas_madin_id: '', no_hp_wali: '', nama_wali: '', alamat: '' });
+        // Refresh data
+        const refreshRes = await fetch('/api/murid');
+        const refreshJson = await refreshRes.json();
+        if (refreshJson.success) setMurid(refreshJson.data);
+      } else {
+        alert('❌ Gagal: ' + (data.error || 'Terjadi kesalahan'));
+      }
+    } catch (err: any) {
+      alert('❌ Error: ' + err.message);
+    } finally {
+      setSavingAdd(false);
+    }
+  };
 
   const handleSmartUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -781,6 +818,15 @@ export default function DataMuridPage() {
                 >
                   <RefreshCw size={14} className={syncingMadin ? 'animate-spin' : ''} />
                   <span>{syncingMadin ? 'Sync Madin...' : 'Sync Class Madin'}</span>
+                </button>
+
+                <button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold transition-colors flex items-center gap-2 shadow-sm shrink-0"
+                  title="Tambah Santri Baru"
+                >
+                  <Plus size={14} />
+                  <span>Tambah Santri</span>
                 </button>
               </div>
             )}
@@ -1632,6 +1678,155 @@ export default function DataMuridPage() {
           </div>
         </div>
       )}
+
+      {/* ─── Modal Tambah Santri Baru ──────────────────────────────────────── */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)} />
+          <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <UserPlus size={20} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-white font-extrabold text-lg">Tambah Santri Baru</h2>
+                  <p className="text-blue-100 text-xs">NIS akan di-generate otomatis jika dikosongkan</p>
+                </div>
+              </div>
+              <button onClick={() => setIsAddModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleAddSantri} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* Nama */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Nama Lengkap <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={addForm.nama}
+                  onChange={e => setAddForm(f => ({ ...f, nama: e.target.value }))}
+                  placeholder="Contoh: AHMAD FAUZI RAHMAN"
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white uppercase"
+                  required
+                  style={{ textTransform: 'uppercase' }}
+                />
+              </div>
+
+              {/* NIS & Gender dalam satu baris */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">NIS</label>
+                  <input
+                    type="text"
+                    value={addForm.nis}
+                    onChange={e => setAddForm(f => ({ ...f, nis: e.target.value }))}
+                    placeholder="Auto (kosongkan)"
+                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    Jenis Kelamin <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={addForm.jenis_kelamin}
+                    onChange={e => setAddForm(f => ({ ...f, jenis_kelamin: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="Laki-laki">Laki-laki</option>
+                    <option value="Perempuan">Perempuan</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Kelas Madin */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Kelas Madin</label>
+                <select
+                  value={addForm.kelas_madin_id}
+                  onChange={e => setAddForm(f => ({ ...f, kelas_madin_id: e.target.value }))}
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">-- Pilih Kelas Madin (opsional) --</option>
+                  {allMadin.map((k: any) => (
+                    <option key={k.kelas_id} value={k.kelas_id}>{k.nama_kelas}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Nama Wali & No HP Wali */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Nama Wali</label>
+                  <input
+                    type="text"
+                    value={addForm.nama_wali}
+                    onChange={e => setAddForm(f => ({ ...f, nama_wali: e.target.value }))}
+                    placeholder="Nama orang tua/wali"
+                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">No HP Wali</label>
+                  <input
+                    type="text"
+                    value={addForm.no_hp_wali}
+                    onChange={e => setAddForm(f => ({ ...f, no_hp_wali: e.target.value }))}
+                    placeholder="08xxxxxxxxxx"
+                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Alamat */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Alamat</label>
+                <textarea
+                  value={addForm.alamat}
+                  onChange={e => setAddForm(f => ({ ...f, alamat: e.target.value }))}
+                  placeholder="Alamat lengkap santri"
+                  rows={2}
+                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white resize-none"
+                />
+              </div>
+
+              {/* Info */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl px-4 py-3 text-xs text-blue-700 dark:text-blue-300">
+                <strong>ℹ️ Info:</strong> NIS akan di-generate otomatis (format: YYYYMM####) jika dikosongkan. Foto dapat ditambahkan nanti melalui tombol Edit.
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 py-3 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingAdd}
+                  className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold rounded-2xl shadow-md transition-all disabled:opacity-60 text-sm flex items-center justify-center gap-2"
+                >
+                  {savingAdd ? (
+                    <><RefreshCw size={14} className="animate-spin" /> Menyimpan...</>
+                  ) : (
+                    <><UserPlus size={14} /> Tambah Santri</>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

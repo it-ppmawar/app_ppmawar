@@ -252,3 +252,89 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
   }
 }
+
+// ─── POST: Tambah santri baru ────────────────────────────────────────────────
+export async function POST(request: Request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const payload = verifyToken(token) as any;
+    if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
+
+    // Hanya admin & sekretariat yang boleh tambah santri baru
+    const allowedRoles = ['admin', 'superadmin', 'sekretariat'];
+    if (!allowedRoles.includes(payload.role)) {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const {
+      nama,
+      nis,
+      jenis_kelamin,
+      kelas_madin_id,
+      kelas_quran_id,
+      kamar_id,
+      no_hp_wali,
+      nama_wali,
+      alamat,
+    } = body;
+
+    // Validasi field wajib
+    if (!nama || !jenis_kelamin) {
+      return NextResponse.json({ error: 'Nama dan jenis kelamin wajib diisi' }, { status: 400 });
+    }
+
+    // Generate NIS otomatis jika tidak diisi
+    let finalNis = nis?.trim() || null;
+    if (!finalNis) {
+      const year = new Date().getFullYear();
+      const month = String(new Date().getMonth() + 1).padStart(2, '0');
+      const prefix = `${year}${month}`;
+      // Cari NIS terakhir dengan prefix ini
+      const [lastRows]: any = await pool.execute(
+        'SELECT nis FROM murid WHERE nis LIKE ? ORDER BY nis DESC LIMIT 1',
+        [`${prefix}%`]
+      );
+      const lastNum = lastRows.length > 0 ? parseInt(lastRows[0].nis.slice(6)) + 1 : 1;
+      finalNis = `${prefix}${String(lastNum).padStart(4, '0')}`;
+    } else {
+      // Cek duplikat NIS
+      const [existing]: any = await pool.execute(
+        'SELECT murid_id FROM murid WHERE nis = ?',
+        [finalNis]
+      );
+      if (existing.length > 0) {
+        return NextResponse.json({ error: `NIS ${finalNis} sudah terdaftar` }, { status: 409 });
+      }
+    }
+
+    const [result]: any = await pool.execute(
+      `INSERT INTO murid (nama, nis, jenis_kelamin, kelas_madin_id, kelas_quran_id, kamar_id, no_hp_wali, nama_wali, alamat, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        nama.trim(),
+        finalNis,
+        jenis_kelamin,
+        kelas_madin_id || null,
+        kelas_quran_id || null,
+        kamar_id || null,
+        no_hp_wali || null,
+        nama_wali || null,
+        alamat || null,
+      ]
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: `Santri ${nama} berhasil ditambahkan`,
+      murid_id: result.insertId,
+      nis: finalNis,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
+  }
+}
+
