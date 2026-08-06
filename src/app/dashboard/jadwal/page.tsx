@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { CalendarDays, Clock, MapPin, User, Edit, CheckSquare, FileText, Download, Upload, X, Search, ChevronDown } from 'lucide-react';
+import { CalendarDays, Clock, MapPin, User, Edit, Trash2, CheckSquare, FileText, Download, Upload, X, Search, ChevronDown } from 'lucide-react';
 import { downloadTemplate } from '@/lib/downloadTemplate';
 
 export default function JadwalPage() {
@@ -152,6 +152,45 @@ export default function JadwalPage() {
       alert('Gagal menambah jadwal');
     } finally {
       setSavingAdd(false);
+    }
+  };
+
+  const handleDeleteJadwal = async (item: any) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus jadwal "${item.kegiatan}" (${item.hari})?`)) return;
+    try {
+      const res = await fetch(`/api/jadwal?id=${item.id}&tipe=${item.tipe}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('✅ ' + json.message);
+        fetchData();
+      } else {
+        alert('❌ Gagal: ' + (json.error || 'Terjadi kesalahan'));
+      }
+    } catch (err: any) {
+      alert('❌ Error: ' + err.message);
+    }
+  };
+
+  const handleDeleteBulk = async () => {
+    if (selectedJadwal.length === 0) return;
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedJadwal.length} jadwal terpilih?`)) return;
+    setSavingBulk(true);
+    try {
+      let successCount = 0;
+      for (const id of selectedJadwal) {
+        const res = await fetch(`/api/jadwal?id=${id}&tipe=${activeTab}`, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.success) successCount++;
+      }
+      alert(`✅ Berhasil menghapus ${successCount} dari ${selectedJadwal.length} jadwal`);
+      setSelectedJadwal([]);
+      fetchData();
+    } catch (err: any) {
+      alert('❌ Error: ' + err.message);
+    } finally {
+      setSavingBulk(false);
     }
   };
 
@@ -649,6 +688,9 @@ export default function JadwalPage() {
           <button onClick={() => { setBulkHari(''); setBulkJamMulai(''); setBulkJamSelesai(''); setIsBulkModalOpen(true); }} className="px-3 py-2.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1.5">
             <CheckSquare size={14} /> Edit Jam/Hari Massal ({selectedJadwal.length})
           </button>
+          <button onClick={handleDeleteBulk} className="px-3 py-2.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5">
+            <Trash2 size={14} /> Hapus Massal ({selectedJadwal.length})
+          </button>
         </div>
       )}
 
@@ -713,9 +755,12 @@ export default function JadwalPage() {
                         </span>
                       </td>
                       {(role === 'admin' || role === 'staff') && (
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center flex items-center justify-center gap-1">
                           <button onClick={() => handleEditClick(item)} className="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors" title="Edit Jadwal">
                             <Edit size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteJadwal(item)} className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" title="Hapus Jadwal">
+                            <Trash2 size={14} />
                           </button>
                         </td>
                       )}
@@ -751,9 +796,12 @@ export default function JadwalPage() {
                           </span>
                         </td>
                         {(role === 'admin' || role === 'staff') && (
-                          <td className="px-4 py-3 text-center">
+                          <td className="px-4 py-3 text-center flex items-center justify-center gap-1">
                             <button onClick={() => handleEditClick(item)} className="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors" title="Edit Jadwal">
                               <Edit size={14} />
+                            </button>
+                            <button onClick={() => handleDeleteJadwal(item)} className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" title="Hapus Jadwal">
+                              <Trash2 size={14} />
                             </button>
                           </td>
                         )}
@@ -894,7 +942,10 @@ export default function JadwalPage() {
 
                 {/* Dropdown rendered outside via fixed positioned portal-like element - see below */}
               </div>
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={() => { setIsEditModalOpen(false); handleDeleteJadwal(editingJadwal); }} className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl transition-colors text-xs flex items-center gap-1" title="Hapus Jadwal Ini">
+                  <Trash2 size={14} /> Hapus
+                </button>
                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Batal</button>
                 <button type="submit" disabled={savingEdit} className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl disabled:opacity-50 transition-colors">Simpan</button>
               </div>
