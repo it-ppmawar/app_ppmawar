@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain } from 'lucide-react';
+import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -512,11 +512,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
             {!(user?.role || '').toLowerCase().includes('petugas') && (
               <>
+            {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(userRoleLower) || isPengasuhRole ? (
+            <li>
+              <Link href="/dashboard/absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
+                <ClipboardCheck size={18} /> <span className="text-sm">Input Absensi</span>
+              </Link>
+            </li>
+            ) : null}
+            {['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) || isPengasuhRole ? (
+            <li>
+              <Link href="/dashboard/jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
+                <Calendar size={18} /> <span className="text-sm">Kelola Jadwal</span>
+              </Link>
+            </li>
+            ) : null}
             <li>
               <Link href="/dashboard/tabel-jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/tabel-jadwal' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
                 <CalendarDays size={18} /> <span className="text-sm">Tabel Jadwal</span>
               </Link>
             </li>
+            {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(userRoleLower) || isPengasuhRole ? (
+            <li>
+              <Link href="/dashboard/rekapitulasi" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/rekapitulasi' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold' : 'hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-bold'}`}>
+                <FileText size={18} /> <span className="text-sm">Rekapitulasi Absensi</span>
+              </Link>
+            </li>
+            ) : null}
             {['admin', 'staff'].includes(userRoleLower) && (
             <li>
               <Link href="/dashboard/absen-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/absen-guru' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
@@ -550,6 +571,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <li>
               <Link href="/dashboard/scan-absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/scan-absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
                 <QrCode size={18} /> <span className="text-sm">Scan Absensi</span>
+              </Link>
+            </li>
+            ) : null}
+            {['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) ? (
+            <li>
+              <Link href="/dashboard/pairing" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/pairing' ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 font-bold' : 'hover:bg-cyan-50 dark:hover:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400 font-bold'}`}>
+                <Link2 size={18} /> <span className="text-sm">Pairing Kartu Santri</span>
               </Link>
             </li>
             ) : null}
