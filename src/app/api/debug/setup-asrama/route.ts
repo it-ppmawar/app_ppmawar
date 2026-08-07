@@ -7,37 +7,63 @@ import { RowDataPacket } from 'mysql2';
 // POST: isi nama_asrama berdasarkan nama_kamar pattern
 export async function GET() {
   try {
-    // Cek semua kamar beserta nama_asrama
+    // 1. Otomatis konsolidasi & perbaiki nama_asrama huruf tunggal (misal 'A' -> 'Asrama A') di database
+    try {
+      await pool.execute(
+        `UPDATE kamar SET nama_asrama = CONCAT('Asrama ', UPPER(nama_asrama)) 
+         WHERE nama_asrama REGEXP '^[A-Fa-f]$'`
+      );
+    } catch (e) {
+      console.error('[SETUP ASRAMA] Auto-normalize error:', e);
+    }
+
+    // 2. Cek semua kamar beserta nama_asrama
     const [kamarRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT kamar_id, nama_kamar, nama_asrama FROM kamar ORDER BY nama_kamar ASC`
+      `SELECT kamar_id, nama_kamar, 
+              CASE WHEN nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(nama_asrama))
+                   ELSE nama_asrama END as nama_asrama 
+       FROM kamar ORDER BY nama_kamar ASC`
     );
 
-    // Cek semua user pengurus_asrama
+    // 3. Cek semua user pengurus_asrama
     const [userRows] = await pool.execute<RowDataPacket[]>(
       `SELECT u.id, u.username, u.role, u.kamar_id, 
-              k.nama_kamar, k.nama_asrama
+              k.nama_kamar, 
+              CASE WHEN k.nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(k.nama_asrama))
+                   ELSE k.nama_asrama END as nama_asrama
        FROM users u
        LEFT JOIN kamar k ON u.kamar_id = k.kamar_id
        WHERE u.role = 'pengurus_asrama'
        ORDER BY u.username`
     );
 
-    // Cek distinct nilai nama_asrama yang sudah ada
+    // 4. Cek distinct nilai nama_asrama yang sudah ada
     const [asramaDistinct] = await pool.execute<RowDataPacket[]>(
-      `SELECT DISTINCT nama_asrama, COUNT(*) as jumlah_kamar
+      `SELECT 
+         CASE WHEN nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(nama_asrama))
+              ELSE nama_asrama END as nama_asrama,
+         COUNT(*) as jumlah_kamar
        FROM kamar 
-       GROUP BY nama_asrama 
+       WHERE nama_asrama IS NOT NULL
+       GROUP BY 
+         CASE WHEN nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(nama_asrama))
+              ELSE nama_asrama END
        ORDER BY nama_asrama`
     );
 
-    // Cek jumlah santri per asrama
+    // 5. Cek jumlah santri per asrama (terkonsolidasi)
     const [santriPerAsrama] = await pool.execute<RowDataPacket[]>(
-      `SELECT k.nama_asrama, COUNT(m.murid_id) as jumlah_santri
+      `SELECT 
+         CASE WHEN k.nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(k.nama_asrama))
+              ELSE k.nama_asrama END as nama_asrama,
+         COUNT(m.murid_id) as jumlah_santri
        FROM kamar k
        LEFT JOIN murid m ON m.kamar_id = k.kamar_id
        WHERE k.nama_asrama IS NOT NULL
-       GROUP BY k.nama_asrama
-       ORDER BY k.nama_asrama`
+       GROUP BY 
+         CASE WHEN k.nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(k.nama_asrama))
+              ELSE k.nama_asrama END
+       ORDER BY nama_asrama`
     );
 
     return NextResponse.json({
@@ -74,6 +100,7 @@ export async function POST(request: Request) {
         // Cari pola nama asrama dari nama_kamar
         // Contoh: "Asrama A - Kamar 1" -> "Asrama A"
         // Contoh: "A1", "A2" -> "Asrama A"
+        // Contoh: "A-1", "A-2" -> "Asrama A"
         // Contoh: "ASRAMA A" -> "Asrama A"
         let namaAsrama: string | null = null;
         const nama = kamar.nama_kamar?.toString() || '';
@@ -84,11 +111,19 @@ export async function POST(request: Request) {
           namaAsrama = `Asrama ${matchAsrama[1].toUpperCase()}`;
         }
         
-        // Pattern 2: Nama kamar dimulai dengan huruf A-F diikuti angka (misal A1, B2)
+        // Pattern 2: Nama kamar dimulai dengan huruf A-F diikuti angka langsung (misal A1, B2)
         if (!namaAsrama) {
           const matchKode = nama.match(/^([A-Fa-f])\d+/);
           if (matchKode) {
             namaAsrama = `Asrama ${matchKode[1].toUpperCase()}`;
+          }
+        }
+
+        // Pattern 3: Nama kamar dimulai dengan huruf A-F diikuti tanda hubung & angka (misal A-1, B-2, C-10)
+        if (!namaAsrama) {
+          const matchKodeDash = nama.match(/^([A-Fa-f])-\d+/);
+          if (matchKodeDash) {
+            namaAsrama = `Asrama ${matchKodeDash[1].toUpperCase()}`;
           }
         }
 
@@ -101,6 +136,12 @@ export async function POST(request: Request) {
           results.push({ kamar_id: kamar.kamar_id, nama_kamar: nama, nama_asrama: namaAsrama });
         }
       }
+
+      // Normalisasi: unifikasi nama_asrama yang hanya huruf tunggal (misal "A", "B") -> "Asrama A", "Asrama B"
+      await pool.execute(
+        `UPDATE kamar SET nama_asrama = CONCAT('Asrama ', UPPER(nama_asrama)) 
+         WHERE nama_asrama REGEXP '^[A-Fa-f]$'`
+      );
     } else if (mode === 'manual' && Array.isArray(mappings)) {
       for (const { kamar_id, nama_asrama } of mappings) {
         await pool.execute(

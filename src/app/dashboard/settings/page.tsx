@@ -894,12 +894,21 @@ export default function SettingsPage() {
                   <div>
                     <h4 className="font-bold text-sm text-gray-700 dark:text-gray-300 mb-2">Santri per Asrama</h4>
                     <div className="flex flex-wrap gap-2">
-                      {asramaData.santri_per_asrama.map((a: any) => (
-                        <div key={a.nama_asrama} className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 px-3 py-1.5 rounded-lg text-sm">
-                          <span className="font-bold text-indigo-700 dark:text-indigo-300">{a.nama_asrama}</span>
-                          <span className="text-indigo-500 ml-2">{a.jumlah_santri} santri</span>
-                        </div>
-                      ))}
+                      {(() => {
+                        const mergedMap = new Map<string, number>();
+                        asramaData.santri_per_asrama.forEach((a: any) => {
+                          let name = (a.nama_asrama || '').trim();
+                          if (/^[A-Fa-f]$/.test(name)) name = `Asrama ${name.toUpperCase()}`;
+                          const prev = mergedMap.get(name) || 0;
+                          mergedMap.set(name, prev + Number(a.jumlah_santri || 0));
+                        });
+                        return Array.from(mergedMap.entries()).map(([nama, jumlah]) => (
+                          <div key={nama} className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 px-3 py-1.5 rounded-lg text-sm">
+                            <span className="font-bold text-indigo-700 dark:text-indigo-300">{nama}</span>
+                            <span className="text-indigo-500 ml-2">{jumlah} santri</span>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   </div>
                 )}
@@ -931,7 +940,11 @@ export default function SettingsPage() {
                           <tr key={k.kamar_id} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                             <td className="px-3 py-1">{k.kamar_id}</td>
                             <td className="px-3 py-1 font-mono">{k.nama_kamar}</td>
-                            <td className="px-3 py-1">{k.nama_asrama ?? <span className="text-red-500">NULL</span>}</td>
+                            <td className="px-3 py-1">
+                              {k.nama_asrama ? (
+                                /^[A-Fa-f]$/.test(k.nama_asrama.trim()) ? `Asrama ${k.nama_asrama.trim().toUpperCase()}` : k.nama_asrama
+                              ) : <span className="text-red-500">NULL</span>}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
