@@ -178,7 +178,7 @@ function QuickAbsenContent() {
 
   useEffect(() => { return () => stopCameraStream(); }, [stopCameraStream]);
 
-  const generateWaGroupMessage = () => {
+  const generateWaGroupMessage = (uploadedPhotoUrl?: string) => {
     if (!data) return '';
     const dateStr = data.date || new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const listMurid: any[] = data.murid || [];
@@ -223,13 +223,72 @@ function QuickAbsenContent() {
       msg += `\n`;
     }
 
-    msg += `\n_Diinput via Quick Absen Online PPMA_\n_https://absensi.ppmawar.or.id_`;
+    if (uploadedPhotoUrl) {
+      msg += `📷 *Foto Kehadiran:* ${uploadedPhotoUrl}\n\n`;
+    }
+
+    msg += `_Diinput via Quick Absen Online PPMA_\n_https://app.ppmawar.or.id_`;
     return msg;
   };
 
-  const handleShareToWA = () => {
-    const text = generateWaGroupMessage();
-    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+  const handleShareToWA = async () => {
+    let fileToShare: File | null = null;
+    let serverPhotoUrl: string | null = null;
+
+    if (photoUrl) {
+      try {
+        if (photoUrl.startsWith('data:')) {
+          const res = await fetch(photoUrl);
+          const blob = await res.blob();
+          fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+        } else if (photoUrl.startsWith('http')) {
+          serverPhotoUrl = photoUrl;
+          const res = await fetch(photoUrl);
+          const blob = await res.blob();
+          fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+        }
+      } catch (err) {
+        console.warn('Error preparing photo file:', err);
+      }
+    }
+
+    const textWithoutPhoto = generateWaGroupMessage();
+
+    // 1. Coba Native Web Share API (Di HP/WhatsApp Mobile, ini melampirkan file FOTO langsung ke WhatsApp)
+    if (fileToShare && typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).canShare({ files: [fileToShare] })) {
+      try {
+        await navigator.share({
+          title: `LAPORAN KEHADIRAN ${(data?.jadwal?.nama_kelas || '').toUpperCase()}`,
+          text: textWithoutPhoto,
+          files: [fileToShare],
+        });
+        return;
+      } catch (shareErr: any) {
+        if (shareErr?.name === 'AbortError') return; // User membatalkan dialog share
+        console.warn('Web Share API gagal, lanjut ke fallback URL:', shareErr);
+      }
+    }
+
+    // 2. Fallback untuk Desktop/Browser tanpa Web Share API file: Unggah foto ke server agar mendapatkan tautan gambar publik
+    if (photoUrl && photoUrl.startsWith('data:') && !serverPhotoUrl) {
+      try {
+        if (fileToShare) {
+          const formData = new FormData();
+          formData.append('file', fileToShare);
+          const upRes = await fetch('/api/upload', { method: 'POST', body: formData });
+          const upData = await upRes.json();
+          if (upData.success && upData.url) {
+            const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.ppmawar.or.id';
+            serverPhotoUrl = `${origin}${upData.url}`;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to upload photo for link sharing:', e);
+      }
+    }
+
+    const finalMessage = generateWaGroupMessage(serverPhotoUrl || (photoUrl && photoUrl.startsWith('http') ? photoUrl : undefined));
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(finalMessage)}`;
     window.open(waUrl, '_blank');
   };
 
