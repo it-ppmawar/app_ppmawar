@@ -3,6 +3,63 @@ import db from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
+    // 0. AUTENTIKASI CRON JOB & CEK JADWAL RUTINITAS
+    const authHeader = request.headers.get('Authorization');
+    const cronSecret = process.env.CRON_SECRET || 'ppma_sync_secret_2024_secure';
+    const isCronRequest = authHeader && (authHeader === `Bearer ${cronSecret}` || authHeader === `Bearer ppma_sync_secret_2024_secure`);
+
+    if (isCronRequest) {
+      // Ambil nilai rutinitas_sinkronisasi & terakhir_sinkronisasi dari database
+      const [rowsSetting]: any = await db.query(
+        `SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('rutinitas_sinkronisasi', 'terakhir_sinkronisasi')`
+      );
+      const settingsMap: Record<string, string> = {};
+      if (Array.isArray(rowsSetting)) {
+        for (const row of rowsSetting) {
+          settingsMap[row.nama_pengaturan] = row.nilai;
+        }
+      }
+
+      const modeRutinitas = settingsMap.rutinitas_sinkronisasi || 'manual';
+      const terakhirSyncStr = settingsMap.terakhir_sinkronisasi;
+
+      if (modeRutinitas === 'manual') {
+        return NextResponse.json({
+          success: true,
+          skipped: true,
+          message: 'Sinkronisasi otomatis dilewati (Mode: Manual / Tidak Aktif)'
+        });
+      }
+
+      if (terakhirSyncStr) {
+        const lastSync = new Date(terakhirSyncStr).getTime();
+        const now = Date.now();
+        const diffHours = (now - lastSync) / (1000 * 60 * 60);
+
+        if (modeRutinitas === 'harian' && diffHours < 20) {
+          return NextResponse.json({
+            success: true,
+            skipped: true,
+            message: `Sinkronisasi otomatis dilewati (Baru disinkronkan ${Math.round(diffHours)} jam yang lalu)`
+          });
+        }
+        if (modeRutinitas === 'mingguan' && diffHours < 140) {
+          return NextResponse.json({
+            success: true,
+            skipped: true,
+            message: `Sinkronisasi otomatis dilewati (Baru disinkronkan ${Math.round(diffHours / 24)} hari yang lalu)`
+          });
+        }
+        if (modeRutinitas === 'bulanan' && diffHours < 650) {
+          return NextResponse.json({
+            success: true,
+            skipped: true,
+            message: `Sinkronisasi otomatis dilewati (Baru disinkronkan ${Math.round(diffHours / 24)} hari yang lalu)`
+          });
+        }
+      }
+    }
+
     // 1. Mengambil data dari API Bridge Mitra Pembayaran
     // Menggunakan Environment Variable agar mudah diubah saat di cPanel
     let apiUrl = process.env.API_MITRA_URL || 'https://mawar.smartpesantren.id/api_absensi/api_bridge.php?action=get_santri';

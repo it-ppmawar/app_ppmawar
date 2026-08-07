@@ -607,6 +607,14 @@ export default function SettingsPage() {
                 <option value="mingguan">Setiap Minggu (Mingguan)</option>
                 <option value="bulanan">Setiap Bulan (Bulanan)</option>
               </select>
+              {settings.rutinitas_sinkronisasi !== 'manual' && (
+                <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-xs text-blue-700 dark:text-blue-300">
+                  <p className="font-bold flex items-center gap-1.5 mb-1">
+                    <Bell size={14} /> Integrasi Cron Job:
+                  </p>
+                  Panggil endpoint <code className="bg-blue-100 dark:bg-blue-900 px-1 py-0.5 rounded font-mono text-[11px]">GET /api/sync/murid</code> dengan header <code className="bg-blue-100 dark:bg-blue-900 px-1 py-0.5 rounded font-mono text-[11px]">Authorization: Bearer ppma_sync_secret_2024_secure</code> via cPanel Cron Jobs atau cron-job.org. Sistem akan mengeksekusi sinkronisasi secara cerdas sesuai interval {settings.rutinitas_sinkronisasi} yang dipilih.
+                </div>
+              )}
             </div>
           </div>
         </div>
