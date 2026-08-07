@@ -12,12 +12,30 @@ async function getAuthUser() {
   return payload;
 }
 
+let isTableChecked = false;
+
+async function ensureUtf8mb4Table() {
+  try {
+    await pool.query("SET NAMES utf8mb4");
+    if (!isTableChecked) {
+      // Pastikan tabel dan kolom 'nilai' menggunakan utf8mb4_unicode_ci agar teks Arab & Emoji tidak berubah jadi '?'
+      await pool.query("ALTER TABLE pengaturan_absensi_otomatis CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci").catch(() => {});
+      await pool.query("ALTER TABLE pengaturan_absensi_otomatis MODIFY nilai TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci").catch(() => {});
+      isTableChecked = true;
+    }
+  } catch (e) {
+    console.warn("Could not ensure utf8mb4 encoding:", e);
+  }
+}
+
 export async function GET() {
   try {
     const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    await ensureUtf8mb4Table();
 
     const [rows] = await pool.execute<RowDataPacket[]>(
       "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan LIKE 'wa_template_%'"
@@ -41,6 +59,8 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    await ensureUtf8mb4Table();
 
     const body = await request.json();
     const { key, value, templates, action } = body;
