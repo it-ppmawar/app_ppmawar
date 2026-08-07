@@ -2,68 +2,169 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
-// Endpoint setup asrama - untuk mendiagnosa dan mengisi nama_asrama
-// GET: cek data kamar dan user asrama
-// POST: isi nama_asrama berdasarkan nama_kamar pattern
-export async function GET() {
+// Helper untuk mengonsolidasikan & menghapus kamar ganda (misal A-1 dan A1)
+async function consolidateDuplicateKamar() {
+  let mergedCount = 0;
   try {
-    // 1. Otomatis konsolidasi & perbaiki nama_asrama huruf tunggal (misal 'A' -> 'Asrama A') di database
-    try {
-      await pool.execute(
-        `UPDATE kamar SET nama_asrama = CONCAT('Asrama ', UPPER(nama_asrama)) 
-         WHERE nama_asrama REGEXP '^[A-Fa-f]$'`
-      );
-    } catch (e) {
-      console.error('[SETUP ASRAMA] Auto-normalize error:', e);
-    }
-
-    // 2. Cek semua kamar beserta nama_asrama
-    const [kamarRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT kamar_id, nama_kamar, 
-              CASE WHEN nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(nama_asrama))
-                   ELSE nama_asrama END as nama_asrama 
-       FROM kamar ORDER BY nama_kamar ASC`
+    // 1. Normalisasi nama_asrama awal jika masih berupa huruf tunggal (misal 'A' -> 'Asrama A')
+    await pool.execute(
+      `UPDATE kamar SET nama_asrama = CONCAT('Asrama ', UPPER(nama_asrama)) 
+       WHERE nama_asrama REGEXP '^[A-Fa-f]$'`
     );
 
-    // 3. Cek semua user pengurus_asrama
+    // 2. Isi nama_asrama untuk kamar yang masih NULL berdasarkan pattern nama_kamar (misal A-1, A1 -> Asrama A)
+    const [unassignedKamar] = await pool.execute<RowDataPacket[]>(
+      `SELECT kamar_id, nama_kamar FROM kamar WHERE nama_asrama IS NULL OR nama_asrama = ''`
+    );
+    for (const k of unassignedKamar) {
+      const nama = (k.nama_kamar || '').toString();
+      let namaAsrama: string | null = null;
+
+      const matchAsrama = nama.match(/asrama\s+([A-Fa-f])/i);
+      if (matchAsrama) namaAsrama = `Asrama ${matchAsrama[1].toUpperCase()}`;
+
+      if (!namaAsrama) {
+        const matchKode = nama.match(/^([A-Fa-f])[\d-]/);
+        if (matchKode) namaAsrama = `Asrama ${matchKode[1].toUpperCase()}`;
+      }
+
+      if (namaAsrama) {
+        await pool.execute(`UPDATE kamar SET nama_asrama = ? WHERE kamar_id = ?`, [namaAsrama, k.kamar_id]);
+      }
+    }
+
+    // 3. Ambil seluruh kamar terkini
+    const [allKamar] = await pool.execute<RowDataPacket[]>(
+      `SELECT kamar_id, nama_kamar, nama_asrama FROM kamar ORDER BY kamar_id ASC`
+    );
+
+    // Helper untuk mengekstrak kode kamar standar (misal 'A-1' -> 'A1', 'A1' -> 'A1', 'A 1' -> 'A1')
+    const getNormalizedCode = (k: any) => {
+      const nama = (k.nama_kamar || '').toString().trim();
+      const match = nama.match(/([A-Fa-f])[\s-]*(\d+)/);
+      if (match) {
+        return `${match[1].toUpperCase()}${match[2]}`;
+      }
+      return nama.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    };
+
+    // Kelompokkan berdasarkan (nama_asrama, normalizedCode)
+    const groups: Record<string, any[]> = {};
+    for (const kamar of allKamar) {
+      const asrama = (kamar.nama_asrama || '').toString().trim().toUpperCase();
+      const code = getNormalizedCode(kamar);
+      if (!code) continue;
+      const key = `${asrama}:::${code}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(kamar);
+    }
+
+    for (const key in groups) {
+      const list = groups[key];
+      if (list.length > 1) {
+        // Ada data kamar ganda!
+        // Pilih kamar kanonikal: utamakan yang tanpa tanda hubung '-' (misal A1 dibanding A-1), atau ID lebih kecil
+        list.sort((a, b) => {
+          const aHasDash = a.nama_kamar.includes('-');
+          const bHasDash = b.nama_kamar.includes('-');
+          if (aHasDash !== bHasDash) return aHasDash ? 1 : -1;
+          return a.kamar_id - b.kamar_id;
+        });
+
+        const canonical = list[0];
+        const duplicates = list.slice(1);
+
+        // Update nama_kamar kanonikal agar rapi (misal set ke 'A1')
+        const cleanCode = getNormalizedCode(canonical);
+        if (cleanCode && /^[A-F]\d+$/.test(cleanCode)) {
+          await pool.execute(
+            `UPDATE kamar SET nama_kamar = ? WHERE kamar_id = ?`,
+            [cleanCode, canonical.kamar_id]
+          );
+        }
+
+        for (const dup of duplicates) {
+          // Pindahkan santri (murid) dari dup.kamar_id ke canonical.kamar_id
+          await pool.execute(
+            `UPDATE murid SET kamar_id = ? WHERE kamar_id = ?`,
+            [canonical.kamar_id, dup.kamar_id]
+          );
+
+          // Pindahkan user pengurus dari dup.kamar_id ke canonical.kamar_id
+          await pool.execute(
+            `UPDATE users SET kamar_id = ? WHERE kamar_id = ?`,
+            [canonical.kamar_id, dup.kamar_id]
+          );
+
+          // Pindahkan jadwal jika ada
+          try {
+            await pool.execute(
+              `UPDATE jadwal SET kamar_id = ? WHERE kamar_id = ?`,
+              [canonical.kamar_id, dup.kamar_id]
+            );
+          } catch (e) {}
+
+          try {
+            await pool.execute(
+              `UPDATE jadwal_kegiatan SET kamar_id = ? WHERE kamar_id = ?`,
+              [canonical.kamar_id, dup.kamar_id]
+            );
+          } catch (e) {}
+
+          // Hapus kamar ganda dari tabel kamar
+          await pool.execute(
+            `DELETE FROM kamar WHERE kamar_id = ?`,
+            [dup.kamar_id]
+          );
+
+          mergedCount++;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[SETUP ASRAMA] Consolidate kamar error:', err);
+  }
+  return mergedCount;
+}
+
+// GET: Cek & konsolidasi otomatis data kamar dan user asrama
+export async function GET() {
+  try {
+    // Jalankan konsolidasi kamar ganda secara otomatis
+    const mergedCount = await consolidateDuplicateKamar();
+
+    // 1. Cek semua kamar beserta nama_asrama setelah konsolidasi
+    const [kamarRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT kamar_id, nama_kamar, nama_asrama FROM kamar ORDER BY nama_kamar ASC`
+    );
+
+    // 2. Cek semua user pengurus_asrama
     const [userRows] = await pool.execute<RowDataPacket[]>(
       `SELECT u.id, u.username, u.role, u.kamar_id, 
-              k.nama_kamar, 
-              CASE WHEN k.nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(k.nama_asrama))
-                   ELSE k.nama_asrama END as nama_asrama
+              k.nama_kamar, k.nama_asrama
        FROM users u
        LEFT JOIN kamar k ON u.kamar_id = k.kamar_id
        WHERE u.role = 'pengurus_asrama'
        ORDER BY u.username`
     );
 
-    // 4. Cek distinct nilai nama_asrama yang sudah ada
+    // 3. Cek distinct nilai nama_asrama yang ada
     const [asramaDistinct] = await pool.execute<RowDataPacket[]>(
-      `SELECT 
-         CASE WHEN nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(nama_asrama))
-              ELSE nama_asrama END as nama_asrama,
-         COUNT(*) as jumlah_kamar
+      `SELECT nama_asrama, COUNT(*) as jumlah_kamar
        FROM kamar 
        WHERE nama_asrama IS NOT NULL
-       GROUP BY 
-         CASE WHEN nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(nama_asrama))
-              ELSE nama_asrama END
+       GROUP BY nama_asrama
        ORDER BY nama_asrama`
     );
 
-    // 5. Cek jumlah santri per asrama (terkonsolidasi)
+    // 4. Cek jumlah santri per asrama
     const [santriPerAsrama] = await pool.execute<RowDataPacket[]>(
-      `SELECT 
-         CASE WHEN k.nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(k.nama_asrama))
-              ELSE k.nama_asrama END as nama_asrama,
-         COUNT(m.murid_id) as jumlah_santri
+      `SELECT k.nama_asrama, COUNT(m.murid_id) as jumlah_santri
        FROM kamar k
        LEFT JOIN murid m ON m.kamar_id = k.kamar_id
        WHERE k.nama_asrama IS NOT NULL
-       GROUP BY 
-         CASE WHEN k.nama_asrama REGEXP '^[A-Fa-f]$' THEN CONCAT('Asrama ', UPPER(k.nama_asrama))
-              ELSE k.nama_asrama END
-       ORDER BY nama_asrama`
+       GROUP BY k.nama_asrama
+       ORDER BY k.nama_asrama`
     );
 
     return NextResponse.json({
@@ -72,6 +173,7 @@ export async function GET() {
       asrama_terdaftar: asramaDistinct,
       santri_per_asrama: santriPerAsrama,
       total_kamar: kamarRows.length,
+      merged_duplicate_kamar: mergedCount,
       kamar_tanpa_asrama: kamarRows.filter((k: any) => !k.nama_asrama).length,
     });
   } catch (error: any) {
@@ -79,70 +181,17 @@ export async function GET() {
   }
 }
 
-// POST: Auto-assign nama_asrama dari pattern nama_kamar
-// Body: { mode: 'auto' } -> otomatis dari 'Asrama X' di nama_kamar
-// Body: { mode: 'manual', mappings: [{kamar_id, nama_asrama}] } -> manual
+// POST: Auto-fix & Hapus Kamar Ganda
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { mode, mappings } = body;
 
-    let updated = 0;
+    const mergedCount = await consolidateDuplicateKamar();
+    let updated = mergedCount;
     const results: any[] = [];
 
-    if (mode === 'auto') {
-      // Ambil semua kamar
-      const [kamarRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT kamar_id, nama_kamar FROM kamar`
-      );
-
-      for (const kamar of kamarRows) {
-        // Cari pola nama asrama dari nama_kamar
-        // Contoh: "Asrama A - Kamar 1" -> "Asrama A"
-        // Contoh: "A1", "A2" -> "Asrama A"
-        // Contoh: "A-1", "A-2" -> "Asrama A"
-        // Contoh: "ASRAMA A" -> "Asrama A"
-        let namaAsrama: string | null = null;
-        const nama = kamar.nama_kamar?.toString() || '';
-        
-        // Pattern 1: Mengandung kata "Asrama X" (case insensitive)
-        const matchAsrama = nama.match(/asrama\s+([A-Fa-f])/i);
-        if (matchAsrama) {
-          namaAsrama = `Asrama ${matchAsrama[1].toUpperCase()}`;
-        }
-        
-        // Pattern 2: Nama kamar dimulai dengan huruf A-F diikuti angka langsung (misal A1, B2)
-        if (!namaAsrama) {
-          const matchKode = nama.match(/^([A-Fa-f])\d+/);
-          if (matchKode) {
-            namaAsrama = `Asrama ${matchKode[1].toUpperCase()}`;
-          }
-        }
-
-        // Pattern 3: Nama kamar dimulai dengan huruf A-F diikuti tanda hubung & angka (misal A-1, B-2, C-10)
-        if (!namaAsrama) {
-          const matchKodeDash = nama.match(/^([A-Fa-f])-\d+/);
-          if (matchKodeDash) {
-            namaAsrama = `Asrama ${matchKodeDash[1].toUpperCase()}`;
-          }
-        }
-
-        if (namaAsrama) {
-          await pool.execute(
-            `UPDATE kamar SET nama_asrama = ? WHERE kamar_id = ?`,
-            [namaAsrama, kamar.kamar_id]
-          );
-          updated++;
-          results.push({ kamar_id: kamar.kamar_id, nama_kamar: nama, nama_asrama: namaAsrama });
-        }
-      }
-
-      // Normalisasi: unifikasi nama_asrama yang hanya huruf tunggal (misal "A", "B") -> "Asrama A", "Asrama B"
-      await pool.execute(
-        `UPDATE kamar SET nama_asrama = CONCAT('Asrama ', UPPER(nama_asrama)) 
-         WHERE nama_asrama REGEXP '^[A-Fa-f]$'`
-      );
-    } else if (mode === 'manual' && Array.isArray(mappings)) {
+    if (mode === 'manual' && Array.isArray(mappings)) {
       for (const { kamar_id, nama_asrama } of mappings) {
         await pool.execute(
           `UPDATE kamar SET nama_asrama = ? WHERE kamar_id = ?`,
@@ -153,15 +202,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // Juga pastikan users pengurus_asrama punya kamar_id yang valid
-    // dengan mencari kamar pertama dari asrama yang sesuai dengan username
+    // Pastikan users pengurus_asrama punya kamar_id yang valid
     const [pengurus] = await pool.execute<RowDataPacket[]>(
       `SELECT id, username FROM users WHERE role = 'pengurus_asrama' AND kamar_id IS NULL`
     );
 
     let usersFixed = 0;
     for (const user of pengurus) {
-      // Coba tebak asrama dari username: ketua_asrama_a -> Asrama A
       const matchUser = user.username.match(/asrama_([a-f])/i);
       if (matchUser) {
         const namaAsrama = `Asrama ${matchUser[1].toUpperCase()}`;
@@ -182,6 +229,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       updated_kamar: updated,
+      merged_duplicate_kamar: mergedCount,
       fixed_users: usersFixed,
       results,
     });
