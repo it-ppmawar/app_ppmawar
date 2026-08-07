@@ -67,6 +67,52 @@ function NotifikasiContent() {
   const [pesanGuruInfoTemplate, setPesanGuruInfoTemplate] = useState(defaultGuruInfoTemplate);
   const [pesanBillingTemplate, setPesanBillingTemplate] = useState(defaultBillingTemplate);
 
+  const [saveStatus, setSaveStatus] = useState<Record<string, string>>({});
+
+  const saveTemplate = async (key: string, value: string) => {
+    setSaveStatus(prev => ({ ...prev, [key]: 'saving' }));
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(key, value);
+      }
+      const res = await fetch('/api/settings/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSaveStatus(prev => ({ ...prev, [key]: 'saved' }));
+        setTimeout(() => {
+          setSaveStatus(prev => ({ ...prev, [key]: '' }));
+        }, 4000);
+      } else {
+        setSaveStatus(prev => ({ ...prev, [key]: 'error' }));
+      }
+    } catch (err) {
+      setSaveStatus(prev => ({ ...prev, [key]: 'error' }));
+    }
+  };
+
+  const resetTemplate = async (key: string, defaultValue: string, setter: (val: string) => void) => {
+    setter(defaultValue);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(key);
+    }
+    setSaveStatus(prev => ({ ...prev, [key]: 'resetting' }));
+    try {
+      await fetch('/api/settings/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset', key }),
+      });
+      setSaveStatus(prev => ({ ...prev, [key]: 'reset' }));
+      setTimeout(() => {
+        setSaveStatus(prev => ({ ...prev, [key]: '' }));
+      }, 4000);
+    } catch (err) {}
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedWali = localStorage.getItem('wa_template_wali');
@@ -101,6 +147,36 @@ function NotifikasiContent() {
         setSentReminderIds({});
       }
     }
+
+    // Ambil templat dari Database agar selalu sinkron dan permanen (bahkan jika cache browser dibersihkan)
+    fetch('/api/settings/templates')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.templates) {
+          const t = data.templates;
+          if (t.wa_template_wali) {
+            setPesanWaliTemplate(t.wa_template_wali);
+            if (typeof window !== 'undefined') localStorage.setItem('wa_template_wali', t.wa_template_wali);
+          }
+          if (t.wa_template_wali_info) {
+            setPesanWaliInfoTemplate(t.wa_template_wali_info);
+            if (typeof window !== 'undefined') localStorage.setItem('wa_template_wali_info', t.wa_template_wali_info);
+          }
+          if (t.wa_template_guru) {
+            setPesanGuruTemplate(t.wa_template_guru);
+            if (typeof window !== 'undefined') localStorage.setItem('wa_template_guru', t.wa_template_guru);
+          }
+          if (t.wa_template_guru_info) {
+            setPesanGuruInfoTemplate(t.wa_template_guru_info);
+            if (typeof window !== 'undefined') localStorage.setItem('wa_template_guru_info', t.wa_template_guru_info);
+          }
+          if (t.wa_template_billing) {
+            setPesanBillingTemplate(t.wa_template_billing);
+            if (typeof window !== 'undefined') localStorage.setItem('wa_template_billing', t.wa_template_billing);
+          }
+        }
+      })
+      .catch(() => {});
 
     // Ambil detail profil untuk mendapatkan role
     fetch('/api/auth/me')
@@ -374,6 +450,8 @@ function NotifikasiContent() {
   const selectedGuruObj = guruList.find(g => g.guru_id.toString() === selectedGuruId);
   
   const [selectedJadwalGuru, setSelectedJadwalGuru] = useState('');
+  const [guruQuickUrl, setGuruQuickUrl] = useState<string>('');
+  const [fetchingQuickUrl, setFetchingQuickUrl] = useState(false);
 
   const getWaGuruLink = (guru: any) => {
     const phone = formatPhoneNumber(guru.whatsapp);
@@ -381,13 +459,14 @@ function NotifikasiContent() {
 
     let tipeLabel = tipeGuru === 'madin' ? 'Madin' : tipeGuru === 'quran' ? "Al-Qur'an" : 'Asrama';
     let tempatLabel = selectedJadwalGuru || 'Belum ditentukan';
+    const linkAbsen = guruQuickUrl || 'https://app.ppmawar.or.id/dashboard/absen';
 
     const text = pesanGuruTemplate
       .replace(/{nama_guru}/g, guru.nama)
       .replace(/{kegiatan}/g, tipeLabel)
       .replace(/{kelas}/g, tempatLabel)
       .replace(/{jam}/g, 'Sesuai Jadwal')
-      .replace(/{link_absen}/g, 'https://app.ppmawar.or.id/dashboard/absen');
+      .replace(/{link_absen}/g, linkAbsen);
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };
@@ -439,6 +518,45 @@ function NotifikasiContent() {
       setSelectedJadwalGuru('');
     }
   }, [jadwalOptions, selectedJadwalGuru]);
+
+  // Fetch quick token untuk guru yang dipilih (agar {link_absen} pakai link direct absen)
+  useEffect(() => {
+    if (!selectedGuruObj || !selectedGuruObj.guru_id) {
+      setGuruQuickUrl('');
+      return;
+    }
+    // Cari jadwal_id dari activeReminders yang cocok guru & tipe ini
+    const matchedReminder = activeReminders.find(
+      (r: any) => r.guru_id === selectedGuruObj.guru_id && r.tipe === tipeGuru
+    );
+    if (matchedReminder?.quick_url) {
+      setGuruQuickUrl(matchedReminder.quick_url);
+      return;
+    }
+    // Jika tidak ada di activeReminders, coba minta token lewat API
+    const jadwalIdFromReminder = matchedReminder?.jadwal_id;
+    if (!jadwalIdFromReminder) {
+      setGuruQuickUrl('');
+      return;
+    }
+    setFetchingQuickUrl(true);
+    fetch('/api/absen/quick-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        guru_id: selectedGuruObj.guru_id,
+        jadwal_id: jadwalIdFromReminder,
+        tipe: tipeGuru,
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.url) setGuruQuickUrl(data.url);
+        else setGuruQuickUrl('');
+      })
+      .catch(() => setGuruQuickUrl(''))
+      .finally(() => setFetchingQuickUrl(false));
+  }, [selectedGuruId, tipeGuru, activeReminders]);
 
   return (
     <div className="max-w-4xl mx-auto animate-[fadeIn_0.5s_ease-out] pb-20">
@@ -663,16 +781,29 @@ function NotifikasiContent() {
                   setPesanBillingTemplate(e.target.value);
                   localStorage.setItem('wa_template_billing', e.target.value);
                 }}
+                onBlur={() => saveTemplate('wa_template_billing', pesanBillingTemplate)}
                 rows={6}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-orange-400 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
               />
-              <button
-                onClick={() => {
-                  setPesanBillingTemplate(defaultBillingTemplate);
-                  localStorage.removeItem('wa_template_billing');
-                }}
-                className="mt-2 text-xs text-orange-600 dark:text-orange-400 hover:underline"
-              >⟳ Reset ke Templat Default</button>
+              <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+                <button
+                  onClick={() => resetTemplate('wa_template_billing', defaultBillingTemplate, setPesanBillingTemplate)}
+                  className="text-xs text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-1"
+                >⟳ Reset ke Templat Default</button>
+                <div className="flex items-center gap-2">
+                  {saveStatus['wa_template_billing'] === 'saved' && (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                      <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                    </span>
+                  )}
+                  <button
+                    onClick={() => saveTemplate('wa_template_billing', pesanBillingTemplate)}
+                    className="px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
+                  >
+                    Simpan Templat
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Search */}
@@ -921,10 +1052,30 @@ function NotifikasiContent() {
                 setPesanWaliInfoTemplate(e.target.value);
                 localStorage.setItem('wa_template_wali_info', e.target.value);
               }}
+              onBlur={() => saveTemplate('wa_template_wali_info', pesanWaliInfoTemplate)}
               rows={4}
               className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-green-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
               placeholder="Tulis templat pesan info login..."
             />
+            <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+              <button
+                onClick={() => resetTemplate('wa_template_wali_info', defaultWaliInfoTemplate, setPesanWaliInfoTemplate)}
+                className="text-xs text-green-600 dark:text-green-400 hover:underline flex items-center gap-1"
+              >⟳ Reset ke Templat Default</button>
+              <div className="flex items-center gap-2">
+                {saveStatus['wa_template_wali_info'] === 'saved' && (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                  </span>
+                )}
+                <button
+                  onClick={() => saveTemplate('wa_template_wali_info', pesanWaliInfoTemplate)}
+                  className="px-3.5 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
+                >
+                  Simpan Templat
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="mb-6 bg-green-50/20 dark:bg-green-950/10 border border-green-200/40 dark:border-green-900/20 rounded-2xl p-4">
@@ -938,10 +1089,30 @@ function NotifikasiContent() {
                 setPesanWaliTemplate(e.target.value);
                 localStorage.setItem('wa_template_wali', e.target.value);
               }}
+              onBlur={() => saveTemplate('wa_template_wali', pesanWaliTemplate)}
               rows={4}
               className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-green-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
               placeholder="Tulis templat pesan..."
             />
+            <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+              <button
+                onClick={() => resetTemplate('wa_template_wali', defaultWaliTemplate, setPesanWaliTemplate)}
+                className="text-xs text-green-600 dark:text-green-400 hover:underline flex items-center gap-1"
+              >⟳ Reset ke Templat Default</button>
+              <div className="flex items-center gap-2">
+                {saveStatus['wa_template_wali'] === 'saved' && (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                  </span>
+                )}
+                <button
+                  onClick={() => saveTemplate('wa_template_wali', pesanWaliTemplate)}
+                  className="px-3.5 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
+                >
+                  Simpan Templat
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1253,10 +1424,30 @@ function NotifikasiContent() {
                   setPesanGuruInfoTemplate(e.target.value);
                   localStorage.setItem('wa_template_guru_info', e.target.value);
                 }}
+                onBlur={() => saveTemplate('wa_template_guru_info', pesanGuruInfoTemplate)}
                 rows={4}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
                 placeholder="Tulis templat pesan info login guru..."
               />
+              <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+                <button
+                  onClick={() => resetTemplate('wa_template_guru_info', defaultGuruInfoTemplate, setPesanGuruInfoTemplate)}
+                  className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                >⟳ Reset ke Templat Default</button>
+                <div className="flex items-center gap-2">
+                  {saveStatus['wa_template_guru_info'] === 'saved' && (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                      <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                    </span>
+                  )}
+                  <button
+                    onClick={() => saveTemplate('wa_template_guru_info', pesanGuruInfoTemplate)}
+                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
+                  >
+                    Simpan Templat
+                  </button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="mx-6 mt-5 mb-1 bg-amber-50/30 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30 rounded-xl p-4">
@@ -1270,10 +1461,30 @@ function NotifikasiContent() {
                   setPesanGuruTemplate(e.target.value);
                   localStorage.setItem('wa_template_guru', e.target.value);
                 }}
+                onBlur={() => saveTemplate('wa_template_guru', pesanGuruTemplate)}
                 rows={4}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
                 placeholder="Tulis templat pesan..."
               />
+              <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+                <button
+                  onClick={() => resetTemplate('wa_template_guru', defaultGuruTemplate, setPesanGuruTemplate)}
+                  className="text-xs text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
+                >⟳ Reset ke Templat Default</button>
+                <div className="flex items-center gap-2">
+                  {saveStatus['wa_template_guru'] === 'saved' && (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                      <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                    </span>
+                  )}
+                  <button
+                    onClick={() => saveTemplate('wa_template_guru', pesanGuruTemplate)}
+                    className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
+                  >
+                    Simpan Templat
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1629,14 +1840,22 @@ function NotifikasiContent() {
                       {/* Tombol Aksi */}
                       <div className="flex flex-col gap-2">
                         {selectedGuruObj.whatsapp ? (
-                          <a
-                            href={getWaGuruLink(selectedGuruObj)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1DA851] text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-transform hover:scale-105 active:scale-95 w-full"
-                          >
-                            <MessageCircle size={16} /> Kirim WA ke Guru
-                          </a>
+                          <>
+                            <a
+                              href={getWaGuruLink(selectedGuruObj)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1DA851] text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-transform hover:scale-105 active:scale-95 w-full"
+                            >
+                              <MessageCircle size={16} />
+                              {fetchingQuickUrl ? 'Menyiapkan Link...' : 'Kirim WA ke Guru'}
+                            </a>
+                            {guruQuickUrl && (
+                              <p className="text-[10px] text-center text-green-600 dark:text-green-400 font-semibold flex items-center justify-center gap-1">
+                                <Zap size={10} /> Link absen cepat tersedia
+                              </p>
+                            )}
+                          </>
                         ) : (
                           <div className="text-center py-2 text-xs text-gray-400 dark:text-gray-500 italic bg-gray-50 dark:bg-gray-900 rounded-xl">
                             Nomor WA belum diisi
