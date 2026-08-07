@@ -529,12 +529,12 @@ function QuickAbsenContent() {
 
             return (
               <div key={m.murid_id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-sm hover:border-slate-700 transition">
-                {/* Header Row: Foto + Nama (dengan Nomor Urut di sebelah kanan foto) */}
-                <div className="flex items-center gap-3">
+                {/* Header Row: Foto + Nama Lengkap & Nama Panggilan di samping kanan Foto */}
+                <div className="flex items-start gap-3">
                   {/* Avatar / Foto Santri (Klik untuk Zoom) */}
                   <div
                     onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
-                    className={`w-11 h-11 rounded-xl shrink-0 overflow-hidden border border-slate-700 flex items-center justify-center relative ${fotoUrl ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''}`}
+                    className={`w-12 h-12 rounded-xl shrink-0 overflow-hidden border border-slate-700 flex items-center justify-center relative mt-0.5 ${fotoUrl ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''}`}
                     style={{ backgroundColor: getAvatarColor(m.nama) }}
                     title={fotoUrl ? 'Klik untuk memperbesar foto' : ''}
                   >
@@ -550,38 +550,38 @@ function QuickAbsenContent() {
                     )}
                   </div>
 
-                  {/* Nama Santri dengan Nomor Urut di sebelah kiri Nama */}
+                  {/* Nama Santri & Input Nama Panggilan di sebelah kanan foto */}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-extrabold text-sm text-slate-100 leading-tight truncate">
                       <span className="text-slate-400 font-semibold text-xs mr-1">{idx + 1}.</span>
                       {m.nama}
                     </h3>
+
+                    {/* Input Nama Panggilan Instan (Disamping Kanan Foto) */}
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <span className="text-[11px] text-slate-400 shrink-0 font-medium">Panggilan:</span>
+                      <input
+                        type="text"
+                        placeholder="Panggilan..."
+                        value={m.nama_panggilan || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setData((prev: any) => ({
+                            ...prev,
+                            murid: (prev.murid || []).map((item: any) =>
+                              item.murid_id === m.murid_id ? { ...item, nama_panggilan: val } : item
+                            )
+                          }));
+                        }}
+                        className="w-full max-w-[160px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-300 placeholder:text-slate-500 transition"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Info Detail: Panggilan, NIS & Wali (Satu Baris), Alamat (Sejajar Ujung Kiri Foto) */}
-                <div className="space-y-1.5 pt-0.5 text-xs">
-                  {/* Input Nama Panggilan Instan */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-400 shrink-0 font-medium">Nama Panggilan:</span>
-                    <input
-                      type="text"
-                      placeholder="Panggilan..."
-                      value={m.nama_panggilan || ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setData((prev: any) => ({
-                          ...prev,
-                          murid: (prev.murid || []).map((item: any) =>
-                            item.murid_id === m.murid_id ? { ...item, nama_panggilan: val } : item
-                          )
-                        }));
-                      }}
-                      className="w-full max-w-[180px] px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-300 placeholder:text-slate-500 transition"
-                    />
-                  </div>
-
-                  {/* NIS & Wali dalam Satu Baris (Sejajar Ujung Kiri Foto) */}
+                {/* Info Detail: NIS, Wali & Alamat */}
+                <div className="space-y-1 pt-0.5 text-xs">
+                  {/* NIS & Wali dalam Satu Baris */}
                   <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-300">
                     <span className="font-mono text-slate-400">NIS: <strong className="text-slate-200">{m.nis || '-'}</strong></span>
                     <span className="text-slate-600">•</span>
@@ -591,10 +591,12 @@ function QuickAbsenContent() {
                     </div>
                   </div>
 
-                  {/* Alamat Sejajar Ujung Kiri Foto (Memaksimalkan Ruang Teks) */}
-                  <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                    <MapPin size={11} className="shrink-0 text-teal-400" />
-                    <span className="truncate" title={m.alamat}>Alamat: <span className="text-slate-300">{m.alamat || '-'}</span></span>
+                  {/* Alamat Maksimal 2 Baris */}
+                  <div className="flex items-start gap-1 text-[11px] text-slate-400 leading-tight">
+                    <MapPin size={12} className="shrink-0 text-teal-400 mt-0.5" />
+                    <span className="line-clamp-2" title={m.alamat}>
+                      Alamat: <span className="text-slate-300">{m.alamat || '-'}</span>
+                    </span>
                   </div>
                 </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, X as XIcon } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, X as XIcon, User, MapPin, QrCode, Brain } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -619,19 +619,35 @@ function InputAbsenContent() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 w-full mb-4 animate-in fade-in duration-300">
-        <button
-          onClick={() => setAllStatus('Alpha')}
-          className="w-full text-center py-3 bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/30 dark:text-red-400 font-extrabold rounded-xl transition-all text-xs"
-        >
-          Semua Absen
-        </button>
-        <button
-          onClick={() => setAllStatus('Hadir')}
-          className="w-full text-center py-3 bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900/30 dark:text-green-400 font-extrabold rounded-xl transition-all text-xs"
-        >
-          Semua Hadir
-        </button>
+      {/* Set Massal 4 Tombol */}
+      <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 mb-4 animate-in fade-in duration-300">
+        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2.5">⚡ Set Massal ({murid.length} Santri)</p>
+        <div className="grid grid-cols-4 gap-1.5">
+          <button
+            onClick={() => setAllStatus('Hadir')}
+            className="py-2.5 text-xs font-bold rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border dark:border-emerald-800/60 transition-all active:scale-95"
+          >
+            Hadir All
+          </button>
+          <button
+            onClick={() => setAllStatus('Izin')}
+            className="py-2.5 text-xs font-bold rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 dark:border dark:border-amber-800/60 transition-all active:scale-95"
+          >
+            Izin All
+          </button>
+          <button
+            onClick={() => setAllStatus('Sakit')}
+            className="py-2.5 text-xs font-bold rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 dark:border dark:border-blue-800/60 transition-all active:scale-95"
+          >
+            Sakit All
+          </button>
+          <button
+            onClick={() => setAllStatus('Alpha')}
+            className="py-2.5 text-xs font-bold rounded-xl bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-300 dark:border dark:border-red-800/60 transition-all active:scale-95"
+          >
+            Alpha All
+          </button>
+        </div>
       </div>
 
       {/* Tampilan Desktop (Tabel) */}
@@ -742,10 +758,11 @@ function InputAbsenContent() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 text-center text-gray-500 border border-gray-100 dark:border-gray-700">Tidak ada data santri di kelas ini.</div>
         ) : (
           murid.map((item, index) => (
-            <div key={item.murid_id} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 space-y-3.5">
-              <div className="flex items-center gap-3">
+            <div key={item.murid_id} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 space-y-3">
+              {/* Header Row: Foto + Nama Lengkap & Input Panggilan di kanan foto */}
+              <div className="flex items-start gap-3">
                 <div
-                  className={`w-10 h-10 rounded-full overflow-hidden relative shrink-0 ${item.foto && item.foto !== '-' ? 'cursor-pointer hover:opacity-80' : ''}`}
+                  className={`w-12 h-12 rounded-xl overflow-hidden relative shrink-0 mt-0.5 ${item.foto && item.foto !== '-' ? 'cursor-pointer hover:opacity-80' : ''}`}
                   onClick={() => item.foto && item.foto !== '-' ? setZoomPhoto(getFotoUrl(item.foto)) : null}
                 >
                   <div
@@ -763,32 +780,39 @@ function InputAbsenContent() {
                     />
                   )}
                 </div>
-                <div>
-                  <div className="font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5 leading-tight">
-                    <span className="text-gray-400 text-xs font-semibold">{index + 1}.</span>
-                    {item.nama}
+                {/* Nama + Input Panggilan di samping kanan foto */}
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5 leading-tight truncate">
+                    <span className="text-gray-400 text-xs font-semibold shrink-0">{index + 1}.</span>
+                    <span className="truncate">{item.nama}</span>
                   </div>
-                  <div className="text-xs text-gray-400 font-mono mt-0.5 flex flex-col gap-0.5">
-                    <span>NIS: {item.nis || '-'}</span>
-                    {item.alamat && (
-                      <span className="text-[10px] text-gray-500 max-w-[200px] truncate block" title={item.alamat}>
-                        Alamat: {item.alamat}
-                      </span>
-                    )}
+                  {/* Input Nama Panggilan (naik ke samping kanan foto) */}
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <span className="text-[11px] text-gray-500 dark:text-gray-400 shrink-0 font-medium">Panggilan:</span>
+                    <input
+                      type="text"
+                      placeholder="Panggilan..."
+                      value={item.nama_panggilan || ''}
+                      onChange={(e) => handleNamaPanggilanChange(item.murid_id, e.target.value)}
+                      className="w-full max-w-[160px] px-2 py-0.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md text-xs focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 dark:text-indigo-300"
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Input Nama Panggilan Mobile */}
-              <div className="flex items-center gap-2" style={{ marginLeft: '3.25rem' }}>
-                <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 font-medium">Nama Panggilan:</span>
-                <input
-                  type="text"
-                  placeholder="Panggilan..."
-                  value={item.nama_panggilan || ''}
-                  onChange={(e) => handleNamaPanggilanChange(item.murid_id, e.target.value)}
-                  className="w-full max-w-[180px] px-2.5 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 dark:text-indigo-300"
-                />
+              {/* Info: NIS & Alamat (maks 2 baris) */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 font-mono">
+                  <span>NIS: <strong className="text-gray-700 dark:text-gray-300">{item.nis || '-'}</strong></span>
+                </div>
+                {item.alamat && (
+                  <div className="flex items-start gap-1 text-[11px] text-gray-500 dark:text-gray-400 leading-tight">
+                    <MapPin size={12} className="shrink-0 text-teal-500 mt-0.5" />
+                    <span className="line-clamp-2" title={item.alamat}>
+                      Alamat: <span className="text-gray-700 dark:text-gray-300">{item.alamat}</span>
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Grid Status Kehadiran Mobile */}
