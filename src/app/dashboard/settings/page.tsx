@@ -8,6 +8,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isSavedSuccess, setIsSavedSuccess] = useState(false);
 
   const [settings, setSettings] = useState({
     absensi_otomatis: false,
@@ -73,7 +74,11 @@ export default function SettingsPage() {
       const json = await res.json();
       if (json.success) {
         setSuccess('Pengaturan berhasil disimpan!');
-        setTimeout(() => setSuccess(''), 3000);
+        setIsSavedSuccess(true);
+        setTimeout(() => {
+          setSuccess('');
+          setIsSavedSuccess(false);
+        }, 3500);
       } else {
         setError(json.error || 'Gagal menyimpan pengaturan');
       }
@@ -320,9 +325,20 @@ export default function SettingsPage() {
       )}
 
       {success && (
-        <div className="bg-green-50 text-green-600 p-4 rounded-xl border border-green-200 font-bold flex items-center gap-2 animate-[pulse_1s_ease-in-out]">
-          <CheckCircle size={20} /> {success}
-        </div>
+        <>
+          {/* Floating Toast Pop-up */}
+          <div className="fixed top-5 right-5 z-[999] max-w-sm bg-emerald-600 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-emerald-400/40 flex items-center gap-3 animate-pulse">
+            <CheckCircle className="w-6 h-6 text-white shrink-0" />
+            <div>
+              <h4 className="font-bold text-sm">Berhasil Disimpan!</h4>
+              <p className="text-xs text-emerald-100">{success}</p>
+            </div>
+          </div>
+
+          <div className="bg-green-50 text-green-600 p-4 rounded-xl border border-green-200 font-bold flex items-center gap-2">
+            <CheckCircle size={20} /> {success}
+          </div>
+        </>
       )}
 
       <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 dark:border-gray-700">
@@ -504,11 +520,21 @@ export default function SettingsPage() {
           <div className="flex justify-end pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
             <button 
               type="submit" 
-              disabled={saving}
-              className="bg-slate-800 hover:bg-slate-900 dark:bg-white dark:hover:bg-gray-200 dark:text-slate-900 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
+              disabled={saving || isSavedSuccess}
+              className={`font-bold py-3 px-8 rounded-xl shadow-lg transition-all duration-300 flex items-center gap-2 disabled:opacity-90 ${
+                isSavedSuccess 
+                  ? 'bg-emerald-600 text-white scale-105 ring-4 ring-emerald-400/40 shadow-emerald-500/30' 
+                  : 'bg-slate-800 hover:bg-slate-900 dark:bg-white dark:hover:bg-gray-200 dark:text-slate-900 text-white'
+              }`}
             >
-              {saving ? <Clock className="animate-spin" size={20} /> : <Save size={20} />}
-              {saving ? 'Menyimpan...' : 'Simpan Semua Pengaturan'}
+              {saving ? (
+                <Clock className="animate-spin" size={20} />
+              ) : isSavedSuccess ? (
+                <CheckCircle size={20} className="animate-bounce" />
+              ) : (
+                <Save size={20} />
+              )}
+              {saving ? 'Menyimpan...' : isSavedSuccess ? 'Berhasil Menyimpan!' : 'Simpan Semua Pengaturan'}
             </button>
           </div>
         </form>

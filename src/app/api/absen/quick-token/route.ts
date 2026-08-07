@@ -42,6 +42,18 @@ export async function POST(request: Request) {
     const guruInfo = guruRows[0];
     const targetDate = date || new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
 
+    // Ambil pengaturan waktu tenggang (jam)
+    let waktuTenggang = 3;
+    try {
+      const [settingRows] = await pool.execute<RowDataPacket[]>(
+        'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "waktu_tenggang_absensi" LIMIT 1'
+      );
+      if (settingRows.length > 0 && settingRows[0].nilai) {
+        const parsed = parseInt(settingRows[0].nilai);
+        if (!isNaN(parsed) && parsed > 0) waktuTenggang = parsed;
+      }
+    } catch (_) {}
+
     // Generate signed quick token
     const quickPayload = {
       type: 'quick_absen',
@@ -52,10 +64,11 @@ export async function POST(request: Request) {
       tipe,
       date: targetDate,
       role: 'guru',
+      waktu_tenggang: waktuTenggang,
       createdAt: Date.now()
     };
 
-    const quickToken = signToken(quickPayload);
+    const quickToken = signToken(quickPayload, `${waktuTenggang}h`);
     const quickUrl = `https://app.ppmawar.or.id/absen/quick?token=${quickToken}`;
 
     return NextResponse.json({

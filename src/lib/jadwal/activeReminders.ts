@@ -71,14 +71,26 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
 
     const allActiveSchedules: ActivePendingReminder[] = [];
 
+    // Fetch pengaturan waktu tenggang
+    let waktuTenggang = 3;
+    try {
+      const [stgRows] = await pool.execute<RowDataPacket[]>(
+        'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "waktu_tenggang_absensi" LIMIT 1'
+      );
+      if (stgRows.length > 0 && stgRows[0].nilai) {
+        const parsed = parseInt(stgRows[0].nilai);
+        if (!isNaN(parsed) && parsed > 0) waktuTenggang = parsed;
+      }
+    } catch (_) {}
+
     const processRows = (rows: any[], tipe: 'madin' | 'quran' | 'kamar') => {
       for (const row of rows) {
         const mulaiSecs = parseTime(row.jam_mulai);
         const selesaiSecs = parseTime(row.jam_selesai);
 
-        // Window: 30 minutes before to 3 hours after
+        // Window: 30 minutes before to waktuTenggang hours after
         const windowStart = mulaiSecs - 30 * 60;
-        const windowEnd = selesaiSecs + 3 * 3600;
+        const windowEnd = selesaiSecs + waktuTenggang * 3600;
 
         if (currentSecs >= windowStart && currentSecs <= windowEnd) {
           const quickPayload = {
@@ -87,9 +99,10 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
             guru_nama: row.guru_nama || 'Tanpa Nama',
             jadwal_id: Number(row.jadwal_id),
             tipe,
-            date: localISOTime
+            date: localISOTime,
+            waktu_tenggang: waktuTenggang
           };
-          const quick_token = signToken(quickPayload);
+          const quick_token = signToken(quickPayload, `${waktuTenggang}h`);
           const quick_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}`;
 
           allActiveSchedules.push({

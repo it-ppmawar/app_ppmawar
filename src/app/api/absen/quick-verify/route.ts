@@ -13,7 +13,17 @@ export async function POST(request: Request) {
 
     const payload = verifyToken(token);
     if (!payload || (payload as any).type !== 'quick_absen') {
-      return NextResponse.json({ error: 'Token tidak valid atau sudah kadaluarsa (24 jam)' }, { status: 401 });
+      let waktuTenggang = 3;
+      try {
+        const [stgRows] = await pool.execute<RowDataPacket[]>(
+          'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "waktu_tenggang_absensi" LIMIT 1'
+        );
+        if (stgRows.length > 0 && stgRows[0].nilai) {
+          const parsed = parseInt(stgRows[0].nilai);
+          if (!isNaN(parsed) && parsed > 0) waktuTenggang = parsed;
+        }
+      } catch (_) {}
+      return NextResponse.json({ error: `Token tidak valid atau sudah kadaluarsa (${waktuTenggang} jam)` }, { status: 401 });
     }
 
     const { guru_id, guru_nama, user_id, jadwal_id, tipe, date } = payload as any;
