@@ -169,7 +169,34 @@ export async function GET(request: Request) {
     }
 
     const sudah_absen = existing.length > 0;
-    return NextResponse.json({ success: true, data: mappedMurid, namaTarget, sudah_absen });
+
+    // Query info jadwal (mata pelajaran, jam) untuk ditampilkan di header halaman
+    let jadwalInfo: { mata_pelajaran: string; jam_mulai: string; jam_selesai: string } | null = null;
+    try {
+      if (tipe === 'madin' && jadwal_id) {
+        const [rows]: any = await pool.execute(
+          'SELECT mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_madin WHERE id = ? LIMIT 1',
+          [jadwal_id]
+        );
+        if (rows.length > 0) jadwalInfo = { mata_pelajaran: rows[0].mata_pelajaran || '', jam_mulai: rows[0].jam_mulai || '', jam_selesai: rows[0].jam_selesai || '' };
+      } else if (tipe === 'quran' && jadwal_id) {
+        const [rows]: any = await pool.execute(
+          'SELECT mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_quran WHERE id = ? LIMIT 1',
+          [jadwal_id]
+        );
+        if (rows.length > 0) jadwalInfo = { mata_pelajaran: rows[0].mata_pelajaran || '', jam_mulai: rows[0].jam_mulai || '', jam_selesai: rows[0].jam_selesai || '' };
+      } else if (tipe === 'kegiatan' && jadwal_id) {
+        const [rows]: any = await pool.execute(
+          'SELECT nama AS mata_pelajaran, jam_mulai, jam_selesai FROM kegiatan WHERE kegiatan_id = ? LIMIT 1',
+          [jadwal_id]
+        );
+        if (rows.length > 0) jadwalInfo = { mata_pelajaran: rows[0].mata_pelajaran || '', jam_mulai: rows[0].jam_mulai || '', jam_selesai: rows[0].jam_selesai || '' };
+      }
+    } catch (e) {
+      console.error('Error fetching jadwal info:', e);
+    }
+
+    return NextResponse.json({ success: true, data: mappedMurid, namaTarget, sudah_absen, jadwalInfo, tanggal: localISOTime });
   } catch (err: any) {
     return NextResponse.json({ error: 'Server error: ' + err.message }, { status: 500 });
   }

@@ -458,7 +458,7 @@ function QuickAbsenContent() {
           <p className="text-sm text-slate-300 font-medium">{jadwal.mata_pelajaran || 'Pengajaran Madin/Al-Qur\'an'}</p>
           <div className="flex items-center justify-between text-xs text-slate-400 mt-3 pt-2 border-t border-emerald-800/40">
             <span>🕒 {jadwal.jam_mulai} - {jadwal.jam_selesai} WIB</span>
-            <span>📅 {date}</span>
+            <span>📅 {new Date(date + 'T00:00:00+07:00').toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</span>
           </div>
         </div>
 

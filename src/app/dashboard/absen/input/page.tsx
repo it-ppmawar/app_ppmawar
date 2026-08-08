@@ -63,6 +63,8 @@ function InputAbsenContent() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [sudahAbsen, setSudahAbsen] = useState(false);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+  const [jadwalInfo, setJadwalInfo] = useState<{ mata_pelajaran: string; jam_mulai: string; jam_selesai: string } | null>(null);
+  const [tanggalAbsen, setTanggalAbsen] = useState('');
 
   // Camera state
   const [showCamera, setShowCamera] = useState(false);
@@ -88,6 +90,8 @@ function InputAbsenContent() {
           setMurid(json.data);
           if (json.namaTarget) setNamaTarget(json.namaTarget);
           if (json.sudah_absen !== undefined) setSudahAbsen(json.sudah_absen);
+          if (json.jadwalInfo) setJadwalInfo(json.jadwalInfo);
+          if (json.tanggal) setTanggalAbsen(json.tanggal);
         } else {
           setErrorMsg(json.error || 'Gagal memuat data santri');
         }
@@ -600,6 +604,30 @@ function InputAbsenContent() {
           </p>
         </div>
       </div>
+
+      {/* Info Card Jadwal (Pelajaran, Jam, Tanggal+Hari) */}
+      {(jadwalInfo?.mata_pelajaran || tanggalAbsen) && (
+        <div className="bg-gradient-to-r from-indigo-900/40 to-blue-900/40 border border-indigo-700/50 dark:border-indigo-800/50 rounded-2xl p-4">
+          {jadwalInfo?.mata_pelajaran && (
+            <p className="text-base font-bold text-indigo-300 uppercase tracking-wide">
+              {jadwalInfo.mata_pelajaran}
+            </p>
+          )}
+          <div className="flex items-center justify-between text-xs text-indigo-400 mt-2.5 pt-2 border-t border-indigo-800/40 flex-wrap gap-2">
+            {jadwalInfo?.jam_mulai && (
+              <span className="flex items-center gap-1.5">
+                <Clock size={13} className="shrink-0" />
+                {jadwalInfo.jam_mulai}{jadwalInfo.jam_selesai ? ` - ${jadwalInfo.jam_selesai}` : ''} WIB
+              </span>
+            )}
+            {tanggalAbsen && (
+              <span className="flex items-center gap-1.5">
+                📅 {new Date(tanggalAbsen + 'T00:00:00+07:00').toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Error Banner (Radius / Simpan gagal) */}
       {errorMsg && (
