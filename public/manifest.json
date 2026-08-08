@@ -1,6 +1,6 @@
 {
-  "name": "Sistem Absensi PPMA",
-  "short_name": "PPMA Absen",
+  "name": "PpMawar",
+  "short_name": "PpMawar",
   "description": "Sistem Absensi Online Pondok Pesantren Matholi'ul Anwar",
   "start_url": "/dashboard",
   "scope": "/",

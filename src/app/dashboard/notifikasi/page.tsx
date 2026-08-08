@@ -57,7 +57,7 @@ function NotifikasiContent() {
 
   const defaultWaliInfoTemplate = `Assalamu'alaikum Wr. Wb. Bapak/Ibu Wali dari Ananda *{nama_santri}*.\n\nBerikut kami sampaikan informasi login default untuk mengakses aplikasi absensi PPMA:\n\n* Username: *{username}*\n* Password: *{password}*\n\nSilakan akses aplikasi pada tautan berikut: https://app.ppmawar.or.id/\n\nDemi keamanan akun, kami sarankan Bapak/Ibu untuk langsung mengubah password setelah berhasil login di halaman Profil.\n\nAtas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
 
-  const defaultGuruTemplate = `Assalamu'alaikum Wr. Wb. Ustadz/Ustadzah *{nama_guru}*.\n\nKami dari pengurus PPMA menginformasikan pengingat jadwal mengajar/tugas Anda:\n\n* Kategori: {kegiatan}\n* Tempat/Kelas: {kelas}\n* Jam: {jam}\n\nLink Absensi: {link_absen}\n\nMohon untuk mengisi absensi tepat waktu. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
+  const defaultGuruTemplate = `Assalamu'alaikum Wr. Wb. Ustadz/Ustadzah *{nama_guru}*.\n\nKami dari pengurus PPMA menginformasikan pengingat jadwal mengajar/tugas Anda:\n\n* Hari/Tanggal: {hari_tanggal}\n* Kategori: {kegiatan}\n* Tempat/Kelas: {kelas}\n* Jam: {jam}\n\nLink Absensi: {link_absen}\n\nMohon untuk mengisi absensi tepat waktu. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
 
   const defaultGuruInfoTemplate = `Assalamu'alaikum Wr. Wb. Ustadz/Ustadzah *{nama_guru}*.\n\nBerikut kami sampaikan informasi login default untuk mengakses aplikasi absensi PPMA:\n\n* Username: *{username}*\n* Password: *${"{password}"}*\n\nSilakan akses aplikasi pada tautan berikut: https://app.ppmawar.or.id/\n\nDemi keamanan akun, kami sarankan Anda untuk langsung mengubah password setelah berhasil login di halaman Profil.\n\nAtas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
 
@@ -461,12 +461,25 @@ function NotifikasiContent() {
     let tempatLabel = selectedJadwalGuru || 'Belum ditentukan';
     const linkAbsen = guruQuickUrl || 'https://app.ppmawar.or.id/dashboard/absen';
 
-    const text = pesanGuruTemplate
+    const hariTanggal = new Intl.DateTimeFormat('id-ID', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta'
+    }).format(new Date());
+
+    let text = pesanGuruTemplate
       .replace(/{nama_guru}/g, guru.nama)
+      .replace(/{hari_tanggal}/g, hariTanggal)
       .replace(/{kegiatan}/g, tipeLabel)
       .replace(/{kelas}/g, tempatLabel)
       .replace(/{jam}/g, 'Sesuai Jadwal')
       .replace(/{link_absen}/g, linkAbsen);
+
+    if (!text.includes(hariTanggal) && !pesanGuruTemplate.includes('{hari_tanggal}')) {
+      text = text.replace(/\* Kategori:/i, `* Hari/Tanggal: ${hariTanggal}\n* Kategori:`);
+    }
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };
@@ -492,12 +505,26 @@ function NotifikasiContent() {
 
     let tipeLabel = reminder.tipe === 'madin' ? 'Madin' : reminder.tipe === 'quran' ? "Al-Qur'an" : 'Asrama';
     const linkAbsen = reminder.quick_url || 'https://app.ppmawar.or.id/dashboard/absen';
-    const text = pesanGuruTemplate
+
+    const hariTanggal = new Intl.DateTimeFormat('id-ID', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta'
+    }).format(new Date());
+
+    let text = pesanGuruTemplate
       .replace(/{nama_guru}/g, reminder.guru_nama)
+      .replace(/{hari_tanggal}/g, hariTanggal)
       .replace(/{kegiatan}/g, tipeLabel)
       .replace(/{kelas}/g, reminder.kelas_nama)
       .replace(/{jam}/g, `${reminder.jam_mulai.substring(0, 5)} - ${reminder.jam_selesai.substring(0, 5)}`)
       .replace(/{link_absen}/g, linkAbsen);
+
+    if (!text.includes(hariTanggal) && !pesanGuruTemplate.includes('{hari_tanggal}')) {
+      text = text.replace(/\* Kategori:/i, `* Hari/Tanggal: ${hariTanggal}\n* Kategori:`);
+    }
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };

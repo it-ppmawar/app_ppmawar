@@ -172,7 +172,24 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
       return true;
     });
 
-    return pendingReminders;
+    // 4. Merge combined schedules for the same teacher at the same time
+    const mergedMap = new Map<string, ActivePendingReminder>();
+    for (const item of pendingReminders) {
+      const key = `${item.guru_id}_${item.tipe}_${item.hari}_${item.jam_mulai}_${item.jam_selesai}`;
+      if (mergedMap.has(key)) {
+        const existing = mergedMap.get(key)!;
+        if (!existing.kelas_nama.includes(item.kelas_nama)) {
+          existing.kelas_nama = `${existing.kelas_nama} & ${item.kelas_nama}`;
+        }
+        if (item.mata_pelajaran && !existing.mata_pelajaran.includes(item.mata_pelajaran)) {
+          existing.mata_pelajaran = `${existing.mata_pelajaran} & ${item.mata_pelajaran}`;
+        }
+      } else {
+        mergedMap.set(key, { ...item });
+      }
+    }
+
+    return Array.from(mergedMap.values());
   } catch (error) {
     console.error('Error calculating active pending reminders:', error);
     return [];
