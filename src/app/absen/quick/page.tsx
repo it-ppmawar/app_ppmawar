@@ -24,8 +24,11 @@ const getAvatarColor = (nama: string): string => {
   }
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
-const getFotoUrl = (fotoName: string | null) => {
-  if (!fotoName || fotoName === '-') return '';
+const getFotoUrl = (fotoName: string | null, nis?: string) => {
+  if (!fotoName || fotoName === '-') {
+    if (nis) return `https://mawar.smartpesantren.id/sekretariat/berkas/Berkas_2026_${nis}.jpg`;
+    return '';
+  }
   if (fotoName.startsWith('http://') || fotoName.startsWith('https://')) return fotoName;
   if (fotoName.startsWith('foto_') || fotoName.startsWith('upload_') || fotoName.startsWith('profil_')) {
     return `/uploads/${fotoName}`;
@@ -525,7 +528,7 @@ function QuickAbsenContent() {
         <div className="space-y-3">
           {murid?.map((m: any, idx: number) => {
             const st = kehadiran[m.murid_id] || 'hadir';
-            const fotoUrl = getFotoUrl(m.foto);
+            const fotoUrl = getFotoUrl(m.foto, m.nis);
 
             return (
               <div key={m.murid_id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-sm hover:border-slate-700 transition">

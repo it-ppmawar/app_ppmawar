@@ -21,10 +21,19 @@ export async function GET(
 
     const cleanNis = nis.replace(/[^a-zA-Z0-9_-]/g, '');
 
-    // 1. Cek folder lokal KARTU EMAAL 2026 2027
+    // 1. Cek folder lokal KARTU EMAAL 2026 2027 (termasuk subfolder EMAAL2)
     const localEmaalPath = path.join(process.cwd(), 'KARTU EMAAL 2026 2027', `${cleanNis}.jpg`);
+    const localEmaal2Path = path.join(process.cwd(), 'KARTU EMAAL 2026 2027', 'EMAAL2', `${cleanNis}.jpg`);
     if (fs.existsSync(localEmaalPath)) {
       const buffer = fs.readFileSync(localEmaalPath);
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'Cache-Control': 'public, max-age=86400',
+        },
+      });
+    } else if (fs.existsSync(localEmaal2Path)) {
+      const buffer = fs.readFileSync(localEmaal2Path);
       return new NextResponse(buffer, {
         headers: {
           'Content-Type': 'image/jpeg',

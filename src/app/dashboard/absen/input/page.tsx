@@ -28,8 +28,11 @@ const getAvatarColor = (nama: string): string => {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
-const getFotoUrl = (fotoName: string | null) => {
-  if (!fotoName || fotoName === '-') return '';
+const getFotoUrl = (fotoName: string | null, nis?: string) => {
+  if (!fotoName || fotoName === '-') {
+    if (nis) return `https://mawar.smartpesantren.id/sekretariat/berkas/Berkas_2026_${nis}.jpg`;
+    return '';
+  }
   if (fotoName.startsWith('http://') || fotoName.startsWith('https://')) {
     return fotoName;
   }
@@ -701,8 +704,8 @@ function InputAbsenContent() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-9 h-9 rounded-full overflow-hidden relative shrink-0 ${item.foto && item.foto !== '-' ? 'cursor-pointer hover:opacity-80' : ''}`}
-                          onClick={() => item.foto && item.foto !== '-' ? setZoomPhoto(getFotoUrl(item.foto)) : null}
+                          className={`w-9 h-9 rounded-full overflow-hidden relative shrink-0 ${getFotoUrl(item.foto, item.nis) ? 'cursor-pointer hover:opacity-80' : ''}`}
+                          onClick={() => getFotoUrl(item.foto, item.nis) ? setZoomPhoto(getFotoUrl(item.foto, item.nis)) : null}
                         >
                           <div
                             className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold"
@@ -710,9 +713,9 @@ function InputAbsenContent() {
                           >
                             <span>{getInitials(item.nama)}</span>
                           </div>
-                          {item.foto && item.foto !== '-' && (
+                          {getFotoUrl(item.foto, item.nis) && (
                             <img
-                              src={getFotoUrl(item.foto)}
+                              src={getFotoUrl(item.foto, item.nis)}
                               alt={item.nama}
                               className="absolute inset-0 w-full h-full object-cover"
                               onError={(e) => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.display = 'none'; e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; }}
@@ -790,8 +793,8 @@ function InputAbsenContent() {
               {/* Header Row: Foto + Nama Lengkap & Input Panggilan di kanan foto */}
               <div className="flex items-start gap-3">
                 <div
-                  className={`w-12 h-12 rounded-xl overflow-hidden relative shrink-0 mt-0.5 ${item.foto && item.foto !== '-' ? 'cursor-pointer hover:opacity-80' : ''}`}
-                  onClick={() => item.foto && item.foto !== '-' ? setZoomPhoto(getFotoUrl(item.foto)) : null}
+                  className={`w-12 h-12 rounded-xl overflow-hidden relative shrink-0 mt-0.5 ${getFotoUrl(item.foto, item.nis) ? 'cursor-pointer hover:opacity-80' : ''}`}
+                  onClick={() => getFotoUrl(item.foto, item.nis) ? setZoomPhoto(getFotoUrl(item.foto, item.nis)) : null}
                 >
                   <div
                     className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold"
@@ -799,9 +802,9 @@ function InputAbsenContent() {
                   >
                     <span>{getInitials(item.nama)}</span>
                   </div>
-                  {item.foto && item.foto !== '-' && (
+                  {getFotoUrl(item.foto, item.nis) && (
                     <img
-                      src={getFotoUrl(item.foto)}
+                      src={getFotoUrl(item.foto, item.nis)}
                       alt={item.nama}
                       className="absolute inset-0 w-full h-full object-cover"
                       onError={(e) => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.display = 'none'; e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; }}
