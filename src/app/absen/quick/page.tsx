@@ -444,7 +444,7 @@ function QuickAbsenContent() {
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-emerald-400" />
             <div>
-              <h1 className="text-sm font-bold text-white leading-tight">Quick Absen PPMA</h1>
+              <h1 className="text-sm font-bold text-white leading-tight">Pintasan Absen PP. Mawar</h1>
               <p className="text-[11px] text-slate-400">{guru_nama}</p>
             </div>
           </div>

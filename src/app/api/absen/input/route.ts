@@ -173,22 +173,22 @@ export async function GET(request: Request) {
     // Query info jadwal (mata pelajaran, jam) untuk ditampilkan di header halaman
     let jadwalInfo: { mata_pelajaran: string; jam_mulai: string; jam_selesai: string } | null = null;
     try {
-      if (tipe === 'madin' && jadwal_id) {
+      if (tipe === 'madin') {
         const [rows]: any = await pool.execute(
-          'SELECT mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_madin WHERE id = ? LIMIT 1',
-          [jadwal_id]
+          'SELECT mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_madin WHERE (jadwal_id = ? AND jadwal_id > 0) OR kelas_madin_id = ? ORDER BY (jadwal_id = ?) DESC LIMIT 1',
+          [jadwal_id || 0, kelas_id, jadwal_id || 0]
         );
         if (rows.length > 0) jadwalInfo = { mata_pelajaran: rows[0].mata_pelajaran || '', jam_mulai: rows[0].jam_mulai || '', jam_selesai: rows[0].jam_selesai || '' };
-      } else if (tipe === 'quran' && jadwal_id) {
+      } else if (tipe === 'quran') {
         const [rows]: any = await pool.execute(
-          'SELECT mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_quran WHERE id = ? LIMIT 1',
-          [jadwal_id]
+          'SELECT mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_quran WHERE (id = ? AND id > 0) OR kelas_quran_id = ? ORDER BY (id = ?) DESC LIMIT 1',
+          [jadwal_id || 0, kelas_id, jadwal_id || 0]
         );
         if (rows.length > 0) jadwalInfo = { mata_pelajaran: rows[0].mata_pelajaran || '', jam_mulai: rows[0].jam_mulai || '', jam_selesai: rows[0].jam_selesai || '' };
-      } else if (tipe === 'kegiatan' && jadwal_id) {
+      } else if (tipe === 'kegiatan') {
         const [rows]: any = await pool.execute(
-          'SELECT nama_kegiatan AS mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_kegiatan WHERE kegiatan_id = ? LIMIT 1',
-          [jadwal_id]
+          'SELECT nama_kegiatan AS mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_kegiatan WHERE (kegiatan_id = ? AND kegiatan_id > 0) OR kamar_id = ? ORDER BY (kegiatan_id = ?) DESC LIMIT 1',
+          [jadwal_id || 0, kelas_id, jadwal_id || 0]
         );
         if (rows.length > 0) jadwalInfo = { mata_pelajaran: rows[0].mata_pelajaran || '', jam_mulai: rows[0].jam_mulai || '', jam_selesai: rows[0].jam_selesai || '' };
       }
