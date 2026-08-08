@@ -75,28 +75,28 @@ export async function GET(request: Request) {
     if ((role === 'pengurus_asrama' || role === 'pengasuh') && namaAsrama) {
       // Pengurus asrama hanya melihat santri dari asrama mereka sendiri
       if (tipe === 'madin') {
-        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat FROM murid m
+        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali FROM murid m
           JOIN kamar km ON m.kamar_id = km.kamar_id
           WHERE (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?) AND km.nama_asrama = ? ORDER BY m.nama ASC`;
         params = [kelas_id, kelas_id, namaAsrama];
       } else if (tipe === 'quran') {
-        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat FROM murid m
+        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali FROM murid m
           JOIN kamar km ON m.kamar_id = km.kamar_id
           WHERE m.kelas_quran_id = ? AND km.nama_asrama = ? ORDER BY m.nama ASC`;
         params = [kelas_id, namaAsrama];
       } else if (tipe === 'kegiatan') {
-        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat FROM murid WHERE kamar_id = ? ORDER BY nama ASC';
+        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kamar_id = ? ORDER BY nama ASC';
       } else {
         return NextResponse.json({ error: 'Tipe tidak valid' }, { status: 400 });
       }
     } else {
       if (tipe === 'madin') {
-        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat FROM murid WHERE kelas_madin_id = ? OR kelas_madin_2_id = ? ORDER BY nama ASC';
+        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kelas_madin_id = ? OR kelas_madin_2_id = ? ORDER BY nama ASC';
         params = [kelas_id, kelas_id];
       } else if (tipe === 'quran') {
-        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat FROM murid WHERE kelas_quran_id = ? ORDER BY nama ASC';
+        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kelas_quran_id = ? ORDER BY nama ASC';
       } else if (tipe === 'kegiatan') {
-        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat FROM murid WHERE kamar_id = ? ORDER BY nama ASC';
+        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kamar_id = ? ORDER BY nama ASC';
       } else {
         return NextResponse.json({ error: 'Tipe tidak valid' }, { status: 400 });
       }

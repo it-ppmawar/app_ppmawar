@@ -828,10 +828,19 @@ function InputAbsenContent() {
                 </div>
               </div>
 
-              {/* Info: NIS & Alamat (maks 2 baris) */}
+              {/* Info: NIS, Wali & Alamat (maks 2 baris) */}
               <div className="space-y-1">
-                <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400 font-mono">
+                <div className="flex items-center gap-2 flex-wrap text-[11px] text-gray-500 dark:text-gray-400 font-mono">
                   <span>NIS: <strong className="text-gray-700 dark:text-gray-300">{item.nis || '-'}</strong></span>
+                  {item.nama_wali && (
+                    <>
+                      <span className="text-gray-300 dark:text-gray-600">•</span>
+                      <div className="flex items-center gap-1 text-slate-500 dark:text-gray-400">
+                        <User size={11} className="shrink-0 text-indigo-400" />
+                        <span>Wali: <strong className="text-gray-700 dark:text-gray-300">{item.nama_wali}</strong></span>
+                      </div>
+                    </>
+                  )}
                 </div>
                 {item.alamat && (
                   <div className="flex items-start gap-1 text-[11px] text-gray-500 dark:text-gray-400 leading-tight">
