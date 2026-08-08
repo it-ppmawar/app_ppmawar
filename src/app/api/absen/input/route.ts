@@ -187,7 +187,7 @@ export async function GET(request: Request) {
         if (rows.length > 0) jadwalInfo = { mata_pelajaran: rows[0].mata_pelajaran || '', jam_mulai: rows[0].jam_mulai || '', jam_selesai: rows[0].jam_selesai || '' };
       } else if (tipe === 'kegiatan' && jadwal_id) {
         const [rows]: any = await pool.execute(
-          'SELECT nama AS mata_pelajaran, jam_mulai, jam_selesai FROM kegiatan WHERE kegiatan_id = ? LIMIT 1',
+          'SELECT nama_kegiatan AS mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_kegiatan WHERE kegiatan_id = ? LIMIT 1',
           [jadwal_id]
         );
         if (rows.length > 0) jadwalInfo = { mata_pelajaran: rows[0].mata_pelajaran || '', jam_mulai: rows[0].jam_mulai || '', jam_selesai: rows[0].jam_selesai || '' };
