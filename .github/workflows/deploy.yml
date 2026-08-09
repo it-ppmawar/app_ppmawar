@@ -81,7 +81,7 @@ jobs:
           log-level: minimal
           protocol: ftp
           security: loose
-          timeout: 60000
+          timeout: 600000
 
       - name: Trigger Remote Unzip on cPanel
         run: |
