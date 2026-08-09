@@ -1,7 +1,7 @@
 <?php
 /**
  * unzip.php - Script Otomatis Extract Deploy ZIP cPanel
- * PP MAWAR Application Deployment
+ * PP MAWAR Application Deployment - Auto htaccess restore
  */
 
 // Key rahasia untuk keamanan
