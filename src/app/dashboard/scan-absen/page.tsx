@@ -866,31 +866,34 @@ function ScanAbsenInner() {
                   </div>
                 )}
 
-                {/* DETECTED RESULT */}
+                {/* DETECTED RESULT — popup overlay */}
                 {faceStatus === 'detected' && detectResult && (
-                  <div className="bg-gradient-to-r from-emerald-950 to-teal-950 border border-emerald-600 rounded-2xl p-4 space-y-4 animate-[fadeIn_0.3s_ease-out]">
-                    <div className="text-center space-y-1">
-                      <div className="flex justify-center">
-                        <div className="w-16 h-16 rounded-full bg-emerald-700 flex items-center justify-center ring-4 ring-emerald-400 ring-offset-2 ring-offset-emerald-950">
-                          <ScanFace size={32} className="text-white" />
+                  <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out] pb-8 px-4">
+                    <div className="w-full max-w-sm bg-gradient-to-b from-emerald-950 to-teal-950 border border-emerald-500 rounded-3xl shadow-2xl p-6 space-y-5 animate-[slideUp_0.3s_ease-out]">
+                      <div className="text-center space-y-2">
+                        <div className="flex justify-center">
+                          <div className="w-20 h-20 rounded-full bg-emerald-700 flex items-center justify-center ring-4 ring-emerald-400 ring-offset-4 ring-offset-emerald-950 shadow-lg shadow-emerald-900/50">
+                            <ScanFace size={38} className="text-white" />
+                          </div>
                         </div>
+                        <p className="text-emerald-300 text-xs font-semibold uppercase tracking-wider mt-2">Wajah Teridentifikasi</p>
+                        <h3 className="text-white text-2xl font-extrabold leading-tight">{detectResult.nama}</h3>
+                        <div className="flex items-center justify-center gap-1.5 text-emerald-300 text-sm">
+                          <Sparkles size={14} className="text-amber-400" />
+                          <span>Kemiripan: <strong className="text-amber-300">{detectResult.score}%</strong></span>
+                        </div>
+                        <p className="text-emerald-400 text-sm pt-1">Apakah ini kamu?</p>
                       </div>
-                      <p className="text-emerald-300 text-xs font-semibold uppercase tracking-wider mt-3">Wajah Teridentifikasi</p>
-                      <h3 className="text-white text-xl font-extrabold">{detectResult.nama}</h3>
-                      <div className="flex items-center justify-center gap-1.5 text-emerald-300 text-sm">
-                        <Sparkles size={14} className="text-amber-400" />
-                        <span>Kemiripan: <strong className="text-amber-300">{detectResult.score}%</strong></span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button onClick={rejectAndRescan}
+                          className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-red-900/60 text-red-300 border border-red-700/50 hover:bg-red-900 text-base font-bold transition active:scale-95">
+                          <XCircle size={18} /> Bukan
+                        </button>
+                        <button onClick={confirmFaceAbsen} disabled={confirmPending}
+                          className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-base font-bold transition disabled:opacity-50 active:scale-95 shadow-lg shadow-emerald-900/50">
+                          {confirmPending ? <><Loader2 size={18} className="animate-spin" /> Menyimpan...</> : <><CheckCircle size={18} /> Benar</>}
+                        </button>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button onClick={rejectAndRescan}
-                        className="flex items-center justify-center gap-1.5 py-3 rounded-xl bg-red-900/60 text-red-300 border border-red-700/50 hover:bg-red-900 text-sm font-bold transition">
-                        <XCircle size={16} /> Bukan Saya
-                      </button>
-                      <button onClick={confirmFaceAbsen} disabled={confirmPending}
-                        className="flex items-center justify-center gap-1.5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition disabled:opacity-50">
-                        {confirmPending ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : <><CheckCircle size={16} /> Ya, Absen Saya!</>}
-                      </button>
                     </div>
                   </div>
                 )}
