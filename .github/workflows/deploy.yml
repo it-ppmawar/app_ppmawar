@@ -44,9 +44,12 @@ jobs:
         run: |
           mkdir -p deploy_dist/tmp
           echo "$(date)" > deploy_dist/tmp/restart.txt
-          rm -rf .next/cache
           cp -r .next deploy_dist/
           cp -r public deploy_dist/
+          rm -rf deploy_dist/.next/cache
+          rm -rf deploy_dist/.next/standalone
+          rm -rf deploy_dist/.next/diagnostics
+          rm -rf deploy_dist/.next/dev
           rm -rf deploy_dist/public/models
           cp package.json deploy_dist/
           cp package-lock.json deploy_dist/
