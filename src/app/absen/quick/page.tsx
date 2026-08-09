@@ -448,6 +448,8 @@ function QuickAbsenContent() {
   const isMultiClass = classNames.length > 1;
   let globalIndexCounter = 0;
 
+  const isAlreadyFilled = Object.keys(data?.existingAbsensi || {}).length > 0;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-24">
       {/* Header */}
@@ -467,6 +469,19 @@ function QuickAbsenContent() {
       </header>
 
       <main className="max-w-2xl mx-auto p-4 space-y-4">
+        {/* Banner Notifikasi Mode Edit Absensi */}
+        {isAlreadyFilled && (
+          <div className="bg-blue-950/80 border border-blue-500/50 text-blue-200 p-3.5 rounded-xl flex items-center gap-3 text-xs shadow-md">
+            <CheckCircle2 className="w-5 h-5 text-blue-400 shrink-0" />
+            <div>
+              <p className="font-bold text-blue-300">Mode Edit / Perbarui Absensi</p>
+              <p className="text-[11px] text-blue-200/90 leading-relaxed mt-0.5">
+                Absensi kelas ini sudah pernah diisi sebelumnya. Status yang tersimpan telah dimuat otomatis dan dapat Anda sesuaikan kembali, lalu klik <strong>"Perbarui Absensi Kelas"</strong>.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Info Card */}
         <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border border-emerald-700/50 rounded-2xl p-4">
           <h2 className="text-lg font-bold text-emerald-300">{jadwal.nama_kelas}</h2>
@@ -669,7 +684,7 @@ function QuickAbsenContent() {
                 </>
               ) : (
                 <>
-                  <Send className="w-5 h-5" /> Simpan Absensi Kelas
+                  <Send className="w-5 h-5" /> {isAlreadyFilled ? 'Perbarui Absensi Kelas' : 'Simpan Absensi Kelas'}
                 </>
               )}
             </button>
