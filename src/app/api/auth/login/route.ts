@@ -157,6 +157,6 @@ export async function POST(request: Request) {
     return response;
   } catch (error: any) {
     console.error('Login Error:', error);
-    return NextResponse.json({ error: 'Terjadi kesalahan internal server' }, { status: 500 });
+    return NextResponse.json({ error: 'Terjadi kesalahan internal server: ' + (error?.message || String(error)) }, { status: 500 });
   }
 }
