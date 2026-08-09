@@ -41,12 +41,19 @@ echo "Found deploy.zip (" . round(filesize($zipFile) / 1024 / 1024, 2) . " MB)\n
 
 $zip = new ZipArchive();
 if ($zip->open($zipFile) === TRUE) {
-    // Backup .htaccess before extraction if exists
+    // Backup .htaccess and .env before extraction if exists
     $htaccessPath = $targetDir . '/.htaccess';
+    $envPath = $targetDir . '/.env';
     $htaccessBackup = null;
+    $envBackup = null;
+
     if (file_exists($htaccessPath)) {
         $htaccessBackup = file_get_contents($htaccessPath);
         echo "Backed up existing .htaccess (" . strlen($htaccessBackup) . " bytes)\n";
+    }
+    if (file_exists($envPath)) {
+        $envBackup = file_get_contents($envPath);
+        echo "Backed up existing production .env (" . strlen($envBackup) . " bytes)\n";
     }
 
     echo "Extracting files to " . $targetDir . "...\n";
@@ -55,6 +62,12 @@ if ($zip->open($zipFile) === TRUE) {
     $zip->close();
     @unlink($zipFile);
     echo "Extracted " . $numFiles . " items from ZIP successfully.\n";
+
+    // Restore .env if it existed
+    if ($envBackup !== null) {
+        file_put_contents($envPath, $envBackup);
+        echo "Restored production .env credentials.\n";
+    }
 
     // Restore .htaccess if it was accidentally overwritten or missing
     if ($htaccessBackup !== null && (!file_exists($htaccessPath) || filesize($htaccessPath) === 0)) {
