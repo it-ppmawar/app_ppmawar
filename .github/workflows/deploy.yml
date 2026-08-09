@@ -60,20 +60,22 @@ jobs:
           ls -la deploy_dist/public/models/ || echo "(no models dir)"
           echo "=== Target Dir: ${{ secrets.FTP_TARGET_DIR }} ==="
 
-      - name: Deploy to cPanel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./deploy_dist/
-          server-dir: ${{ secrets.FTP_TARGET_DIR }}
-          dangerous-clean-slate: false
-          log-level: minimal
-          protocol: ftp
-          security: loose
-          timeout: 1800000
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
+      - name: Deploy to cPanel via FTP (lftp with retry)
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
+        run: |
+          sudo apt-get install -y lftp
+          lftp -c "
+            set ftp:ssl-allow no;
+            set net:timeout 120;
+            set net:max-retries 5;
+            set net:reconnect-interval-base 30;
+            set net:reconnect-interval-multiplier 1;
+            set mirror:parallel-transfer-count 4;
+            open -u '$FTP_USERNAME','$FTP_PASSWORD' ftp://$FTP_SERVER;
+            mirror --reverse --delete --exclude-glob '.git*' --exclude-glob 'node_modules/' --verbose ./deploy_dist/ $FTP_TARGET_DIR;
+            bye
+          "
