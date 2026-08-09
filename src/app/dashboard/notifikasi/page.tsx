@@ -506,13 +506,15 @@ function NotifikasiContent() {
     let tipeLabel = reminder.tipe === 'madin' ? 'Madin' : reminder.tipe === 'quran' ? "Al-Qur'an" : 'Asrama';
     const linkAbsen = reminder.quick_url || 'https://app.ppmawar.or.id/dashboard/absen';
 
-    const hariTanggal = new Intl.DateTimeFormat('id-ID', {
+    const rawHariTanggal = new Intl.DateTimeFormat('id-ID', {
       weekday: 'long',
       day: '2-digit',
       month: 'long',
       year: 'numeric',
       timeZone: 'Asia/Jakarta'
     }).format(new Date());
+
+    const hariTanggal = rawHariTanggal.replace(/^Minggu,/i, 'Ahad,').replace(/^Minggu /i, 'Ahad ');
 
     let text = pesanGuruTemplate
       .replace(/{nama_guru}/g, reminder.guru_nama)

@@ -293,7 +293,7 @@ export const exportMatrixPDF = (options: MatrixExportOptions): string | void => 
   doc.setTextColor(150, 150, 150);
   const printDate = new Date().toLocaleDateString('id-ID', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-  });
+  }).replace(/^Minggu,/i, 'Ahad,').replace(/^Minggu /i, 'Ahad ');
   doc.text(`Dicetak: ${printDate}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
 
   if (previewOnly) {

@@ -267,7 +267,7 @@ function InputAbsenContent() {
   useEffect(() => { return () => stopCameraStream(); }, [stopCameraStream]);
 
   const generateWaGroupMessage = (uploadedPhotoUrl?: string) => {
-    const dateStr = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const dateStr = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).replace(/^Minggu,/i, 'Ahad,').replace(/^Minggu /i, 'Ahad ');
     const total = murid.length;
     const hadir = murid.filter(m => m.status === 'Hadir').length;
     const sakit = murid.filter(m => m.status === 'Sakit');
