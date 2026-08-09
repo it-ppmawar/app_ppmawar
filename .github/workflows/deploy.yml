@@ -51,6 +51,7 @@ jobs:
           rm -rf deploy_dist/.next/diagnostics
           rm -rf deploy_dist/.next/dev
           rm -rf deploy_dist/public/models
+          cp .htaccess deploy_dist/ || true
           cp package.json deploy_dist/
           cp package-lock.json deploy_dist/
           cp next.config.ts deploy_dist/
