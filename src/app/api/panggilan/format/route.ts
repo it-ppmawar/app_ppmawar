@@ -27,14 +27,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
 
-    const { nama, bahasa, template, urutan } = await request.json();
+    const { nama, bahasa, jenis_suara, template, urutan } = await request.json();
     if (!nama || !template) {
       return NextResponse.json({ error: 'nama dan template wajib diisi' }, { status: 400 });
     }
 
     const [result]: any = await pool.execute(
-      'INSERT INTO format_panggilan (nama, bahasa, template, urutan) VALUES (?, ?, ?, ?)',
-      [nama, bahasa || 'id', template, urutan || 0]
+      'INSERT INTO format_panggilan (nama, bahasa, jenis_suara, template, urutan) VALUES (?, ?, ?, ?, ?)',
+      [nama, bahasa || 'id', jenis_suara || 'auto', template, urutan || 0]
     );
 
     return NextResponse.json({ success: true, id: result.insertId });
@@ -54,12 +54,12 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
 
-    const { id, nama, bahasa, template, urutan, aktif } = await request.json();
+    const { id, nama, bahasa, jenis_suara, template, urutan, aktif } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
 
     await pool.execute(
-      'UPDATE format_panggilan SET nama=?, bahasa=?, template=?, urutan=?, aktif=? WHERE id=?',
-      [nama, bahasa || 'id', template, urutan || 0, aktif !== undefined ? aktif : 1, id]
+      'UPDATE format_panggilan SET nama=?, bahasa=?, jenis_suara=?, template=?, urutan=?, aktif=? WHERE id=?',
+      [nama, bahasa || 'id', jenis_suara || 'auto', template, urutan || 0, aktif !== undefined ? aktif : 1, id]
     );
 
     return NextResponse.json({ success: true });
