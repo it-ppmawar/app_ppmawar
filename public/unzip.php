@@ -37,6 +37,28 @@ if ($zip->open($zipFile) === TRUE) {
     $zip->close();
     @unlink($zipFile);
 
+    // Set permission 0755 untuk folder dan 0644 untuk file (persyaratan LiteSpeed/cPanel)
+    try {
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($targetDir, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+        foreach ($iterator as $item) {
+            if ($item->isDir()) {
+                @chmod($item->getPathname(), 0755);
+            } else {
+                @chmod($item->getPathname(), 0644);
+            }
+        }
+    } catch (Exception $e) {
+        // Silently skip if iterator fails
+    }
+
+    @chmod($targetDir, 0755);
+    if (file_exists($targetDir . '/.htaccess')) {
+        @chmod($targetDir . '/.htaccess', 0644);
+    }
+
     // Touch restart file for cPanel Phusion Passenger / Node.js
     $restartFile = $targetDir . '/tmp/restart.txt';
     if (!is_dir(dirname($restartFile))) {
@@ -44,8 +66,9 @@ if ($zip->open($zipFile) === TRUE) {
     }
     @file_put_contents($restartFile, date('Y-m-d H:i:s'));
 
-    echo "SUCCESS: Extraction completed and Node.js app restarted at " . date('Y-m-d H:i:s');
+    echo "SUCCESS: Extraction & permission fix completed, Node.js app restarted at " . date('Y-m-d H:i:s');
 } else {
     http_response_code(500);
     echo "ERROR: Failed to open deploy.zip";
 }
+
