@@ -61,7 +61,7 @@ jobs:
           echo "=== Target Dir: ${{ secrets.FTP_TARGET_DIR }} ==="
 
       - name: Deploy to cPanel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@4.3.5
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
