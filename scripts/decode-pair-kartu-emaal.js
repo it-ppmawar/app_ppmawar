@@ -13,7 +13,7 @@ const https = require('https');
 const http = require('http');
 
 const SOURCE_DIR = path.join(__dirname, '..', 'KARTU EMAAL 2026 2027');
-const SERVER_URL = 'https://app.ppmawar.or.id/api/sync/kartu-emaal-bulk';
+const SERVER_URL = 'https://app.ppmawar.or.id/api/sync/kartu-emaal';
 
 // Baca env untuk cookie/token jika diperlukan
 let env = {};

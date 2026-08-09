@@ -53,56 +53,138 @@ export async function POST(request: Request) {
     const targetDate = date || new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
 
     if (tipe === 'madin') {
-      const [jRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT j.jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari,
+      const [primaryRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT j.jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari, j.guru_id,
                 j.kelas_madin_id as kelas_id, k.nama_kelas
          FROM jadwal_madin j
          JOIN kelas_madin k ON j.kelas_madin_id = k.kelas_id
          WHERE j.jadwal_id = ?`,
         [jadwal_id]
       );
-      if (jRows.length > 0) {
-        jadwalDetail = jRows[0];
+      if (primaryRows.length > 0) {
+        const primary = primaryRows[0];
+        // Cari semua jadwal gabungan guru yang sama pada hari & jam yang sama
+        const [allCombinedRows] = await pool.execute<RowDataPacket[]>(
+          `SELECT j.jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari,
+                  j.kelas_madin_id as kelas_id, k.nama_kelas
+           FROM jadwal_madin j
+           JOIN kelas_madin k ON j.kelas_madin_id = k.kelas_id
+           WHERE (j.guru_id = ? OR j.jadwal_id = ?) AND j.hari = ? AND j.jam_mulai = ? AND j.jam_selesai = ?`,
+          [primary.guru_id || 0, primary.jadwal_id, primary.hari, primary.jam_mulai, primary.jam_selesai]
+        );
+        const combinedSchedules = allCombinedRows.length > 0 ? allCombinedRows : [primary];
+        const combinedKelasIds = Array.from(new Set(combinedSchedules.map((s: any) => s.kelas_id)));
+        const combinedJadwalIds = Array.from(new Set(combinedSchedules.map((s: any) => s.jadwal_id)));
+        const combinedKelasNama = Array.from(new Set(combinedSchedules.map((s: any) => s.nama_kelas))).join(' & ');
+        const combinedMapel = Array.from(new Set(combinedSchedules.map((s: any) => s.mata_pelajaran).filter(Boolean))).join(' & ');
+
+        jadwalDetail = {
+          ...primary,
+          nama_kelas: combinedKelasNama,
+          mata_pelajaran: combinedMapel || primary.mata_pelajaran,
+          jadwal_ids: combinedJadwalIds,
+          kelas_ids: combinedKelasIds,
+        };
+
+        const placeholders = combinedKelasIds.map(() => '?').join(',');
         const [mRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT murid_id, nis, nama, nama_panggilan, foto, nama_wali, alamat, jenis_kelamin, kelas_madin_id, kelas_madin_2_id
-           FROM murid WHERE kelas_madin_id = ? OR kelas_madin_2_id = ? ORDER BY nama ASC`,
-          [jadwalDetail.kelas_id, jadwalDetail.kelas_id]
+          `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.nama_wali, m.alamat, m.jenis_kelamin,
+                  m.kelas_madin_id, m.kelas_madin_2_id, k.nama_kelas
+           FROM murid m
+           JOIN kelas_madin k ON (m.kelas_madin_id = k.kelas_id OR m.kelas_madin_2_id = k.kelas_id)
+           WHERE k.kelas_id IN (${placeholders})
+           ORDER BY k.nama_kelas ASC, m.nama ASC`,
+          [...combinedKelasIds]
         );
         muridList = mRows;
       }
     } else if (tipe === 'quran') {
-      const [jRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT j.id as jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari,
+      const [primaryRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT j.id as jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari, j.guru_id,
                 j.kelas_quran_id as kelas_id, k.nama_kelas
          FROM jadwal_quran j
          JOIN kelas_quran k ON j.kelas_quran_id = k.id
          WHERE j.id = ?`,
         [jadwal_id]
       );
-      if (jRows.length > 0) {
-        jadwalDetail = jRows[0];
+      if (primaryRows.length > 0) {
+        const primary = primaryRows[0];
+        const [allCombinedRows] = await pool.execute<RowDataPacket[]>(
+          `SELECT j.id as jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari,
+                  j.kelas_quran_id as kelas_id, k.nama_kelas
+           FROM jadwal_quran j
+           JOIN kelas_quran k ON j.kelas_quran_id = k.id
+           WHERE (j.guru_id = ? OR j.id = ?) AND j.hari = ? AND j.jam_mulai = ? AND j.jam_selesai = ?`,
+          [primary.guru_id || 0, primary.jadwal_id, primary.hari, primary.jam_mulai, primary.jam_selesai]
+        );
+        const combinedSchedules = allCombinedRows.length > 0 ? allCombinedRows : [primary];
+        const combinedKelasIds = Array.from(new Set(combinedSchedules.map((s: any) => s.kelas_id)));
+        const combinedJadwalIds = Array.from(new Set(combinedSchedules.map((s: any) => s.jadwal_id)));
+        const combinedKelasNama = Array.from(new Set(combinedSchedules.map((s: any) => s.nama_kelas))).join(' & ');
+        const combinedMapel = Array.from(new Set(combinedSchedules.map((s: any) => s.mata_pelajaran).filter(Boolean))).join(' & ');
+
+        jadwalDetail = {
+          ...primary,
+          nama_kelas: combinedKelasNama,
+          mata_pelajaran: combinedMapel || primary.mata_pelajaran,
+          jadwal_ids: combinedJadwalIds,
+          kelas_ids: combinedKelasIds,
+        };
+
+        const placeholders = combinedKelasIds.map(() => '?').join(',');
         const [mRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT murid_id, nis, nama, nama_panggilan, foto, nama_wali, alamat, jenis_kelamin, kelas_quran_id
-           FROM murid WHERE kelas_quran_id = ? ORDER BY nama ASC`,
-          [jadwalDetail.kelas_id]
+          `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.nama_wali, m.alamat, m.jenis_kelamin,
+                  m.kelas_quran_id, k.nama_kelas
+           FROM murid m
+           JOIN kelas_quran k ON m.kelas_quran_id = k.id
+           WHERE k.id IN (${placeholders})
+           ORDER BY k.nama_kelas ASC, m.nama ASC`,
+          [...combinedKelasIds]
         );
         muridList = mRows;
       }
     } else if (tipe === 'kamar' || tipe === 'kegiatan') {
-      const [jRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT j.kegiatan_id as jadwal_id, j.jam_mulai, j.jam_selesai, j.nama_kegiatan as mata_pelajaran, j.hari,
+      const [primaryRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT j.kegiatan_id as jadwal_id, j.jam_mulai, j.jam_selesai, j.nama_kegiatan as mata_pelajaran, j.hari, j.guru_id,
                 j.kamar_id as kelas_id, k.nama_kamar as nama_kelas
          FROM jadwal_kegiatan j
          JOIN kamar k ON j.kamar_id = k.kamar_id
          WHERE j.kegiatan_id = ?`,
         [jadwal_id]
       );
-      if (jRows.length > 0) {
-        jadwalDetail = jRows[0];
+      if (primaryRows.length > 0) {
+        const primary = primaryRows[0];
+        const [allCombinedRows] = await pool.execute<RowDataPacket[]>(
+          `SELECT j.kegiatan_id as jadwal_id, j.jam_mulai, j.jam_selesai, j.nama_kegiatan as mata_pelajaran, j.hari,
+                  j.kamar_id as kelas_id, k.nama_kamar as nama_kelas
+           FROM jadwal_kegiatan j
+           JOIN kamar k ON j.kamar_id = k.kamar_id
+           WHERE (j.guru_id = ? OR j.kegiatan_id = ?) AND j.hari = ? AND j.jam_mulai = ? AND j.jam_selesai = ?`,
+          [primary.guru_id || 0, primary.jadwal_id, primary.hari, primary.jam_mulai, primary.jam_selesai]
+        );
+        const combinedSchedules = allCombinedRows.length > 0 ? allCombinedRows : [primary];
+        const combinedKelasIds = Array.from(new Set(combinedSchedules.map((s: any) => s.kelas_id)));
+        const combinedJadwalIds = Array.from(new Set(combinedSchedules.map((s: any) => s.jadwal_id)));
+        const combinedKelasNama = Array.from(new Set(combinedSchedules.map((s: any) => s.nama_kamar || s.nama_kelas))).join(' & ');
+        const combinedMapel = Array.from(new Set(combinedSchedules.map((s: any) => s.mata_pelajaran).filter(Boolean))).join(' & ');
+
+        jadwalDetail = {
+          ...primary,
+          nama_kelas: combinedKelasNama,
+          mata_pelajaran: combinedMapel || primary.mata_pelajaran,
+          jadwal_ids: combinedJadwalIds,
+          kelas_ids: combinedKelasIds,
+        };
+
+        const placeholders = combinedKelasIds.map(() => '?').join(',');
         const [mRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT murid_id, nis, nama, nama_panggilan, foto, nama_wali, alamat, jenis_kelamin, kamar_id
-           FROM murid WHERE kamar_id = ? ORDER BY nama ASC`,
-          [jadwalDetail.kelas_id]
+          `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.nama_wali, m.alamat, m.jenis_kelamin,
+                  m.kamar_id, k.nama_kamar as nama_kelas
+           FROM murid m
+           JOIN kamar k ON m.kamar_id = k.kamar_id
+           WHERE k.kamar_id IN (${placeholders})
+           ORDER BY k.nama_kamar ASC, m.nama ASC`,
+          [...combinedKelasIds]
         );
         muridList = mRows;
       }
@@ -112,15 +194,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Detail jadwal tidak ditemukan di DB' }, { status: 404 });
     }
 
-    // Ambil data absensi yang sudah pernah tersimpan untuk tanggal ini
-    let existingQuery = '';
-    if (tipe === 'madin') existingQuery = 'SELECT murid_id, status FROM absensi WHERE jadwal_madin_id = ? AND tanggal = ?';
-    else if (tipe === 'quran') existingQuery = 'SELECT murid_id, status FROM absensi_quran WHERE jadwal_quran_id = ? AND tanggal = ?';
-    else if (tipe === 'kamar' || tipe === 'kegiatan') existingQuery = 'SELECT murid_id, status FROM absensi_kegiatan WHERE kegiatan_id = ? AND tanggal = ?';
-
+    // Ambil data absensi yang sudah pernah tersimpan untuk tanggal ini dari semua jadwal_ids
     let existingMap: { [murid_id: number]: string } = {};
+    const jIds = jadwalDetail.jadwal_ids || [jadwal_id];
+    const placeholdersJadwal = jIds.map(() => '?').join(',');
+
+    let existingQuery = '';
+    if (tipe === 'madin') existingQuery = `SELECT murid_id, status FROM absensi WHERE jadwal_madin_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    else if (tipe === 'quran') existingQuery = `SELECT murid_id, status FROM absensi_quran WHERE jadwal_quran_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    else if (tipe === 'kamar' || tipe === 'kegiatan') existingQuery = `SELECT murid_id, status FROM absensi_kegiatan WHERE kegiatan_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+
     if (existingQuery) {
-      const [existingRows] = await pool.execute<RowDataPacket[]>(existingQuery, [jadwal_id, targetDate]);
+      const [existingRows] = await pool.execute<RowDataPacket[]>(existingQuery, [...jIds, targetDate]);
       (existingRows || []).forEach(r => {
         existingMap[r.murid_id] = r.status.toLowerCase();
       });

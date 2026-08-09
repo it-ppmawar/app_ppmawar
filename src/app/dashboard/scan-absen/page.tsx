@@ -805,8 +805,17 @@ function ScanAbsenInner() {
                       {faceStatus === 'loading-models' && '⏳ Loading AI...'}{faceStatus === 'loading-db' && '📥 Loading DB...'}
                       {faceStatus === 'scanning' && '🟢 Aktif'}{faceStatus === 'detected' && '✅ Terdeteksi!'}{faceStatus === 'error' && '❌ Error'}
                     </span>
+                    <button onClick={switchCamera} disabled={isSwitchingCamera}
+                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all ${isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
+                      <FlipHorizontal size={14} className={isSwitchingCamera ? 'animate-spin' : ''} />
+                      <span className="hidden sm:inline">{isSwitchingCamera ? 'Mengganti...' : facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
+                    </button>
                     <button onClick={stopAll} className="bg-red-500 hover:bg-red-600 p-1.5 rounded-lg"><XCircle size={18} /></button>
                   </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 bg-gray-800 py-1.5 -mt-3">
+                  <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
+                  <span className="text-xs font-semibold text-gray-300">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
                 </div>
 
                 {(faceStatus === 'loading-models' || faceStatus === 'loading-db') && (

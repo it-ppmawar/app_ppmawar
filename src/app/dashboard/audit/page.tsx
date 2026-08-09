@@ -152,10 +152,11 @@ export default function AuditLogPage() {
             </button>
             <button
               onClick={fetchLogs}
-              className="flex items-center gap-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 py-2 transition-colors"
+              className="flex items-center justify-center gap-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 py-2 transition-colors shrink-0"
+              title="Refresh Data Log"
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
         </div>

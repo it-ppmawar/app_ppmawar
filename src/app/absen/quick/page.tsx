@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 
 // Avatar & Photo helper
@@ -379,6 +379,7 @@ function QuickAbsenContent() {
 
     const payload = {
       jadwal_id: data.jadwal.jadwal_id,
+      jadwal_ids: data.jadwal.jadwal_ids || [data.jadwal.jadwal_id],
       tipe: data.tipe,
       tanggal: data.date,
       absensi: listAbsensi,
@@ -435,6 +436,17 @@ function QuickAbsenContent() {
   }
 
   const { guru_nama, tipe, date, jadwal, murid } = data;
+
+  const groupedMurid = (murid || []).reduce((acc: any, m: any) => {
+    const kNama = m.nama_kelas || data?.jadwal?.nama_kelas || 'Kelas';
+    if (!acc[kNama]) acc[kNama] = [];
+    acc[kNama].push(m);
+    return acc;
+  }, {});
+
+  const classNames = Object.keys(groupedMurid);
+  const isMultiClass = classNames.length > 1;
+  let globalIndexCounter = 0;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-24">
@@ -524,103 +536,120 @@ function QuickAbsenContent() {
           </div>
         </div>
 
-        {/* Student List */}
-        <div className="space-y-3">
-          {murid?.map((m: any, idx: number) => {
-            const st = kehadiran[m.murid_id] || 'hadir';
-            const fotoUrl = getFotoUrl(m.foto, m.nis);
-
+        {/* Student List (Grouped by Class if Multi-Class Schedule) */}
+        <div className="space-y-6">
+          {classNames.map((kelasNama) => {
+            const listSantri = groupedMurid[kelasNama] || [];
             return (
-              <div key={m.murid_id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-sm hover:border-slate-700 transition">
-                {/* Header Row: Foto + Nama Lengkap & Nama Panggilan di samping kanan Foto */}
-                <div className="flex items-start gap-3">
-                  {/* Avatar / Foto Santri (Klik untuk Zoom) */}
-                  <div
-                    onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
-                    className={`w-12 h-12 rounded-xl shrink-0 overflow-hidden border border-slate-700 flex items-center justify-center relative mt-0.5 ${fotoUrl ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''}`}
-                    style={{ backgroundColor: getAvatarColor(m.nama) }}
-                    title={fotoUrl ? 'Klik untuk memperbesar foto' : ''}
-                  >
-                    {fotoUrl ? (
-                      <img
-                        src={fotoUrl}
-                        alt={m.nama}
-                        className="w-full h-full object-cover"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
-                    ) : (
-                      <span className="text-white font-bold text-xs">{getInitials(m.nama)}</span>
-                    )}
-                  </div>
-
-                  {/* Nama Santri & Input Nama Panggilan di sebelah kanan foto */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-extrabold text-sm text-slate-100 leading-tight truncate">
-                      <span className="text-slate-400 font-semibold text-xs mr-1">{idx + 1}.</span>
-                      {m.nama}
-                    </h3>
-
-                    {/* Input Nama Panggilan Instan (Disamping Kanan Foto) */}
-                    <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className="text-[11px] text-slate-400 shrink-0 font-medium">Panggilan:</span>
-                      <input
-                        type="text"
-                        placeholder="Panggilan..."
-                        value={m.nama_panggilan || ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setData((prev: any) => ({
-                            ...prev,
-                            murid: (prev.murid || []).map((item: any) =>
-                              item.murid_id === m.murid_id ? { ...item, nama_panggilan: val } : item
-                            )
-                          }));
-                        }}
-                        className="w-full max-w-[160px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-300 placeholder:text-slate-500 transition"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Info Detail: NIS, Wali & Alamat */}
-                <div className="space-y-1 pt-0.5 text-xs">
-                  {/* NIS & Wali dalam Satu Baris */}
-                  <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-300">
-                    <span className="font-mono text-slate-400">NIS: <strong className="text-slate-200">{m.nis || '-'}</strong></span>
-                    <span className="text-slate-600">•</span>
-                    <div className="flex items-center gap-1 text-slate-400 truncate">
-                      <User size={11} className="shrink-0 text-emerald-400" />
-                      <span>Wali: <strong className="text-slate-200">{m.nama_wali || '-'}</strong></span>
-                    </div>
-                  </div>
-
-                  {/* Alamat Maksimal 2 Baris */}
-                  <div className="flex items-start gap-1 text-[11px] text-slate-400 leading-tight">
-                    <MapPin size={12} className="shrink-0 text-teal-400 mt-0.5" />
-                    <span className="line-clamp-2" title={m.alamat}>
-                      Alamat: <span className="text-slate-300">{m.alamat || '-'}</span>
+              <div key={kelasNama} className="space-y-3">
+                {isMultiClass && (
+                  <div className="bg-slate-800/90 border border-emerald-500/30 rounded-xl px-4 py-2.5 flex items-center justify-between shadow-md sticky top-14 z-20 backdrop-blur-md">
+                    <span className="text-xs font-extrabold text-emerald-400 uppercase tracking-wide flex items-center gap-2">
+                      <BookOpen size={14} className="text-emerald-400 shrink-0" />
+                      --- KELAS {kelasNama.toUpperCase()} ({listSantri.length} Santri) ---
                     </span>
                   </div>
-                </div>
+                )}
+                {listSantri.map((m: any) => {
+                  globalIndexCounter++;
+                  const idx = globalIndexCounter;
+                  const st = kehadiran[m.murid_id] || 'hadir';
+                  const fotoUrl = getFotoUrl(m.foto, m.nis);
 
-                {/* Status Options Buttons */}
-                <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-800/80">
-                  {[
-                    { id: 'hadir', label: 'Hadir', bgActive: 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' },
-                    { id: 'izin', label: 'Izin', bgActive: 'bg-amber-600 text-white font-bold shadow-md shadow-amber-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' },
-                    { id: 'sakit', label: 'Sakit', bgActive: 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' },
-                    { id: 'alpha', label: 'Alpha', bgActive: 'bg-rose-600 text-white font-bold shadow-md shadow-rose-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' }
-                  ].map(opt => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setKehadiran(prev => ({ ...prev, [m.murid_id]: opt.id }))}
-                      className={`py-2 text-xs rounded-xl transition text-center font-medium ${st === opt.id ? opt.bgActive : opt.bgInactive}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+                  return (
+                    <div key={m.murid_id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-sm hover:border-slate-700 transition">
+                      {/* Header Row: Foto + Nama Lengkap & Nama Panggilan di samping kanan Foto */}
+                      <div className="flex items-start gap-3">
+                        {/* Avatar / Foto Santri (Klik untuk Zoom) */}
+                        <div
+                          onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
+                          className={`w-12 h-12 rounded-xl shrink-0 overflow-hidden border border-slate-700 flex items-center justify-center relative mt-0.5 ${fotoUrl ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''}`}
+                          style={{ backgroundColor: getAvatarColor(m.nama) }}
+                          title={fotoUrl ? 'Klik untuk memperbesar foto' : ''}
+                        >
+                          {fotoUrl ? (
+                            <img
+                              src={fotoUrl}
+                              alt={m.nama}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <span className="text-white font-bold text-xs">{getInitials(m.nama)}</span>
+                          )}
+                        </div>
+
+                        {/* Nama Santri & Input Nama Panggilan di sebelah kanan foto */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-extrabold text-sm text-slate-100 leading-tight truncate">
+                            <span className="text-slate-400 font-semibold text-xs mr-1">{idx}.</span>
+                            {m.nama}
+                          </h3>
+
+                          {/* Input Nama Panggilan Instan (Disamping Kanan Foto) */}
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <span className="text-[11px] text-slate-400 shrink-0 font-medium">Panggilan:</span>
+                            <input
+                              type="text"
+                              placeholder="Panggilan..."
+                              value={m.nama_panggilan || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setData((prev: any) => ({
+                                  ...prev,
+                                  murid: (prev.murid || []).map((item: any) =>
+                                    item.murid_id === m.murid_id ? { ...item, nama_panggilan: val } : item
+                                  )
+                                }));
+                              }}
+                              className="w-full max-w-[160px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-300 placeholder:text-slate-500 transition"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Info Detail: NIS, Wali & Alamat */}
+                      <div className="space-y-1 pt-0.5 text-xs">
+                        {/* NIS & Wali dalam Satu Baris */}
+                        <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-300">
+                          <span className="font-mono text-slate-400">NIS: <strong className="text-slate-200">{m.nis || '-'}</strong></span>
+                          <span className="text-slate-600">•</span>
+                          <div className="flex items-center gap-1 text-slate-400 truncate">
+                            <User size={11} className="shrink-0 text-emerald-400" />
+                            <span>Wali: <strong className="text-slate-200">{m.nama_wali || '-'}</strong></span>
+                          </div>
+                        </div>
+
+                        {/* Alamat Maksimal 2 Baris */}
+                        <div className="flex items-start gap-1 text-[11px] text-slate-400 leading-tight">
+                          <MapPin size={12} className="shrink-0 text-teal-400 mt-0.5" />
+                          <span className="line-clamp-2" title={m.alamat}>
+                            Alamat: <span className="text-slate-300">{m.alamat || '-'}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Status Options Buttons */}
+                      <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-800/80">
+                        {[
+                          { id: 'hadir', label: 'Hadir', bgActive: 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' },
+                          { id: 'izin', label: 'Izin', bgActive: 'bg-amber-600 text-white font-bold shadow-md shadow-amber-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' },
+                          { id: 'sakit', label: 'Sakit', bgActive: 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' },
+                          { id: 'alpha', label: 'Alpha', bgActive: 'bg-rose-600 text-white font-bold shadow-md shadow-rose-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' }
+                        ].map(opt => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setKehadiran(prev => ({ ...prev, [m.murid_id]: opt.id }))}
+                            className={`py-2 text-xs rounded-xl transition text-center font-medium ${st === opt.id ? opt.bgActive : opt.bgInactive}`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
