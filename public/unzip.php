@@ -62,13 +62,25 @@ if ($zip->open($zipFile) === TRUE) {
         echo "Restored .htaccess backup.\n";
     }
 
+    // If .htaccess is still missing or empty, create default LiteSpeed Passenger config
+    if (!file_exists($htaccessPath) || filesize($htaccessPath) === 0) {
+        $defaultHtaccess = "# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN\n" .
+                           "DirectoryIndex disabled\n" .
+                           "PassengerAppType node\n" .
+                           "PassengerStartupFile server.js\n" .
+                           "PassengerAppRoot \"" . $targetDir . "\"\n" .
+                           "# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END\n";
+        file_put_contents($htaccessPath, $defaultHtaccess);
+        echo "Auto-generated fallback .htaccess for LiteSpeed Node.js Passenger.\n";
+    }
+
     // Ensure proper permissions on extracted root files
     @chmod($targetDir, 0755);
     if (file_exists($htaccessPath)) {
         @chmod($htaccessPath, 0644);
         echo ".htaccess status: EXISTS (" . filesize($htaccessPath) . " bytes)\n";
     } else {
-        echo ".htaccess status: MISSING! (This may cause 403 Forbidden on LiteSpeed/Passenger)\n";
+        echo ".htaccess status: MISSING!\n";
     }
 
     if (file_exists($targetDir . '/server.js')) {
