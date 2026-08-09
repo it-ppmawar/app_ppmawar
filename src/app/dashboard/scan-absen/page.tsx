@@ -464,8 +464,9 @@ function ScanAbsenInner() {
     }, 800);
   }, []);
 
-  const startFaceScanner = useCallback(async () => {
+  const startFaceScanner = useCallback(async (overrideFacingMode?: 'environment' | 'user') => {
     if (typeof window === 'undefined') return;
+    const targetFacing = overrideFacingMode || facingMode;
     setFaceStatus('loading-models');
     setFaceStatusMsg('Memuat model AI Face Recognition...');
     setIsScanning(true);
@@ -489,7 +490,7 @@ function ScanAbsenInner() {
 
       setFaceStatusMsg('Membuka kamera...');
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode, width: { ideal: 640 }, height: { ideal: 480 } }
+        video: { facingMode: targetFacing, width: { ideal: 640 }, height: { ideal: 480 } }
       });
       faceStreamRef.current = stream;
       if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
@@ -559,6 +560,9 @@ function ScanAbsenInner() {
     if (scanMode === 'qr' && isScanning) {
       await stopQrScanner();
       setTimeout(async () => { await startQrScanner(newFacing); setIsSwitchingCamera(false); }, 400);
+    } else if (scanMode === 'face' && isScanning) {
+      stopFaceScanner();
+      setTimeout(async () => { await startFaceScanner(newFacing); setIsSwitchingCamera(false); }, 400);
     } else { setIsSwitchingCamera(false); }
   };
 
