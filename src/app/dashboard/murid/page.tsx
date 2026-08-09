@@ -291,7 +291,7 @@ export default function DataMuridPage() {
   }, [isBulkModalOpen, bulkType]);
 
   const handleLuluskan = async (id: number) => {
-    if (!confirm('Pindahkan santri ini ke daftar Alumni? Peringatan: Data santri ini akan dipindahkan ke tabel Alumni dan Akun Wali Murid terkait akan dihapus otomatis.')) return;
+    if (!confirm('Pindahkan santri ini ke daftar Alumni? Data santri akan dipindahkan ke tabel Alumni dan Akun User terkait akan dikonversi menjadi role Alumni (tidak dihapus).')) return;
     try {
       const res = await fetch('/api/murid/lulus', {
         method: 'POST',
@@ -331,7 +331,7 @@ export default function DataMuridPage() {
   };
 
   const handleLuluskanBulk = async () => {
-    if (!confirm(`Pindahkan ${selectedMurid.length} santri ini ke daftar Alumni? Peringatan: Data santri ini akan dipindahkan ke tabel Alumni dan Akun Wali Murid terkait akan dihapus otomatis.`)) return;
+    if (!confirm(`Pindahkan ${selectedMurid.length} santri ini ke daftar Alumni? Data santri akan dipindahkan ke tabel Alumni dan Akun User terkait akan dikonversi menjadi role Alumni (tidak dihapus).`)) return;
     try {
       const res = await fetch('/api/murid/lulus', {
         method: 'POST',
