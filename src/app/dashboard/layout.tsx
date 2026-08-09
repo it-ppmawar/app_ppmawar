@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2 } from 'lucide-react';
+import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2, Megaphone, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -29,6 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Jadwal', href: '/dashboard/jadwal', icon: CalendarDays },
     ...(user?.role !== 'wali_murid' && user?.role !== 'wali_alumni' && user?.role !== 'tamu' ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
     ...(user?.role !== 'tamu' ? [{ name: 'Notifikasi', href: '/dashboard/notifikasi', icon: Bell }] : []),
+    ...(['admin', 'staff'].includes(user?.role) ? [{ name: 'Audit Log', href: '/dashboard/audit', icon: Shield }] : []),
     { name: 'Profil', href: '/dashboard/profil', icon: User },
   ];
 
@@ -593,6 +594,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <FileWarning size={18} /> <span className="text-sm">Ketertiban Murid</span>
               </Link>
             </li>
+            {/* Panggilan Santri */}
+            {(['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'wali_murid'].includes(userRoleLower) || isPengasuhRole) ? (
+            <li>
+              <Link href="/dashboard/panggilan" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/panggilan') ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
+                <Megaphone size={18} /> <span className="text-sm">Panggilan Santri</span>
+              </Link>
+            </li>
+            ) : null}
             {/* Kebersihan & Sampah - di bawah Ketertiban Murid */}
             {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(userRoleLower) || isPengasuhRole ? (
             <li>

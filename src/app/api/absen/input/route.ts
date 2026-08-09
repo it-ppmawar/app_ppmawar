@@ -3,6 +3,7 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
+import { logAudit } from '@/lib/audit';
 
 export async function GET(request: Request) {
   try {
@@ -411,6 +412,22 @@ export async function POST(request: Request) {
     }
 
     await connection.commit();
+
+    // Catat ke audit log (async, tidak blocking operasi utama)
+    const tabelAbsen = tipe === 'madin' ? 'absensi' : tipe === 'quran' ? 'absensi_quran' : 'absensi_kegiatan';
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '';
+    logAudit({
+      userId: payload.userId || null,
+      userNama: payload.username || payload.name || '',
+      userRole: payload.role || '',
+      aksi: 'simpan_absen',
+      tabel: tabelAbsen,
+      recordId: parseInt(jadwal_id as string) || null,
+      keterangan: `Input absen ${tipe} untuk ${absensi.length} santri, tanggal ${localISOTime}`,
+      dataBaru: { jadwal_id, tipe, tanggal: localISOTime, jumlah: absensi.length },
+      ipAddress: ipAddress.split(',')[0].trim(),
+    });
+
     return NextResponse.json({ success: true, message: 'Absensi berhasil disimpan' });
   } catch (err: any) {
     await connection.rollback();

@@ -52,19 +52,54 @@ export default function PwaProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        setShowNotificationPrompt(false);
-        // We can subscribe to push manager here
-        // For demonstration, trigger a test notification
-        new Notification('Notifikasi Aktif', {
-          body: 'Anda akan menerima pengingat jadwal mengajar.',
+    if (!('Notification' in window)) return;
+    const permission = await Notification.requestPermission();
+    setShowNotificationPrompt(false);
+
+    if (permission === 'granted') {
+      try {
+        // Subscribe ke Push Manager menggunakan VAPID public key
+        const registration = await navigator.serviceWorker.ready;
+        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
+
+        if (!vapidPublicKey) {
+          console.warn('[Push] NEXT_PUBLIC_VAPID_PUBLIC_KEY belum dikonfigurasi');
+          return;
+        }
+
+        // Konversi VAPID public key ke Uint8Array
+        const urlBase64ToUint8Array = (base64String: string) => {
+          const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+          const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+          const rawData = window.atob(base64);
+          return new Uint8Array([...rawData].map(char => char.charCodeAt(0)));
+        };
+
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        });
+
+        const subJson = subscription.toJSON();
+        // Kirim subscription ke server untuk disimpan di DB
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            endpoint: subJson.endpoint,
+            p256dh: subJson.keys?.p256dh,
+            auth: subJson.keys?.auth,
+          }),
+        });
+
+        // Notifikasi konfirmasi
+        registration.showNotification('✅ Notifikasi Aktif', {
+          body: 'Anda akan menerima pengingat otomatis 30 menit sebelum jadwal mengajar.',
           icon: '/logo.png',
-          vibrate: [200, 100, 200]
+          vibrate: [200, 100, 200],
         } as any);
-      } else {
-        setShowNotificationPrompt(false);
+      } catch (err) {
+        console.error('[Push Subscribe Error]', err);
       }
     }
   };
