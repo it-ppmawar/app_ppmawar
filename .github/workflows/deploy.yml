@@ -20,7 +20,7 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Code
@@ -40,7 +40,7 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
 
-      - name: Prepare Production Files
+      - name: Prepare Production ZIP Bundle
         run: |
           mkdir -p deploy_dist/tmp
           echo "$(date)" > deploy_dist/tmp/restart.txt
@@ -58,27 +58,36 @@ jobs:
           echo "Commit: ${{ github.sha }}" > deploy_dist/public/version.txt
           echo "Date: $(date)" >> deploy_dist/public/version.txt
           echo "Branch: ${{ github.ref_name }}" >> deploy_dist/public/version.txt
-          echo ""
-          echo "=== Files prepared for deployment ==="
-          ls -la deploy_dist/
-          echo "=== Target Dir: ${{ secrets.FTP_TARGET_DIR }} ==="
 
-      - name: Deploy to cPanel via FTP
+          # Create upload_bundle containing deploy.zip and unzip.php
+          mkdir -p upload_bundle
+          cd deploy_dist
+          zip -q -r ../upload_bundle/deploy.zip .
+          cd ..
+          cp public/unzip.php upload_bundle/unzip.php || true
+          
+          echo "=== ZIP Bundle Prepared ==="
+          ls -lh upload_bundle/
+
+      - name: Upload ZIP Bundle to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./deploy_dist/
+          local-dir: ./upload_bundle/
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
           dangerous-clean-slate: false
           log-level: minimal
           protocol: ftp
           security: loose
-          timeout: 300000
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/models/**
+          timeout: 60000
+
+      - name: Trigger Remote Unzip on cPanel
+        run: |
+          echo "⚡ Triggering remote unzip script..."
+          curl -s -k "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026"
+          echo ""
+          echo "✅ Deployment triggered successfully!"
+
 
