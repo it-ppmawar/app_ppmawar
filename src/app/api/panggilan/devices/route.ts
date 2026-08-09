@@ -16,28 +16,50 @@ import { RowDataPacket } from 'mysql2';
  * - ip_address  : IP perangkat
  */
 
-// GET — Daftar semua perangkat TOA beserta status online/offline
+// GET — Daftar perangkat TOA: 1 perangkat terbaik per asrama, bersih dari entry lama
 export async function GET() {
   try {
     // Pastikan tabel ada dulu
     await ensureDevicesTable();
 
+    // Hapus otomatis perangkat yang tidak aktif lebih dari 24 jam (cleanup)
+    try {
+      await pool.execute(
+        `DELETE FROM panggilan_devices WHERE last_seen < DATE_SUB(NOW(), INTERVAL 24 HOUR)`
+      );
+    } catch (_) {}
+
+    // Ambil 1 perangkat terbaik per asrama (last_seen terbaru per nama_asrama)
+    // Serta hitung status online/idle/offline berdasarkan selisih waktu
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT 
-         device_id,
-         nama_asrama,
-         last_seen,
-         user_agent,
-         TIMESTAMPDIFF(SECOND, last_seen, NOW()) as detik_sejak_terakhir,
+         d.device_id,
+         d.nama_asrama,
+         d.last_seen,
+         d.user_agent,
+         TIMESTAMPDIFF(SECOND, d.last_seen, NOW()) as detik_sejak_terakhir,
          CASE 
-           WHEN TIMESTAMPDIFF(SECOND, last_seen, NOW()) <= 60 THEN 'online'
-           WHEN TIMESTAMPDIFF(SECOND, last_seen, NOW()) <= 300 THEN 'idle'
+           WHEN TIMESTAMPDIFF(SECOND, d.last_seen, NOW()) <= 60 THEN 'online'
+           WHEN TIMESTAMPDIFF(SECOND, d.last_seen, NOW()) <= 300 THEN 'idle'
            ELSE 'offline'
          END as status
-       FROM panggilan_devices
+       FROM panggilan_devices d
+       INNER JOIN (
+         SELECT 
+           COALESCE(nama_asrama, '__umum__') as asrama_key,
+           MAX(last_seen) as max_seen
+         FROM panggilan_devices
+         GROUP BY COALESCE(nama_asrama, '__umum__')
+       ) best 
+         ON COALESCE(d.nama_asrama, '__umum__') = best.asrama_key 
+         AND d.last_seen = best.max_seen
        ORDER BY 
-         FIELD(status, 'online', 'idle', 'offline'),
-         nama_asrama ASC`
+         CASE 
+           WHEN TIMESTAMPDIFF(SECOND, d.last_seen, NOW()) <= 60 THEN 1
+           WHEN TIMESTAMPDIFF(SECOND, d.last_seen, NOW()) <= 300 THEN 2
+           ELSE 3
+         END ASC,
+         d.nama_asrama ASC`
     );
 
     return NextResponse.json({ success: true, data: rows });

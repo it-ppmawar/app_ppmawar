@@ -239,69 +239,91 @@ export default function PanggilanSantriPage() {
               <p className="text-orange-100 text-xs">Pengumuman via TOA / Mixer Asrama</p>
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
-            {isPengasuhOrAdmin && (
-              <a
-                href="/dashboard/panggilan/toa"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <ExternalLink size={12} />
-                Buka Halaman TOA
-              </a>
-            )}
+          {/* Dua tombol berdampingan — penuh kiri & kanan, presisi sama */}
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <a
+              href="/dashboard/panggilan/toa"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-col items-center justify-center gap-1.5 bg-white/20 hover:bg-white/30 active:bg-white/40 text-white font-bold px-2 py-3 rounded-xl transition-colors text-center"
+            >
+              <ExternalLink size={18} />
+              <span className="text-[11px] leading-tight">Buka Halaman TOA</span>
+            </a>
             <a
               href="/dashboard/panggilan/setup"
-              className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors border border-white/20"
+              className="flex flex-col items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-bold px-2 py-3 rounded-xl transition-colors border border-white/25 text-center"
             >
-              <Wrench size={12} />
-              Panduan Setup Hardware
+              <Wrench size={18} />
+              <span className="text-[11px] leading-tight">Panduan Setup Hardware</span>
             </a>
           </div>
         </div>
       </div>
 
-      {/* TOA Device Monitoring Status Bar */}
-      {devices.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Radio size={13} className="text-orange-500" />
-              Perangkat TOA Asrama ({devices.filter(d => d.status === 'online').length} Online)
-            </h3>
-            <button onClick={fetchDevices} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-              <RefreshCw size={12} />
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {devices.map((dev) => (
-              <div
-                key={dev.device_id}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border ${
-                  dev.status === 'online'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'
-                    : dev.status === 'idle'
-                    ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'
-                    : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600'
-                }`}
-              >
-                <span
-                  className={`w-2 h-2 rounded-full ${
+      {/* TOA Device Monitoring Status Bar — deduplicated per asrama */}
+      {(() => {
+        // Kelompokkan per asrama: ambil status terbaik per asrama
+        const asramaMap = new Map<string, Device>();
+        devices.forEach(dev => {
+          const key = dev.nama_asrama || '__umum__';
+          const existing = asramaMap.get(key);
+          // Priority: online > idle > offline
+          const priority = (s: string) => s === 'online' ? 3 : s === 'idle' ? 2 : 1;
+          if (!existing || priority(dev.status) > priority(existing.status)) {
+            asramaMap.set(key, dev);
+          }
+        });
+        const uniqueDevices = Array.from(asramaMap.values())
+          .sort((a, b) => {
+            const p = (s: string) => s === 'online' ? 3 : s === 'idle' ? 2 : 1;
+            return p(b.status) - p(a.status);
+          });
+        if (uniqueDevices.length === 0) return null;
+        const onlineCount = uniqueDevices.filter(d => d.status === 'online').length;
+        return (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Radio size={13} className="text-orange-500" />
+                Perangkat TOA Asrama
+                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-black ${onlineCount > 0 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+                  {onlineCount} Online
+                </span>
+              </h3>
+              <button onClick={fetchDevices} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <RefreshCw size={12} />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {uniqueDevices.map((dev) => (
+                <div
+                  key={dev.device_id}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border ${
                     dev.status === 'online'
-                      ? 'bg-emerald-500 animate-pulse'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'
                       : dev.status === 'idle'
-                      ? 'bg-amber-500'
-                      : 'bg-gray-400'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'
+                      : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-600'
                   }`}
-                />
-                <span>{dev.nama_asrama || 'Umum / All'}</span>
-                <span className="text-[10px] opacity-75">({dev.status})</span>
-              </div>
-            ))}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      dev.status === 'online'
+                        ? 'bg-emerald-500 animate-pulse'
+                        : dev.status === 'idle'
+                        ? 'bg-amber-500'
+                        : 'bg-gray-400'
+                    }`}
+                  />
+                  <span>{dev.nama_asrama || 'Semua Asrama'}</span>
+                  <span className="text-[10px] opacity-60">({dev.status})</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Success/Error */}
       {successMsg && (
