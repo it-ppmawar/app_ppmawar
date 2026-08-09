@@ -94,8 +94,24 @@ export async function POST(request: Request) {
       format_id,
       tujuan,
       teks_panggilan,
-      pengulangan = 2,
+      pengulangan = 1,
     } = body;
+
+    // Ambil bahasa & jenis_suara dari format (jika format_id diisi)
+    let bahasaPanggilan = 'id';
+    let jenisSuaraPanggilan = 'auto';
+    if (format_id) {
+      try {
+        const [fRows]: any = await pool.execute(
+          'SELECT bahasa, jenis_suara FROM format_panggilan WHERE id = ? LIMIT 1',
+          [format_id]
+        );
+        if (fRows.length > 0) {
+          bahasaPanggilan = fRows[0].bahasa || 'id';
+          jenisSuaraPanggilan = fRows[0].jenis_suara || 'auto';
+        }
+      } catch (_) {}
+    }
 
     if (!santri_id || !teks_panggilan) {
       return NextResponse.json({ error: 'santri_id dan teks_panggilan wajib diisi' }, { status: 400 });
@@ -140,8 +156,8 @@ export async function POST(request: Request) {
     const [result]: any = await pool.execute(
       `INSERT INTO panggilan_santri 
         (santri_id, santri_nama, santri_nama_panggilan, kamar_id, nama_kamar, nama_asrama, 
-         dipanggil_oleh, peran_pemanggil, nama_pemanggil, format_id, teks_panggilan, tujuan, pengulangan, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+         dipanggil_oleh, peran_pemanggil, nama_pemanggil, format_id, teks_panggilan, tujuan, pengulangan, bahasa, jenis_suara, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [
         santri.murid_id,
         santri.nama,
@@ -155,7 +171,9 @@ export async function POST(request: Request) {
         format_id || null,
         teks_panggilan,
         tujuan || null,
-        pengulangan || 2,
+        pengulangan ?? 1,
+        bahasaPanggilan,
+        jenisSuaraPanggilan,
       ]
     );
 

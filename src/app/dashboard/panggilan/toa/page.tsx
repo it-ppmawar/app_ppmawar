@@ -17,6 +17,8 @@ interface Panggilan {
   teks_panggilan: string;
   tujuan?: string;
   pengulangan?: number;
+  bahasa?: string;          // 'id' | 'ar' | 'jv' | 'en'
+  jenis_suara?: string;     // 'pria' | 'wanita' | 'auto'
   status?: string;
 }
 
@@ -79,24 +81,70 @@ class AudioQueue {
         return resolve();
       }
 
-      const repeat = Math.max(1, Math.min(p.pengulangan || 2, 5));
+      // Pengulangan: minimal 1, maksimal 5, default 1 jika tidak diset
+      const repeat = Math.max(1, Math.min(p.pengulangan ?? 1, 5));
       let count = 0;
+
+      // Map bahasa kode ke lang tag BCP-47 yang benar
+      const langMap: Record<string, string> = {
+        ar: 'ar-SA',  // Arab Saudi
+        en: 'en-US',  // English US
+        jv: 'id-ID',  // Jawa — pakai id-ID karena belum ada jv-ID di Web Speech API
+        id: 'id-ID',  // Indonesia
+      };
+      const targetLang = langMap[p.bahasa || 'id'] || 'id-ID';
+
+      // Cari suara yang paling sesuai
+      const pickVoice = (): SpeechSynthesisVoice | null => {
+        const voices = window.speechSynthesis.getVoices();
+        if (!voices.length) return null;
+
+        // Jika manual override dari settings UI, gunakan itu
+        const manualVoiceName = (window as any).__toa_voice;
+        if (manualVoiceName) {
+          const manual = voices.find(v => v.name === manualVoiceName);
+          if (manual) return manual;
+        }
+
+        // Kandidat suara sesuai bahasa (Arab: ar-*, ID/JV: id-*, EN: en-*)
+        const langPrefix = p.bahasa === 'ar' ? 'ar'
+          : p.bahasa === 'en' ? 'en'
+          : 'id'; // id dan jv sama-sama pakai id-*
+        const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
+        if (!candidates.length) return voices[0]; // fallback ke suara pertama
+
+        // Pilih berdasarkan jenis_suara
+        if (p.jenis_suara === 'pria') {
+          // Kata kunci umum untuk suara pria
+          const maleKw = ['male', 'man', 'laki', 'pria', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d', 'neural2-b', 'neural2-d'];
+          const male = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
+          if (male) return male;
+          // Fallback: ambil suara terakhir dari kandidat (biasanya pria jika ada dua)
+          return candidates[candidates.length - 1];
+        }
+
+        if (p.jenis_suara === 'wanita') {
+          const femaleKw = ['female', 'woman', 'perempuan', 'wanita', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c', 'neural2-a', 'neural2-c'];
+          const female = candidates.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
+          if (female) return female;
+          return candidates[0]; // biasanya suara pertama adalah perempuan
+        }
+
+        // 'auto' — ambil suara pertama sesuai bahasa
+        return candidates[0];
+      };
 
       window.speechSynthesis.cancel();
 
       const sayOnce = () => {
         const utter = new SpeechSynthesisUtterance(p.teks_panggilan);
-        utter.lang = 'id-ID';
+        utter.lang = targetLang;
         utter.rate = (window as any).__toa_rate ?? 0.88;
         utter.volume = (window as any).__toa_volume ?? 1.0;
         utter.pitch = 1.0;
 
-        // Pilih suara jika ada
-        const voiceName = (window as any).__toa_voice;
-        if (voiceName) {
-          const voice = window.speechSynthesis.getVoices().find(v => v.name === voiceName);
-          if (voice) utter.voice = voice;
-        }
+        const voice = pickVoice();
+        if (voice) utter.voice = voice;
 
         utter.onend = () => {
           count++;

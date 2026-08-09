@@ -17,6 +17,7 @@ interface Format {
   id: number;
   nama: string;
   bahasa: string;
+  jenis_suara: 'pria' | 'wanita' | 'auto';
   template: string;
 }
 
@@ -56,7 +57,7 @@ export default function PanggilanSantriPage() {
   const [selectedFormat, setSelectedFormat] = useState<Format | null>(null);
   const [tujuan, setTujuan] = useState('');
   const [teksPanggilan, setTeksPanggilan] = useState('');
-  const [pengulangan, setPengulangan] = useState(2);
+  const [pengulangan, setPengulangan] = useState(1);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
 
@@ -406,17 +407,27 @@ export default function PanggilanSantriPage() {
                 <ChevronDown size={16} className={`text-gray-400 transition-transform ${showFormatDropdown ? 'rotate-180' : ''}`} />
               </button>
               {showFormatDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl z-40 overflow-hidden">
-                  {formatList.map(f => (
-                    <button
-                      key={f.id}
-                      onClick={() => { setSelectedFormat(f); setShowFormatDropdown(false); }}
-                      className={`w-full flex flex-col items-start px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-left transition-colors border-b border-gray-50 dark:border-gray-700 last:border-0 ${selectedFormat?.id === f.id ? 'bg-orange-50 dark:bg-orange-900/20' : ''}`}
-                    >
-                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{f.nama}</span>
-                      <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate w-full">{f.template.substring(0, 60)}...</span>
-                    </button>
-                  ))}
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl z-50 max-h-72 overflow-y-auto">
+                  {formatList.map(f => {
+                    const bahasaFlag: Record<string, string> = { id: '🇮🇩', ar: '🇸🇦', jv: '☕', en: '🇬🇧' };
+                    const suaraIcon: Record<string, string> = { pria: '👨', wanita: '👩', auto: '🔊' };
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => { setSelectedFormat(f); setShowFormatDropdown(false); }}
+                        className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-left transition-colors border-b border-gray-50 dark:border-gray-700 last:border-0 ${selectedFormat?.id === f.id ? 'bg-orange-50 dark:bg-orange-900/20' : ''}`}
+                      >
+                        <div className="flex flex-col items-center gap-0.5 shrink-0 mt-0.5">
+                          <span className="text-base">{bahasaFlag[f.bahasa] || '🌐'}</span>
+                          <span className="text-[10px]">{suaraIcon[f.jenis_suara] || '🔊'}</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 block">{f.nama}</span>
+                          <span className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-1">{f.template.substring(0, 65)}...</span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
