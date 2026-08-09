@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CalendarCheck, Clock, BookOpen, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, QrCode, Brain, ScanFace } from 'lucide-react';
+import { CalendarCheck, Clock, BookOpen, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, QrCode, Brain, Lock, LockOpen, CheckCircle, Hourglass } from 'lucide-react';
 import Link from 'next/link';
 
 type TipeFilter = 'semua' | 'quran' | 'madin' | 'kegiatan';
+type StatusFilter = 'semua' | 'terkunci' | 'terbuka' | 'selesai' | 'tertutup';
 
 export default function InputAbsenPage() {
   const [schedules, setSchedules] = useState<any[]>([]);
@@ -13,6 +14,7 @@ export default function InputAbsenPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [role, setRole] = useState<string>('');
   const [filter, setFilter] = useState<TipeFilter>('semua');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('semua');
 
   useEffect(() => {
     const fetchSchedules = async () => {
@@ -50,10 +52,33 @@ export default function InputAbsenPage() {
   const countByTipe = (tipe: string) => schedules.filter(s => s.tipe === tipe).length;
   const tipeAda = new Set<string>(schedules.map(s => s.tipe));
 
-  // Jadwal yang ditampilkan sesuai filter
-  const filteredSchedules = filter === 'semua'
+  // Helper penentu kategori status kartu absensi
+  const getStatusCategory = (sched: any): StatusFilter => {
+    const isAktif = sched.status === 'aktif';
+    const isSelesai = sched.status === 'selesai';
+    const sudahAbsen = sched.sudah_absen === true;
+
+    if (sudahAbsen) return 'selesai';
+    if (isAktif) return 'terbuka';
+    if (isSelesai) return 'tertutup';
+    return 'terkunci';
+  };
+
+  // Filter 1: Sesuai Tipe Kelas
+  const filteredSchedulesByTipe = filter === 'semua'
     ? schedules
     : schedules.filter(s => s.tipe === filter);
+
+  // Filter 2: Sesuai Status Kartu Absensi
+  const finalSchedules = statusFilter === 'semua'
+    ? filteredSchedulesByTipe
+    : filteredSchedulesByTipe.filter(s => getStatusCategory(s) === statusFilter);
+
+  // Hitung jumlah per status berdasarkan tipe yang sedang dipilih
+  const countByStatus = (st: StatusFilter) => {
+    if (st === 'semua') return filteredSchedulesByTipe.length;
+    return filteredSchedulesByTipe.filter(s => getStatusCategory(s) === st).length;
+  };
 
   // Label tipe
   const tipeLabel: Record<string, string> = {
@@ -144,10 +169,10 @@ export default function InputAbsenPage() {
         </div>
       ) : (
         <>
-          {/* Filter Tab — hanya tampil jika ada lebih dari 1 tipe */}
+          {/* TAB TIPE KELAS */}
           {tipeAda.size > 1 && (
             <div className="flex flex-col gap-2 w-full">
-              {/* Semua — Baris tersendiri di atas, memanjang memenuhi sisi kanan kiri */}
+              {/* Semua — Baris tersendiri di atas */}
               <div className="bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full">
                 <button
                   onClick={() => setFilter('semua')}
@@ -164,9 +189,8 @@ export default function InputAbsenPage() {
                 </button>
               </div>
 
-              {/* Tipe lainnya (Qur'an, Madin, Kegiatan Asrama) */}
+              {/* Tipe kelas berdampingan */}
               <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto scrollbar-none gap-1.5 w-full">
-                {/* Quran */}
                 {tipeAda.has('quran') && (
                   <button
                     onClick={() => setFilter('quran')}
@@ -183,7 +207,6 @@ export default function InputAbsenPage() {
                   </button>
                 )}
 
-                {/* Madin */}
                 {tipeAda.has('madin') && (
                   <button
                     onClick={() => setFilter('madin')}
@@ -200,7 +223,6 @@ export default function InputAbsenPage() {
                   </button>
                 )}
 
-                {/* Kegiatan */}
                 {tipeAda.has('kegiatan') && (
                   <button
                     onClick={() => setFilter('kegiatan')}
@@ -220,94 +242,187 @@ export default function InputAbsenPage() {
             </div>
           )}
 
-          {/* Daftar Jadwal */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredSchedules.map((sched) => {
-              const isAktif = sched.status === 'aktif';
-              const isSelesai = sched.status === 'selesai';
-              const sudahAbsen = sched.sudah_absen === true;
+          {/* ====== TAB STATUS KARTU ABSENSI ====== */}
+          <div className="flex flex-col gap-2 w-full pt-1">
+            {/* Semua Status — Baris tersendiri di atas */}
+            <div className="bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full">
+              <button
+                onClick={() => setStatusFilter('semua')}
+                className={`w-full flex items-center justify-center gap-2 px-6 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                  statusFilter === 'semua'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                Semua Status
+                <span className={`text-[10px] px-3 py-0.5 rounded-full font-extrabold transition-colors ${
+                  statusFilter === 'semua' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                }`}>{countByStatus('semua')}</span>
+              </button>
+            </div>
 
-              const badgeTipe: Record<string, string> = {
-                quran: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-                madin: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
-                kegiatan: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
-              };
+            {/* Sub-Tab Tiap Status (Berdampingan / scrollable horizontal) */}
+            <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto scrollbar-none gap-1.5 w-full">
+              {/* Terkunci (Belum waktunya) */}
+              <button
+                onClick={() => setStatusFilter('terkunci')}
+                className={`flex-1 min-w-[130px] flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                  statusFilter === 'terkunci'
+                    ? 'bg-amber-500 text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                <Lock size={13} />
+                <span>Terkunci</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold transition-colors ${
+                  statusFilter === 'terkunci' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                }`}>{countByStatus('terkunci')}</span>
+              </button>
 
-              const cardContent = (
-                <div className={`p-5 rounded-2xl border transition-all ${
-                  isAktif
-                    ? `${sudahAbsen ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'} hover:shadow-md cursor-pointer group`
-                    : isSelesai
-                      ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-75 cursor-not-allowed'
-                      : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 opacity-75 cursor-not-allowed'
-                }`}>
-                  <div className="flex justify-between items-start mb-3 gap-2 flex-wrap">
-                    <div className="flex flex-col gap-1.5">
-                      <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg flex items-center gap-1.5 w-max ${
-                        isAktif
-                          ? sudahAbsen
-                            ? 'bg-green-600 text-white'
-                            : 'bg-blue-600 text-white animate-pulse'
-                          : isSelesai
-                            ? 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                            : 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400'
-                      }`}>
-                        {isAktif ? (sudahAbsen ? <CheckCircle2 size={12} /> : <Clock size={12} className="animate-spin-slow" />) : <Clock size={12} />}
-                        {isAktif ? (sudahAbsen ? 'SUDAH DIISI' : 'BISA DIISI SEKARANG') : isSelesai ? 'WAKTU HABIS' : 'BELUM WAKTUNYA'}
-                      </span>
-                      {/* Badge tipe */}
-                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md w-max ${badgeTipe[sched.tipe] || ''}`}>
-                        {tipeLabel[sched.tipe] || sched.tipe}
-                      </span>
-                    </div>
-                    <span className="text-xs font-mono font-bold text-gray-500 dark:text-gray-400 shrink-0">
-                      {sched.jam_mulai.substring(0, 5)} - {sched.jam_selesai.substring(0, 5)}
-                    </span>
-                  </div>
+              {/* Terbuka (Bisa diisi sekarang) */}
+              <button
+                onClick={() => setStatusFilter('terbuka')}
+                className={`flex-1 min-w-[130px] flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                  statusFilter === 'terbuka'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                <LockOpen size={13} />
+                <span>Terbuka</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold transition-colors ${
+                  statusFilter === 'terbuka' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                }`}>{countByStatus('terbuka')}</span>
+              </button>
 
-                  <h3 className={`text-lg font-bold mb-1 transition-colors ${
-                    isAktif
-                      ? sudahAbsen
-                        ? 'text-green-800 dark:text-green-300 group-hover:text-green-600'
-                        : 'text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400'
-                      : 'text-gray-500 dark:text-gray-400'
-                  }`}>
-                    {sched.mata_pelajaran || 'Mata Pelajaran'}
-                  </h3>
+              {/* Selesai (Sudah diisi) */}
+              <button
+                onClick={() => setStatusFilter('selesai')}
+                className={`flex-1 min-w-[130px] flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                  statusFilter === 'selesai'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                <CheckCircle size={13} />
+                <span>Selesai</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold transition-colors ${
+                  statusFilter === 'selesai' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                }`}>{countByStatus('selesai')}</span>
+              </button>
 
-                  <div className="flex items-center gap-4 text-xs font-semibold mt-4">
-                    <div className={`flex items-center gap-1.5 ${isAktif ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400'}`}>
-                      <BookOpen size={14} className={sched.tipe === 'madin' ? 'text-teal-500' : sched.tipe === 'kegiatan' ? 'text-purple-500' : 'text-emerald-500'} />
-                      <span>{sched.nama_kelas}</span>
-                    </div>
-                    {isAktif ? (
-                      <div className={`flex items-center gap-1.5 ml-auto font-bold ${sudahAbsen ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                        {sudahAbsen ? 'Perbarui Absensi' : 'Input Absen'}
-                        <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    ) : (
-                      <div className="ml-auto text-gray-400 italic">
-                        {isSelesai ? (sudahAbsen ? <span className="text-green-500 not-italic flex items-center gap-1"><CheckCircle2 size={12} /> Selesai & Terisi</span> : 'Ditutup') : 'Terkunci'}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-
-              return isAktif ? (
-                <Link
-                  href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${sched.kelas_id}&jadwal_id=${sched.jadwal_id}`}
-                  key={`${sched.tipe}-${sched.jadwal_id}`}
-                >
-                  {cardContent}
-                </Link>
-              ) : (
-                <div key={`${sched.tipe}-${sched.jadwal_id}`}>
-                  {cardContent}
-                </div>
-              );
-            })}
+              {/* Tertutup (Waktu habis) */}
+              <button
+                onClick={() => setStatusFilter('tertutup')}
+                className={`flex-1 min-w-[130px] flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+                  statusFilter === 'tertutup'
+                    ? 'bg-gray-600 text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                <Hourglass size={13} />
+                <span>Tertutup</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold transition-colors ${
+                  statusFilter === 'tertutup' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                }`}>{countByStatus('tertutup')}</span>
+              </button>
+            </div>
           </div>
+
+          {/* Daftar Jadwal */}
+          {finalSchedules.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 border border-gray-100 dark:border-gray-700 shadow-sm text-center">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Tidak ada jadwal dengan status ini.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {finalSchedules.map((sched) => {
+                const isAktif = sched.status === 'aktif';
+                const isSelesai = sched.status === 'selesai';
+                const sudahAbsen = sched.sudah_absen === true;
+
+                const badgeTipe: Record<string, string> = {
+                  quran: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+                  madin: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+                  kegiatan: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+                };
+
+                const cardContent = (
+                  <div className={`p-5 rounded-2xl border transition-all ${
+                    isAktif
+                      ? `${sudahAbsen ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'} hover:shadow-md cursor-pointer group`
+                      : isSelesai
+                        ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-75 cursor-not-allowed'
+                        : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 opacity-75 cursor-not-allowed'
+                  }`}>
+                    <div className="flex justify-between items-start mb-3 gap-2 flex-wrap">
+                      <div className="flex flex-col gap-1.5">
+                        <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg flex items-center gap-1.5 w-max ${
+                          isAktif
+                            ? sudahAbsen
+                              ? 'bg-green-600 text-white'
+                              : 'bg-blue-600 text-white animate-pulse'
+                            : isSelesai
+                              ? 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                              : 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400'
+                        }`}>
+                          {isAktif ? (sudahAbsen ? <CheckCircle2 size={12} /> : <Clock size={12} className="animate-spin-slow" />) : <Clock size={12} />}
+                          {isAktif ? (sudahAbsen ? 'SUDAH DIISI' : 'BISA DIISI SEKARANG') : isSelesai ? 'WAKTU HABIS' : 'BELUM WAKTUNYA'}
+                        </span>
+                        {/* Badge tipe */}
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md w-max ${badgeTipe[sched.tipe] || ''}`}>
+                          {tipeLabel[sched.tipe] || sched.tipe}
+                        </span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                        {sched.jam_mulai.substring(0, 5)} - {sched.jam_selesai.substring(0, 5)}
+                      </span>
+                    </div>
+
+                    <h3 className={`text-lg font-bold mb-1 transition-colors ${
+                      isAktif
+                        ? sudahAbsen
+                          ? 'text-green-800 dark:text-green-300 group-hover:text-green-600'
+                          : 'text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400'
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`}>
+                      {sched.mata_pelajaran || 'Mata Pelajaran'}
+                    </h3>
+
+                    <div className="flex items-center gap-4 text-xs font-semibold mt-4">
+                      <div className={`flex items-center gap-1.5 ${isAktif ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400'}`}>
+                        <BookOpen size={14} className={sched.tipe === 'madin' ? 'text-teal-500' : sched.tipe === 'kegiatan' ? 'text-purple-500' : 'text-emerald-500'} />
+                        <span>{sched.nama_kelas}</span>
+                      </div>
+                      {isAktif ? (
+                        <div className={`flex items-center gap-1.5 ml-auto font-bold ${sudahAbsen ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                          {sudahAbsen ? 'Perbarui Absensi' : 'Input Absen'}
+                          <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      ) : (
+                        <div className="ml-auto text-gray-400 italic">
+                          {isSelesai ? (sudahAbsen ? <span className="text-green-500 not-italic flex items-center gap-1"><CheckCircle2 size={12} /> Selesai & Terisi</span> : 'Ditutup') : 'Terkunci'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+
+                return isAktif ? (
+                  <Link
+                    href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${sched.kelas_id}&jadwal_id=${sched.jadwal_id}`}
+                    key={`${sched.tipe}-${sched.jadwal_id}`}
+                  >
+                    {cardContent}
+                  </Link>
+                ) : (
+                  <div key={`${sched.tipe}-${sched.jadwal_id}`}>
+                    {cardContent}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </>
       )}
     </div>

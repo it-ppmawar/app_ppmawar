@@ -29,7 +29,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Jadwal', href: '/dashboard/jadwal', icon: CalendarDays },
     ...(user?.role !== 'wali_murid' && user?.role !== 'wali_alumni' && user?.role !== 'tamu' ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
     ...(user?.role !== 'tamu' ? [{ name: 'Notifikasi', href: '/dashboard/notifikasi', icon: Bell }] : []),
-    ...(['admin', 'staff'].includes(user?.role) ? [{ name: 'Audit Log', href: '/dashboard/audit', icon: Shield }] : []),
     { name: 'Profil', href: '/dashboard/profil', icon: User },
   ];
 
@@ -682,6 +681,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <li>
                   <Link href="/dashboard/notifikasi" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/notifikasi' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
                     <MessageSquare size={18} /> <span className="text-sm">Notifikasi & WhatsApp</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/dashboard/audit" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/audit' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
+                    <Shield size={18} /> <span className="text-sm">Audit Log</span>
                   </Link>
                 </li>
                 <li>
