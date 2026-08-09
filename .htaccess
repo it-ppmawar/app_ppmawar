@@ -1,6 +1,7 @@
 # DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
-PassengerAppRoot "."
+PassengerAppRoot "/home/ppmawaro/app.ppmawar.or.id"
 PassengerBaseURI "/"
+PassengerNodejs "/home/ppmawaro/nodevenv/app.ppmawar.or.id/20/bin/node"
 PassengerAppType node
 PassengerStartupFile server.js
 # DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
@@ -8,3 +9,4 @@ PassengerStartupFile server.js
 # Enable Passenger / LiteSpeed Node.js Handler
 DirectoryIndex disabled
 Options -Indexes
+
