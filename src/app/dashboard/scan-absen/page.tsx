@@ -868,7 +868,7 @@ function ScanAbsenInner() {
 
                 {/* DETECTED RESULT — popup overlay */}
                 {faceStatus === 'detected' && detectResult && (
-                  <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out] pb-8 px-4">
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out] px-4">
                     <div className="w-full max-w-sm bg-gradient-to-b from-emerald-950 to-teal-950 border border-emerald-500 rounded-3xl shadow-2xl p-6 space-y-5 animate-[slideUp_0.3s_ease-out]">
                       <div className="text-center space-y-2">
                         <div className="flex justify-center">
