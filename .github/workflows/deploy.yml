@@ -86,8 +86,14 @@ jobs:
       - name: Trigger Remote Unzip on cPanel
         run: |
           echo "⚡ Triggering remote unzip script..."
-          curl -s -k "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026"
+          RESPONSE=$(curl -s -k "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026")
+          echo "$RESPONSE"
+          if [[ "$RESPONSE" == *"404"* ]] || [[ "$RESPONSE" == *"403"* ]]; then
+            echo "Retrying via /public/unzip.php..."
+            curl -s -k "https://app.ppmawar.or.id/public/unzip.php?key=ppmawar_deploy_2026"
+          fi
           echo ""
           echo "✅ Deployment triggered successfully!"
+
 
 
