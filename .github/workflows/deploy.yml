@@ -70,7 +70,24 @@ jobs:
           echo "=== ZIP Bundle Prepared ==="
           ls -lh upload_bundle/
 
-      - name: Upload ZIP Bundle to cPanel via FTP
+      - name: Upload ZIP Bundle to cPanel via FTP (Attempt 1)
+        id: ftp1
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        continue-on-error: true
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./upload_bundle/
+          server-dir: ${{ secrets.FTP_TARGET_DIR }}
+          dangerous-clean-slate: false
+          log-level: minimal
+          protocol: ftp
+          security: loose
+          timeout: 600000
+
+      - name: Retry Upload ZIP Bundle via FTP (Attempt 2)
+        if: steps.ftp1.outcome != 'success'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
