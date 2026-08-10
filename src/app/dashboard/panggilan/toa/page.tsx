@@ -360,8 +360,9 @@ function TOAContent() {
           </div>
           <div>
             <h1 className="font-black text-base leading-tight">Sistem TOA — PPMA</h1>
-            <p className="text-[11px] text-gray-400">
-              {asrama ? `Asrama: ${asrama}` : 'Semua Asrama'} · {totalToday} panggilan hari ini
+            <p className="text-[11px] text-gray-400 leading-relaxed">
+              {asrama ? `Asrama: ${asrama}` : 'Semua Asrama'}<br />
+              {totalToday} panggilan hari ini
             </p>
           </div>
         </div>
