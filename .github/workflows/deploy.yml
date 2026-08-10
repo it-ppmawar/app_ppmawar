@@ -20,7 +20,7 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Code
@@ -70,8 +70,27 @@ jobs:
           echo "=== ZIP Bundle Prepared ==="
           ls -lh upload_bundle/
 
-      - name: Upload ZIP Bundle to cPanel via FTP (Attempt 1)
+      # ── Attempt 1: FTPS (FTP over TLS, port 21 implicit TLS) ──────────────
+      - name: Upload via FTPS – Attempt 1
         id: ftp1
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        continue-on-error: true
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./upload_bundle/
+          server-dir: ${{ secrets.FTP_TARGET_DIR }}
+          dangerous-clean-slate: false
+          log-level: minimal
+          protocol: ftps          # TLS-secured, still port 21
+          security: strict
+          timeout: 600000
+
+      # ── Attempt 2: plain FTP loose (fallback jika FTPS gagal) ─────────────
+      - name: Upload via FTP – Attempt 2 (fallback loose)
+        id: ftp2
+        if: steps.ftp1.outcome != 'success'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         continue-on-error: true
         with:
@@ -86,32 +105,40 @@ jobs:
           security: loose
           timeout: 600000
 
-      - name: Retry Upload ZIP Bundle via FTP (Attempt 2)
-        if: steps.ftp1.outcome != 'success'
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./upload_bundle/
-          server-dir: ${{ secrets.FTP_TARGET_DIR }}
-          dangerous-clean-slate: false
-          log-level: minimal
-          protocol: ftp
-          security: loose
-          timeout: 600000
+      # ── Attempt 3: lftp via passive mode (fallback terakhir) ───────────────
+      - name: Install lftp
+        if: steps.ftp1.outcome != 'success' && steps.ftp2.outcome != 'success'
+        run: sudo apt-get install -y lftp
+
+      - name: Upload via lftp passive – Attempt 3 (last resort)
+        if: steps.ftp1.outcome != 'success' && steps.ftp2.outcome != 'success'
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USER: ${{ secrets.FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.FTP_PASSWORD }}
+          FTP_DIR: ${{ secrets.FTP_TARGET_DIR }}
+        run: |
+          echo "⚡ Trying lftp passive mode upload..."
+          lftp -u "$FTP_USER","$FTP_PASS" "$FTP_SERVER" <<EOF
+          set ftp:passive-mode true
+          set ftp:ssl-allow true
+          set ftp:ssl-force false
+          set net:timeout 120
+          set net:max-retries 5
+          set net:reconnect-interval-base 5
+          mirror -R --verbose --no-recursion upload_bundle/ $FTP_DIR
+          bye
+          EOF
+          echo "✅ lftp upload selesai"
 
       - name: Trigger Remote Unzip on cPanel
         run: |
           echo "⚡ Triggering remote unzip script..."
-          RESPONSE=$(curl -s -k "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026")
+          RESPONSE=$(curl -s -k --max-time 60 "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026")
           echo "$RESPONSE"
           if [[ "$RESPONSE" == *"404"* ]] || [[ "$RESPONSE" == *"403"* ]]; then
             echo "Retrying via /public/unzip.php..."
-            curl -s -k "https://app.ppmawar.or.id/public/unzip.php?key=ppmawar_deploy_2026"
+            curl -s -k --max-time 60 "https://app.ppmawar.or.id/public/unzip.php?key=ppmawar_deploy_2026"
           fi
           echo ""
           echo "✅ Deployment triggered successfully!"
-
-
-
