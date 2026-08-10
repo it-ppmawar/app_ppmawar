@@ -230,7 +230,7 @@ function QuickAbsenContent() {
       msg += `📷 *Foto Kehadiran:* ${uploadedPhotoUrl}\n\n`;
     }
 
-    msg += `_Diinput via Quick Absen Online PPMA_\n_https://app.ppmawar.or.id_`;
+    msg += `_Diinput via Pintasan Absen Online PPMA_\n_https://app.ppmawar.or.id_`;
     return msg;
   };
 
@@ -302,10 +302,14 @@ function QuickAbsenContent() {
       return;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // Timeout 15 detik
+
     fetch('/api/absen/quick-verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token })
+      body: JSON.stringify({ token }),
+      signal: controller.signal
     })
       .then(res => res.json())
       .then(res => {
@@ -322,9 +326,21 @@ function QuickAbsenContent() {
         }
       })
       .catch(err => {
-        setError('Gagal menghubungkan ke server: ' + err.message);
+        if (err.name === 'AbortError') {
+          setError('Koneksi terlalu lambat atau server tidak merespons. Coba muat ulang halaman.');
+        } else {
+          setError('Gagal menghubungkan ke server: ' + err.message);
+        }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        clearTimeout(timeoutId);
+        setLoading(false);
+      });
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [token]);
 
   const setAllStatus = (status: string) => {
@@ -883,9 +899,40 @@ function QuickAbsenContent() {
   );
 }
 
+function QuickAbsenFallback() {
+  const [showReload, setShowReload] = useState(false);
+
+  useEffect(() => {
+    // Jika loading lebih dari 8 detik, tampilkan tombol reload
+    const timer = setTimeout(() => setShowReload(true), 8000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 gap-4">
+      <Loader2 className="w-12 h-12 text-emerald-400 animate-spin" />
+      <div className="text-center">
+        <p className="text-emerald-200 font-semibold text-base">Memuat Halaman Absensi...</p>
+        <p className="text-slate-500 text-xs mt-1">PP. Matholi&apos;ul Anwar</p>
+      </div>
+      {showReload && (
+        <div className="text-center mt-2">
+          <p className="text-slate-400 text-xs mb-3">Memuat terlalu lama? Coba muat ulang halaman.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl transition active:scale-95"
+          >
+            🔄 Muat Ulang
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function QuickAbsenPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={<QuickAbsenFallback />}>
       <QuickAbsenContent />
     </Suspense>
   );

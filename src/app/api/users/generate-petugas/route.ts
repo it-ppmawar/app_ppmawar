@@ -70,9 +70,22 @@ export async function POST(request: Request) {
       }
     }
 
+    // Hitung total akun petugas yang ada di database saat ini
+    const [totalRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT COUNT(*) as total FROM users WHERE role LIKE 'petugas%'`
+    );
+    const totalPetugas = totalRows[0]?.total || 0;
+
+    let message = '';
+    if (createdCount > 0) {
+      message = `Berhasil men-generate ${createdCount} akun petugas khusus asrama baru (Inventaris & Kebersihan). Password default: asrama123`;
+    } else {
+      message = `Seluruh akun petugas khusus asrama sudah terdaftar sebelumnya di database (${totalPetugas} akun petugas aktif). Password default: asrama123`;
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Berhasil men-generate ${createdCount} akun petugas khusus asrama (Inventaris & Kebersihan). Password default: asrama123`
+      message
     });
   } catch (error: any) {
     console.error('Error API generate-petugas:', error.message);

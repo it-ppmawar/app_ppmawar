@@ -47,7 +47,7 @@ const cinzel = Cinzel({
 
 export const metadata: Metadata = {
   title: "App PP. Matholi'ul Anwar",
-  description: "Sistem Absensi Online PP. Matholi'ul Anwar",
+  description: "Sistem Aplikasi Layanan Akademik PP. Matholi'ul Anwar",
   manifest: "/manifest.json",
   icons: {
     icon: [
