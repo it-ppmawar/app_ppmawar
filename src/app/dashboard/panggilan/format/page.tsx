@@ -146,23 +146,33 @@ export default function FormatPanggilanPage() {
 
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(preview);
-    const bahasaInfo = getBahasaInfo(bahasa);
-    utter.lang = bahasaInfo.voiceLang;
     utter.rate = 0.88;
 
-    // Pilih suara sesuai jenis_suara
     const voices = window.speechSynthesis.getVoices();
-    const langVoices = voices.filter(v => v.lang.startsWith(bahasa === 'jv' ? 'id' : bahasa));
-    if (jenisSuara !== 'auto' && langVoices.length > 0) {
-      const genderKeywords = jenisSuara === 'pria'
-        ? ['male', 'man', 'pria', 'laki', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d']
-        : ['female', 'woman', 'wanita', 'perempuan', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c'];
-      const matched = langVoices.find(v =>
-        genderKeywords.some(kw => v.name.toLowerCase().includes(kw))
-      );
-      if (matched) utter.voice = matched;
-    } else if (langVoices[0]) {
-      utter.voice = langVoices[0];
+    const maleKw = ['andika', 'pria', 'male', 'man', 'laki', 'idm', 'idc', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d', 'david', 'george'];
+    const femaleKw = ['gadis', 'wanita', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c', 'zira'];
+
+    const isArabicScript = /[\u0600-\u06FF]/.test(preview);
+    const langPrefix = (isArabicScript && bahasa === 'ar') ? 'ar' : 'id';
+    utter.lang = (isArabicScript && bahasa === 'ar') ? 'ar-SA' : 'id-ID';
+
+    const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
+    const pool = candidates.length ? candidates : voices;
+
+    if (jenisSuara === 'pria') {
+      utter.pitch = 0.8;
+      const maleVoice = pool.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
+      if (maleVoice) utter.voice = maleVoice;
+      else if (candidates.length > 1) utter.voice = candidates[candidates.length - 1];
+      else if (pool.length > 0) utter.voice = pool[0];
+    } else if (jenisSuara === 'wanita') {
+      utter.pitch = 1.15;
+      const femaleVoice = pool.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
+      if (femaleVoice) utter.voice = femaleVoice;
+      else if (pool.length > 0) utter.voice = pool[0];
+    } else {
+      utter.pitch = 1.0;
+      if (pool.length > 0) utter.voice = pool[0];
     }
 
     window.speechSynthesis.speak(utter);

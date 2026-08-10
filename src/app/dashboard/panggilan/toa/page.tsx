@@ -81,57 +81,60 @@ class AudioQueue {
         return resolve();
       }
 
-      // Pengulangan: minimal 1, maksimal 5, default 1 jika tidak diset
       const repeat = Math.max(1, Math.min(p.pengulangan ?? 1, 5));
       let count = 0;
 
-      // Map bahasa kode ke lang tag BCP-47 yang benar
-      const langMap: Record<string, string> = {
-        ar: 'ar-SA',  // Arab Saudi
-        en: 'en-US',  // English US
-        jv: 'id-ID',  // Jawa — pakai id-ID karena belum ada jv-ID di Web Speech API
-        id: 'id-ID',  // Indonesia
-      };
-      const targetLang = langMap[p.bahasa || 'id'] || 'id-ID';
+      // Cek apakah ada manual override dari settings UI (preset / voice name)
+      const manualVoiceName = (window as any).__toa_voice || '';
+      let reqBahasa = p.bahasa || 'id';
+      let reqJenis = p.jenis_suara || 'auto';
 
-      // Cari suara yang paling sesuai
-      const pickVoice = (): SpeechSynthesisVoice | null => {
+      if (manualVoiceName.startsWith('preset:')) {
+        const parts = manualVoiceName.split(':');
+        if (parts[1]) reqBahasa = parts[1];
+        if (parts[2]) reqJenis = parts[2];
+      }
+
+      const isArabicScript = /[\u0600-\u06FF]/.test(p.teks_panggilan);
+      const targetLang = (isArabicScript && reqBahasa === 'ar') ? 'ar-SA' : 'id-ID';
+
+      const pickVoiceAndPitch = (): { voice: SpeechSynthesisVoice | null; pitch: number } => {
         const voices = window.speechSynthesis.getVoices();
-        if (!voices.length) return null;
+        if (!voices.length) {
+          const pitch = reqJenis === 'pria' ? 0.8 : reqJenis === 'wanita' ? 1.15 : 1.0;
+          return { voice: null, pitch };
+        }
 
-        // Jika manual override dari settings UI, gunakan itu
-        const manualVoiceName = (window as any).__toa_voice;
-        if (manualVoiceName) {
+        // Jika manual override adalah nama spesifik suara browser (bukan preset)
+        if (manualVoiceName && !manualVoiceName.startsWith('preset:')) {
           const manual = voices.find(v => v.name === manualVoiceName);
-          if (manual) return manual;
+          if (manual) {
+            const pitch = reqJenis === 'pria' ? 0.8 : reqJenis === 'wanita' ? 1.15 : 1.0;
+            return { voice: manual, pitch };
+          }
         }
 
-        // Kandidat suara sesuai bahasa (Arab: ar-*, ID/JV: id-*, EN: en-*)
-        const langPrefix = p.bahasa === 'ar' ? 'ar'
-          : p.bahasa === 'en' ? 'en'
-          : 'id'; // id dan jv sama-sama pakai id-*
+        // Kata kunci pencarian gender
+        const maleKw = ['andika', 'pria', 'male', 'man', 'laki', 'idm', 'idc', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d', 'david', 'george'];
+        const femaleKw = ['gadis', 'wanita', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c', 'zira'];
+
+        const langPrefix = (isArabicScript && reqBahasa === 'ar') ? 'ar' : 'id';
         const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
-        if (!candidates.length) return voices[0]; // fallback ke suara pertama
+        const pool = candidates.length ? candidates : voices;
 
-        // Pilih berdasarkan jenis_suara
-        if (p.jenis_suara === 'pria') {
-          // Kata kunci umum untuk suara pria
-          const maleKw = ['male', 'man', 'laki', 'pria', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d', 'neural2-b', 'neural2-d'];
-          const male = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
-          if (male) return male;
-          // Fallback: ambil suara terakhir dari kandidat (biasanya pria jika ada dua)
-          return candidates[candidates.length - 1];
+        if (reqJenis === 'pria') {
+          const maleVoice = pool.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
+          const finalVoice = maleVoice || (candidates.length > 1 ? candidates[candidates.length - 1] : pool[0]);
+          return { voice: finalVoice, pitch: 0.8 };
         }
 
-        if (p.jenis_suara === 'wanita') {
-          const femaleKw = ['female', 'woman', 'perempuan', 'wanita', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c', 'neural2-a', 'neural2-c'];
-          const female = candidates.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
-          if (female) return female;
-          return candidates[0]; // biasanya suara pertama adalah perempuan
+        if (reqJenis === 'wanita') {
+          const femaleVoice = pool.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
+          const finalVoice = femaleVoice || pool[0];
+          return { voice: finalVoice, pitch: 1.15 };
         }
 
-        // 'auto' — ambil suara pertama sesuai bahasa
-        return candidates[0];
+        return { voice: pool[0], pitch: 1.0 };
       };
 
       window.speechSynthesis.cancel();
@@ -141,9 +144,9 @@ class AudioQueue {
         utter.lang = targetLang;
         utter.rate = (window as any).__toa_rate ?? 0.88;
         utter.volume = (window as any).__toa_volume ?? 1.0;
-        utter.pitch = 1.0;
 
-        const voice = pickVoice();
+        const { voice, pitch } = pickVoiceAndPitch();
+        utter.pitch = pitch;
         if (voice) utter.voice = voice;
 
         utter.onend = () => {
@@ -332,11 +335,22 @@ function TOAContent() {
   }, [asrama]);
 
   const handleTest = () => {
+    let testBahasa = 'id';
+    let testJenis = 'auto';
+
+    if (selectedVoice.startsWith('preset:')) {
+      const parts = selectedVoice.split(':');
+      if (parts[1]) testBahasa = parts[1];
+      if (parts[2]) testJenis = parts[2];
+    }
+
     const testPanggilan: Panggilan = {
       id: -1,
       santri_nama: 'Tes Sistem',
       teks_panggilan: 'Tes sistem panggilan. Assalamualaikum warahmatullahi wabarakatuh. Sistem panggilan santri siap digunakan.',
       pengulangan: 1,
+      bahasa: testBahasa,
+      jenis_suara: testJenis,
     };
     audioQueueRef.current?.push(testPanggilan);
   };
