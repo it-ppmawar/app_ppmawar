@@ -149,30 +149,35 @@ export default function FormatPanggilanPage() {
     utter.rate = 0.88;
 
     const voices = window.speechSynthesis.getVoices();
-    const maleKw = ['andika', 'pria', 'male', 'man', 'laki', 'idm', 'idc', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d', 'david', 'george'];
-    const femaleKw = ['gadis', 'wanita', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c', 'zira'];
+    const maleKw = ['andika', 'pria', 'male', 'man', 'laki', 'idm', 'idc', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
+    const femaleKw = ['gadis', 'wanita', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c'];
 
     const isArabicScript = /[\u0600-\u06FF]/.test(preview);
-    const langPrefix = (isArabicScript && bahasa === 'ar') ? 'ar' : 'id';
-    utter.lang = (isArabicScript && bahasa === 'ar') ? 'ar-SA' : 'id-ID';
+    const targetLang = (isArabicScript && bahasa === 'ar') ? 'ar-SA' : (bahasa === 'en' ? 'en-US' : 'id-ID');
+    const langPrefix = (isArabicScript && bahasa === 'ar') ? 'ar' : (bahasa === 'en' ? 'en' : 'id');
 
+    utter.lang = targetLang;
+
+    // Filter HANYA suara yang bahasanya cocok
     const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
-    const pool = candidates.length ? candidates : voices;
 
     if (jenisSuara === 'pria') {
       utter.pitch = 0.8;
-      const maleVoice = pool.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
-      if (maleVoice) utter.voice = maleVoice;
-      else if (candidates.length > 1) utter.voice = candidates[candidates.length - 1];
-      else if (pool.length > 0) utter.voice = pool[0];
+      if (candidates.length > 0) {
+        const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
+        utter.voice = maleVoice || (candidates.length > 1 ? candidates[candidates.length - 1] : candidates[0]);
+      }
+      // Jika tidak ada candidate id-ID, JANGAN set utter.voice ke suara Inggris (David)!
+      // Biarkan utter.voice = null agar browser menggunakan mesin sintetis id-ID bawaan OS.
     } else if (jenisSuara === 'wanita') {
       utter.pitch = 1.15;
-      const femaleVoice = pool.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
-      if (femaleVoice) utter.voice = femaleVoice;
-      else if (pool.length > 0) utter.voice = pool[0];
+      if (candidates.length > 0) {
+        const femaleVoice = candidates.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
+        utter.voice = femaleVoice || candidates[0];
+      }
     } else {
       utter.pitch = 1.0;
-      if (pool.length > 0) utter.voice = pool[0];
+      if (candidates.length > 0) utter.voice = candidates[0];
     }
 
     window.speechSynthesis.speak(utter);

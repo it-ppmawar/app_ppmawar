@@ -68,6 +68,22 @@ export async function POST(request: Request) {
           console.error(`Gagal membuat akun ${usernameKeb}:`, e.message);
         }
       }
+
+      // 3. Petugas Pemanggilan Santri Asrama
+      const usernamePang = `petugas_panggilan_asrama_${suffix}`;
+      const namaPang = `Petugas Pemanggilan ${namaAsrama}`;
+
+      try {
+        await pool.execute(
+          `INSERT INTO users (username, password, role, nama, asrama) VALUES (?, ?, 'petugas_panggilan', ?, ?)`,
+          [usernamePang, passwordHash, namaPang, namaAsrama]
+        );
+        createdCount++;
+      } catch (e: any) {
+        if (e.code !== 'ER_DUP_ENTRY') {
+          console.error(`Gagal membuat akun ${usernamePang}:`, e.message);
+        }
+      }
     }
 
     // Hitung total akun petugas yang ada di database saat ini
@@ -78,7 +94,7 @@ export async function POST(request: Request) {
 
     let message = '';
     if (createdCount > 0) {
-      message = `Berhasil men-generate ${createdCount} akun petugas khusus asrama baru (Inventaris & Kebersihan). Password default: asrama123`;
+      message = `Berhasil men-generate ${createdCount} akun petugas khusus asrama baru (Inventaris, Kebersihan & Pemanggilan Santri). Password default: asrama123`;
     } else {
       message = `Seluruh akun petugas khusus asrama sudah terdaftar sebelumnya di database (${totalPetugas} akun petugas aktif). Password default: asrama123`;
     }

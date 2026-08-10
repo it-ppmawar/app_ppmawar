@@ -96,14 +96,11 @@ class AudioQueue {
       }
 
       const isArabicScript = /[\u0600-\u06FF]/.test(p.teks_panggilan);
-      const targetLang = (isArabicScript && reqBahasa === 'ar') ? 'ar-SA' : 'id-ID';
+      const targetLang = (isArabicScript && reqBahasa === 'ar') ? 'ar-SA' : (reqBahasa === 'en' ? 'en-US' : 'id-ID');
+      const langPrefix = (isArabicScript && reqBahasa === 'ar') ? 'ar' : (reqBahasa === 'en' ? 'en' : 'id');
 
       const pickVoiceAndPitch = (): { voice: SpeechSynthesisVoice | null; pitch: number } => {
         const voices = window.speechSynthesis.getVoices();
-        if (!voices.length) {
-          const pitch = reqJenis === 'pria' ? 0.8 : reqJenis === 'wanita' ? 1.15 : 1.0;
-          return { voice: null, pitch };
-        }
 
         // Jika manual override adalah nama spesifik suara browser (bukan preset)
         if (manualVoiceName && !manualVoiceName.startsWith('preset:')) {
@@ -114,27 +111,32 @@ class AudioQueue {
           }
         }
 
-        // Kata kunci pencarian gender
-        const maleKw = ['andika', 'pria', 'male', 'man', 'laki', 'idm', 'idc', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d', 'david', 'george'];
-        const femaleKw = ['gadis', 'wanita', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c', 'zira'];
-
-        const langPrefix = (isArabicScript && reqBahasa === 'ar') ? 'ar' : 'id';
+        // Filter HANYA suara yang bahasanya cocok (id / ar / en)
         const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
-        const pool = candidates.length ? candidates : voices;
+
+        // Kata kunci pencarian gender
+        const maleKw = ['andika', 'pria', 'male', 'man', 'laki', 'idm', 'idc', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
+        const femaleKw = ['gadis', 'wanita', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c'];
 
         if (reqJenis === 'pria') {
-          const maleVoice = pool.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
-          const finalVoice = maleVoice || (candidates.length > 1 ? candidates[candidates.length - 1] : pool[0]);
-          return { voice: finalVoice, pitch: 0.8 };
+          let maleVoice: SpeechSynthesisVoice | undefined;
+          if (candidates.length > 0) {
+            maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw))) 
+              || (candidates.length > 1 ? candidates[candidates.length - 1] : candidates[0]);
+          }
+          // JANGAN fallback ke voices[0] (David English)! Biarkan voice = null
+          return { voice: maleVoice || null, pitch: 0.8 };
         }
 
         if (reqJenis === 'wanita') {
-          const femaleVoice = pool.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
-          const finalVoice = femaleVoice || pool[0];
-          return { voice: finalVoice, pitch: 1.15 };
+          let femaleVoice: SpeechSynthesisVoice | undefined;
+          if (candidates.length > 0) {
+            femaleVoice = candidates.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw))) || candidates[0];
+          }
+          return { voice: femaleVoice || null, pitch: 1.15 };
         }
 
-        return { voice: pool[0], pitch: 1.0 };
+        return { voice: candidates[0] || null, pitch: 1.0 };
       };
 
       window.speechSynthesis.cancel();

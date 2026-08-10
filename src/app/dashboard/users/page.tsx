@@ -588,6 +588,8 @@ export default function UsersManagementPage() {
                            u.role === 'petugas' ? 'Petugas' :
                            u.role === 'petugas_umum' ? 'Petugas Umum' :
                            u.role === 'petugas_sarpras' ? 'Petugas Sarpras' :
+                           u.role === 'petugas_panggilan' ? `Petugas Pemanggilan ${u.asrama ? `(${u.asrama})` : ''}` :
+                           u.role === 'petugas_panggilan_umum' ? 'Petugas Pemanggilan Umum' :
                            u.role === 'petugas_inventaris' ? `Petugas Inventaris ${u.asrama ? `(${u.asrama})` : ''}` :
                            u.role === 'petugas_inventaris_umum' ? 'Petugas Inventaris Umum' :
                            u.role === 'petugas_kebersihan' ? `Petugas Kebersihan ${u.asrama ? `(${u.asrama})` : ''}` :
@@ -740,6 +742,8 @@ export default function UsersManagementPage() {
                     {activeTab === 'wali_alumni' && <option value="wali_alumni">Wali Alumni / Alumni</option>}
                     {activeTab === 'petugas' && (
                       <>
+                        <option value="petugas_panggilan">Petugas Pemanggilan Santri (perorangan/asrama, bisa sidik jari)</option>
+                        <option value="petugas_panggilan_umum">Akun Petugas Pemanggilan Santri Umum (shared, tanpa sidik jari)</option>
                         <option value="petugas_inventaris">Petugas Inventaris (perorangan, bisa sidik jari)</option>
                         <option value="petugas_inventaris_umum">Akun Petugas Inventaris Umum (shared, tanpa sidik jari)</option>
                         <option value="petugas_kebersihan">Petugas Kebersihan (perorangan, bisa sidik jari)</option>

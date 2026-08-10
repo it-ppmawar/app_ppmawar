@@ -510,6 +510,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
               </li>
             )}
+            {/* Khusus Petugas Pemanggilan Santri */}
+            {((user?.role || '').toLowerCase().includes('panggilan') || (user?.role || '').toLowerCase() === 'petugas_umum' || (user?.role || '').toLowerCase() === 'petugas') && (
+              <li>
+                <Link href="/dashboard/panggilan" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/panggilan') ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
+                  <Megaphone size={18} /> <span className="text-sm">Panggilan TOA</span>
+                </Link>
+              </li>
+            )}
             {!(user?.role || '').toLowerCase().includes('petugas') && (
               <>
             {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(userRoleLower) || isPengasuhRole ? (

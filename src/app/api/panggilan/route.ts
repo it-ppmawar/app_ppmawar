@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 import { RowDataPacket } from 'mysql2';
 
-const ALLOWED_ROLES = ['admin', 'staff', 'pengasuh', 'pengurus_asrama', 'wali_murid', 'wali_alumni'];
+const ALLOWED_ROLES = ['admin', 'staff', 'pengasuh', 'pengurus_asrama', 'wali_murid', 'wali_alumni', 'petugas_panggilan', 'petugas_panggilan_umum', 'petugas'];
 
 function isAllowed(role: string): boolean {
   return ALLOWED_ROLES.some(r => role.toLowerCase().includes(r) || role === r);

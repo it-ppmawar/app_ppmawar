@@ -11,9 +11,10 @@ const DEFAULT_ACCOUNTS = [
   { username: 'pengasuh_d', nama: 'Pengasuh Asrama D', role: 'pengasuh', password: 'Ppmawar@AsramaD' },
   { username: 'pengasuh_e', nama: 'Pengasuh Asrama E', role: 'pengasuh', password: 'Ppmawar@AsramaE' },
   { username: 'pengasuh_f', nama: 'Pengasuh Asrama F', role: 'pengasuh', password: 'Ppmawar@AsramaF' },
-  // Petugas Inventaris (Umum) & Petugas Kebersihan (Umum)
+  // Petugas Inventaris (Umum), Kebersihan (Umum) & Pemanggilan Santri (Umum)
   { username: 'petugas_inventaris', nama: 'Petugas Inventaris (Umum)', role: 'petugas_inventaris_umum', password: 'Ppmawar@Inventaris' },
   { username: 'petugas_kebersihan', nama: 'Petugas Kebersihan (Umum)', role: 'petugas_kebersihan_umum', password: 'Ppmawar@Kebersihan' },
+  { username: 'petugas_panggilan', nama: 'Petugas Pemanggilan Santri (Umum)', role: 'petugas_panggilan_umum', password: 'Ppmawar@Panggilan' },
 ];
 
 export async function GET() {
