@@ -6,6 +6,7 @@ export async function ensureUserColumns() {
   if (isEnsured) return;
 
   const columns = [
+    'ALTER TABLE users MODIFY COLUMN role VARCHAR(50) NULL DEFAULT \'wali_murid\'',
     'ALTER TABLE users ADD COLUMN is_pengasuh TINYINT(1) NOT NULL DEFAULT 0',
     'ALTER TABLE users ADD COLUMN is_pengurus_asrama TINYINT(1) NOT NULL DEFAULT 0',
     'ALTER TABLE users ADD COLUMN asrama VARCHAR(50) NULL',

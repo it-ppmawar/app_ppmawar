@@ -69,22 +69,39 @@ export async function GET() {
       results.push('users.asrama already exists or error: ' + e.message);
     }
 
-    // Modify users.role enum to support all specialized roles
+    // Modify users.role to VARCHAR(50) to support all specialized roles without truncation/nullification
     try {
-      await pool.execute("ALTER TABLE users MODIFY COLUMN role ENUM('admin','wali_kelas','wali_murid','guru','staff','pengurus_asrama','tamu','pengasuh','petugas_sarpras','petugas','petugas_umum','petugas_inventaris','petugas_inventaris_umum','petugas_kebersihan','petugas_kebersihan_umum','wali_alumni') NOT NULL");
-      results.push('✅ Updated users.role ENUM definition to support all new roles');
+      await pool.execute("ALTER TABLE users MODIFY COLUMN role VARCHAR(50) NULL DEFAULT 'wali_murid'");
+      results.push('✅ Updated users.role column to VARCHAR(50) to support all new roles');
     } catch (e: any) {
-      results.push('❌ Failed to update users.role ENUM: ' + e.message);
+      results.push('❌ Failed to update users.role column: ' + e.message);
     }
 
-    // Repair roles for seeded accounts unconditionally if username or name matches
+    // Repair roles for seeded and migrated accounts unconditionally
     try {
-      const [fixPengasuh] = await pool.execute("UPDATE users SET role = 'pengasuh', is_pengasuh = 1 WHERE username LIKE 'pengasuh_%' OR nama LIKE 'Pengasuh %'");
-      const [fixPengurus] = await pool.execute("UPDATE users SET role = 'pengurus_asrama', is_pengurus_asrama = 1 WHERE username LIKE 'pengurus_%' OR nama LIKE 'Pengurus %'");
-      const [fixInventaris] = await pool.execute("UPDATE users SET role = 'petugas_inventaris_umum' WHERE username LIKE '%petugas_inventaris%' OR nama LIKE '%Petugas Inventaris%'");
-      const [fixKebersihan] = await pool.execute("UPDATE users SET role = 'petugas_kebersihan_umum' WHERE username LIKE '%petugas_kebersihan%' OR nama LIKE '%Petugas Kebersihan%'");
-      const [fixUmum] = await pool.execute("UPDATE users SET role = 'petugas_umum' WHERE username = 'petugas_umum' OR nama = 'Petugas Umum'");
-      results.push(`✅ Fixed roles for seeded accounts: ${(fixPengasuh as any).affectedRows} pengasuh, ${(fixPengurus as any).affectedRows} pengurus, ${(fixInventaris as any).affectedRows} petugas inventaris, ${(fixKebersihan as any).affectedRows} petugas kebersihan, ${(fixUmum as any).affectedRows} petugas umum`);
+      const [fixPengasuh] = await pool.execute("UPDATE users SET role = 'pengasuh', is_pengasuh = 1 WHERE (role IS NULL OR role = '') AND (username LIKE 'pengasuh_%' OR nama LIKE 'Pengasuh %')");
+      const [fixPengurus] = await pool.execute("UPDATE users SET role = 'pengurus_asrama', is_pengurus_asrama = 1 WHERE (role IS NULL OR role = '') AND (username LIKE 'pengurus_%' OR username LIKE 'ketua_asrama%' OR username LIKE 'staff_asrama%' OR nama LIKE 'Pengurus %')");
+      const [fixInventaris] = await pool.execute("UPDATE users SET role = 'petugas_inventaris' WHERE (role IS NULL OR role = '') AND (username LIKE '%petugas_inventaris%' OR username LIKE '%inventaris%')");
+      const [fixKebersihan] = await pool.execute("UPDATE users SET role = 'petugas_kebersihan' WHERE (role IS NULL OR role = '') AND (username LIKE '%petugas_kebersihan%' OR username LIKE '%kebersihan%')");
+      const [fixUmum] = await pool.execute("UPDATE users SET role = 'petugas_umum' WHERE (role IS NULL OR role = '') AND (username LIKE '%petugas%' OR username LIKE '%sarpras%' OR nama LIKE '%petugas%')");
+      const [fixStaff] = await pool.execute("UPDATE users SET role = 'staff' WHERE (role IS NULL OR role = '') AND (username LIKE 'staff%' OR nama LIKE 'Staff%')");
+
+      // Auto-assign Wali Murid / Wali Alumni untuk username angka (NIS)
+      const [fixWaliMurid] = await pool.execute(`
+        UPDATE users u
+        LEFT JOIN murid m ON u.murid_id = m.murid_id OR u.username = m.nis
+        SET u.role = 'wali_murid'
+        WHERE (u.role IS NULL OR u.role = '') AND (u.username REGEXP '^[0-9]+$' OR u.murid_id IS NOT NULL)
+      `);
+
+      const [fixWaliAlumni] = await pool.execute(`
+        UPDATE users u
+        JOIN alumni a ON u.murid_id = a.murid_id OR u.username = a.nis
+        SET u.role = 'wali_alumni'
+        WHERE (u.role IS NULL OR u.role = '' OR u.role = 'wali_murid')
+      `);
+
+      results.push(`✅ Auto-repaired empty roles: ${(fixPengasuh as any).affectedRows} pengasuh, ${(fixPengurus as any).affectedRows} pengurus, ${(fixInventaris as any).affectedRows} inventaris, ${(fixKebersihan as any).affectedRows} kebersihan, ${(fixUmum as any).affectedRows} umum, ${(fixWaliMurid as any).affectedRows} wali murid, ${(fixWaliAlumni as any).affectedRows} wali alumni`);
     } catch (e: any) {
       results.push('❌ Failed to repair empty roles: ' + e.message);
     }
