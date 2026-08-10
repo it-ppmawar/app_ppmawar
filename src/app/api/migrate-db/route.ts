@@ -96,7 +96,7 @@ export async function GET() {
 
       const [fixWaliAlumni] = await pool.execute(`
         UPDATE users u
-        JOIN alumni a ON u.murid_id = a.murid_id OR u.username = a.nis
+        JOIN alumni a ON u.username = a.nis AND a.nis IS NOT NULL AND a.nis != ''
         SET u.role = 'wali_alumni'
         WHERE (u.role IS NULL OR u.role = '' OR u.role = 'wali_murid')
       `);
