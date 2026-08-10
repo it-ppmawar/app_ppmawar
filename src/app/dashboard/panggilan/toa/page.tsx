@@ -346,7 +346,6 @@ function TOAContent() {
     setCurrentPanggilan(null);
   };
 
-  // Animasi wave bars saat speaking
   const waveCount = 12;
 
   return (
@@ -355,46 +354,48 @@ function TOAContent() {
       {/* ─── Header ────────────────────────────────────────────────────── */}
       <div className="px-5 py-3.5 flex items-center justify-between border-b border-white/10 backdrop-blur-sm bg-white/5">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-xl transition-colors ${connected ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
+          <div className={`p-2.5 rounded-xl transition-colors ${connected ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
             <Radio size={18} className={connected ? 'text-emerald-400' : 'text-red-400'} />
           </div>
           <div>
             <h1 className="font-black text-base leading-tight">Sistem TOA — PPMA</h1>
-            <p className="text-[11px] text-gray-400 leading-relaxed">
-              {asrama ? `Asrama: ${asrama}` : 'Semua Asrama'}<br />
-              {totalToday} panggilan hari ini
-            </p>
+            <div className="text-[11px] text-gray-400 font-medium leading-tight mt-1 space-y-0.5">
+              <div>{asrama ? `Asrama: ${asrama}` : 'Semua Asrama'}</div>
+              <div>{totalToday} panggilan hari ini</div>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {/* Status Koneksi */}
-          <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition-all ${
-            connected ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' 
-            : reconnecting ? 'bg-amber-500/20 text-amber-400 border border-amber-500/20 animate-pulse'
-            : 'bg-red-500/20 text-red-400 border border-red-500/20'
-          }`}>
-            {connected ? <Wifi size={11} /> : <WifiOff size={11} />}
-            {connected ? 'Online' : reconnecting ? 'Reconnecting...' : 'Offline'}
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="flex items-center gap-1.5">
+            {/* Status Koneksi */}
+            <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition-all ${
+              connected ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' 
+              : reconnecting ? 'bg-amber-500/20 text-amber-400 border border-amber-500/20 animate-pulse'
+              : 'bg-red-500/20 text-red-400 border border-red-500/20'
+            }`}>
+              {connected ? <Wifi size={11} /> : <WifiOff size={11} />}
+              {connected ? 'Online' : reconnecting ? 'Reconnecting...' : 'Offline'}
+            </div>
+
+            <button onClick={() => setMuted(!muted)} title={muted ? 'Aktifkan audio' : 'Matikan audio'}
+              className={`p-2 rounded-xl transition-colors ${muted ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-white/10 text-gray-300 hover:bg-white/15'}`}>
+              {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            </button>
+
+            <button onClick={() => setShowSettings(!showSettings)}
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 transition-colors">
+              <Settings size={16} />
+            </button>
           </div>
 
-          {/* Antrian */}
+          {/* Antrian — Diposisikan di bawah tombol pengaturan & sound */}
           {queueCount > 0 && (
-            <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/20">
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/20 shadow-sm animate-pulse">
               <Layers size={11} />
               {queueCount} antrian
             </div>
           )}
-
-          <button onClick={() => setMuted(!muted)} title={muted ? 'Aktifkan audio' : 'Matikan audio'}
-            className={`p-2 rounded-xl transition-colors ${muted ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-white/10 text-gray-300 hover:bg-white/15'}`}>
-            {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-          </button>
-
-          <button onClick={() => setShowSettings(!showSettings)}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 transition-colors">
-            <Settings size={16} />
-          </button>
         </div>
       </div>
 
@@ -427,19 +428,29 @@ function TOAContent() {
               />
             </div>
 
-            {/* Voice Selection */}
+            {/* Voice Selection (8 Preset Utama: ID, AR, JV, EN x Pria/Wanita) */}
             <div>
               <label className="text-[11px] text-gray-400 mb-1 block font-bold uppercase tracking-wide">Suara (Voice AI)</label>
               <select value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none">
-                <option value="">— Default Browser —</option>
-                {voiceList.map(v => (
-                  <option key={v.name} value={v.name}>
-                    {v.name} ({v.lang}){v.localService ? ' 📶' : ' ☁️'}
-                  </option>
-                ))}
+                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none font-semibold">
+                <option value="">— Otomatis (Sesuai Format Panggilan) —</option>
+                <optgroup label="🇮🇩 Bahasa Indonesia">
+                  <option value="preset:id:pria">🇮🇩 Indonesia — Pria</option>
+                  <option value="preset:id:wanita">🇮🇩 Indonesia — Wanita</option>
+                </optgroup>
+                <optgroup label="🇸🇦 Bahasa Arab">
+                  <option value="preset:ar:pria">🇸🇦 Arab Fasih — Pria</option>
+                  <option value="preset:ar:wanita">🇸🇦 Arab Fasih — Wanita</option>
+                </optgroup>
+                <optgroup label="☕ Bahasa Jawa">
+                  <option value="preset:jv:pria">☕ Jawa Halus — Pria</option>
+                  <option value="preset:jv:wanita">☕ Jawa Halus — Wanita</option>
+                </optgroup>
+                <optgroup label="🇬🇧 Bahasa Inggris">
+                  <option value="preset:en:pria">🇬🇧 Inggris Native — Pria</option>
+                  <option value="preset:en:wanita">🇬🇧 Inggris Native — Wanita</option>
+                </optgroup>
               </select>
-              <p className="text-[10px] text-gray-500 mt-0.5">📶 = offline · ☁️ = cloud AI</p>
             </div>
           </div>
 
@@ -484,33 +495,17 @@ function TOAContent() {
         </div>
       )}
 
-      {/* ─── Main Display ─────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
-        
-        {/* Background pulse effect saat speaking */}
-        {currentPanggilan && (
-          <div className="absolute inset-0 bg-orange-500/5 animate-pulse pointer-events-none rounded-full blur-3xl" />
-        )}
-
+      {/* ─── Main Content ─────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative">
         {currentPanggilan ? (
-          /* ── SPEAKING STATE ─────────────────────────────────────────── */
-          <div className="text-center max-w-2xl w-full animate-[fadeIn_0.3s_ease]">
-            
-            {/* Wave visualizer */}
-            <div className="flex items-end justify-center gap-[3px] mb-8 h-14">
-              {Array.from({ length: waveCount }).map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-gradient-to-t from-orange-600 to-amber-400 rounded-full w-1.5"
-                  style={{
-                    height: `${20 + Math.abs(Math.sin(i * 0.7)) * 36}px`,
-                    animation: `bounce ${0.5 + i * 0.04}s ease-in-out infinite alternate`,
-                    animationDelay: `${i * 0.06}s`,
-                  }}
-                />
-              ))}
+          <div className="w-full max-w-lg space-y-6 animate-[fadeIn_0.3s_ease]">
+            {/* Indicator */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase tracking-widest animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-orange-400 animate-ping" />
+              Dibacakan
             </div>
 
+            {/* Main Text / Name */}
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 border border-orange-500/20 shadow-2xl shadow-orange-500/10 relative overflow-hidden">
               {/* Glow effect */}
               <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-orange-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -522,67 +517,54 @@ function TOAContent() {
                     <span className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
                     <span className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
                   </div>
-                  <span className="text-orange-400 text-xs font-black uppercase tracking-widest">Dibacakan</span>
                 </div>
 
-                <h2 className="text-4xl font-black text-white mb-2 leading-tight">{currentPanggilan.santri_nama}</h2>
+                <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-snug mb-3">
+                  {currentPanggilan.santri_nama}
+                </h2>
                 
                 {currentPanggilan.nama_kamar && (
-                  <p className="text-gray-400 text-sm mb-5 flex items-center justify-center gap-2">
-                    <span className="px-2 py-0.5 bg-gray-700 rounded-full text-xs">{currentPanggilan.nama_kamar}</span>
-                    {currentPanggilan.nama_asrama && (
-                      <span className="px-2 py-0.5 bg-gray-700 rounded-full text-xs">{currentPanggilan.nama_asrama}</span>
-                    )}
+                  <p className="text-sm text-orange-400 font-semibold mb-4">
+                    {currentPanggilan.nama_kamar} {currentPanggilan.nama_asrama ? `· ${currentPanggilan.nama_asrama}` : ''}
                   </p>
                 )}
 
-                <p className="text-lg text-gray-100 leading-relaxed font-medium italic">
+                <p className="text-sm text-gray-300 italic font-mono bg-black/30 p-4 rounded-xl border border-white/5 leading-relaxed" dir={currentPanggilan.bahasa === 'ar' ? 'rtl' : 'ltr'}>
                   "{currentPanggilan.teks_panggilan}"
                 </p>
-
-                {currentPanggilan.tujuan && (
-                  <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/20 rounded-full text-orange-300 text-sm font-bold border border-orange-500/20">
-                    <Zap size={13} /> Tujuan: {currentPanggilan.tujuan}
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Queue badge */}
+            {/* Queue Counter */}
             {queueCount > 0 && (
-              <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-400">
-                <Layers size={14} className="text-orange-400" />
-                <span><strong className="text-orange-400">{queueCount}</strong> panggilan berikutnya dalam antrian</span>
-              </div>
+              <p className="text-xs text-gray-400 flex items-center justify-center gap-1.5 font-medium">
+                <Layers size={13} className="text-orange-400" />
+                <span className="text-orange-400 font-bold">{queueCount}</span> panggilan berikutnya dalam antrian
+              </p>
             )}
           </div>
-
         ) : (
-          /* ── IDLE STATE ─────────────────────────────────────────────── */
-          <div className="text-center">
-            <div className={`relative w-36 h-36 mx-auto mb-6`}>
-              {/* Outer glow ring */}
-              {connected && (
-                <>
-                  <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20 animate-ping" />
-                  <div className="absolute inset-2 rounded-full border border-emerald-500/10 animate-pulse" />
-                </>
-              )}
-              <div className={`w-full h-full rounded-full flex items-center justify-center ${
-                connected ? 'bg-emerald-500/10 border-2 border-emerald-500/20' : 'bg-gray-800 border-2 border-gray-700'
+          <div className="max-w-md space-y-5">
+            {/* Idle Animation */}
+            <div className="relative w-28 h-28 mx-auto flex items-center justify-center">
+              <div className={`absolute inset-0 rounded-full ${connected ? 'bg-emerald-500/10 animate-ping' : 'bg-red-500/10'}`} style={{ animationDuration: '3s' }} />
+              <div className={`relative w-20 h-20 rounded-full flex items-center justify-center border transition-all ${
+                connected ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
               }`}>
-                <Megaphone size={52} className={connected ? 'text-emerald-400' : 'text-gray-600'} />
+                <Megaphone size={36} />
               </div>
             </div>
 
-            <h2 className="text-3xl font-black mb-2 text-gray-200">
-              {reconnecting ? 'Menghubungkan...' : connected ? 'Siap Menerima' : 'Koneksi Terputus'}
-            </h2>
-            <p className="text-gray-500 text-sm max-w-xs mx-auto leading-relaxed">
-              {connected
-                ? `Sistem aktif${asrama ? ` untuk ${asrama}` : ''}. Menunggu panggilan dari pengasuh atau wali santri.`
-                : 'Periksa koneksi internet dan server.'}
-            </p>
+            <div>
+              <h2 className="text-xl font-bold text-gray-200">
+                {connected ? 'Siap Menerima Panggilan' : 'Terputus dari Server'}
+              </h2>
+              <p className="text-gray-500 text-sm max-w-xs mx-auto leading-relaxed mt-1">
+                {connected
+                  ? `Sistem aktif${asrama ? ` untuk ${asrama}` : ''}. Menunggu panggilan dari pengasuh atau wali santri.`
+                  : 'Periksa koneksi internet dan server.'}
+              </p>
+            </div>
 
             {connected && (
               <div className="mt-6 flex items-center justify-center gap-4">
@@ -597,40 +579,32 @@ function TOAContent() {
                 </div>
               </div>
             )}
-
-            {/* Quick test button */}
-            {connected && (
-              <button onClick={handleTest}
-                className="mt-6 flex items-center gap-2 mx-auto px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm text-gray-300 font-medium transition-colors">
-                <Play size={14} className="text-orange-400" /> Tes Suara
-              </button>
-            )}
           </div>
         )}
       </div>
 
-      {/* ─── History Panel ────────────────────────────────────────────── */}
+      {/* ─── History Panel (Vertikal Scroll Bergeser ke Atas & Bawah) ─────────────── */}
       <div className="border-t border-white/10 bg-black/30 backdrop-blur-sm">
         <button
           onClick={() => setShowHistory(!showHistory)}
           className="w-full px-5 py-2.5 flex items-center justify-between text-xs text-gray-400 hover:text-gray-200 transition-colors"
         >
-          <span className="flex items-center gap-2">
-            <Mic2 size={12} className="text-gray-500" />
+          <span className="flex items-center gap-2 font-bold">
+            <Mic2 size={12} className="text-orange-400" />
             Riwayat Panggilan ({history.length})
           </span>
           {showHistory ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
         </button>
 
         {showHistory && history.length > 0 && (
-          <div className="px-5 pb-4 flex gap-2 overflow-x-auto">
+          <div className="px-5 pb-4 space-y-2 max-h-48 overflow-y-auto">
             {history.map((h, idx) => (
-              <div key={`${h.id}-${idx}`} className="flex-shrink-0 flex items-center gap-2 bg-gray-900/80 border border-white/10 px-3 py-2 rounded-xl">
-                <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />
-                <div>
-                  <p className="text-xs font-semibold text-gray-200 whitespace-nowrap">{h.nama}</p>
-                  <p className="text-[10px] text-gray-500">{h.waktu}{h.asrama ? ` · ${h.asrama}` : ''}</p>
+              <div key={`${h.id}-${idx}`} className="w-full flex items-center justify-between bg-gray-900/80 border border-white/10 px-4 py-2.5 rounded-xl">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                  <span className="text-xs font-semibold text-gray-200 truncate">{h.nama}</span>
                 </div>
+                <span className="text-[10px] text-gray-500 shrink-0 ml-2">{h.waktu}{h.asrama ? ` · ${h.asrama}` : ''}</span>
               </div>
             ))}
           </div>
