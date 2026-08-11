@@ -1,11 +1,11 @@
 /**
  * scripts/build-deploy-zip.js
- * Script bundling otomatis & ultra-reliable untuk GitHub Actions & Local Deploy.
- * Mengcopy .next, public, dan file server ke deploy_dist, lalu membuat upload_bundle/deploy.zip.
+ * Script bundling 100% Pure Node.js (yazl) - Tanpa ketergantungan OS CLI zip / apt-get.
+ * Mengcopy .next, public, dan file server ke deploy_dist, lalu membuat upload_bundle/deploy.zip dengan forward slash (Linux compatible).
  */
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const yazl = require('yazl');
 
 function copyRecursiveSync(src, dest, filterFn) {
   if (!fs.existsSync(src)) return;
@@ -31,8 +31,40 @@ function copyRecursiveSync(src, dest, filterFn) {
   }
 }
 
-function main() {
-  console.log('🚀 [Deploy Script] Starting production bundle preparation...');
+function createZipWithYazl(sourceDir, targetZipPath) {
+  return new Promise((resolve, reject) => {
+    const zipfile = new yazl.ZipFile();
+    const output = fs.createWriteStream(targetZipPath);
+
+    output.on('close', () => {
+      resolve();
+    });
+
+    zipfile.outputStream.pipe(output).on('error', (err) => reject(err));
+
+    function walkDir(currentDir) {
+      const items = fs.readdirSync(currentDir);
+      for (const item of items) {
+        const fullPath = path.join(currentDir, item);
+        const relativePath = path.relative(sourceDir, fullPath);
+        // Normalize path to Linux forward slash '/'
+        const zipRelativePath = relativePath.split(path.sep).join('/');
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          walkDir(fullPath);
+        } else if (stat.isFile()) {
+          zipfile.addFile(fullPath, zipRelativePath);
+        }
+      }
+    }
+
+    walkDir(sourceDir);
+    zipfile.end();
+  });
+}
+
+async function main() {
+  console.log('🚀 [Deploy Script] Starting 100% Pure Node.js production bundle preparation...');
 
   const rootDir = path.resolve(__dirname, '..');
   const deployDistDir = path.join(rootDir, 'deploy_dist');
@@ -100,43 +132,21 @@ function main() {
     fs.copyFileSync(unzipSrc, path.join(uploadBundleDir, 'unzip.php'));
   }
 
-  // 7. Zip deploy_dist into upload_bundle/deploy.zip
-  console.log('🗜️ Creating upload_bundle/deploy.zip...');
+  // 7. Zip deploy_dist into upload_bundle/deploy.zip using yazl
+  console.log('🗜️ Creating upload_bundle/deploy.zip (Pure Node.js yazl)...');
   const zipPath = path.join(uploadBundleDir, 'deploy.zip');
 
-  if (process.platform === 'win32') {
-    try {
-      execSync(`node "${path.join(rootDir, 'scratch_zip_crossplatform.js')}"`, { stdio: 'inherit' });
-      const rootZip = path.join(rootDir, 'deploy.zip');
-      if (fs.existsSync(rootZip)) {
-        fs.copyFileSync(rootZip, zipPath);
-      }
-    } catch (e) {
-      console.warn('Windows ZIP creation warning:', e.message);
-    }
-  } else {
-    // Linux / GitHub Actions runner: use zip -q -r -y
-    try {
-      execSync(`cd "${deployDistDir}" && zip -q -r -y "${zipPath}" .`, { stdio: 'inherit' });
-    } catch (err) {
-      console.warn('Zip command returned non-zero code:', err.message);
-      // Check if ZIP file was created successfully despite minor Info-ZIP warning
-      if (fs.existsSync(zipPath) && fs.statSync(zipPath).size > 1000) {
-        console.log('⚠️ Zip file created successfully despite minor Info-ZIP warning exit code.');
-      } else {
-        // Fallback using tar if zip fails completely
-        console.log('🔄 Attempting fallback tar archive...');
-        execSync(`cd "${deployDistDir}" && tar -czf "${zipPath}" .`, { stdio: 'inherit' });
-      }
-    }
-  }
+  await createZipWithYazl(deployDistDir, zipPath);
 
   if (fs.existsSync(zipPath) && fs.statSync(zipPath).size > 1000) {
     const stats = fs.statSync(zipPath);
     console.log(`✅ Production bundle created successfully! Size: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`);
   } else {
-    throw new Error('ZIP file creation failed completely!');
+    throw new Error('ZIP file creation failed!');
   }
 }
 
-main();
+main().catch(err => {
+  console.error('❌ Build script error:', err);
+  process.exit(1);
+});
