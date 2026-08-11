@@ -2,6 +2,25 @@ const express = require('express');
 const next = require('next');
 const cron = require('node-cron');
 const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
+
+// --- AUTO-EXTRACT DEPLOYMENT BUNDLE ON BOOT IF PRESENT ---
+const zipFile = path.join(__dirname, 'deploy.zip');
+if (fs.existsSync(zipFile)) {
+  console.log('[DEPLOY] 📦 Found deploy.zip, extracting update...');
+  try {
+    if (process.platform === 'win32') {
+      execSync(`powershell -Command "Expand-Archive -Path '${zipFile}' -DestinationPath '${__dirname}' -Force"`);
+    } else {
+      execSync(`unzip -o "${zipFile}" -d "${__dirname}"`);
+    }
+    fs.unlinkSync(zipFile);
+    console.log('[DEPLOY] ✅ deploy.zip extracted and cleaned up successfully!');
+  } catch (err) {
+    console.error('[DEPLOY] ❌ Error extracting deploy.zip:', err.message);
+  }
+}
 
 // Load environment variables manually for the custom server
 const { loadEnvConfig } = require('@next/env');

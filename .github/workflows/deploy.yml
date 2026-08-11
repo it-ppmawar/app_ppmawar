@@ -21,7 +21,7 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Code
@@ -44,65 +44,34 @@ jobs:
       - name: Prepare Deploy Files
         run: node scripts/prepare-deploy-files.js
 
-      # ── Upload file LANGSUNG dari deploy_dist/ (tanpa ZIP, lebih andal) ─────
-      # Attempt 1: FTPS strict
-      - name: Upload via FTPS – Attempt 1
-        id: ftp1
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        continue-on-error: true
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./deploy_dist/
-          server-dir: ${{ secrets.FTP_TARGET_DIR }}
-          dangerous-clean-slate: false
-          log-level: minimal
-          protocol: ftps
-          security: strict
-          timeout: 30000
+      - name: Create ZIP Bundle
+        run: |
+          echo "=== Checking deploy_dist ==="
+          ls -la deploy_dist/ | head -10
+          echo "=== Creating ZIP ==="
+          set +e
+          cd deploy_dist
+          zip -q -r -y ../upload_bundle/deploy.zip .
+          ZIP_EXIT=$?
+          cd ..
+          set -e
+          if [ "$ZIP_EXIT" -eq 0 ] || [ "$ZIP_EXIT" -eq 1 ]; then
+            echo "✅ ZIP bundle created (exit code: $ZIP_EXIT)"
+            ls -lh upload_bundle/
+          else
+            echo "❌ ZIP failed with exit code: $ZIP_EXIT"
+            exit 1
+          fi
 
-      # Attempt 2: plain FTP loose
-      - name: Upload via FTP – Attempt 2 (fallback loose)
-        id: ftp2
-        if: steps.ftp1.outcome != 'success'
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        continue-on-error: true
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./deploy_dist/
-          server-dir: ${{ secrets.FTP_TARGET_DIR }}
-          dangerous-clean-slate: false
-          log-level: minimal
-          protocol: ftp
-          security: loose
-          timeout: 30000
-
-      # Attempt 3: Node.js basic-ftp dengan passive mode
-      - name: Upload via Node.js basic-ftp – Attempt 3
-        id: ftp3
-        if: steps.ftp1.outcome != 'success' && steps.ftp2.outcome != 'success'
-        continue-on-error: true
+      - name: Upload ZIP via Node.js FTP & Trigger App Restart
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
-          FTP_LOCAL_DIR: './deploy_dist'
         run: node scripts/upload-ftp.js
 
-      # ── Konfirmasi hasil deploy ────────────────────────────────────────────
       - name: Deploy Status
         run: |
-          if [[ "${{ steps.ftp1.outcome }}" == "success" ]] || \
-             [[ "${{ steps.ftp2.outcome }}" == "success" ]] || \
-             [[ "${{ steps.ftp3.outcome }}" == "success" ]]; then
-            echo "✅ FTP upload BERHASIL!"
-            echo "🔄 Passenger akan restart otomatis via tmp/restart.txt"
-            echo "🎉 Deployment selesai!"
-          else
-            echo "❌ Semua attempt FTP gagal!"
-            exit 1
-          fi
+          echo "✅ Deploy bundle uploaded & app restart triggered successfully!"
+          echo "🎉 Selesai!"

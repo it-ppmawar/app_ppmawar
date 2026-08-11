@@ -1,7 +1,7 @@
 /**
  * scripts/upload-ftp.js
- * Uploads files using basic-ftp with passive mode & robust timeout handling.
- * Supports FTP_LOCAL_DIR env to specify which folder to upload.
+ * Uploads deploy.zip + triggers Passenger app restart via tmp/restart.txt.
+ * Uses basic-ftp with passive mode & rejectUnauthorized: false to prevent TLS cert errors.
  */
 const ftp = require('basic-ftp');
 const path = require('path');
@@ -23,43 +23,50 @@ async function upload() {
   console.log(`🔌 Connecting to FTP server: ${server} (target dir: ${targetDir})...`);
 
   try {
-    // Attempt 1: Secure FTPS with passive mode
+    // Try explicit TLS first with self-signed / wildcard SSL tolerance
     await client.access({
       host: server,
       user: user,
       password: password,
-      secure: 'implicit',
+      secure: true,
       secureOptions: { rejectUnauthorized: false }
     });
-    console.log('✅ Connected via FTPS (implicit TLS)');
+    console.log('✅ Connected via FTPS (explicit TLS, bypass hostname cert check)');
   } catch (err1) {
-    console.warn(`⚠️ FTPS implicit failed (${err1.message}). Trying explicit TLS...`);
-    try {
-      await client.access({
-        host: server,
-        user: user,
-        password: password,
-        secure: true,
-        secureOptions: { rejectUnauthorized: false }
-      });
-      console.log('✅ Connected via FTPS (explicit TLS)');
-    } catch (err2) {
-      console.warn(`⚠️ FTPS explicit failed (${err2.message}). Trying plain FTP (passive)...`);
-      await client.access({
-        host: server,
-        user: user,
-        password: password,
-        secure: false
-      });
-      console.log('✅ Connected via plain FTP (passive mode)');
-    }
+    console.warn(`⚠️ FTPS explicit failed (${err1.message}). Trying plain FTP (passive)...`);
+    await client.access({
+      host: server,
+      user: user,
+      password: password,
+      secure: false
+    });
+    console.log('✅ Connected via plain FTP (passive mode)');
   }
 
-  const uploadBundleDir = process.env.FTP_LOCAL_DIR
-    ? path.resolve(process.cwd(), process.env.FTP_LOCAL_DIR)
-    : path.resolve(__dirname, '../deploy_dist');
-  console.log(`📤 Uploading files from ${uploadBundleDir} to ${targetDir}...`);
-  await client.uploadFromDir(uploadBundleDir, targetDir);
+  const zipPath = path.resolve(__dirname, '../upload_bundle/deploy.zip');
+  if (fs.existsSync(zipPath)) {
+    const sizeMb = (fs.statSync(zipPath).size / 1024 / 1024).toFixed(2);
+    console.log(`📦 Uploading deploy.zip (${sizeMb} MB) to ${targetDir}/deploy.zip...`);
+    await client.uploadFile(zipPath, `${targetDir}/deploy.zip`);
+    console.log('✅ deploy.zip uploaded successfully!');
+
+    // Create / touch tmp/restart.txt to restart Phusion Passenger
+    const restartTmp = path.resolve(__dirname, '../upload_bundle/restart.txt');
+    fs.writeFileSync(restartTmp, new Date().toISOString());
+    console.log('🔄 Updating tmp/restart.txt on server...');
+    await client.ensureDir(`${targetDir}/tmp`);
+    await client.uploadFile(restartTmp, `${targetDir}/tmp/restart.txt`);
+    console.log('✅ tmp/restart.txt updated! App restart triggered.');
+  } else {
+    // Fallback: upload folder directly
+    const uploadBundleDir = process.env.FTP_LOCAL_DIR
+      ? path.resolve(process.cwd(), process.env.FTP_LOCAL_DIR)
+      : path.resolve(__dirname, '../deploy_dist');
+    console.log(`📤 Uploading directory ${uploadBundleDir} to ${targetDir}...`);
+    await client.uploadFromDir(uploadBundleDir, targetDir);
+    console.log('✅ Directory upload completed successfully!');
+  }
+
   console.log('🎉 FTP Upload completed successfully!');
   client.close();
 }
