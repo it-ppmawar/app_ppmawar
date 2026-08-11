@@ -49,10 +49,12 @@ jobs:
           echo "=== Checking deploy_dist ==="
           ls -la deploy_dist/ | head -10
           echo "=== Creating ZIP ==="
+          set +e
           cd deploy_dist
           zip -q -r -y ../upload_bundle/deploy.zip .
           ZIP_EXIT=$?
           cd ..
+          set -e
           if [ "$ZIP_EXIT" -eq 0 ] || [ "$ZIP_EXIT" -eq 1 ]; then
             echo "✅ ZIP bundle created (exit code: $ZIP_EXIT)"
             ls -lh upload_bundle/
