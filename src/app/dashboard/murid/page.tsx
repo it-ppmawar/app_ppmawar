@@ -105,7 +105,8 @@ export default function DataMuridPage() {
   const [savingAdd, setSavingAdd] = useState(false);
   const [addForm, setAddForm] = useState({
     nama: '', nis: '', jenis_kelamin: 'Laki-laki',
-    kelas_madin_id: '', no_hp_wali: '', nama_wali: '', alamat: ''
+    kelas_madin_id: '', kelas_quran_id: '', kamar_id: '',
+    no_hp_wali: '', nama_wali: '', alamat: ''
   });
 
   // State untuk sinkronisasi Kelas Madin (Excel 2026-2027)
@@ -393,7 +394,21 @@ export default function DataMuridPage() {
       });
       const json = await res.json();
       if (json.success) {
-        setMurid(murid.map(m => m.murid_id === editingMurid.murid_id ? { ...editingMurid, foto: fotoName } : m));
+        const quranObj = allQuran.find(q => String(q.id || q.kelas_id) === String(editingMurid.kelas_quran_id));
+        const kamarObj = allKamar.find(k => String(k.id || k.kamar_id) === String(editingMurid.kamar_id));
+        const madin1Obj = allMadin.find(m => String(m.id || m.kelas_id) === String(editingMurid.kelas_madin_id));
+        const madin2Obj = allMadin.find(m => String(m.id || m.kelas_id) === String(editingMurid.kelas_madin_2_id));
+
+        const updatedMuridObj = {
+          ...editingMurid,
+          foto: fotoName,
+          kelas_madin: madin1Obj ? (madin1Obj.nama || madin1Obj.nama_kelas) : (editingMurid.kelas_madin_id ? editingMurid.kelas_madin : null),
+          kelas_madin_2: madin2Obj ? (madin2Obj.nama || madin2Obj.nama_kelas) : (editingMurid.kelas_madin_2_id ? editingMurid.kelas_madin_2 : null),
+          kelas_quran: quranObj ? (quranObj.nama || quranObj.nama_kelas) : (editingMurid.kelas_quran_id ? editingMurid.kelas_quran : null),
+          nama_kamar: kamarObj ? (kamarObj.nama_asrama ? `${kamarObj.nama_asrama} - ${kamarObj.nama || kamarObj.nama_kamar}` : (kamarObj.nama || kamarObj.nama_kamar)) : (editingMurid.kamar_id ? editingMurid.nama_kamar : null),
+        };
+
+        setMurid(murid.map(m => m.murid_id === editingMurid.murid_id ? updatedMuridObj : m));
         setIsEditModalOpen(false);
       } else {
         alert('Gagal menyimpan: ' + json.error);
@@ -1273,7 +1288,7 @@ export default function DataMuridPage() {
                   >
                     <option value="">-- Tidak ada --</option>
                     {allMadin.map((k) => (
-                      <option key={k.id} value={k.id}>{k.nama}</option>
+                      <option key={k.id || k.kelas_id} value={k.id || k.kelas_id}>{k.nama || k.nama_kelas}</option>
                     ))}
                   </select>
                 </div>
@@ -1288,7 +1303,45 @@ export default function DataMuridPage() {
                   >
                     <option value="">-- Tidak ada --</option>
                     {allMadin.map((k) => (
-                      <option key={k.id} value={k.id}>{k.nama}</option>
+                      <option key={k.id || k.kelas_id} value={k.id || k.kelas_id}>{k.nama || k.nama_kelas}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Kelas Al-Qur'an & Kamar Asrama */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">
+                    📖 Kelas Al-Qur'an <span className="text-gray-400 font-normal">(Pengajian / Halqah)</span>
+                  </label>
+                  <select
+                    value={editingMurid.kelas_quran_id || ''}
+                    onChange={(e) => setEditingMurid({ ...editingMurid, kelas_quran_id: e.target.value || null })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-purple-200 dark:border-purple-700 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 dark:text-gray-200"
+                  >
+                    <option value="">-- Tidak ada --</option>
+                    {allQuran.map((k) => (
+                      <option key={k.id || k.kelas_id} value={k.id || k.kelas_id}>
+                        {k.nama || k.nama_kelas} {k.pembina ? `(Guru: ${k.pembina})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">
+                    🏠 Kamar Santri <span className="text-gray-400 font-normal">(Kamar & Asrama)</span>
+                  </label>
+                  <select
+                    value={editingMurid.kamar_id || ''}
+                    onChange={(e) => setEditingMurid({ ...editingMurid, kamar_id: e.target.value || null })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-amber-200 dark:border-amber-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 dark:text-gray-200"
+                  >
+                    <option value="">-- Tidak ada --</option>
+                    {allKamar.map((k) => (
+                      <option key={k.id || k.kamar_id} value={k.id || k.kamar_id}>
+                        {k.nama_asrama ? `${k.nama_asrama} - ` : ''}{k.nama || k.nama_kamar} {k.pembina ? `(Pembina: ${k.pembina})` : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1745,19 +1798,49 @@ export default function DataMuridPage() {
                 </div>
               </div>
 
-              {/* Kelas Madin */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Kelas Madin</label>
-                <select
-                  value={addForm.kelas_madin_id}
-                  onChange={e => setAddForm(f => ({ ...f, kelas_madin_id: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="">-- Pilih Kelas Madin (opsional) --</option>
-                  {allMadin.map((k: any) => (
-                    <option key={k.kelas_id} value={k.kelas_id}>{k.nama_kelas}</option>
-                  ))}
-                </select>
+              {/* Kelas Madin, Kelas Quran & Kamar */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">Kelas Madin</label>
+                  <select
+                    value={addForm.kelas_madin_id}
+                    onChange={e => setAddForm(f => ({ ...f, kelas_madin_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">-- Pilih Madin --</option>
+                    {allMadin.map((k: any) => (
+                      <option key={k.id || k.kelas_id} value={k.id || k.kelas_id}>{k.nama || k.nama_kelas}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">Kelas Qur'an</label>
+                  <select
+                    value={addForm.kelas_quran_id}
+                    onChange={e => setAddForm(f => ({ ...f, kelas_quran_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">-- Pilih Qur'an --</option>
+                    {allQuran.map((k: any) => (
+                      <option key={k.id || k.kelas_id} value={k.id || k.kelas_id}>{k.nama || k.nama_kelas}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">Kamar Santri</label>
+                  <select
+                    value={addForm.kamar_id}
+                    onChange={e => setAddForm(f => ({ ...f, kamar_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">-- Pilih Kamar --</option>
+                    {allKamar.map((k: any) => (
+                      <option key={k.id || k.kamar_id} value={k.id || k.kamar_id}>
+                        {k.nama_asrama ? `${k.nama_asrama} - ` : ''}{k.nama || k.nama_kamar}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Nama Wali & No HP Wali */}
