@@ -41,21 +41,25 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
 
-      - name: Debug Build Artifacts
-        run: |
-          echo "=== Node version ==="
-          node --version
-          echo "=== npm version ==="
-          npm --version
-          echo "=== Check .next exists ==="
-          ls -la .next/ | head -20
-          echo "=== Check yazl installed ==="
-          node -e "const y = require('yazl'); console.log('yazl OK:', typeof y.ZipFile);"
-          echo "=== scripts dir ==="
-          ls -la scripts/
+      - name: Prepare Deploy Files
+        run: node scripts/prepare-deploy-files.js
 
-      - name: Prepare Production ZIP Bundle
-        run: node scripts/build-deploy-zip.js
+      - name: Create ZIP Bundle
+        run: |
+          echo "=== Checking deploy_dist ==="
+          ls -la deploy_dist/ | head -10
+          echo "=== Creating ZIP ==="
+          cd deploy_dist
+          zip -q -r -y ../upload_bundle/deploy.zip .
+          ZIP_EXIT=$?
+          cd ..
+          if [ "$ZIP_EXIT" -eq 0 ] || [ "$ZIP_EXIT" -eq 1 ]; then
+            echo "✅ ZIP bundle created (exit code: $ZIP_EXIT)"
+            ls -lh upload_bundle/
+          else
+            echo "❌ ZIP failed with exit code: $ZIP_EXIT"
+            exit 1
+          fi
 
       # ── Attempt 1: FTPS (FTP over TLS, port 21 implicit TLS) ──────────────
       - name: Upload via FTPS – Attempt 1
