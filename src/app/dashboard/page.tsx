@@ -164,29 +164,23 @@ export default function DashboardPage() {
               </span>
             )}
           </div>
-        </div>
-
         {/* Tanggal — rata tengah Masehi | Hijriyah */}
-        <div className="mt-6 inline-flex items-center justify-center bg-[#0f172a]/80 px-2 py-2 rounded-full shadow-inner border border-gray-800 transition-all duration-300 w-[calc(100%-2.5rem)] sm:w-[420px]">
-          <div className="flex-1 flex items-center justify-end sm:justify-center overflow-hidden">
-            <span
-              className="text-[9px] sm:text-[11px] md:text-xs text-gray-200 font-bold text-center whitespace-nowrap tracking-tight sm:tracking-normal"
-              style={{ fontFamily: '"Courier New", Courier, monospace' }}
-            >
-              {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
-            </span>
-          </div>
-          <span className="mx-2 sm:mx-3 text-gray-500 font-light select-none flex items-center">|</span>
-          <div className="flex-1 flex items-center justify-start sm:justify-center overflow-hidden">
-            {hijriDateStr && (
-              <span
-                className="font-arabic text-[11px] sm:text-[12.5px] md:text-sm text-green-400 font-bold text-center whitespace-nowrap"
-                dir="rtl"
-              >
-                {hijriDateStr}
-              </span>
-            )}
-          </div>
+        <div className="mt-6 inline-flex flex-wrap sm:flex-nowrap items-center justify-center bg-[#0f172a]/80 px-3 sm:px-5 py-2 rounded-2xl sm:rounded-full shadow-inner border border-gray-800 transition-all duration-300 max-w-[94%] sm:max-w-xl mx-auto gap-1.5 sm:gap-3">
+          <span
+            className="text-[10px] xs:text-[11px] sm:text-xs text-gray-200 font-bold text-center tracking-tight sm:tracking-normal"
+            style={{ fontFamily: '"Courier New", Courier, monospace' }}
+          >
+            {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
+          </span>
+          <span className="hidden sm:inline text-gray-500 font-light select-none">|</span>
+          <span className="sm:hidden text-gray-600 font-light select-none mx-1">•</span>
+          <span
+            className="text-[11px] sm:text-xs text-emerald-400 font-bold text-center leading-none"
+            style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif' }}
+            dir="rtl"
+          >
+            {hijriDateStr || ''}
+          </span>
         </div>
       </div>
 
