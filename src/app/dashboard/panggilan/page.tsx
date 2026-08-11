@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Megaphone, Search, Send, Clock, CheckCircle2, Mic2, X, ChevronDown, RefreshCw, ExternalLink, BookOpen, User, Home, AlertCircle, Loader2, History, Trash2, Volume2, Filter, Wifi, Radio, Server, Wrench } from 'lucide-react';
 
 interface Santri {
@@ -43,7 +44,9 @@ interface Device {
 }
 
 export default function PanggilanSantriPage() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Data
   const [santriList, setSantriList] = useState<Santri[]>([]);
@@ -86,12 +89,23 @@ export default function PanggilanSantriPage() {
     return () => clearInterval(t);
   }, [fetchDevices]);
 
-  // Fetch user
+  // Auth guard: petugas_panggilan → redirect ke halaman TOA
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
-      if (d.success) setUser(d.user);
-    });
-  }, []);
+      if (d.success) {
+        setUser(d.user);
+        const role: string = d.user?.role || '';
+        if (role.includes('petugas_panggilan') && !role.includes('umum')) {
+          // Petugas panggilan per-asrama → langsung ke halaman TOA
+          router.replace('/dashboard/panggilan/toa');
+        } else {
+          setAuthChecked(true);
+        }
+      } else {
+        setAuthChecked(true);
+      }
+    }).catch(() => setAuthChecked(true));
+  }, [router]);
 
   // Fetch format panggilan
   useEffect(() => {

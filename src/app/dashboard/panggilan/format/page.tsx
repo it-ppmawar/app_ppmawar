@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, Plus, Pencil, Trash2, Save, X, CheckCircle2, AlertCircle, Volume2, Globe, Hash, Mic, User, ArrowLeft } from 'lucide-react';
 
@@ -47,12 +48,14 @@ function getSuaraIcon(jenis: JenisSuaraType) {
 }
 
 export default function FormatPanggilanPage() {
+  const router = useRouter();
   const [formats, setFormats] = useState<Format[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [canEdit, setCanEdit] = useState(false); // hanya admin/staff bisa edit
 
   // Form state
   const [formNama, setFormNama] = useState('');
@@ -60,6 +63,19 @@ export default function FormatPanggilanPage() {
   const [formJenisSuara, setFormJenisSuara] = useState<JenisSuaraType>('auto');
   const [formTemplate, setFormTemplate] = useState('');
   const [formUrutan, setFormUrutan] = useState(0);
+
+  // Auth guard: wali_murid & petugas_panggilan tidak boleh akses halaman ini
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(d => {
+      if (!d.success) { router.replace('/dashboard'); return; }
+      const role: string = d.user?.role || '';
+      const blocked = ['wali_murid', 'wali_alumni', 'petugas_panggilan'].some(r => role.includes(r) && !role.includes('umum'));
+      if (blocked) { router.replace('/dashboard/panggilan'); return; }
+      // Admin & staff dapat edit; pengasuh/pengurus hanya lihat
+      const isAdminOrStaff = ['admin', 'staff'].some(r => role.includes(r));
+      setCanEdit(isAdminOrStaff);
+    }).catch(() => router.replace('/dashboard'));
+  }, [router]);
 
   const fetchFormats = async () => {
     setLoading(true);
@@ -250,8 +266,8 @@ export default function FormatPanggilanPage() {
         </div>
       )}
 
-      {/* Tambah Button */}
-      {!showForm && (
+      {/* Tambah Button — hanya admin/staff */}
+      {!showForm && canEdit && (
         <button
           onClick={() => setShowForm(true)}
           className="w-full flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
@@ -442,18 +458,22 @@ export default function FormatPanggilanPage() {
                       >
                         <Volume2 size={15} />
                       </button>
-                      <button
-                        onClick={() => handleEdit(f)}
-                        className="p-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-400 hover:text-indigo-500 rounded-lg transition-colors"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(f.id, f.nama)}
-                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => handleEdit(f)}
+                          className="p-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-400 hover:text-indigo-500 rounded-lg transition-colors"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          onClick={() => handleDelete(f.id, f.nama)}
+                          className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

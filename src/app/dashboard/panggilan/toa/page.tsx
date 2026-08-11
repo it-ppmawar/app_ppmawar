@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Volume2, Wifi, WifiOff, CheckCircle2, Megaphone, Clock, Settings,
-  VolumeX, Play, Mic2, Layers, RefreshCw, AlertCircle, Zap, Radio,
+  Volume2, Wifi, WifiOff, CheckCircle2, Megaphone, Settings,
+  VolumeX, Play, Mic2, Layers, RefreshCw, AlertCircle, Radio,
   ChevronUp, ChevronDown, X, Sparkles, ArrowLeft,
 } from 'lucide-react';
 
@@ -26,8 +27,10 @@ interface Panggilan {
 // ─── Voice Engine Types ────────────────────────────────────────────────────
 type VoiceEngine = 'browser' | 'google';
 
+// ─── localStorage key untuk sinkron voice preset antar halaman ────────────
+const LS_VOICE_KEY = 'toa_voice_preset';
+
 // ─── Audio Queue Manager ──────────────────────────────────────────────────
-// FIFO queue yang aman dan tidak akan crash meski banyak panggilan serentak
 class AudioQueue {
   private queue: Panggilan[] = [];
   private playing = false;
@@ -71,7 +74,6 @@ class AudioQueue {
     }
 
     this.onEnd?.(p);
-    // Jeda antar panggilan (1.5 detik)
     await new Promise(r => setTimeout(r, 1500));
     this.processNext();
   }
@@ -103,26 +105,22 @@ class AudioQueue {
       const pickVoiceAndPitch = (): { voice: SpeechSynthesisVoice | null; pitch: number } => {
         const voices = window.speechSynthesis.getVoices();
 
-        // Jika manual override spesifik nama suara browser
         if (manualVoiceName && !manualVoiceName.startsWith('preset:')) {
           const manual = voices.find(v => v.name === manualVoiceName);
-          // HANYA gunakan manual voice jika bahasanya cocok dengan request
           if (manual && manual.lang.toLowerCase().startsWith(langPrefix)) {
             const pitch = reqJenis === 'pria' ? 0.78 : reqJenis === 'wanita' ? 1.18 : 1.0;
             return { voice: manual, pitch };
           }
         }
 
-        // Filter HANYA suara yang bahasanya cocok (id / ar / en)
         const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
-
         const maleKw = ['andika', 'pria', 'male', 'man', 'laki', 'idm', 'idc', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
         const femaleKw = ['gadis', 'wanita', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c'];
 
         if (reqJenis === 'pria') {
           let maleVoice: SpeechSynthesisVoice | undefined;
           if (candidates.length > 0) {
-            maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw))) 
+            maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)))
               || (candidates.length > 1 ? candidates[candidates.length - 1] : candidates[0]);
           }
           return { voice: maleVoice || null, pitch: 0.78 };
@@ -146,7 +144,7 @@ class AudioQueue {
         const voices = window.speechSynthesis.getVoices();
         const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
 
-        // Jika tidak ada voice pack bahasa tersebut di browser client, gunakan Google TTS Audio Fallback
+        // Fallback: Google TTS jika tidak ada voice pack bahasa yang sesuai
         if (candidates.length === 0 && (langPrefix === 'ar' || langPrefix === 'id' || langPrefix === 'en')) {
           try {
             const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(p.teks_panggilan.slice(0, 200))}&tl=${langPrefix}&client=tw-ob`;
@@ -155,11 +153,8 @@ class AudioQueue {
             audio.playbackRate = (window as any).__toa_rate ?? 0.88;
             audio.onended = () => {
               count++;
-              if (count < repeat) {
-                setTimeout(sayOnce, 900);
-              } else {
-                resolve();
-              }
+              if (count < repeat) setTimeout(sayOnce, 900);
+              else resolve();
             };
             audio.onerror = () => speakWebSpeech();
             audio.play().catch(() => speakWebSpeech());
@@ -179,11 +174,8 @@ class AudioQueue {
 
           utter.onend = () => {
             count++;
-            if (count < repeat) {
-              setTimeout(sayOnce, 900);
-            } else {
-              resolve();
-            }
+            if (count < repeat) setTimeout(sayOnce, 900);
+            else resolve();
           };
           utter.onerror = () => resolve();
 
@@ -205,6 +197,7 @@ class AudioQueue {
 
 // ─── Main Component ────────────────────────────────────────────────────────
 function TOAContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const asramaParam = searchParams.get('asrama') || '';
 
@@ -220,11 +213,51 @@ function TOAContent() {
   const [connectionError, setConnectionError] = useState('');
   const [totalToday, setTotalToday] = useState(0);
 
+  // ── Auth check: hanya petugas_panggilan / admin / staff ───────────────────
+  const [authChecked, setAuthChecked] = useState(false);
+  const [userRole, setUserRole] = useState('');
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(d => {
+      if (d.success) {
+        const role: string = d.user?.role || '';
+        setUserRole(role);
+        const allowed = ['admin', 'staff', 'petugas_panggilan'].some(r => role.includes(r));
+        if (!allowed) {
+          router.replace('/dashboard');
+        } else {
+          setAuthChecked(true);
+        }
+      } else {
+        router.replace('/dashboard');
+      }
+    }).catch(() => router.replace('/dashboard'));
+  }, [router]);
+
+  // ── Unlock audio on first user interaction (fix autoplay policy) ──────────
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const unlockAudio = useCallback(() => {
+    if (audioUnlocked) return;
+    // Mainkan audio kosong untuk membuka kunci autoplay policy browser
+    if ('speechSynthesis' in window) {
+      const utter = new SpeechSynthesisUtterance('');
+      utter.volume = 0;
+      window.speechSynthesis.speak(utter);
+    }
+    setAudioUnlocked(true);
+  }, [audioUnlocked]);
+
   // Audio Settings
   const [volume, setVolume] = useState(1.0);
   const [rate, setRate] = useState(0.88);
   const [voiceList, setVoiceList] = useState<SpeechSynthesisVoice[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState('');
+  const [selectedVoice, setSelectedVoice] = useState(() => {
+    // Baca dari localStorage untuk sinkron antar halaman
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(LS_VOICE_KEY) || '';
+    }
+    return '';
+  });
   const [voiceEngine] = useState<VoiceEngine>('browser');
 
   const audioQueueRef = useRef<AudioQueue | null>(null);
@@ -234,11 +267,12 @@ function TOAContent() {
   const deviceIdRef = useRef(`toa_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync audio settings ke global vars (diakses oleh AudioQueue)
+  // Sync audio settings ke global vars & localStorage
   useEffect(() => {
     (window as any).__toa_volume = muted ? 0 : volume;
     (window as any).__toa_rate = rate;
     (window as any).__toa_voice = selectedVoice;
+    localStorage.setItem(LS_VOICE_KEY, selectedVoice);
   }, [volume, rate, selectedVoice, muted]);
 
   // Init AudioQueue
@@ -252,7 +286,6 @@ function TOAContent() {
           { id: p.id, nama: p.santri_nama, waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }), asrama: p.nama_asrama },
           ...prev.slice(0, 29),
         ]);
-        // Update status ke 'selesai' di server
         fetch(`/api/panggilan/${p.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -262,7 +295,6 @@ function TOAContent() {
       onQueueChange: (count) => setQueueCount(count),
     });
 
-    // ─── Heartbeat: kirim ke server setiap 30 detik ─────────────────────
     const sendHeartbeat = () => {
       fetch('/api/panggilan/devices', {
         method: 'POST',
@@ -271,16 +303,15 @@ function TOAContent() {
           device_id: deviceIdRef.current,
           nama_asrama: asramaParam || null,
         }),
-      }).catch(() => {}); // non-fatal
+      }).catch(() => {});
     };
-    sendHeartbeat(); // kirim langsung saat pertama buka
+    sendHeartbeat();
     heartbeatRef.current = setInterval(sendHeartbeat, 30_000);
 
     return () => {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
   }, []);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   // Load voices
   useEffect(() => {
@@ -322,7 +353,6 @@ function TOAContent() {
         if (!muted) {
           audioQueueRef.current?.push(p);
         } else {
-          // Meskipun muted, tetap update history tapi tandai sebagai selesai
           setHistory(prev => [
             { id: p.id, nama: p.santri_nama, waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) },
             ...prev.slice(0, 29),
@@ -341,7 +371,6 @@ function TOAContent() {
       es.close();
       sseRef.current = null;
 
-      // Exponential backoff: 2s, 4s, 8s, max 30s
       retryCountRef.current++;
       const delay = Math.min(2000 * Math.pow(1.5, retryCountRef.current - 1), 30000);
       setConnectionError(`Koneksi terputus. Mencoba ulang dalam ${Math.round(delay / 1000)}s...`);
@@ -351,7 +380,6 @@ function TOAContent() {
     };
   }, [asrama, muted]);
 
-  // Connect saat mount dan saat asrama berubah
   useEffect(() => {
     connectSSE();
     return () => {
@@ -386,64 +414,90 @@ function TOAContent() {
     setCurrentPanggilan(null);
   };
 
-  const waveCount = 12;
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white flex flex-col select-none overflow-hidden">
-      
-      {/* ─── Header ────────────────────────────────────────────────────── */}
-      <div className="px-5 py-3.5 flex items-center justify-between border-b border-white/10 backdrop-blur-sm bg-white/5">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/panggilan" title="Kembali ke Panggilan Santri"
-            className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 transition-colors border border-white/10 flex items-center gap-1.5 text-xs font-bold shrink-0">
-            <ArrowLeft size={16} />
-            <span className="hidden sm:inline">Kembali</span>
-          </Link>
+    <div className="min-h-screen bg-[#0a0f1e] text-white flex flex-col select-none overflow-hidden"
+      onClick={unlockAudio} // Unlock audio on first tap/click
+    >
 
-          <div className={`p-2.5 rounded-xl transition-colors ${connected ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
-            <Radio size={18} className={connected ? 'text-emerald-400' : 'text-red-400'} />
-          </div>
-          <div>
-            <h1 className="font-black text-base leading-tight">Sistem TOA — PPMA</h1>
-            <div className="text-[11px] text-gray-400 font-medium leading-tight mt-1 space-y-0.5">
-              <div>{asrama ? `Asrama: ${asrama}` : 'Semua Asrama'}</div>
-              <div>{totalToday} panggilan hari ini</div>
-            </div>
+      {/* ─── Header ─────────────────────────────────────────────────────── */}
+      <div className="border-b border-white/10 backdrop-blur-sm bg-white/5">
+        {/* Baris 1: Judul terpusat */}
+        <div className="px-5 pt-3.5 pb-1 text-center">
+          <h1 className="font-black text-base leading-tight tracking-wide">Sistem TOA — PPMA</h1>
+          <div className="text-[11px] text-gray-400 font-medium mt-0.5">
+            {asrama ? `Asrama: ${asrama}` : 'Semua Asrama'} &nbsp;·&nbsp; {totalToday} panggilan hari ini
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-1.5">
+        {/* Baris 2: Kembali | Koneksi [kiri] | Badge Antrian [tengah] | Sound + Pengaturan [kanan] */}
+        <div className="px-5 pb-3 flex items-center justify-between">
+          {/* Kiri: Kembali + Ikon Koneksi */}
           <div className="flex items-center gap-1.5">
-            {/* Status Koneksi */}
-            <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition-all ${
-              connected ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' 
+            <Link href="/dashboard/panggilan" title="Kembali ke Panggilan Santri"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 transition-colors border border-white/10 flex items-center gap-1 text-xs font-bold shrink-0">
+              <ArrowLeft size={14} />
+              <span className="hidden sm:inline text-xs">Kembali</span>
+            </Link>
+
+            <div className={`p-2 rounded-xl transition-colors ${connected ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
+              <Radio size={15} className={connected ? 'text-emerald-400' : 'text-red-400'} />
+            </div>
+
+            <div className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all ${
+              connected ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
               : reconnecting ? 'bg-amber-500/20 text-amber-400 border border-amber-500/20 animate-pulse'
               : 'bg-red-500/20 text-red-400 border border-red-500/20'
             }`}>
-              {connected ? <Wifi size={11} /> : <WifiOff size={11} />}
+              {connected ? <Wifi size={10} /> : <WifiOff size={10} />}
               {connected ? 'Online' : reconnecting ? 'Reconnecting...' : 'Offline'}
             </div>
+          </div>
 
+          {/* Tengah: Badge Antrian */}
+          <div className="flex-1 flex justify-center">
+            {queueCount > 0 ? (
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/20 shadow-sm animate-pulse">
+                <Layers size={11} />
+                {queueCount} antrian
+              </div>
+            ) : (
+              <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium text-gray-600 border border-white/5">
+                {connected ? '✓ Siap' : '—'}
+              </div>
+            )}
+          </div>
+
+          {/* Kanan: Sound + Pengaturan */}
+          <div className="flex items-center gap-1.5">
             <button onClick={() => setMuted(!muted)} title={muted ? 'Aktifkan audio' : 'Matikan audio'}
               className={`p-2 rounded-xl transition-colors ${muted ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-white/10 text-gray-300 hover:bg-white/15'}`}>
-              {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
             </button>
 
             <button onClick={() => setShowSettings(!showSettings)}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 transition-colors">
-              <Settings size={16} />
+              className={`p-2 rounded-xl transition-colors ${showSettings ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-white/10 text-gray-300 hover:bg-white/15'}`}>
+              <Settings size={15} />
             </button>
           </div>
-
-          {/* Antrian — Diposisikan di bawah tombol pengaturan & sound */}
-          {queueCount > 0 && (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/20 shadow-sm animate-pulse">
-              <Layers size={11} />
-              {queueCount} antrian
-            </div>
-          )}
         </div>
       </div>
+
+      {/* ─── Unlock Audio Banner (tampil sebelum user interaksi pertama) ── */}
+      {!audioUnlocked && (
+        <div className="px-5 py-2.5 bg-orange-500/10 border-b border-orange-500/20 flex items-center gap-2 text-orange-300 text-xs cursor-pointer"
+          onClick={unlockAudio}>
+          <Volume2 size={13} className="shrink-0 animate-pulse" />
+          <span><strong>Ketuk di sini</strong> untuk mengaktifkan audio — diperlukan sebelum menerima panggilan suara</span>
+        </div>
+      )}
 
       {/* ─── Error Banner ─────────────────────────────────────────────── */}
       {connectionError && (
@@ -463,7 +517,7 @@ function TOAContent() {
             <h3 className="text-sm font-bold text-gray-200 flex items-center gap-2"><Sparkles size={14} className="text-orange-400"/> Pengaturan Audio</h3>
             <button onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-gray-300"><X size={16}/></button>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Filter Asrama */}
             <div>
@@ -474,7 +528,7 @@ function TOAContent() {
               />
             </div>
 
-            {/* Voice Selection (8 Preset Utama: ID, AR, JV, EN x Pria/Wanita) */}
+            {/* Voice Selection (8 Preset: ID, AR, JV, EN x Pria/Wanita) */}
             <div>
               <label className="text-[11px] text-gray-400 mb-1 block font-bold uppercase tracking-wide">Suara (Voice AI)</label>
               <select value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}
@@ -501,7 +555,6 @@ function TOAContent() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Volume */}
             <div>
               <label className="text-[11px] text-gray-400 mb-2 block font-bold uppercase tracking-wide">
                 Volume: <span className="text-orange-400">{Math.round(volume * 100)}%</span>
@@ -511,7 +564,6 @@ function TOAContent() {
                 className="w-full accent-orange-500" />
             </div>
 
-            {/* Kecepatan */}
             <div>
               <label className="text-[11px] text-gray-400 mb-2 block font-bold uppercase tracking-wide">
                 Kecepatan: <span className="text-orange-400">{rate}×</span>
@@ -545,17 +597,13 @@ function TOAContent() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative">
         {currentPanggilan ? (
           <div className="w-full max-w-lg space-y-6 animate-[fadeIn_0.3s_ease]">
-            {/* Indicator */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase tracking-widest animate-pulse">
               <span className="w-2 h-2 rounded-full bg-orange-400 animate-ping" />
               Dibacakan
             </div>
 
-            {/* Main Text / Name */}
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 border border-orange-500/20 shadow-2xl shadow-orange-500/10 relative overflow-hidden">
-              {/* Glow effect */}
               <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-40 bg-orange-500/10 rounded-full blur-2xl pointer-events-none" />
-              
               <div className="relative z-10">
                 <div className="flex items-center justify-center gap-2 mb-3">
                   <div className="flex gap-1">
@@ -568,7 +616,7 @@ function TOAContent() {
                 <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-snug mb-3">
                   {currentPanggilan.santri_nama}
                 </h2>
-                
+
                 {currentPanggilan.nama_kamar && (
                   <p className="text-sm text-orange-400 font-semibold mb-4">
                     {currentPanggilan.nama_kamar} {currentPanggilan.nama_asrama ? `· ${currentPanggilan.nama_asrama}` : ''}
@@ -581,7 +629,6 @@ function TOAContent() {
               </div>
             </div>
 
-            {/* Queue Counter */}
             {queueCount > 0 && (
               <p className="text-xs text-gray-400 flex items-center justify-center gap-1.5 font-medium">
                 <Layers size={13} className="text-orange-400" />
@@ -591,7 +638,6 @@ function TOAContent() {
           </div>
         ) : (
           <div className="max-w-md space-y-5">
-            {/* Idle Animation */}
             <div className="relative w-28 h-28 mx-auto flex items-center justify-center">
               <div className={`absolute inset-0 rounded-full ${connected ? 'bg-emerald-500/10 animate-ping' : 'bg-red-500/10'}`} style={{ animationDuration: '3s' }} />
               <div className={`relative w-20 h-20 rounded-full flex items-center justify-center border transition-all ${
@@ -629,7 +675,7 @@ function TOAContent() {
         )}
       </div>
 
-      {/* ─── History Panel (Vertikal Scroll Bergeser ke Atas & Bawah) ─────────────── */}
+      {/* ─── History Panel ───────────────────────────────────────── */}
       <div className="border-t border-white/10 bg-black/30 backdrop-blur-sm">
         <button
           onClick={() => setShowHistory(!showHistory)}
@@ -657,7 +703,6 @@ function TOAContent() {
         )}
       </div>
 
-      {/* Custom animation styles */}
       <style jsx>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: scale(0.97); }
