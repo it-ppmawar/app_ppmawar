@@ -78,7 +78,7 @@ jobs:
           log-level: minimal
           protocol: ftps          # TLS-secured, still port 21
           security: strict
-          timeout: 600000
+          timeout: 30000
 
       # ── Attempt 2: plain FTP loose (fallback jika FTPS gagal) ─────────────
       - name: Upload via FTP – Attempt 2 (fallback loose)
@@ -96,15 +96,27 @@ jobs:
           log-level: minimal
           protocol: ftp
           security: loose
-          timeout: 600000
+          timeout: 30000
 
-      # ── Attempt 3: lftp via passive mode (fallback terakhir) ───────────────
-      - name: Install lftp
+      # ── Attempt 3: Node.js basic-ftp (fallback cepat dengan passive mode) ──
+      - name: Upload via Node.js basic-ftp – Attempt 3
+        id: ftp3
         if: steps.ftp1.outcome != 'success' && steps.ftp2.outcome != 'success'
+        continue-on-error: true
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
+        run: node scripts/upload-ftp.js
+
+      # ── Attempt 4: lftp via passive mode (fallback terakhir) ───────────────
+      - name: Install lftp
+        if: steps.ftp1.outcome != 'success' && steps.ftp2.outcome != 'success' && steps.ftp3.outcome != 'success'
         run: sudo apt-get install -y lftp
 
-      - name: Upload via lftp passive – Attempt 3 (last resort)
-        if: steps.ftp1.outcome != 'success' && steps.ftp2.outcome != 'success'
+      - name: Upload via lftp passive – Attempt 4 (last resort)
+        if: steps.ftp1.outcome != 'success' && steps.ftp2.outcome != 'success' && steps.ftp3.outcome != 'success'
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USER: ${{ secrets.FTP_USERNAME }}
@@ -116,10 +128,10 @@ jobs:
           set ftp:passive-mode true
           set ftp:ssl-allow true
           set ftp:ssl-force false
-          set net:timeout 120
-          set net:max-retries 5
-          set net:reconnect-interval-base 5
-          mirror -R --verbose --no-recursion upload_bundle/ $FTP_DIR
+          set net:timeout 30
+          set net:max-retries 3
+          set net:reconnect-interval-base 3
+          mirror -R --verbose upload_bundle/ $FTP_DIR
           bye
           EOF
           echo "✅ lftp upload selesai"
