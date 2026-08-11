@@ -1,9 +1,11 @@
 /**
  * scripts/upload-ftp.js
- * Uploads upload_bundle/ using basic-ftp with passive mode & robust timeout handling.
+ * Uploads files using basic-ftp with passive mode & robust timeout handling.
+ * Supports FTP_LOCAL_DIR env to specify which folder to upload.
  */
 const ftp = require('basic-ftp');
 const path = require('path');
+const fs = require('fs');
 
 async function upload() {
   const client = new ftp.Client();
@@ -53,7 +55,9 @@ async function upload() {
     }
   }
 
-  const uploadBundleDir = path.resolve(__dirname, '../upload_bundle');
+  const uploadBundleDir = process.env.FTP_LOCAL_DIR
+    ? path.resolve(process.cwd(), process.env.FTP_LOCAL_DIR)
+    : path.resolve(__dirname, '../deploy_dist');
   console.log(`📤 Uploading files from ${uploadBundleDir} to ${targetDir}...`);
   await client.uploadFromDir(uploadBundleDir, targetDir);
   console.log('🎉 FTP Upload completed successfully!');

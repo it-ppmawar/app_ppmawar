@@ -21,7 +21,7 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Code
@@ -44,26 +44,8 @@ jobs:
       - name: Prepare Deploy Files
         run: node scripts/prepare-deploy-files.js
 
-      - name: Create ZIP Bundle
-        run: |
-          echo "=== Checking deploy_dist ==="
-          ls -la deploy_dist/ | head -10
-          echo "=== Creating ZIP ==="
-          set +e
-          cd deploy_dist
-          zip -q -r -y ../upload_bundle/deploy.zip .
-          ZIP_EXIT=$?
-          cd ..
-          set -e
-          if [ "$ZIP_EXIT" -eq 0 ] || [ "$ZIP_EXIT" -eq 1 ]; then
-            echo "✅ ZIP bundle created (exit code: $ZIP_EXIT)"
-            ls -lh upload_bundle/
-          else
-            echo "❌ ZIP failed with exit code: $ZIP_EXIT"
-            exit 1
-          fi
-
-      # ── Attempt 1: FTPS (FTP over TLS, port 21 implicit TLS) ──────────────
+      # ── Upload file LANGSUNG dari deploy_dist/ (tanpa ZIP, lebih andal) ─────
+      # Attempt 1: FTPS strict
       - name: Upload via FTPS – Attempt 1
         id: ftp1
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -72,15 +54,15 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./upload_bundle/
+          local-dir: ./deploy_dist/
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
           dangerous-clean-slate: false
           log-level: minimal
-          protocol: ftps          # TLS-secured, still port 21
+          protocol: ftps
           security: strict
           timeout: 30000
 
-      # ── Attempt 2: plain FTP loose (fallback jika FTPS gagal) ─────────────
+      # Attempt 2: plain FTP loose
       - name: Upload via FTP – Attempt 2 (fallback loose)
         id: ftp2
         if: steps.ftp1.outcome != 'success'
@@ -90,7 +72,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./upload_bundle/
+          local-dir: ./deploy_dist/
           server-dir: ${{ secrets.FTP_TARGET_DIR }}
           dangerous-clean-slate: false
           log-level: minimal
@@ -98,7 +80,7 @@ jobs:
           security: loose
           timeout: 30000
 
-      # ── Attempt 3: Node.js basic-ftp (fallback cepat dengan passive mode) ──
+      # Attempt 3: Node.js basic-ftp dengan passive mode
       - name: Upload via Node.js basic-ftp – Attempt 3
         id: ftp3
         if: steps.ftp1.outcome != 'success' && steps.ftp2.outcome != 'success'
@@ -108,42 +90,26 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
+          FTP_LOCAL_DIR: './deploy_dist'
         run: node scripts/upload-ftp.js
 
-      # ── Attempt 4: lftp via passive mode (fallback terakhir) ───────────────
-      - name: Install lftp
-        if: steps.ftp1.outcome != 'success' && steps.ftp2.outcome != 'success' && steps.ftp3.outcome != 'success'
-        run: sudo apt-get install -y lftp
-
-      - name: Upload via lftp passive – Attempt 4 (last resort)
-        if: steps.ftp1.outcome != 'success' && steps.ftp2.outcome != 'success' && steps.ftp3.outcome != 'success'
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASS: ${{ secrets.FTP_PASSWORD }}
-          FTP_DIR: ${{ secrets.FTP_TARGET_DIR }}
+      # ── Restart Node.js App via cPanel UAPI ────────────────────────────────
+      - name: Restart App via cPanel API
+        if: |
+          steps.ftp1.outcome == 'success' ||
+          steps.ftp2.outcome == 'success' ||
+          steps.ftp3.outcome == 'success'
         run: |
-          echo "⚡ Trying lftp passive mode upload..."
-          lftp -u "$FTP_USER","$FTP_PASS" "$FTP_SERVER" <<EOF
-          set ftp:passive-mode true
-          set ftp:ssl-allow true
-          set ftp:ssl-force false
-          set net:timeout 30
-          set net:max-retries 3
-          set net:reconnect-interval-base 3
-          mirror -R --verbose upload_bundle/ $FTP_DIR
-          bye
-          EOF
-          echo "✅ lftp upload selesai"
-
-      - name: Trigger Remote Unzip on cPanel
-        run: |
-          echo "⚡ Triggering remote unzip script..."
-          RESPONSE=$(curl -s -k --max-time 60 "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026")
-          echo "$RESPONSE"
-          if [[ "$RESPONSE" == *"404"* ]] || [[ "$RESPONSE" == *"403"* ]]; then
-            echo "Retrying via /public/unzip.php..."
-            curl -s -k --max-time 60 "https://app.ppmawar.or.id/public/unzip.php?key=ppmawar_deploy_2026"
+          echo "🔄 Restarting Node.js app via cPanel API..."
+          RESPONSE=$(curl -s -k --max-time 30 \
+            -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_API_TOKEN }}" \
+            "https://${{ secrets.CPANEL_HOST }}/execute/NodeJS/restart_app" \
+            --data-urlencode "app_name=${{ secrets.CPANEL_APP_NAME }}")
+          echo "cPanel API Response: $RESPONSE"
+          if echo "$RESPONSE" in *"errors":null* || echo "$RESPONSE" in *"status":1*; then
+            echo "✅ App restarted successfully!"
+          else
+            echo "⚠️ cPanel API response unclear, app may still restart via tmp/restart.txt"
           fi
           echo ""
-          echo "✅ Deployment triggered successfully!"
+          echo "🎉 Deployment selesai!"
