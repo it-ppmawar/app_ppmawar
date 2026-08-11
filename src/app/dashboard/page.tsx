@@ -183,6 +183,7 @@ export default function DashboardPage() {
           </span>
         </div>
       </div>
+    </div>
 
       {(() => {
         const lowerRole = (role || '').toLowerCase();

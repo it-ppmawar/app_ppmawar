@@ -135,7 +135,7 @@ export default function DataMuridPage() {
       if (data.success) {
         alert(`✅ ${data.message}\nNIS: ${data.nis}`);
         setIsAddModalOpen(false);
-        setAddForm({ nama: '', nis: '', jenis_kelamin: 'Laki-laki', kelas_madin_id: '', no_hp_wali: '', nama_wali: '', alamat: '' });
+        setAddForm({ nama: '', nis: '', jenis_kelamin: 'Laki-laki', kelas_madin_id: '', kelas_quran_id: '', kamar_id: '', no_hp_wali: '', nama_wali: '', alamat: '' });
         // Refresh data
         const refreshRes = await fetch('/api/murid');
         const refreshJson = await refreshRes.json();
