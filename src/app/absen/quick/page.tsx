@@ -193,8 +193,12 @@ function QuickAbsenContent() {
     const alpha = listMurid.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'alpha');
 
     const namaKelas = data.jadwal?.nama_kelas || 'Kelas';
+    const mapel = data.jadwal?.mata_pelajaran || data.jadwal?.mapel || '';
 
     let msg = `*LAPORAN KEHADIRAN ${namaKelas.toUpperCase()}*\n`;
+    if (mapel) {
+      msg += `📖 *Majlis / Mapel / Kegiatan:* ${mapel}\n`;
+    }
     msg += `📅 *Hari/Tanggal:* ${dateStr}\n`;
     msg += `👥 *Total Santri:* ${total}\n`;
     msg += `✅ *Hadir:* ${hadir} anak\n\n`;

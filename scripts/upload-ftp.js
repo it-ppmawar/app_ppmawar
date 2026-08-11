@@ -1,7 +1,7 @@
 /**
  * scripts/upload-ftp.js
- * Uploads upload_bundle/ (deploy.zip + tmp/restart.txt) using basic-ftp with passive mode
- * and full fallback chain (FTPS implicit -> FTPS explicit -> Plain FTP).
+ * Uploads deploy_dist/ directory directly to targetDir using basic-ftp
+ * with 3-level fallback (FTPS implicit -> FTPS explicit -> Plain FTP passive).
  */
 const ftp = require('basic-ftp');
 const path = require('path');
@@ -73,10 +73,14 @@ async function upload() {
     }
   }
 
-  const uploadBundleDir = path.resolve(__dirname, '../upload_bundle');
-  console.log(`📤 Uploading bundle from ${uploadBundleDir} to ${targetDir}...`);
-  await client.uploadFromDir(uploadBundleDir, targetDir);
-  console.log('🎉 FTP Upload completed successfully!');
+  const deployDistDir = path.resolve(__dirname, '../deploy_dist');
+  if (!fs.existsSync(deployDistDir)) {
+    throw new Error(`deploy_dist folder NOT FOUND at ${deployDistDir}`);
+  }
+
+  console.log(`📤 Uploading deploy_dist files from ${deployDistDir} to ${targetDir}...`);
+  await client.uploadFromDir(deployDistDir, targetDir);
+  console.log('🎉 Direct FTP Upload completed successfully!');
   client.close();
 }
 

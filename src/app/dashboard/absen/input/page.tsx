@@ -274,7 +274,12 @@ function InputAbsenContent() {
     const izin = murid.filter(m => m.status === 'Izin');
     const alpha = murid.filter(m => m.status === 'Alpha');
 
+    const mapel = jadwalInfo?.mata_pelajaran || '';
+
     let msg = `*LAPORAN KEHADIRAN ${namaTarget.toUpperCase()}*\n`;
+    if (mapel) {
+      msg += `📖 *Majlis / Mapel / Kegiatan:* ${mapel}\n`;
+    }
     msg += `📅 *Hari/Tanggal:* ${dateStr}\n`;
     msg += `👥 *Total Santri:* ${total}\n`;
     msg += `✅ *Hadir:* ${hadir} anak\n\n`;

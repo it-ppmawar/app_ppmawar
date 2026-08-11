@@ -21,7 +21,7 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Code
@@ -44,21 +44,7 @@ jobs:
       - name: Prepare Deploy Files
         run: node scripts/prepare-deploy-files.js
 
-      - name: Create ZIP Bundle & Restart Marker
-        run: |
-          sudo apt-get update -q -y && sudo apt-get install -q -y zip
-          echo "=== Checking deploy_dist ==="
-          ls -la deploy_dist/ | head -10
-          echo "=== Creating ZIP ==="
-          mkdir -p upload_bundle/tmp
-          cd deploy_dist
-          zip -q -r -y ../upload_bundle/deploy.zip . || true
-          cd ..
-          date > upload_bundle/tmp/restart.txt
-          echo "✅ Restart marker created at upload_bundle/tmp/restart.txt"
-          ls -lh upload_bundle/
-
-      - name: Upload ZIP via Node.js FTP & Trigger App Restart
+      - name: Upload Files via Direct Node.js FTP & Trigger Restart
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
@@ -68,5 +54,6 @@ jobs:
 
       - name: Deploy Status
         run: |
-          echo "✅ Deploy bundle uploaded & app restart triggered successfully!"
-          echo "🎉 Selesai!"
+          echo "✅ Semua file deploy_dist berhasil diupload secara langsung ke cPanel!"
+          echo "🔄 Phusion Passenger otomatis restart via tmp/restart.txt"
+          echo "🎉 Deployment selesai!"
