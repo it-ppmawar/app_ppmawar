@@ -44,27 +44,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y zip
 
       - name: Prepare Production ZIP Bundle
-        run: |
-          rm -rf deploy_dist upload_bundle
-          mkdir -p deploy_dist/tmp upload_bundle
-          echo "$(date)" > deploy_dist/tmp/restart.txt
-          cp -rL .next deploy_dist/
-          cp -rL public deploy_dist/
-          rm -rf deploy_dist/.next/cache deploy_dist/.next/standalone deploy_dist/.next/diagnostics deploy_dist/.next/dev deploy_dist/public/models
-          cp .htaccess deploy_dist/ 2>/dev/null || true
-          cp package.json package-lock.json next.config.ts server.js deploy_dist/ 2>/dev/null || true
-          echo "Commit: ${{ github.sha }}" > deploy_dist/public/version.txt
-          echo "Date: $(date)" >> deploy_dist/public/version.txt
-          echo "Branch: ${{ github.ref_name }}" >> deploy_dist/public/version.txt
-
-          # Create upload_bundle containing deploy.zip and unzip.php
-          cd deploy_dist
-          zip -q -r ../upload_bundle/deploy.zip .
-          cd ..
-          cp public/unzip.php upload_bundle/unzip.php 2>/dev/null || true
-          
-          echo "=== ZIP Bundle Prepared ==="
-          ls -lh upload_bundle/
+        run: node scripts/build-deploy-zip.js
 
       # ── Attempt 1: FTPS (FTP over TLS, port 21 implicit TLS) ──────────────
       - name: Upload via FTPS – Attempt 1
