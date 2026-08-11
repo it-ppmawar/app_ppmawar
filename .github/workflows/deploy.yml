@@ -44,7 +44,7 @@ jobs:
       - name: Prepare Deploy Files
         run: node scripts/prepare-deploy-files.js
 
-      - name: Create ZIP Bundle
+      - name: Create ZIP Bundle & Restart Marker
         run: |
           echo "=== Checking deploy_dist ==="
           ls -la deploy_dist/ | head -10
@@ -57,6 +57,9 @@ jobs:
           set -e
           if [ "$ZIP_EXIT" -eq 0 ] || [ "$ZIP_EXIT" -eq 1 ]; then
             echo "✅ ZIP bundle created (exit code: $ZIP_EXIT)"
+            mkdir -p upload_bundle/tmp
+            date > upload_bundle/tmp/restart.txt
+            echo "✅ Restart marker created at upload_bundle/tmp/restart.txt"
             ls -lh upload_bundle/
           else
             echo "❌ ZIP failed with exit code: $ZIP_EXIT"
