@@ -164,32 +164,35 @@ export default function DashboardPage() {
               </span>
             )}
           </div>
-        {/* Tanggal — Presisi 50:50 Masehi | Hijriyah (Pemisah Tepat Di Tengah & Tanpa Terpotong) */}
-        <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center justify-center bg-[#0f172a]/80 px-2.5 sm:px-5 py-2.5 rounded-2xl sm:rounded-full shadow-inner border border-gray-800 transition-all duration-300 w-full max-w-[98%] sm:max-w-xl mx-auto gap-1 sm:gap-2">
-          {/* Kolom Kiri: Masehi (Presisi 50%, rata kanan mendekati pemisah) */}
-          <div className="flex items-center justify-end min-w-0">
-            <span
-              className="text-[9.5px] xs:text-[11px] sm:text-xs text-gray-200 font-semibold tracking-tighter xs:tracking-tight sm:tracking-normal text-right whitespace-nowrap"
-            >
-              {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
-            </span>
-          </div>
+        {/* Tanggal — Presisi 50:50 Masehi (Cinzel) | Hijriyah (Ringkas, Fit & Elegan) */}
+        <div className="mt-6 flex items-center justify-center w-full px-2">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center justify-center bg-[#0f172a]/90 backdrop-blur-md px-4 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg border border-gray-800/90 transition-all duration-300 w-fit max-w-[96%] sm:max-w-max mx-auto gap-2 sm:gap-3">
+            {/* Kolom Kiri: Masehi (Cinzel Font, rata kanan mendekati pemisah) */}
+            <div className="flex items-center justify-end min-w-0">
+              <span
+                className="text-[10px] xs:text-[11px] sm:text-xs text-slate-100 font-bold tracking-normal sm:tracking-wider text-right whitespace-nowrap"
+                style={{ fontFamily: '"Cinzel", serif' }}
+              >
+                {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
+              </span>
+            </div>
 
-          {/* Kolom Tengah: Pemisah (Terunci Presisi Tepat Di Tengah Layar) */}
-          <div className="px-0.5 sm:px-1 flex items-center justify-center shrink-0">
-            <span className="hidden sm:inline text-gray-500 font-light select-none">|</span>
-            <span className="sm:hidden text-emerald-500/70 font-bold select-none text-[10px]">•</span>
-          </div>
+            {/* Kolom Tengah: Pemisah (Terunci Presisi Tepat Di Tengah Layar) */}
+            <div className="px-0.5 sm:px-1 flex items-center justify-center shrink-0">
+              <span className="hidden sm:inline text-emerald-500/50 font-light select-none">|</span>
+              <span className="sm:hidden text-emerald-400/80 font-bold select-none text-[10px]">•</span>
+            </div>
 
-          {/* Kolom Kanan: Hijriyah (Presisi 50%, rata kiri mendekati pemisah) */}
-          <div className="flex items-center justify-start min-w-0">
-            <span
-              className="text-[10.5px] xs:text-[11.5px] sm:text-xs text-emerald-400 font-bold leading-none text-left whitespace-nowrap"
-              style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif' }}
-              dir="rtl"
-            >
-              {hijriDateStr || ''}
-            </span>
+            {/* Kolom Kanan: Hijriyah (Presisi 50%, rata kiri mendekati pemisah) */}
+            <div className="flex items-center justify-start min-w-0">
+              <span
+                className="text-[11px] xs:text-[12px] sm:text-xs text-emerald-400 font-bold leading-none text-left whitespace-nowrap"
+                style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif' }}
+                dir="rtl"
+              >
+                {hijriDateStr || ''}
+              </span>
+            </div>
           </div>
         </div>
       </div>
