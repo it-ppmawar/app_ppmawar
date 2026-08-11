@@ -41,6 +41,19 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
 
+      - name: Debug Build Artifacts
+        run: |
+          echo "=== Node version ==="
+          node --version
+          echo "=== npm version ==="
+          npm --version
+          echo "=== Check .next exists ==="
+          ls -la .next/ | head -20
+          echo "=== Check yazl installed ==="
+          node -e "const y = require('yazl'); console.log('yazl OK:', typeof y.ZipFile);"
+          echo "=== scripts dir ==="
+          ls -la scripts/
+
       - name: Prepare Production ZIP Bundle
         run: node scripts/build-deploy-zip.js
 
