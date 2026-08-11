@@ -309,22 +309,22 @@ function InputAbsenContent() {
     // 🤲 Doa & Harapan Terbaik
     let doaList: string[] = [];
     if (sakit.length > 0) {
-      doaList.push(`• _Semoga santri yang sakit lekas diberikan kesembuhan, kesehatan, & keafiatan oleh Allah SWT._`);
+      doaList.push(`• _Semoga santri yang sakit lekas diberikan kesembuhan, kesehatan, & keafiatan oleh ALLAH Subhaanahu Wata'aala._\n  اللهم آمين`);
     }
     if (izin.length > 0) {
-      doaList.push(`• _Semoga santri yang berhalangan izin diberikan kelancaran & kemudahan dalam segala urusannya._`);
+      doaList.push(`• _Semoga santri yang berhalangan izin diberikan kelancaran & kemudahan dalam segala urusannya oleh ALLAH Subhaanahu Wata'aala._\n  اللهم آمين`);
     }
     if (alpha.length > 0) {
-      doaList.push(`• _Semoga santri yang belum hadir diberikan kesadaran, semangat, & kemudahan langkah untuk kembali menuntut ilmu._`);
+      doaList.push(`• _Semoga santri yang belum hadir diberikan kesadaran, semangat, & kemudahan langkah untuk kembali menuntut ilmu karena ALLAH Subhaanahu Wata'aala._\n  اللهم آمين`);
     }
     if (sakit.length === 0 && izin.length === 0 && alpha.length === 0 && total > 0) {
-      doaList.push(`• _MasyaAllah, seluruh santri hadir 100%! Semoga senantiasa istiqomah, semangat, & berkah dalam menuntut ilmu. Aamiin._`);
+      doaList.push(`• _MasyaAllah, seluruh santri hadir 100%! Semoga senantiasa istiqomah, semangat, & berkah dalam menuntut ilmu karena ALLAH Subhaanahu Wata'aala._\n  اللهم آمين`);
     } else if (hadir > 0) {
-      doaList.push(`• _Semoga santri yang hadir senantiasa istiqomah & dianugerahi kefahaman ilmu yang bermanfaat. Aamiin._`);
+      doaList.push(`• _Semoga santri yang hadir senantiasa istiqomah & dianugerahi kefahaman ilmu yang bermanfaat dari ALLAH Subhaanahu Wata'aala._\n  اللهم آمين`);
     }
 
     if (doaList.length > 0) {
-      msg += `🤲 *Doa & Harapan Terbaik:*\n${doaList.join('\n')}\n\n`;
+      msg += `🤲 *Doa & Harapan Terbaik:*\n${doaList.join('\n\n')}\n\n`;
     }
 
     if (uploadedPhotoUrl) {

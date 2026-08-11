@@ -40,32 +40,28 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
 
+      - name: Install Zip Utility
+        run: sudo apt-get update && sudo apt-get install -y zip
+
       - name: Prepare Production ZIP Bundle
         run: |
-          mkdir -p deploy_dist/tmp
+          rm -rf deploy_dist upload_bundle
+          mkdir -p deploy_dist/tmp upload_bundle
           echo "$(date)" > deploy_dist/tmp/restart.txt
-          cp -r .next deploy_dist/
-          cp -r public deploy_dist/
-          rm -rf deploy_dist/.next/cache
-          rm -rf deploy_dist/.next/standalone
-          rm -rf deploy_dist/.next/diagnostics
-          rm -rf deploy_dist/.next/dev
-          rm -rf deploy_dist/public/models
-          cp .htaccess deploy_dist/ || true
-          cp package.json deploy_dist/
-          cp package-lock.json deploy_dist/
-          cp next.config.ts deploy_dist/
-          cp server.js deploy_dist/
+          cp -rL .next deploy_dist/
+          cp -rL public deploy_dist/
+          rm -rf deploy_dist/.next/cache deploy_dist/.next/standalone deploy_dist/.next/diagnostics deploy_dist/.next/dev deploy_dist/public/models
+          cp .htaccess deploy_dist/ 2>/dev/null || true
+          cp package.json package-lock.json next.config.ts server.js deploy_dist/ 2>/dev/null || true
           echo "Commit: ${{ github.sha }}" > deploy_dist/public/version.txt
           echo "Date: $(date)" >> deploy_dist/public/version.txt
           echo "Branch: ${{ github.ref_name }}" >> deploy_dist/public/version.txt
 
           # Create upload_bundle containing deploy.zip and unzip.php
-          mkdir -p upload_bundle
           cd deploy_dist
           zip -q -r ../upload_bundle/deploy.zip .
           cd ..
-          cp public/unzip.php upload_bundle/unzip.php || true
+          cp public/unzip.php upload_bundle/unzip.php 2>/dev/null || true
           
           echo "=== ZIP Bundle Prepared ==="
           ls -lh upload_bundle/
