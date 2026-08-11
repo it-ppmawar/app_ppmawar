@@ -8,6 +8,7 @@ on:
     paths:            # Deploy jika file penting berubah
       - 'src/**'
       - 'public/**'
+      - 'scripts/**'
       - 'package*.json'
       - 'next.config.ts'
       - 'server.js'
