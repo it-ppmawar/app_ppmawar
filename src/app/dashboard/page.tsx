@@ -164,23 +164,34 @@ export default function DashboardPage() {
               </span>
             )}
           </div>
-        {/* Tanggal — rata tengah Masehi | Hijriyah */}
-        <div className="mt-6 inline-flex flex-wrap sm:flex-nowrap items-center justify-center bg-[#0f172a]/80 px-3 sm:px-5 py-2 rounded-2xl sm:rounded-full shadow-inner border border-gray-800 transition-all duration-300 max-w-[94%] sm:max-w-xl mx-auto gap-1.5 sm:gap-3">
-          <span
-            className="text-[10px] xs:text-[11px] sm:text-xs text-gray-200 font-bold text-center tracking-tight sm:tracking-normal"
-            style={{ fontFamily: '"Courier New", Courier, monospace' }}
-          >
-            {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
-          </span>
-          <span className="hidden sm:inline text-gray-500 font-light select-none">|</span>
-          <span className="sm:hidden text-gray-600 font-light select-none mx-1">•</span>
-          <span
-            className="text-[11px] sm:text-xs text-emerald-400 font-bold text-center leading-none"
-            style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif' }}
-            dir="rtl"
-          >
-            {hijriDateStr || ''}
-          </span>
+        {/* Tanggal — Presisi 50:50 Masehi | Hijriyah (Pemisah Tepat Di Tengah) */}
+        <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center justify-center bg-[#0f172a]/80 px-3 sm:px-5 py-2.5 rounded-2xl sm:rounded-full shadow-inner border border-gray-800 transition-all duration-300 w-full max-w-[94%] sm:max-w-xl mx-auto gap-1 sm:gap-2">
+          {/* Kolom Kiri: Masehi (Presisi 50%, rata kanan mendekati pemisah) */}
+          <div className="flex items-center justify-end overflow-hidden">
+            <span
+              className="text-[10px] xs:text-[11px] sm:text-xs text-gray-200 font-bold tracking-tight sm:tracking-normal text-right whitespace-nowrap"
+              style={{ fontFamily: '"Courier New", Courier, monospace' }}
+            >
+              {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
+            </span>
+          </div>
+
+          {/* Kolom Tengah: Pemisah (Terunci Presisi Tepat Di Tengah Layar) */}
+          <div className="px-1 flex items-center justify-center">
+            <span className="hidden sm:inline text-gray-500 font-light select-none">|</span>
+            <span className="sm:hidden text-emerald-500/70 font-bold select-none text-xs">•</span>
+          </div>
+
+          {/* Kolom Kanan: Hijriyah (Presisi 50%, rata kiri mendekati pemisah) */}
+          <div className="flex items-center justify-start overflow-hidden">
+            <span
+              className="text-[11px] sm:text-xs text-emerald-400 font-bold leading-none text-left whitespace-nowrap"
+              style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif' }}
+              dir="rtl"
+            >
+              {hijriDateStr || ''}
+            </span>
+          </div>
         </div>
       </div>
     </div>
