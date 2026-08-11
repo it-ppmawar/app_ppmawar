@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   Volume2, Wifi, WifiOff, CheckCircle2, Megaphone, Clock, Settings,
   VolumeX, Play, Mic2, Layers, RefreshCw, AlertCircle, Zap, Radio,
-  ChevronUp, ChevronDown, X, Sparkles,
+  ChevronUp, ChevronDown, X, Sparkles, ArrowLeft,
 } from 'lucide-react';
 
 interface Panggilan {
@@ -96,17 +97,18 @@ class AudioQueue {
       }
 
       const isArabicScript = /[\u0600-\u06FF]/.test(p.teks_panggilan);
-      const targetLang = (isArabicScript && reqBahasa === 'ar') ? 'ar-SA' : (reqBahasa === 'en' ? 'en-US' : 'id-ID');
-      const langPrefix = (isArabicScript && reqBahasa === 'ar') ? 'ar' : (reqBahasa === 'en' ? 'en' : 'id');
+      const targetLang = (isArabicScript || reqBahasa === 'ar') ? 'ar-SA' : (reqBahasa === 'en' ? 'en-US' : 'id-ID');
+      const langPrefix = (isArabicScript || reqBahasa === 'ar') ? 'ar' : (reqBahasa === 'en' ? 'en' : 'id');
 
       const pickVoiceAndPitch = (): { voice: SpeechSynthesisVoice | null; pitch: number } => {
         const voices = window.speechSynthesis.getVoices();
 
-        // Jika manual override adalah nama spesifik suara browser (bukan preset)
+        // Jika manual override spesifik nama suara browser
         if (manualVoiceName && !manualVoiceName.startsWith('preset:')) {
           const manual = voices.find(v => v.name === manualVoiceName);
-          if (manual) {
-            const pitch = reqJenis === 'pria' ? 0.8 : reqJenis === 'wanita' ? 1.15 : 1.0;
+          // HANYA gunakan manual voice jika bahasanya cocok dengan request
+          if (manual && manual.lang.toLowerCase().startsWith(langPrefix)) {
+            const pitch = reqJenis === 'pria' ? 0.78 : reqJenis === 'wanita' ? 1.18 : 1.0;
             return { voice: manual, pitch };
           }
         }
@@ -114,7 +116,6 @@ class AudioQueue {
         // Filter HANYA suara yang bahasanya cocok (id / ar / en)
         const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
 
-        // Kata kunci pencarian gender
         const maleKw = ['andika', 'pria', 'male', 'man', 'laki', 'idm', 'idc', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
         const femaleKw = ['gadis', 'wanita', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c'];
 
@@ -124,8 +125,7 @@ class AudioQueue {
             maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw))) 
               || (candidates.length > 1 ? candidates[candidates.length - 1] : candidates[0]);
           }
-          // JANGAN fallback ke voices[0] (David English)! Biarkan voice = null
-          return { voice: maleVoice || null, pitch: 0.8 };
+          return { voice: maleVoice || null, pitch: 0.78 };
         }
 
         if (reqJenis === 'wanita') {
@@ -133,7 +133,7 @@ class AudioQueue {
           if (candidates.length > 0) {
             femaleVoice = candidates.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw))) || candidates[0];
           }
-          return { voice: femaleVoice || null, pitch: 1.15 };
+          return { voice: femaleVoice || null, pitch: 1.18 };
         }
 
         return { voice: candidates[0] || null, pitch: 1.0 };
@@ -142,26 +142,53 @@ class AudioQueue {
       window.speechSynthesis.cancel();
 
       const sayOnce = () => {
-        const utter = new SpeechSynthesisUtterance(p.teks_panggilan);
-        utter.lang = targetLang;
-        utter.rate = (window as any).__toa_rate ?? 0.88;
-        utter.volume = (window as any).__toa_volume ?? 1.0;
-
         const { voice, pitch } = pickVoiceAndPitch();
-        utter.pitch = pitch;
-        if (voice) utter.voice = voice;
+        const voices = window.speechSynthesis.getVoices();
+        const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
 
-        utter.onend = () => {
-          count++;
-          if (count < repeat) {
-            setTimeout(sayOnce, 900);
-          } else {
-            resolve();
-          }
-        };
-        utter.onerror = () => resolve();
+        // Jika tidak ada voice pack bahasa tersebut di browser client, gunakan Google TTS Audio Fallback
+        if (candidates.length === 0 && (langPrefix === 'ar' || langPrefix === 'id' || langPrefix === 'en')) {
+          try {
+            const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(p.teks_panggilan.slice(0, 200))}&tl=${langPrefix}&client=tw-ob`;
+            const audio = new Audio(ttsUrl);
+            audio.volume = (window as any).__toa_volume ?? 1.0;
+            audio.playbackRate = (window as any).__toa_rate ?? 0.88;
+            audio.onended = () => {
+              count++;
+              if (count < repeat) {
+                setTimeout(sayOnce, 900);
+              } else {
+                resolve();
+              }
+            };
+            audio.onerror = () => speakWebSpeech();
+            audio.play().catch(() => speakWebSpeech());
+            return;
+          } catch (_) {}
+        }
 
-        window.speechSynthesis.speak(utter);
+        speakWebSpeech();
+
+        function speakWebSpeech() {
+          const utter = new SpeechSynthesisUtterance(p.teks_panggilan);
+          utter.lang = targetLang;
+          utter.rate = (window as any).__toa_rate ?? 0.88;
+          utter.volume = (window as any).__toa_volume ?? 1.0;
+          utter.pitch = pitch;
+          if (voice) utter.voice = voice;
+
+          utter.onend = () => {
+            count++;
+            if (count < repeat) {
+              setTimeout(sayOnce, 900);
+            } else {
+              resolve();
+            }
+          };
+          utter.onerror = () => resolve();
+
+          window.speechSynthesis.speak(utter);
+        }
       };
 
       sayOnce();
@@ -261,9 +288,6 @@ function TOAContent() {
     const load = () => {
       const voices = window.speechSynthesis.getVoices();
       setVoiceList(voices);
-      const idVoice = voices.find(v => v.lang.startsWith('id') && !v.name.includes('Google')) ||
-                      voices.find(v => v.lang.startsWith('id'));
-      if (idVoice && !selectedVoice) setSelectedVoice(idVoice.name);
     };
     load();
     window.speechSynthesis.onvoiceschanged = load;
@@ -370,6 +394,12 @@ function TOAContent() {
       {/* ─── Header ────────────────────────────────────────────────────── */}
       <div className="px-5 py-3.5 flex items-center justify-between border-b border-white/10 backdrop-blur-sm bg-white/5">
         <div className="flex items-center gap-3">
+          <Link href="/dashboard/panggilan" title="Kembali ke Panggilan Santri"
+            className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 transition-colors border border-white/10 flex items-center gap-1.5 text-xs font-bold shrink-0">
+            <ArrowLeft size={16} />
+            <span className="hidden sm:inline">Kembali</span>
+          </Link>
+
           <div className={`p-2.5 rounded-xl transition-colors ${connected ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
             <Radio size={18} className={connected ? 'text-emerald-400' : 'text-red-400'} />
           </div>

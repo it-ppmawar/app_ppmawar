@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BookOpen, Plus, Pencil, Trash2, Save, X, CheckCircle2, AlertCircle, Volume2, Globe, Hash, Mic, User } from 'lucide-react';
+import Link from 'next/link';
+import { BookOpen, Plus, Pencil, Trash2, Save, X, CheckCircle2, AlertCircle, Volume2, Globe, Hash, Mic, User, ArrowLeft } from 'lucide-react';
 
 type BahasaType = 'id' | 'ar' | 'en' | 'jv';
 type JenisSuaraType = 'pria' | 'wanita' | 'auto';
@@ -136,7 +137,7 @@ export default function FormatPanggilanPage() {
   };
 
   const handlePreview = (template: string, bahasa: BahasaType, jenisSuara: JenisSuaraType) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (typeof window === 'undefined') return;
     const preview = template
       .replace(/{nama}/g, 'Ahmad Fauzi')
       .replace(/{kamar}/g, 'Kamar Al-Ikhlas')
@@ -144,43 +145,53 @@ export default function FormatPanggilanPage() {
       .replace(/{tujuan}/g, 'kantor pengurus')
       .replace(/{teks}/g, 'Harap segera hadir.');
 
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(preview);
-    utter.rate = 0.88;
-
-    const voices = window.speechSynthesis.getVoices();
-    const maleKw = ['andika', 'pria', 'male', 'man', 'laki', 'idm', 'idc', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
-    const femaleKw = ['gadis', 'wanita', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c'];
-
     const isArabicScript = /[\u0600-\u06FF]/.test(preview);
-    const targetLang = (isArabicScript && bahasa === 'ar') ? 'ar-SA' : (bahasa === 'en' ? 'en-US' : 'id-ID');
-    const langPrefix = (isArabicScript && bahasa === 'ar') ? 'ar' : (bahasa === 'en' ? 'en' : 'id');
+    const targetLang = (isArabicScript || bahasa === 'ar') ? 'ar-SA' : (bahasa === 'en' ? 'en-US' : 'id-ID');
+    const langPrefix = (isArabicScript || bahasa === 'ar') ? 'ar' : (bahasa === 'en' ? 'en' : 'id');
 
-    utter.lang = targetLang;
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(preview);
+      utter.rate = 0.88;
+      utter.lang = targetLang;
 
-    // Filter HANYA suara yang bahasanya cocok
-    const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
+      const voices = window.speechSynthesis.getVoices();
+      const maleKw = ['andika', 'pria', 'male', 'man', 'laki', 'idm', 'idc', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
+      const femaleKw = ['gadis', 'wanita', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c'];
 
-    if (jenisSuara === 'pria') {
-      utter.pitch = 0.8;
-      if (candidates.length > 0) {
-        const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
-        utter.voice = maleVoice || (candidates.length > 1 ? candidates[candidates.length - 1] : candidates[0]);
+      // Filter HANYA suara yang bahasanya cocok
+      const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
+
+      if (jenisSuara === 'pria') {
+        utter.pitch = 0.78;
+        if (candidates.length > 0) {
+          const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
+          utter.voice = maleVoice || (candidates.length > 1 ? candidates[candidates.length - 1] : candidates[0]);
+        }
+      } else if (jenisSuara === 'wanita') {
+        utter.pitch = 1.18;
+        if (candidates.length > 0) {
+          const femaleVoice = candidates.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
+          utter.voice = femaleVoice || candidates[0];
+        }
+      } else {
+        utter.pitch = 1.0;
+        if (candidates.length > 0) utter.voice = candidates[0];
       }
-      // Jika tidak ada candidate id-ID, JANGAN set utter.voice ke suara Inggris (David)!
-      // Biarkan utter.voice = null agar browser menggunakan mesin sintetis id-ID bawaan OS.
-    } else if (jenisSuara === 'wanita') {
-      utter.pitch = 1.15;
-      if (candidates.length > 0) {
-        const femaleVoice = candidates.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
-        utter.voice = femaleVoice || candidates[0];
+
+      // Fallback: Jika tidak ada voice pack bahasa tersebut di browser client, gunakan Google TTS Audio Fallback
+      if (candidates.length === 0 && (langPrefix === 'ar' || langPrefix === 'id' || langPrefix === 'en')) {
+        try {
+          const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(preview.slice(0, 200))}&tl=${langPrefix}&client=tw-ob`;
+          const audio = new Audio(ttsUrl);
+          audio.playbackRate = 0.9;
+          audio.play().catch(() => window.speechSynthesis.speak(utter));
+          return;
+        } catch (_) {}
       }
-    } else {
-      utter.pitch = 1.0;
-      if (candidates.length > 0) utter.voice = candidates[0];
+
+      window.speechSynthesis.speak(utter);
     }
-
-    window.speechSynthesis.speak(utter);
   };
 
   const insertPlaceholder = (key: string) => {
@@ -198,14 +209,22 @@ export default function FormatPanggilanPage() {
       {/* Header */}
       <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-5 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden">
         <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full pointer-events-none" />
-        <div className="flex items-center gap-3 relative z-10">
-          <div className="bg-white/20 p-2.5 rounded-xl">
-            <BookOpen size={22} />
+        <div className="flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="bg-white/20 p-2.5 rounded-xl">
+              <BookOpen size={22} />
+            </div>
+            <div>
+              <h1 className="text-xl font-black">Kelola Format Panggilan</h1>
+              <p className="text-indigo-200 text-xs">Template teks pengumuman TOA · 4 Bahasa · Pria & Wanita</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-black">Kelola Format Panggilan</h1>
-            <p className="text-indigo-200 text-xs">Template teks pengumuman TOA · 4 Bahasa · Pria & Wanita</p>
-          </div>
+
+          <Link href="/dashboard/panggilan"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-all border border-white/20 shadow-sm shrink-0">
+            <ArrowLeft size={15} />
+            <span>Kembali</span>
+          </Link>
         </div>
         <div className="mt-3 flex gap-2 flex-wrap relative z-10">
           {BAHASA_OPTIONS.map(b => (
