@@ -19,6 +19,32 @@ export async function POST(request: Request) {
 
     await ensureUserColumns();
 
+    let createdCount = 0;
+    const passwordHash = await bcrypt.hash('asrama123', 10);
+
+    // ─── 1. Akun Petugas Umum (Shared / Default) ───────────────────────────
+    const defaultPetugas = [
+      { username: 'petugas_panggilan', nama: 'Petugas Pemanggilan Santri (Umum)', role: 'petugas_panggilan_umum' },
+      { username: 'petugas_inventaris', nama: 'Petugas Inventaris (Umum)', role: 'petugas_inventaris_umum' },
+      { username: 'petugas_kebersihan', nama: 'Petugas Kebersihan (Umum)', role: 'petugas_kebersihan_umum' },
+      { username: 'petugas_umum', nama: 'Petugas Umum', role: 'petugas_umum' },
+    ];
+
+    for (const acc of defaultPetugas) {
+      try {
+        await pool.execute(
+          `INSERT INTO users (username, password, role, nama) VALUES (?, ?, ?, ?)`,
+          [acc.username, passwordHash, acc.role, acc.nama]
+        );
+        createdCount++;
+      } catch (e: any) {
+        if (e.code !== 'ER_DUP_ENTRY') {
+          console.error(`Gagal membuat akun ${acc.username}:`, e.message);
+        }
+      }
+    }
+
+    // ─── 2. Akun Petugas Khusus Per-Asrama ──────────────────────────────────
     // Ambil daftar nama_asrama unik dari tabel kamar
     const [asramaRows] = await pool.execute<RowDataPacket[]>(
       `SELECT DISTINCT nama_asrama FROM kamar WHERE nama_asrama IS NOT NULL AND nama_asrama != '' ORDER BY nama_asrama ASC`
@@ -30,14 +56,11 @@ export async function POST(request: Request) {
       listAsrama = ['Asrama A', 'Asrama B', 'Asrama C', 'Asrama D', 'Asrama E', 'Asrama F', 'Asrama Tahfid'];
     }
 
-    let createdCount = 0;
-    const passwordHash = await bcrypt.hash('asrama123', 10);
-
     for (const rawAsrama of listAsrama) {
       const namaAsrama = rawAsrama.startsWith('Asrama ') ? rawAsrama : `Asrama ${rawAsrama}`;
       const suffix = namaAsrama.replace(/^Asrama\s+/i, '').toLowerCase().replace(/[^a-z0-9]/g, '_');
 
-      // 1. Petugas Inventaris Asrama
+      // a. Petugas Inventaris Asrama
       const usernameInv = `petugas_inventaris_asrama_${suffix}`;
       const namaInv = `Petugas Inventaris ${namaAsrama}`;
 
@@ -53,7 +76,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // 2. Petugas Kebersihan Asrama
+      // b. Petugas Kebersihan Asrama
       const usernameKeb = `petugas_kebersihan_asrama_${suffix}`;
       const namaKeb = `Petugas Kebersihan ${namaAsrama}`;
 
@@ -69,7 +92,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // 3. Petugas Pemanggilan Santri Asrama
+      // c. Petugas Pemanggilan Santri Asrama
       const usernamePang = `petugas_panggilan_asrama_${suffix}`;
       const namaPang = `Petugas Pemanggilan ${namaAsrama}`;
 
@@ -94,9 +117,9 @@ export async function POST(request: Request) {
 
     let message = '';
     if (createdCount > 0) {
-      message = `Berhasil men-generate ${createdCount} akun petugas khusus asrama baru (Inventaris, Kebersihan & Pemanggilan Santri). Password default: asrama123`;
+      message = `Berhasil men-generate ${createdCount} akun petugas baru (Petugas Pemanggilan, Inventaris, Kebersihan & Umum). Password default: asrama123`;
     } else {
-      message = `Seluruh akun petugas khusus asrama sudah terdaftar sebelumnya di database (${totalPetugas} akun petugas aktif). Password default: asrama123`;
+      message = `Seluruh akun petugas sudah terdaftar di database (${totalPetugas} akun petugas aktif). Password default: asrama123`;
     }
 
     return NextResponse.json({

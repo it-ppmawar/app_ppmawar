@@ -296,7 +296,7 @@ export default function UsersManagementPage() {
   const [generatingPengurus, setGeneratingPengurus] = useState(false);
 
   const handleGeneratePetugas = async () => {
-    if (!confirm('Apakah Anda ingin men-generate akun Petugas Inventaris Asrama & Petugas Kebersihan Asrama untuk seluruh asrama secara otomatis?\n\n(Username: petugas_inventaris_asrama_a, petugas_kebersihan_asrama_a, dst. | Password default: asrama123)')) return;
+    if (!confirm('Apakah Anda ingin men-generate akun Petugas Asrama (Pemanggilan Santri, Inventaris & Kebersihan) untuk seluruh asrama secara otomatis?\n\n(Username: petugas_panggilan_asrama_a, petugas_inventaris_asrama_a, dst. | Password default: asrama123)')) return;
     setGeneratingPetugas(true);
     try {
       const res = await fetch('/api/users/generate-petugas', { method: 'POST' });
@@ -799,7 +799,7 @@ export default function UsersManagementPage() {
               )}
 
               {/* Selection Asrama Binaan / Kelolaan / Lokasi Tugas */}
-              {(formData.role === 'pengurus_asrama' || formData.role === 'pengasuh' || formData.role === 'petugas_inventaris' || formData.role === 'petugas_kebersihan' || (formData.role === 'guru' && (formData.is_pengasuh || formData.is_pengurus_asrama))) && (
+              {(formData.role === 'pengurus_asrama' || formData.role === 'pengasuh' || formData.role === 'petugas_inventaris' || formData.role === 'petugas_kebersihan' || formData.role === 'petugas_panggilan' || (formData.role === 'guru' && (formData.is_pengasuh || formData.is_pengurus_asrama))) && (
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">
                     Asrama Binaan / Lokasi Tugas
