@@ -73,14 +73,14 @@ async function upload() {
     }
   }
 
-  const deployDistDir = path.resolve(__dirname, '../deploy_dist');
-  if (!fs.existsSync(deployDistDir)) {
-    throw new Error(`deploy_dist folder NOT FOUND at ${deployDistDir}`);
+  const uploadBundleDir = path.resolve(__dirname, '../upload_bundle');
+  if (!fs.existsSync(uploadBundleDir)) {
+    throw new Error(`upload_bundle folder NOT FOUND at ${uploadBundleDir}`);
   }
 
-  console.log(`📤 Uploading deploy_dist files from ${deployDistDir} to ${targetDir}...`);
-  await client.uploadFromDir(deployDistDir, targetDir);
-  console.log('🎉 Direct FTP Upload completed successfully!');
+  console.log(`📤 Uploading zip bundle from ${uploadBundleDir} to ${targetDir}...`);
+  await client.uploadFromDir(uploadBundleDir, targetDir);
+  console.log('🎉 Fast Zip Bundle FTP Upload completed successfully!');
   client.close();
 }
 

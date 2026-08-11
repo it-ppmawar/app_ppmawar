@@ -10,15 +10,24 @@ const zipFile = path.join(__dirname, 'deploy.zip');
 if (fs.existsSync(zipFile)) {
   console.log('[DEPLOY] 📦 Found deploy.zip, extracting update...');
   try {
-    if (process.platform === 'win32') {
-      execSync(`powershell -Command "Expand-Archive -Path '${zipFile}' -DestinationPath '${__dirname}' -Force"`);
-    } else {
-      execSync(`unzip -o "${zipFile}" -d "${__dirname}"`);
-    }
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(zipFile);
+    zip.extractAllTo(__dirname, true);
     fs.unlinkSync(zipFile);
-    console.log('[DEPLOY] ✅ deploy.zip extracted and cleaned up successfully!');
+    console.log('[DEPLOY] ✅ deploy.zip extracted and cleaned up via AdmZip successfully!');
   } catch (err) {
-    console.error('[DEPLOY] ❌ Error extracting deploy.zip:', err.message);
+    console.error('[DEPLOY] ❌ Error extracting deploy.zip with AdmZip, trying shell fallback:', err.message);
+    try {
+      if (process.platform === 'win32') {
+        execSync(`powershell -Command "Expand-Archive -Path '${zipFile}' -DestinationPath '${__dirname}' -Force"`);
+      } else {
+        execSync(`unzip -o "${zipFile}" -d "${__dirname}"`);
+      }
+      fs.unlinkSync(zipFile);
+      console.log('[DEPLOY] ✅ deploy.zip extracted via shell fallback!');
+    } catch (err2) {
+      console.error('[DEPLOY] ❌ Shell fallback also failed:', err2.message);
+    }
   }
 }
 

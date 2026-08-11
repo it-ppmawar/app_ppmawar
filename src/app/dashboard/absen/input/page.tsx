@@ -276,9 +276,17 @@ function InputAbsenContent() {
 
     const mapel = jadwalInfo?.mata_pelajaran || '';
 
+    const labelCategory = (() => {
+      const t = (tipe || '').toLowerCase();
+      if (t.includes('quran') || t.includes('qur_an')) return 'Majlis';
+      if (t.includes('madin')) return 'Mapel';
+      if (t.includes('asrama') || t.includes('kegiatan')) return 'Kegiatan';
+      return 'Kegiatan/Mapel';
+    })();
+
     let msg = `*LAPORAN KEHADIRAN ${namaTarget.toUpperCase()}*\n`;
     if (mapel) {
-      msg += `📖 *Majlis / Mapel / Kegiatan:* ${mapel}\n`;
+      msg += `📖 *${labelCategory}:* ${mapel}\n`;
     }
     msg += `📅 *Hari/Tanggal:* ${dateStr}\n`;
     msg += `👥 *Total Santri:* ${total}\n`;

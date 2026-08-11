@@ -106,16 +106,18 @@ function main() {
   fs.writeFileSync(path.join(pubDst, 'version.txt'), `Commit: ${sha}\nDate: ${new Date().toISOString()}\nBranch: ${branch}\n`);
   console.log('✅ version.txt created');
 
-  // 6. Copy unzip.php to upload_bundle if present
-  const unzipSrc = path.join(pubSrc, 'unzip.php');
-  if (fs.existsSync(unzipSrc)) {
-    try {
-      fs.copyFileSync(unzipSrc, path.join(uploadBundleDir, 'unzip.php'));
-      console.log('✅ unzip.php copied to upload_bundle');
-    } catch (e) {
-      console.warn(`[WARN] Skip unzip.php copy: ${e.message}`);
+  // 6. Copy server.js and package.json to upload_bundle
+  ['server.js', 'package.json'].forEach(f => {
+    const s = path.join(rootDir, f);
+    if (fs.existsSync(s)) {
+      try {
+        fs.copyFileSync(s, path.join(uploadBundleDir, f));
+        console.log(`✅ ${f} copied to upload_bundle`);
+      } catch (e) {
+        console.warn(`[WARN] Skip ${f} copy: ${e.message}`);
+      }
     }
-  }
+  });
 
   // 7. Count files
   let count = 0;
