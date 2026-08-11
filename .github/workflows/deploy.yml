@@ -93,25 +93,16 @@ jobs:
           FTP_LOCAL_DIR: './deploy_dist'
         run: node scripts/upload-ftp.js
 
-      # ── Restart Node.js App via cPanel UAPI ────────────────────────────────
-      - name: Restart App via cPanel API
-        continue-on-error: true
-        if: |
-          steps.ftp1.outcome == 'success' ||
-          steps.ftp2.outcome == 'success' ||
-          steps.ftp3.outcome == 'success'
+      # ── Konfirmasi hasil deploy ────────────────────────────────────────────
+      - name: Deploy Status
         run: |
-          echo "🔄 Restarting Node.js app via cPanel API..."
-          RESPONSE=$(curl -s -k --max-time 30 \
-            -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_API_TOKEN }}" \
-            "https://${{ secrets.CPANEL_HOST }}/execute/NodeJS/restart_app" \
-            --data-urlencode "app_name=${{ secrets.CPANEL_APP_NAME }}")
-          echo "cPanel API Response: $RESPONSE"
-          if [[ "$RESPONSE" == *'"errors":null'* ]] || [[ "$RESPONSE" == *'"status":1'* ]]; then
-            echo "✅ App restarted successfully via cPanel API!"
+          if [[ "${{ steps.ftp1.outcome }}" == "success" ]] || \
+             [[ "${{ steps.ftp2.outcome }}" == "success" ]] || \
+             [[ "${{ steps.ftp3.outcome }}" == "success" ]]; then
+            echo "✅ FTP upload BERHASIL!"
+            echo "🔄 Passenger akan restart otomatis via tmp/restart.txt"
+            echo "🎉 Deployment selesai!"
           else
-            echo "⚠️ cPanel API: $RESPONSE"
-            echo "App will restart via tmp/restart.txt (Passenger)"
+            echo "❌ Semua attempt FTP gagal!"
+            exit 1
           fi
-          echo ""
-          echo "🎉 Deployment selesai!"
