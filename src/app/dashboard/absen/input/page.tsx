@@ -319,26 +319,20 @@ function InputAbsenContent() {
       msg += `\n`;
     }
 
-    // 🤲 Doa & Harapan Terbaik
-    let doaList: string[] = [];
-    if (sakit.length > 0) {
-      doaList.push(`• _Semoga santri yang sakit lekas diberikan kesembuhan, kesehatan, & keafiatan oleh ALLAH Subhaanahu Wata'aala._\n  اللهم آمين`);
+    // 🤲 Doa — 1 paragraf mencakup semua status
+    const allAttended = sakit.length === 0 && izin.length === 0 && alpha.length === 0 && total > 0;
+    let doaMsg = '';
+    if (allAttended) {
+      doaMsg = `_MasyaAllah, seluruh santri hadir 100%! Semoga yang hadir senantiasa istiqomah & diberkahi dalam menuntut ilmu._`;
+    } else {
+      const parts: string[] = [];
+      if (sakit.length > 0)  parts.push('yang sakit segera diberi kesembuhan');
+      if (alpha.length > 0)  parts.push('yang belum hadir diberi semangat untuk segera kembali');
+      if (izin.length > 0)   parts.push('yang izin diberi kemudahan dalam urusannya');
+      if (hadir > 0)         parts.push('yang sudah hadir senantiasa diberi istiqomah');
+      doaMsg = `_Semoga ${parts.join(', ')}._`;
     }
-    if (izin.length > 0) {
-      doaList.push(`• _Semoga santri yang berhalangan izin diberikan kelancaran & kemudahan dalam segala urusannya oleh ALLAH Subhaanahu Wata'aala._\n  اللهم آمين`);
-    }
-    if (alpha.length > 0) {
-      doaList.push(`• _Semoga santri yang belum hadir diberikan kesadaran, semangat, & kemudahan langkah untuk kembali menuntut ilmu karena ALLAH Subhaanahu Wata'aala._\n  اللهم آمين`);
-    }
-    if (sakit.length === 0 && izin.length === 0 && alpha.length === 0 && total > 0) {
-      doaList.push(`• _MasyaAllah, seluruh santri hadir 100%! Semoga senantiasa istiqomah, semangat, & berkah dalam menuntut ilmu karena ALLAH Subhaanahu Wata'aala._\n  اللهم آمين`);
-    } else if (hadir > 0) {
-      doaList.push(`• _Semoga santri yang hadir senantiasa istiqomah & dianugerahi kefahaman ilmu yang bermanfaat dari ALLAH Subhaanahu Wata'aala._\n  اللهم آمين`);
-    }
-
-    if (doaList.length > 0) {
-      msg += `🤲 *Doa & Harapan Terbaik:*\n${doaList.join('\n\n')}\n\n`;
-    }
+    msg += `🤲 ${doaMsg}\n_اللهم آمين_ 🤲\n\n`;
 
     if (uploadedPhotoUrl) {
       msg += `📷 *Foto Kehadiran:* ${uploadedPhotoUrl}\n\n`;
