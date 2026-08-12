@@ -89,15 +89,19 @@ export default function PanggilanSantriPage() {
     return () => clearInterval(t);
   }, [fetchDevices]);
 
-  // Auth guard: petugas_panggilan → redirect ke halaman TOA
+  // Auth guard: SEMUA petugas_panggilan (per-asrama & umum) → redirect ke TOA
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
       if (d.success) {
         setUser(d.user);
-        const role: string = d.user?.role || '';
-        if (role.includes('petugas_panggilan') && !role.includes('umum')) {
-          // Petugas panggilan per-asrama → langsung ke halaman TOA
-          router.replace('/dashboard/panggilan/toa');
+        const role: string   = d.user?.role || '';
+        const asrm: string   = d.user?.asrama || '';
+        // Semua variant petugas_panggilan → langsung ke halaman TOA
+        if (role.includes('petugas_panggilan')) {
+          const toaUrl = asrm
+            ? `/dashboard/panggilan/toa?asrama=${encodeURIComponent(asrm)}`
+            : '/dashboard/panggilan/toa';
+          router.replace(toaUrl);
         } else {
           setAuthChecked(true);
         }
