@@ -359,8 +359,7 @@ export default function JadwalAlumniPage() {
                   className="flex-1 md:flex-none justify-center px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
                   title="Tambah Jadwal"
                 >
-                  <span className="text-sm leading-none">+</span>
-                  <span>Tambah Jadwal</span>
+                  <span>+ Jadwal</span>
                 </button>
                 {/* Tombol Pengaturan Hari Siklus */}
                 <button

@@ -645,12 +645,12 @@ function QuickAbsenContent() {
 
                         {/* Nama Santri & Input Nama Panggilan di sebelah kanan foto */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-extrabold text-sm text-slate-100 leading-tight truncate">
+                          <h3 className="font-extrabold text-sm text-slate-100 leading-snug line-clamp-2">
                             <span className="text-slate-400 font-semibold text-xs mr-1">{idx}.</span>
                             {m.nama}
                           </h3>
 
-                          {/* Input Nama Panggilan Instan (Disamping Kanan Foto) */}
+                          {/* Input Nama Panggilan — full width, rata kiri, di bawah nama */}
                           <div className="flex items-center gap-1.5 mt-1.5">
                             <span className="text-[11px] text-slate-400 shrink-0 font-medium">Panggilan:</span>
                             <input
@@ -666,7 +666,7 @@ function QuickAbsenContent() {
                                   )
                                 }));
                               }}
-                              className="w-full max-w-[160px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-300 placeholder:text-slate-500 transition"
+                              className="flex-1 px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-300 placeholder:text-slate-500 transition"
                             />
                           </div>
                         </div>

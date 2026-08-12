@@ -847,11 +847,11 @@ function InputAbsenContent() {
                 </div>
                 {/* Nama + Input Panggilan di samping kanan foto */}
                 <div className="flex-1 min-w-0">
-                  <div className="font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5 leading-tight truncate">
-                    <span className="text-gray-400 text-xs font-semibold shrink-0">{index + 1}.</span>
-                    <span className="truncate">{item.nama}</span>
+                  <div className="font-extrabold text-gray-900 dark:text-white flex items-start gap-1.5 leading-snug">
+                    <span className="text-gray-400 text-xs font-semibold shrink-0 mt-0.5">{index + 1}.</span>
+                    <span className="line-clamp-2">{item.nama}</span>
                   </div>
-                  {/* Input Nama Panggilan (naik ke samping kanan foto) */}
+                  {/* Input Nama Panggilan — full width, rata kiri, di bawah nama */}
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <span className="text-[11px] text-gray-500 dark:text-gray-400 shrink-0 font-medium">Panggilan:</span>
                     <input
@@ -859,7 +859,7 @@ function InputAbsenContent() {
                       placeholder="Panggilan..."
                       value={item.nama_panggilan || ''}
                       onChange={(e) => handleNamaPanggilanChange(item.murid_id, e.target.value)}
-                      className="w-full max-w-[160px] px-2 py-0.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md text-xs focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 dark:text-indigo-300"
+                      className="flex-1 px-2 py-0.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md text-xs focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 dark:text-indigo-300"
                     />
                   </div>
                 </div>
