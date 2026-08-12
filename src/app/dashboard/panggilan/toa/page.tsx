@@ -24,34 +24,96 @@ interface Panggilan {
   status?: string;
 }
 
-type VoiceEngine = 'browser' | 'google';
 const LS_VOICE_KEY = 'toa_voice_preset';
 
-// ─── Helper: Pilih voice terbaik sesuai bahasa & jenis ───────────────────────
-function pickBestVoice(bahasa: string, jenis: string, manualName = ''): { voice: SpeechSynthesisVoice | null; pitch: number } {
-  const voices = window.speechSynthesis.getVoices();
-  const langPrefix = bahasa === 'ar' ? 'ar' : bahasa === 'en' ? 'en' : 'id';
-
-  if (manualName && !manualName.startsWith('preset:')) {
-    const manual = voices.find(v => v.name === manualName);
-    if (manual) return { voice: manual, pitch: jenis === 'pria' ? 0.75 : jenis === 'wanita' ? 1.2 : 1.0 };
+// ─── Helper AudioContext Singleton ───────────────────────────────────────────
+function getAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  if (!(window as any).__toa_audio_ctx) {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioCtx) {
+      (window as any).__toa_audio_ctx = new AudioCtx();
+    }
   }
-
-  const maleKw  = ['andika', 'male', 'man', 'laki', 'idm', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d', '-d', '-b'];
-  const femaleKw = ['gadis', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c', '-a', '-c'];
-
-  const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
-
-  if (jenis === 'pria') {
-    const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
-    // Fallback: ambil suara terakhir dalam daftar (biasanya male di Android)
-    return { voice: maleVoice || (candidates.length > 1 ? candidates[candidates.length - 1] : candidates[0] || null), pitch: 0.7 };
+  const ctx: AudioContext = (window as any).__toa_audio_ctx;
+  if (ctx && ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
   }
-  if (jenis === 'wanita') {
-    const femaleVoice = candidates.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
-    return { voice: femaleVoice || candidates[0] || null, pitch: 1.25 };
+  return ctx || null;
+}
+
+// ─── Universal TTS Audio Player (Web Audio API + Proxy / Fallback WebSpeech) ─
+async function playTTS(
+  text: string,
+  lang: string = 'id',
+  jenisSuara: string = 'auto',
+  volume: number = 1.0,
+  rate: number = 0.88
+): Promise<void> {
+  const isArabic = /[\u0600-\u06FF]/.test(text);
+  const targetLang = (isArabic || lang === 'ar') ? 'ar' : lang === 'en' ? 'en' : 'id';
+
+  // 1. Primary Engine: Server-side TTS Proxy via Web Audio API (100% reliable)
+  try {
+    const ttsUrl = `/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(targetLang)}`;
+    const response = await fetch(ttsUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const arrayBuffer = await response.arrayBuffer();
+
+    const ctx = getAudioContext();
+    if (!ctx) throw new Error('AudioContext null');
+
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.playbackRate.value = Math.max(0.5, Math.min(rate, 1.5));
+
+    // Pitch Modulation via detune (100 cents = 1 semitone)
+    if (jenisSuara === 'pria') {
+      source.detune.value = -350; // Deep Male Voice
+    } else if (jenisSuara === 'wanita') {
+      source.detune.value = +250; // Female Voice
+    } else {
+      source.detune.value = 0;
+    }
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = volume;
+
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    return new Promise((resolve) => {
+      source.onended = () => resolve();
+      source.start(0);
+    });
+  } catch (err) {
+    console.warn('[playTTS] Proxy failed, falling back to WebSpeech:', err);
+
+    // 2. Fallback Engine: Web Speech API
+    return new Promise((resolve) => {
+      if (typeof window === 'undefined' || !('speechSynthesis' in window)) return resolve();
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.resume();
+
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : 'id-ID';
+      utter.rate = rate;
+      utter.volume = volume;
+      utter.pitch = jenisSuara === 'pria' ? 0.75 : jenisSuara === 'wanita' ? 1.25 : 1.0;
+
+      let finished = false;
+      const done = () => { if (!finished) { finished = true; resolve(); } };
+      utter.onend = done;
+      utter.onerror = done;
+      window.speechSynthesis.speak(utter);
+      setTimeout(done, 20000);
+    });
   }
-  return { voice: candidates[0] || null, pitch: 1.0 };
 }
 
 // ─── Audio Queue Manager ──────────────────────────────────────────────────────
@@ -83,80 +145,38 @@ class AudioQueue {
     this.onStart?.(p);
     try { await this.playItem(p); } catch (e) { console.warn('[AudioQueue]', e); }
     this.onEnd?.(p);
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 1200));
     this.processNext();
   }
 
-  private playItem(p: Panggilan): Promise<void> {
-    return new Promise((resolve) => {
-      if (typeof window === 'undefined' || !('speechSynthesis' in window)) return resolve();
+  private async playItem(p: Panggilan): Promise<void> {
+    const repeat = Math.max(1, Math.min(p.pengulangan ?? 1, 5));
+    const manualVoice = (window as any).__toa_voice || '';
+    let reqBahasa = p.bahasa || 'id';
+    let reqJenis  = p.jenis_suara || 'auto';
 
-      const repeat = Math.max(1, Math.min(p.pengulangan ?? 1, 5));
-      let count = 0;
+    if (manualVoice.startsWith('preset:')) {
+      const parts = manualVoice.split(':');
+      if (parts[1]) reqBahasa = parts[1];
+      if (parts[2]) reqJenis  = parts[2];
+    }
 
-      const manualVoice = (window as any).__toa_voice || '';
-      let reqBahasa = p.bahasa || 'id';
-      let reqJenis  = p.jenis_suara || 'auto';
-      if (manualVoice.startsWith('preset:')) {
-        const parts = manualVoice.split(':');
-        if (parts[1]) reqBahasa = parts[1];
-        if (parts[2]) reqJenis  = parts[2];
+    const vol  = (window as any).__toa_volume ?? 1.0;
+    const rate = (window as any).__toa_rate ?? 0.88;
+
+    for (let i = 0; i < repeat; i++) {
+      await playTTS(p.teks_panggilan, reqBahasa, reqJenis, vol, rate);
+      if (i < repeat - 1) {
+        await new Promise(r => setTimeout(r, 800));
       }
-
-      const isArabic  = /[\u0600-\u06FF]/.test(p.teks_panggilan);
-      const langPrefix = (isArabic || reqBahasa === 'ar') ? 'ar' : reqBahasa === 'en' ? 'en' : reqBahasa === 'jv' ? 'id' : 'id';
-      const targetLang = (isArabic || reqBahasa === 'ar') ? 'ar-SA' : reqBahasa === 'en' ? 'en-US' : 'id-ID';
-
-      window.speechSynthesis.cancel();
-
-      const sayOnce = () => {
-        const { voice, pitch } = pickBestVoice(langPrefix, reqJenis, manualVoice);
-        const voices = window.speechSynthesis.getVoices();
-        const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
-
-        // Coba Google TTS jika tidak ada voice pack lokal
-        if (candidates.length === 0) {
-          const ttsLang = (isArabic || reqBahasa === 'ar') ? 'ar' : reqBahasa === 'en' ? 'en' : 'id';
-          const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(p.teks_panggilan.slice(0, 200))}&tl=${ttsLang}&client=tw-ob`;
-          const audio = new Audio(ttsUrl);
-          audio.volume = (window as any).__toa_volume ?? 1.0;
-          audio.playbackRate = (window as any).__toa_rate ?? 0.88;
-          audio.onended = () => { count++; if (count < repeat) setTimeout(sayOnce, 900); else resolve(); };
-          audio.onerror = () => { doWebSpeech(voice, pitch, targetLang); };
-          audio.play().catch(() => doWebSpeech(voice, pitch, targetLang));
-          return;
-        }
-
-        doWebSpeech(voice, pitch, targetLang);
-      };
-
-      function doWebSpeech(voice: SpeechSynthesisVoice | null, pitch: number, lang: string) {
-        const utter = new SpeechSynthesisUtterance(p.teks_panggilan);
-        utter.lang   = lang;
-        utter.rate   = (window as any).__toa_rate ?? 0.88;
-        utter.volume = (window as any).__toa_volume ?? 1.0;
-        utter.pitch  = pitch;
-        if (voice) utter.voice = voice;
-
-        let resolved = false;
-        const done = () => { if (resolved) return; resolved = true; count++; if (count < repeat) setTimeout(sayOnce, 900); else resolve(); };
-        utter.onend  = done;
-        // Timeout safety: jika onend tidak terpanggil dalam 30 detik
-        const safety = setTimeout(() => done(), 30000);
-        utter.onerror = () => { clearTimeout(safety); done(); };
-        window.speechSynthesis.speak(utter);
-        // Chrome bug: speechSynthesis bisa hang — kick setiap 5 detik
-        const kick = setInterval(() => { if (!window.speechSynthesis.speaking) clearInterval(kick); else { window.speechSynthesis.pause(); window.speechSynthesis.resume(); } }, 5000);
-        utter.onend = () => { clearTimeout(safety); clearInterval(kick); done(); };
-      }
-
-      sayOnce();
-    });
+    }
   }
 
   clear() {
     this.queue = [];
-    window.speechSynthesis?.cancel();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     this.playing = false;
     this.onQueueChange?.(0);
   }
@@ -164,7 +184,7 @@ class AudioQueue {
 
 // ─── Main TOA Component ───────────────────────────────────────────────────────
 function TOAContent() {
-  const router      = useRouter();
+  const router       = useRouter();
   const searchParams = useSearchParams();
   const asramaParam  = searchParams.get('asrama') || '';
 
@@ -180,29 +200,27 @@ function TOAContent() {
       const asrm: string  = d.user?.asrama || '';
       const allowed = ['admin', 'staff', 'petugas_panggilan'].some(r => role.includes(r));
       if (!allowed) { router.replace('/dashboard'); return; }
-      // Jika petugas asrama spesifik dan URL belum set asrama → set otomatis
       if (asrm && !asramaParam) setAsrama(asrm);
       setUserAsrama(asrm);
       setAuthChecked(true);
     }).catch(() => router.replace('/dashboard'));
   }, [router, asramaParam]);
 
-  // ── GATING: SSE hanya aktif setelah user tap "Mulai" ──────────────────────
-  // Ini adalah fix utama untuk autoplay policy browser Android/iOS
+  // ── GATING: User tap "Mulai Sesi TOA" untuk unlock audio context & SSE ──────
   const [sessionStarted, setSessionStarted] = useState(false);
-  const pendingQueueRef = useRef<Panggilan[]>([]); // buffer sebelum session mulai
+  const pendingQueueRef = useRef<Panggilan[]>([]);
 
-  const [connected,    setConnected]    = useState(false);
-  const [reconnecting, setReconnecting] = useState(false);
+  const [connected,        setConnected]        = useState(false);
+  const [reconnecting,     setReconnecting]     = useState(false);
   const [currentPanggilan, setCurrentPanggilan] = useState<Panggilan | null>(null);
-  const [queueCount,   setQueueCount]   = useState(0);
-  const [history,      setHistory]      = useState<Array<{ id: number; nama: string; waktu: string; asrama?: string }>>([]);
-  const [muted,        setMuted]        = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showHistory,  setShowHistory]  = useState(false);
-  const [connectionError, setConnectionError] = useState('');
-  const [totalToday,   setTotalToday]   = useState(0);
-  const [pendingCount, setPendingCount] = useState(0); // jumlah antrian sebelum mulai
+  const [queueCount,       setQueueCount]       = useState(0);
+  const [history,          setHistory]          = useState<Array<{ id: number; nama: string; waktu: string; asrama?: string }>>([]);
+  const [muted,            setMuted]            = useState(false);
+  const [showSettings,     setShowSettings]     = useState(false);
+  const [showHistory,      setShowHistory]      = useState(false);
+  const [connectionError,  setConnectionError]  = useState('');
+  const [totalToday,       setTotalToday]       = useState(0);
+  const [pendingCount,     setPendingCount]     = useState(0);
 
   // Audio Settings
   const [volume, setVolume] = useState(1.0);
@@ -227,8 +245,8 @@ function TOAContent() {
   // Sync audio settings ke global vars & localStorage
   useEffect(() => {
     (window as any).__toa_volume = muted ? 0 : volume;
-    (window as any).__toa_rate  = rate;
-    (window as any).__toa_voice = selectedVoice;
+    (window as any).__toa_rate   = rate;
+    (window as any).__toa_voice  = selectedVoice;
     localStorage.setItem(LS_VOICE_KEY, selectedVoice);
   }, [volume, rate, selectedVoice, muted]);
 
@@ -265,15 +283,7 @@ function TOAContent() {
     return () => { if (heartbeatRef.current) clearInterval(heartbeatRef.current); };
   }, []);
 
-  // Load voices
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const load = () => window.speechSynthesis.getVoices(); // trigger load
-    load();
-    window.speechSynthesis.onvoiceschanged = load;
-  }, []);
-
-  // ── connectSSE — dipanggil HANYA setelah sessionStarted = true ────────────
+  // ── connectSSE ────────────────────────────────────────────────────────────
   const connectSSE = useCallback(() => {
     if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
     setReconnecting(retryCountRef.current > 0);
@@ -291,15 +301,11 @@ function TOAContent() {
       try {
         const p: Panggilan = JSON.parse((e as MessageEvent).data);
         if (!sessionStartedRef.current) {
-          // Belum mulai → simpan di pending buffer
           pendingQueueRef.current.push(p);
           setPendingCount(prev => prev + 1);
-          // Tandai langsung selesai di server agar tidak re-queue
-          // JANGAN! Kita biarkan di pending, akan diputar saat mulai
           return;
         }
         if (mutedRef.current) {
-          // Muted → skip audio, update history langsung
           setHistory(prev => [
             { id: p.id, nama: p.santri_nama, waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) },
             ...prev.slice(0, 29),
@@ -321,7 +327,6 @@ function TOAContent() {
     };
   }, [asrama]);
 
-  // Hubungkan SSE saat session dimulai
   useEffect(() => {
     if (!sessionStarted || !authChecked) return;
     connectSSE();
@@ -331,29 +336,42 @@ function TOAContent() {
     };
   }, [sessionStarted, authChecked, asrama]);
 
-  // ── Handler: Mulai Sesi (tap pertama user) ─────────────────────────────────
+  // ── Handler: Mulai Sesi (Unlock AudioContext + SpeechSynthesis) ───────────
   const handleStartSession = useCallback(() => {
-    // 1. Unlock audio context dengan user gesture
+    // 1. Unlock Web Audio Context
+    const ctx = getAudioContext();
+    if (ctx) {
+      const silent = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = silent;
+      src.connect(ctx.destination);
+      src.start(0);
+    }
+
+    // 2. Unlock SpeechSynthesis
     if ('speechSynthesis' in window) {
+      window.speechSynthesis.resume();
       const warm = new SpeechSynthesisUtterance(' ');
       warm.volume = 0.001;
-      warm.rate   = 2;
       window.speechSynthesis.speak(warm);
     }
-    // 2. Set session started → SSE akan connect via useEffect
+
     setSessionStarted(true);
     sessionStartedRef.current = true;
 
-    // 3. Flush pending queue setelah 500ms (beri waktu audio unlock)
+    // 3. Flush pending queue
     setTimeout(() => {
       const pending = [...pendingQueueRef.current];
       pendingQueueRef.current = [];
       setPendingCount(0);
       pending.forEach(p => audioQueueRef.current?.push(p));
-    }, 500);
+    }, 400);
   }, []);
 
   const handleTest = () => {
+    // Memastikan AudioContext aktif saat tombol Tes diketik
+    getAudioContext();
+
     let testBahasa = 'id', testJenis = 'auto';
     if (selectedVoice.startsWith('preset:')) {
       const parts = selectedVoice.split(':');
@@ -369,7 +387,6 @@ function TOAContent() {
 
   const handleClearQueue = () => { audioQueueRef.current?.clear(); setCurrentPanggilan(null); };
 
-  // ── Loading / Auth check ───────────────────────────────────────────────────
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center">
@@ -378,17 +395,15 @@ function TOAContent() {
     );
   }
 
-  // ── GATE SCREEN: tampil sebelum user tap "Mulai" ───────────────────────────
+  // ── GATE SCREEN ────────────────────────────────────────────────────────────
   if (!sessionStarted) {
     return (
       <div className="min-h-screen bg-[#0a0f1e] text-white flex flex-col select-none">
-        {/* Header minimal */}
         <div className="px-5 pt-4 pb-3 border-b border-white/10 bg-white/5 text-center">
           <h1 className="font-black text-base">Sistem TOA — PPMA</h1>
           <p className="text-[11px] text-gray-400 mt-0.5">{asrama ? `Asrama: ${asrama}` : 'Semua Asrama'}</p>
         </div>
 
-        {/* Gate content */}
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-8">
           <div className="relative">
             <div className="absolute inset-0 rounded-full bg-orange-500/10 animate-ping" style={{ animationDuration: '2.5s' }} />
@@ -433,7 +448,6 @@ function TOAContent() {
 
       {/* ─── Header ───────────────────────────────────────────────────── */}
       <div className="border-b border-white/10 backdrop-blur-sm bg-white/5">
-        {/* Baris 1: Judul */}
         <div className="px-5 pt-3.5 pb-1 text-center">
           <h1 className="font-black text-base leading-tight">Sistem TOA — PPMA</h1>
           <div className="text-[11px] text-gray-400 font-medium mt-0.5">
@@ -441,9 +455,7 @@ function TOAContent() {
           </div>
         </div>
 
-        {/* Baris 2: Navigasi */}
         <div className="px-5 pb-3 flex items-center justify-between">
-          {/* Kiri: Kembali + Status Koneksi */}
           <div className="flex items-center gap-1.5">
             <Link href="/dashboard/panggilan"
               className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 border border-white/10 flex items-center gap-1 text-xs font-bold transition-colors">
@@ -463,7 +475,6 @@ function TOAContent() {
             </div>
           </div>
 
-          {/* Tengah: Badge Antrian */}
           <div className="flex-1 flex justify-center">
             {queueCount > 0 ? (
               <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/20 animate-pulse">
@@ -476,7 +487,6 @@ function TOAContent() {
             )}
           </div>
 
-          {/* Kanan: Sound + Settings */}
           <div className="flex items-center gap-1.5">
             <button onClick={() => setMuted(!muted)} title={muted ? 'Aktifkan audio' : 'Matikan audio'}
               className={`p-2 rounded-xl transition-colors ${muted ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-white/10 text-gray-300 hover:bg-white/15'}`}>
@@ -490,7 +500,22 @@ function TOAContent() {
         </div>
       </div>
 
-      {/* ─── Error Banner ─────────────────────────────────────────────── */}
+      {/* ─── Action Bar: Tes Audio & Reconnect (Selalu Mudah Diakses) ── */}
+      <div className="px-5 py-2.5 bg-white/5 border-b border-white/10 flex items-center justify-center gap-3">
+        <button
+          onClick={handleTest}
+          className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-xs shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
+        >
+          <Play size={14} /> Tes Audio Sistem
+        </button>
+        <button
+          onClick={connectSSE}
+          className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-gray-300 font-bold rounded-xl text-xs border border-white/10 active:scale-95 transition-all"
+        >
+          <RefreshCw size={14} /> Reconnect
+        </button>
+      </div>
+
       {connectionError && (
         <div className="px-5 py-2.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2 text-amber-400 text-xs">
           <AlertCircle size={13} className="shrink-0" />
@@ -553,18 +578,10 @@ function TOAContent() {
           </div>
 
           <div className="flex gap-2 pt-1">
-            <button onClick={handleTest}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 rounded-lg text-xs font-bold border border-orange-500/20">
-              <Play size={13} /> Tes Audio
-            </button>
-            <button onClick={connectSSE}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg text-xs font-bold border border-blue-500/20">
-              <RefreshCw size={13} /> Reconnect
-            </button>
             {(queueCount > 0 || currentPanggilan) && (
               <button onClick={handleClearQueue}
                 className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-bold border border-red-500/20 ml-auto">
-                <X size={13} /> Bersihkan
+                <X size={13} /> Bersihkan Antrian
               </button>
             )}
           </div>

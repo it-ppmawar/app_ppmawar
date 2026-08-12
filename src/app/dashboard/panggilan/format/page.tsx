@@ -152,7 +152,7 @@ export default function FormatPanggilanPage() {
     } catch (_) { setErrorMsg('Koneksi bermasalah'); }
   };
 
-  const handlePreview = (template: string, bahasa: BahasaType, jenisSuara: JenisSuaraType) => {
+  const handlePreview = async (template: string, bahasa: BahasaType, jenisSuara: JenisSuaraType) => {
     if (typeof window === 'undefined') return;
     const preview = template
       .replace(/{nama}/g, 'Ahmad Fauzi')
@@ -162,51 +162,42 @@ export default function FormatPanggilanPage() {
       .replace(/{teks}/g, 'Harap segera hadir.');
 
     const isArabicScript = /[\u0600-\u06FF]/.test(preview);
-    const targetLang = (isArabicScript || bahasa === 'ar') ? 'ar-SA' : (bahasa === 'en' ? 'en-US' : 'id-ID');
-    const langPrefix = (isArabicScript || bahasa === 'ar') ? 'ar' : (bahasa === 'en' ? 'en' : 'id');
+    const targetLang = (isArabicScript || bahasa === 'ar') ? 'ar' : (bahasa === 'en' ? 'en' : 'id');
 
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(preview);
-      utter.rate = 0.88;
-      utter.lang = targetLang;
+    try {
+      const ttsUrl = `/api/tts?text=${encodeURIComponent(preview)}&lang=${encodeURIComponent(targetLang)}`;
+      const res = await fetch(ttsUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const arrayBuffer = await res.arrayBuffer();
 
-      const voices = window.speechSynthesis.getVoices();
-      const maleKw = ['andika', 'pria', 'male', 'man', 'laki', 'idm', 'idc', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
-      const femaleKw = ['gadis', 'wanita', 'female', 'woman', 'perempuan', 'dfz', 'wavenet-a', 'wavenet-c', 'standard-a', 'standard-c'];
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) throw new Error('No AudioContext');
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') await ctx.resume();
 
-      // Filter HANYA suara yang bahasanya cocok
-      const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.playbackRate.value = 0.9;
 
       if (jenisSuara === 'pria') {
-        utter.pitch = 0.78;
-        if (candidates.length > 0) {
-          const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
-          utter.voice = maleVoice || (candidates.length > 1 ? candidates[candidates.length - 1] : candidates[0]);
-        }
+        source.detune.value = -350;
       } else if (jenisSuara === 'wanita') {
-        utter.pitch = 1.18;
-        if (candidates.length > 0) {
-          const femaleVoice = candidates.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
-          utter.voice = femaleVoice || candidates[0];
-        }
-      } else {
-        utter.pitch = 1.0;
-        if (candidates.length > 0) utter.voice = candidates[0];
+        source.detune.value = +250;
       }
 
-      // Fallback: Jika tidak ada voice pack bahasa tersebut di browser client, gunakan Google TTS Audio Fallback
-      if (candidates.length === 0 && (langPrefix === 'ar' || langPrefix === 'id' || langPrefix === 'en')) {
-        try {
-          const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(preview.slice(0, 200))}&tl=${langPrefix}&client=tw-ob`;
-          const audio = new Audio(ttsUrl);
-          audio.playbackRate = 0.9;
-          audio.play().catch(() => window.speechSynthesis.speak(utter));
-          return;
-        } catch (_) {}
+      source.connect(ctx.destination);
+      source.start(0);
+    } catch (_) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.resume();
+        const utter = new SpeechSynthesisUtterance(preview);
+        utter.rate = 0.88;
+        utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : 'id-ID';
+        utter.pitch = jenisSuara === 'pria' ? 0.78 : jenisSuara === 'wanita' ? 1.18 : 1.0;
+        window.speechSynthesis.speak(utter);
       }
-
-      window.speechSynthesis.speak(utter);
     }
   };
 
