@@ -194,6 +194,8 @@ export default function PanggilanSantriPage() {
           tujuan,
           teks_panggilan: teksPanggilan,
           pengulangan,
+          bahasa: selectedFormat?.bahasa || 'id',
+          jenis_suara: selectedFormat?.jenis_suara || 'auto',
         }),
       });
       const d = await r.json();
