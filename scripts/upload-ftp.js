@@ -1,12 +1,15 @@
 /**
  * scripts/upload-ftp.js
  * Uploads upload_bundle/ directory to targetDir using basic-ftp.
- * Strategy: Plain FTP first (server doesn't have valid TLS cert), FTPS as fallback.
- * Verbose mode OFF to maximize upload speed.
+ * Strategy: Plain FTP first (fastest for Jagoan Hosting), FTPS as fallback.
+ * Fast connection timeout (15s) to fail fast on hung socket, long transfer timeout (180s).
  */
 const ftp = require('basic-ftp');
 const path = require('path');
 const fs = require('fs');
+
+const CONNECT_TIMEOUT_MS = 15000; // 15s connect timeout to fail fast on hung socket
+const TRANSFER_TIMEOUT_MS = 180000; // 180s transfer timeout for large files
 
 async function connectFTP() {
   const server = process.env.FTP_SERVER;
@@ -17,21 +20,21 @@ async function connectFTP() {
     throw new Error('FTP credentials missing in environment variables!');
   }
 
-  const client = new ftp.Client(60000); // 60s timeout
-  client.ftp.verbose = false; // OFF: verbose mode slows upload dramatically
-
-  // Attempt 1: Plain FTP (fastest, known to work with Jagoan Hosting)
+  // Attempt 1: Plain FTP (fastest, primary for Jagoan Hosting)
+  const client1 = new ftp.Client(CONNECT_TIMEOUT_MS);
+  client1.ftp.verbose = false;
   try {
-    await client.access({ host: server, user, password, secure: false });
+    await client1.access({ host: server, user, password, secure: false });
+    client1.ftp.timeout = TRANSFER_TIMEOUT_MS;
     console.log('✅ Connected via Plain FTP');
-    return client;
+    return client1;
   } catch (err1) {
-    console.warn(`⚠️ Plain FTP failed: ${err1.message}`);
-    client.close();
+    console.warn(`⚠️ Plain FTP failed (${err1.message})`);
+    client1.close();
   }
 
   // Attempt 2: FTPS explicit TLS (ignore cert mismatch)
-  const client2 = new ftp.Client(60000);
+  const client2 = new ftp.Client(CONNECT_TIMEOUT_MS);
   client2.ftp.verbose = false;
   try {
     await client2.access({
@@ -39,15 +42,16 @@ async function connectFTP() {
       secure: true,
       secureOptions: { rejectUnauthorized: false }
     });
+    client2.ftp.timeout = TRANSFER_TIMEOUT_MS;
     console.log('✅ Connected via FTPS (explicit TLS)');
     return client2;
   } catch (err2) {
-    console.warn(`⚠️ FTPS explicit failed: ${err2.message}`);
+    console.warn(`⚠️ FTPS explicit failed (${err2.message})`);
     client2.close();
   }
 
   // Attempt 3: FTPS implicit TLS (ignore cert mismatch)
-  const client3 = new ftp.Client(60000);
+  const client3 = new ftp.Client(CONNECT_TIMEOUT_MS);
   client3.ftp.verbose = false;
   try {
     await client3.access({
@@ -55,6 +59,7 @@ async function connectFTP() {
       secure: 'implicit',
       secureOptions: { rejectUnauthorized: false }
     });
+    client3.ftp.timeout = TRANSFER_TIMEOUT_MS;
     console.log('✅ Connected via FTPS (implicit TLS)');
     return client3;
   } catch (err3) {
@@ -63,7 +68,7 @@ async function connectFTP() {
   }
 }
 
-async function uploadWithRetry(maxAttempts = 3) {
+async function uploadWithRetry(maxAttempts = 5) {
   const targetDir = process.env.FTP_TARGET_DIR || '/public_html';
   const uploadBundleDir = path.resolve(__dirname, '../upload_bundle');
 
@@ -88,7 +93,7 @@ async function uploadWithRetry(maxAttempts = 3) {
       if (client) client.close();
       console.error(`❌ Attempt ${attempt} failed: ${err.message}`);
       if (attempt < maxAttempts) {
-        const delay = attempt * 5000; // 5s, 10s backoff
+        const delay = 3000 * attempt; // 3s, 6s, 9s, 12s backoff
         console.log(`⏳ Retrying in ${delay / 1000}s...`);
         await new Promise(r => setTimeout(r, delay));
       } else {
