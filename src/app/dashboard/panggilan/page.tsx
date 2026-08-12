@@ -347,6 +347,20 @@ export default function PanggilanSantriPage() {
         );
       })()}
 
+      {/* Button Kelola Format Panggilan — tepat di bawah kartu TOA Asrama & hanya untuk admin/staff/pengasuh */}
+      {user && (
+        ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].some((r: string) => (user.role || '').toLowerCase().includes(r)) ||
+        user.is_pengasuh || user.isPengasuh || user.is_pengurus_asrama
+      ) && (
+        <a
+          href="/dashboard/panggilan/format"
+          className="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 text-sm font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all shadow-sm active:scale-95"
+        >
+          <BookOpen size={18} />
+          Kelola Format Panggilan
+        </a>
+      )}
+
       {/* Success/Error */}
       {successMsg && (
         <div className="flex items-center gap-3 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl text-green-700 dark:text-green-300 animate-[slideDown_0.3s_ease]">
@@ -614,17 +628,6 @@ export default function PanggilanSantriPage() {
           )}
         </div>
       </div>
-
-      {/* Link ke halaman format (admin/staff only) */}
-      {user && ['admin', 'staff'].includes(user.role) && (
-        <a
-          href="/dashboard/panggilan/format"
-          className="flex items-center justify-center gap-2 w-full py-3 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl hover:border-orange-300 dark:hover:border-orange-700 transition-all"
-        >
-          <BookOpen size={16} />
-          Kelola Format Panggilan
-        </a>
-      )}
     </div>
   );
 }

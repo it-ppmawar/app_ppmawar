@@ -169,15 +169,8 @@ class AudioQueue {
 
   private async playItem(p: Panggilan): Promise<void> {
     const repeat = Math.max(1, Math.min(p.pengulangan ?? 1, 5));
-    const manualVoice = (window as any).__toa_voice || '';
-    let reqBahasa = p.bahasa || 'id';
-    let reqJenis  = p.jenis_suara || 'pria'; // Default Pria Murni
-
-    if (manualVoice.startsWith('preset:')) {
-      const parts = manualVoice.split(':');
-      if (parts[1]) reqBahasa = parts[1];
-      if (parts[2]) reqJenis  = parts[2];
-    }
+    const reqBahasa = p.bahasa || 'id';
+    const reqJenis  = p.jenis_suara || 'pria'; // Selalu sinkron dari sender (Pria Murni)
 
     const vol  = (window as any).__toa_volume ?? 1.0;
     const rate = (window as any).__toa_rate ?? 0.88;
@@ -566,24 +559,13 @@ function TOAContent() {
                 placeholder="Kosongkan = semua asrama"
                 className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none focus:ring-1 focus:ring-orange-500" />
             </div>
-            <div>
-              <label className="text-[11px] text-gray-400 mb-1 block font-bold uppercase tracking-wide">Suara (Voice AI)</label>
-              <select value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none font-semibold">
-                <option value="">— Otomatis (Sesuai Format Panggilan) —</option>
-                <optgroup label="🇮🇩 Bahasa Indonesia">
-                  <option value="preset:id:pria">🇮🇩 Indonesia — Pria Murni</option>
-                </optgroup>
-                <optgroup label="🇸🇦 Bahasa Arab">
-                  <option value="preset:ar:pria">🇸🇦 Arab Fasih — Pria Murni</option>
-                </optgroup>
-                <optgroup label="☕ Bahasa Jawa">
-                  <option value="preset:jv:pria">☕ Jawa Halus — Pria Murni</option>
-                </optgroup>
-                <optgroup label="🇬🇧 Bahasa Inggris">
-                  <option value="preset:en:pria">🇬🇧 Inggris Native — Pria Murni</option>
-                </optgroup>
-              </select>
+            <div className="sm:col-span-2">
+              <div className="px-3.5 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs flex items-center gap-2">
+                <Sparkles size={15} className="shrink-0 text-orange-400" />
+                <span>
+                  <strong>Sinkron Otomatis:</strong> Dialek/cengkok pengisi suara (Indonesia, Arab Fasih, Jawa, Inggris) 100% diatur dan disesuaikan dari format yang dipilih oleh perangkat pengirim panggilan.
+                </span>
+              </div>
             </div>
           </div>
 
