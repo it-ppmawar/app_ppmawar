@@ -622,7 +622,7 @@ function QuickAbsenContent() {
 
                   return (
                     <div key={m.murid_id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-sm hover:border-slate-700 transition">
-                      {/* Header Row: Foto + Nama Lengkap & Nama Panggilan di samping kanan Foto */}
+                      {/* Header Row: Foto + Nama Lengkap */}
                       <div className="flex items-start gap-3">
                         {/* Avatar / Foto Santri (Klik untuk Zoom) */}
                         <div
@@ -643,33 +643,33 @@ function QuickAbsenContent() {
                           )}
                         </div>
 
-                        {/* Nama Santri & Input Nama Panggilan di sebelah kanan foto */}
+                        {/* Nama Santri (Maksimal 2 Baris) */}
                         <div className="flex-1 min-w-0">
                           <h3 className="font-extrabold text-sm text-slate-100 leading-snug line-clamp-2">
                             <span className="text-slate-400 font-semibold text-xs mr-1">{idx}.</span>
                             {m.nama}
                           </h3>
-
-                          {/* Input Nama Panggilan — full width, rata kiri, di bawah nama */}
-                          <div className="flex items-center gap-1.5 mt-1.5">
-                            <span className="text-[11px] text-slate-400 shrink-0 font-medium">Panggilan:</span>
-                            <input
-                              type="text"
-                              placeholder="Panggilan..."
-                              value={m.nama_panggilan || ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setData((prev: any) => ({
-                                  ...prev,
-                                  murid: (prev.murid || []).map((item: any) =>
-                                    item.murid_id === m.murid_id ? { ...item, nama_panggilan: val } : item
-                                  )
-                                }));
-                              }}
-                              className="flex-1 px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-300 placeholder:text-slate-500 transition"
-                            />
-                          </div>
                         </div>
+                      </div>
+
+                      {/* Input Nama Panggilan — Baris tersendiri, rata kiri sejajar NIS & Alamat */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-slate-400 shrink-0 font-medium">Panggilan:</span>
+                        <input
+                          type="text"
+                          placeholder="Panggilan..."
+                          value={m.nama_panggilan || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setData((prev: any) => ({
+                              ...prev,
+                              murid: (prev.murid || []).map((item: any) =>
+                                item.murid_id === m.murid_id ? { ...item, nama_panggilan: val } : item
+                              )
+                            }));
+                          }}
+                          className="flex-1 px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-300 placeholder:text-slate-500 transition"
+                        />
                       </div>
 
                       {/* Info Detail: NIS, Wali & Alamat */}

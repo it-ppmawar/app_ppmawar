@@ -824,7 +824,7 @@ function InputAbsenContent() {
         ) : (
           murid.map((item, index) => (
             <div key={item.murid_id} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 space-y-3">
-              {/* Header Row: Foto + Nama Lengkap & Input Panggilan di kanan foto */}
+              {/* Header Row: Foto + Nama Lengkap */}
               <div className="flex items-start gap-3">
                 <div
                   className={`w-12 h-12 rounded-xl overflow-hidden relative shrink-0 mt-0.5 ${getFotoUrl(item.foto, item.nis) ? 'cursor-pointer hover:opacity-80' : ''}`}
@@ -845,24 +845,25 @@ function InputAbsenContent() {
                     />
                   )}
                 </div>
-                {/* Nama + Input Panggilan di samping kanan foto */}
+                {/* Nama Lengkap (Maksimal 2 Baris) */}
                 <div className="flex-1 min-w-0">
                   <div className="font-extrabold text-gray-900 dark:text-white flex items-start gap-1.5 leading-snug">
                     <span className="text-gray-400 text-xs font-semibold shrink-0 mt-0.5">{index + 1}.</span>
                     <span className="line-clamp-2">{item.nama}</span>
                   </div>
-                  {/* Input Nama Panggilan — full width, rata kiri, di bawah nama */}
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    <span className="text-[11px] text-gray-500 dark:text-gray-400 shrink-0 font-medium">Panggilan:</span>
-                    <input
-                      type="text"
-                      placeholder="Panggilan..."
-                      value={item.nama_panggilan || ''}
-                      onChange={(e) => handleNamaPanggilanChange(item.murid_id, e.target.value)}
-                      className="flex-1 px-2 py-0.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md text-xs focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 dark:text-indigo-300"
-                    />
-                  </div>
                 </div>
+              </div>
+
+              {/* Input Nama Panggilan — Baris tersendiri, rata kiri sejajar NIS & Alamat */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-gray-500 dark:text-gray-400 shrink-0 font-medium">Panggilan:</span>
+                <input
+                  type="text"
+                  placeholder="Panggilan..."
+                  value={item.nama_panggilan || ''}
+                  onChange={(e) => handleNamaPanggilanChange(item.murid_id, e.target.value)}
+                  className="flex-1 px-2.5 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md text-xs focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 dark:text-indigo-300"
+                />
               </div>
 
               {/* Info: NIS, Wali & Alamat (maks 2 baris) */}
