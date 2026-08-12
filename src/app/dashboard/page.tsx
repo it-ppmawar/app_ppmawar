@@ -164,29 +164,43 @@ export default function DashboardPage() {
               </span>
             )}
           </div>
-        {/* Tanggal — Masehi (Cormorant Garamond) | Hijriyah (Fit & Elegan) */}
-        <div className="mt-6 flex items-center justify-center w-full px-2">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center justify-center bg-[#0f172a]/90 backdrop-blur-md px-4 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg border border-gray-800/90 transition-all duration-300 w-fit max-w-[96%] sm:max-w-max mx-auto gap-2 sm:gap-3">
-            {/* Kolom Kiri: Masehi (Cormorant Garamond — elegan & rapat) */}
-            <div className="flex items-center justify-end min-w-0">
+        {/* Tanggal — 2 Baris di HP (tidak pernah meluber) | 1 Baris di Desktop */}
+        <div className="mt-5 flex justify-center w-full px-3">
+
+          {/* ── MOBILE: Stacked (Cormorant atas, Amiri bawah) ── */}
+          <div className="sm:hidden flex flex-col items-center gap-1.5 bg-[#0f172a]/90 backdrop-blur-md px-5 py-2.5 rounded-2xl shadow-lg border border-gray-800/90 w-fit max-w-full">
+            <span
+              className="text-[13px] text-slate-100 font-semibold tracking-wide leading-none whitespace-nowrap"
+              style={{ fontFamily: '"Cormorant Garamond", serif' }}
+            >
+              {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
+            </span>
+            <div className="w-full h-px bg-emerald-800/50 rounded-full" />
+            <span
+              className="text-[13px] text-emerald-400 font-bold leading-none whitespace-nowrap"
+              style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif' }}
+              dir="rtl"
+            >
+              {hijriDateStr || ''}
+            </span>
+          </div>
+
+          {/* ── DESKTOP: Side-by-side satu baris ── */}
+          <div className="hidden sm:grid grid-cols-[1fr_auto_1fr] items-center bg-[#0f172a]/90 backdrop-blur-md px-6 py-2.5 rounded-full shadow-lg border border-gray-800/90 gap-3 w-fit max-w-max">
+            <div className="flex items-center justify-end">
               <span
-                className="text-[13px] xs:text-[14px] sm:text-[15px] text-slate-100 font-semibold tracking-tight text-right whitespace-nowrap"
-                style={{ fontFamily: '"Cormorant Garamond", serif', letterSpacing: '0.01em' }}
+                className="text-[15px] text-slate-100 font-semibold tracking-wider whitespace-nowrap"
+                style={{ fontFamily: '"Cormorant Garamond", serif' }}
               >
                 {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
               </span>
             </div>
-
-            {/* Kolom Tengah: Pemisah (Terunci Presisi Tepat Di Tengah) */}
-            <div className="px-0.5 sm:px-1 flex items-center justify-center shrink-0">
-              <span className="hidden sm:inline text-emerald-500/50 font-light select-none">|</span>
-              <span className="sm:hidden text-emerald-400/80 font-bold select-none text-[11px]">•</span>
+            <div className="px-1 flex items-center justify-center shrink-0">
+              <span className="text-emerald-500/50 font-light select-none">|</span>
             </div>
-
-            {/* Kolom Kanan: Hijriyah (rata kiri mendekati pemisah) */}
-            <div className="flex items-center justify-start min-w-0">
+            <div className="flex items-center justify-start">
               <span
-                className="text-[11px] xs:text-[12px] sm:text-sm text-emerald-400 font-bold leading-none text-left whitespace-nowrap"
+                className="text-sm text-emerald-400 font-bold leading-none whitespace-nowrap"
                 style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif' }}
                 dir="rtl"
               >
@@ -194,7 +208,9 @@ export default function DashboardPage() {
               </span>
             </div>
           </div>
+
         </div>
+
       </div>
     </div>
 
