@@ -4,14 +4,11 @@ import { RowDataPacket } from 'mysql2';
 
 /**
  * SSE endpoint untuk perangkat TOA per asrama.
- *
- * ARSITEKTUR RELIABLE DELIVERY:
- * ─────────────────────────────
- * 1. AUTO-RECOVERY: Panggilan yang stuck di 'dibacakan' > 8 detik (artinya SSE delivery gagal)
- *    secara otomatis di-reset ke 'pending' untuk diclaim ulang.
- * 2. ATOMIC SELECT-THEN-UPDATE: SELECT pending dulu, lalu UPDATE exact ID-nya,
- *    sehingga tidak ada data yang ter-skip atau di-kirim ganda.
- * 3. IMMEDIATE DISPATCH: Data langsung dikirim via SSE setelah claim berhasil.
+ * 
+ * ARSITEKTUR RELIABLE DELIVERY & DEDUPLIKASI:
+ * ──────────────────────────────────────────
+ * 1. STALE RECOVERY: Hanya reset panggilan 'dibacakan' jika sudah > 90 detik (pencegah duplikasi).
+ * 2. ATOMIC CLAIM: SELECT pending dulu, UPDATE exact IDs, lalu kirim via SSE.
  */
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +16,7 @@ export const runtime = 'nodejs';
 
 const POLL_INTERVAL = 1500; // 1.5 detik poll
 const MAX_PER_POLL = 3;
-const STALE_DIBACAKAN_SECONDS = 8; // reset ke pending jika SSE delivery gagal
+const STALE_DIBACAKAN_SECONDS = 90; // 90 detik agar panggilan panjang/diulang 3x tidak ter-reset di tengah jalan
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -30,7 +27,6 @@ export async function GET(request: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      // Event 'connected' pertama
       controller.enqueue(encoder.encode(
         `event: connected\ndata: ${JSON.stringify({
           connected: true,
@@ -49,7 +45,6 @@ export async function GET(request: Request) {
         }
       };
 
-      // ─── Main Poll Loop ──────────────────────────────────────────────────
       const interval = setInterval(async () => {
         if (closed) { clearInterval(interval); return; }
 
@@ -63,9 +58,7 @@ export async function GET(request: Request) {
           connection = await (pool as any).getConnection();
           await connection.beginTransaction();
 
-          // ── STEP 1: Auto-recovery ──────────────────────────────────────
-          // Reset panggilan yang stuck di 'dibacakan' terlalu lama
-          // (artinya SSE delivery gagal karena koneksi terputus sesaat)
+          // ── STEP 1: Auto-recovery (hanya jika benar-benar gantung > 90s) ──
           await connection.execute(
             `UPDATE panggilan_santri
              SET status = 'pending', dibacakan_at = NULL
@@ -74,14 +67,12 @@ export async function GET(request: Request) {
                AND DATE(created_at) = CURDATE()`
           );
 
-          // ── STEP 2: Build asrama filter ────────────────────────────────
-          // TOA "Semua Asrama" (asrama kosong) → ambil semua asrama
-          // TOA asrama spesifik → hanya ambil yang asramanya cocok
+          // ── STEP 2: Asrama Filter ─────────────────────────────────────
           const asramaWhere = asrama
             ? `AND nama_asrama = ${connection.escape(asrama)}`
             : '';
 
-          // ── STEP 3: SELECT pending (FIFO) ──────────────────────────────
+          // ── STEP 3: SELECT pending FIFO ──────────────────────────────
           const [pendingRaw] = await connection.execute(
             `SELECT * FROM panggilan_santri
              WHERE status = 'pending'
@@ -130,7 +121,6 @@ export async function GET(request: Request) {
         }
       }, POLL_INTERVAL);
 
-      // ─── Cleanup saat klien disconnect ──────────────────────────────────
       request.signal.addEventListener('abort', () => {
         closed = true;
         clearInterval(interval);
@@ -150,7 +140,6 @@ export async function GET(request: Request) {
   });
 }
 
-// ─── GET antrian saat ini ──────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
     const { asrama } = await request.json();

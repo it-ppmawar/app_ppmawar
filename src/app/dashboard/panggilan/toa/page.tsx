@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   Volume2, Wifi, WifiOff, CheckCircle2, Megaphone, Settings,
   VolumeX, Play, Mic2, Layers, RefreshCw, AlertCircle, Radio,
-  ChevronUp, ChevronDown, X, Sparkles, ArrowLeft, Zap,
+  ChevronUp, ChevronDown, X, Sparkles, ArrowLeft, Zap, Home,
 } from 'lucide-react';
 
 interface Panggilan {
@@ -26,7 +26,7 @@ interface Panggilan {
 
 const LS_VOICE_KEY = 'toa_voice_preset';
 
-// ─── Helper AudioContext Singleton ───────────────────────────────────────────
+// ─── AudioContext Singleton ──────────────────────────────────────────────────
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!(window as any).__toa_audio_ctx) {
@@ -42,18 +42,18 @@ function getAudioContext(): AudioContext | null {
   return ctx || null;
 }
 
-// ─── Universal TTS Audio Player (Web Audio API + Proxy / Fallback WebSpeech) ─
+// ─── Universal Male Voice TTS Player ──────────────────────────────────────────
 async function playTTS(
   text: string,
   lang: string = 'id',
-  jenisSuara: string = 'auto',
+  jenisSuara: string = 'pria', // Default: Suara Pria Murni
   volume: number = 1.0,
   rate: number = 0.88
 ): Promise<void> {
   const isArabic = /[\u0600-\u06FF]/.test(text);
   const targetLang = (isArabic || lang === 'ar') ? 'ar' : lang === 'en' ? 'en' : 'id';
 
-  // 1. Primary Engine: Server-side TTS Proxy via Web Audio API (100% reliable)
+  // 1. Primary Engine: Server-side TTS Proxy via Web Audio API
   try {
     const ttsUrl = `/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(targetLang)}`;
     const response = await fetch(ttsUrl);
@@ -72,14 +72,8 @@ async function playTTS(
     source.buffer = audioBuffer;
     source.playbackRate.value = Math.max(0.5, Math.min(rate, 1.5));
 
-    // Pitch Modulation via detune (100 cents = 1 semitone)
-    if (jenisSuara === 'pria') {
-      source.detune.value = -350; // Deep Male Voice
-    } else if (jenisSuara === 'wanita') {
-      source.detune.value = +250; // Female Voice
-    } else {
-      source.detune.value = 0;
-    }
+    // Tuning Pria Murni (-180 cents = natural masculine tone tanpa distorsi)
+    source.detune.value = (jenisSuara === 'wanita') ? +200 : -180;
 
     const gainNode = ctx.createGain();
     gainNode.gain.value = volume;
@@ -94,7 +88,7 @@ async function playTTS(
   } catch (err) {
     console.warn('[playTTS] Proxy failed, falling back to WebSpeech:', err);
 
-    // 2. Fallback Engine: Web Speech API
+    // 2. Fallback Engine: Web Speech API (Pilih Voice Pack Pria Murni)
     return new Promise((resolve) => {
       if (typeof window === 'undefined' || !('speechSynthesis' in window)) return resolve();
       window.speechSynthesis.cancel();
@@ -104,7 +98,15 @@ async function playTTS(
       utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : 'id-ID';
       utter.rate = rate;
       utter.volume = volume;
-      utter.pitch = jenisSuara === 'pria' ? 0.75 : jenisSuara === 'wanita' ? 1.25 : 1.0;
+      utter.pitch = (jenisSuara === 'wanita') ? 1.15 : 0.85;
+
+      const voices = window.speechSynthesis.getVoices();
+      const maleKw = ['andika', 'male', 'man', 'laki', 'idm', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
+      const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(targetLang));
+      if (candidates.length > 0) {
+        const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
+        if (maleVoice) utter.voice = maleVoice;
+      }
 
       let finished = false;
       const done = () => { if (!finished) { finished = true; resolve(); } };
@@ -116,9 +118,10 @@ async function playTTS(
   }
 }
 
-// ─── Audio Queue Manager ──────────────────────────────────────────────────────
+// ─── Audio Queue Manager dengan Deduplikasi Presisi ───────────────────────────
 class AudioQueue {
   private queue: Panggilan[] = [];
+  private processedIds = new Set<number>();
   private playing = false;
   private onStart?: (p: Panggilan) => void;
   private onEnd?: (p: Panggilan) => void;
@@ -129,6 +132,21 @@ class AudioQueue {
   }
 
   push(p: Panggilan) {
+    // Cegah duplikasi panggilan yang sama diputar berulang kali
+    if (p.id !== -1 && this.processedIds.has(p.id)) {
+      console.log(`[AudioQueue] Ignored duplicate call id=${p.id}`);
+      return;
+    }
+
+    if (p.id !== -1) {
+      this.processedIds.add(p.id);
+      // Bersihkan cache lama jika sudah terlalu banyak (> 100 items)
+      if (this.processedIds.size > 100) {
+        const oldestId = Array.from(this.processedIds)[0];
+        this.processedIds.delete(oldestId);
+      }
+    }
+
     this.queue.push(p);
     this.onQueueChange?.(this.queue.length);
     if (!this.playing) this.processNext();
@@ -153,7 +171,7 @@ class AudioQueue {
     const repeat = Math.max(1, Math.min(p.pengulangan ?? 1, 5));
     const manualVoice = (window as any).__toa_voice || '';
     let reqBahasa = p.bahasa || 'id';
-    let reqJenis  = p.jenis_suara || 'auto';
+    let reqJenis  = p.jenis_suara || 'pria'; // Default Pria Murni
 
     if (manualVoice.startsWith('preset:')) {
       const parts = manualVoice.split(':');
@@ -190,23 +208,25 @@ function TOAContent() {
 
   const [asrama, setAsrama] = useState(asramaParam);
 
-  // ── Auth: hanya admin / staff / petugas_panggilan (semua variant) ─────────
+  // ── Auth & Role Check ─────────────────────────────────────────────────────
   const [authChecked, setAuthChecked] = useState(false);
-  const [userAsrama, setUserAsrama]   = useState('');
+  const [userRole, setUserRole]       = useState('');
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
       if (!d.success) { router.replace('/dashboard'); return; }
-      const role: string  = d.user?.role || '';
-      const asrm: string  = d.user?.asrama || '';
+      const role: string = d.user?.role || '';
+      const asrm: string = d.user?.asrama || '';
       const allowed = ['admin', 'staff', 'petugas_panggilan'].some(r => role.includes(r));
       if (!allowed) { router.replace('/dashboard'); return; }
       if (asrm && !asramaParam) setAsrama(asrm);
-      setUserAsrama(asrm);
+      setUserRole(role);
       setAuthChecked(true);
     }).catch(() => router.replace('/dashboard'));
   }, [router, asramaParam]);
 
-  // ── GATING: User tap "Mulai Sesi TOA" untuk unlock audio context & SSE ──────
+  const isPetugasOnly = userRole.includes('petugas_panggilan') && !['admin', 'staff'].some(r => userRole.includes(r));
+
+  // ── GATING ────────────────────────────────────────────────────────────────
   const [sessionStarted, setSessionStarted] = useState(false);
   const pendingQueueRef = useRef<Panggilan[]>([]);
 
@@ -238,11 +258,9 @@ function TOAContent() {
   const mutedRef            = useRef(false);
   const sessionStartedRef   = useRef(false);
 
-  // Sync refs
   useEffect(() => { mutedRef.current = muted; }, [muted]);
   useEffect(() => { sessionStartedRef.current = sessionStarted; }, [sessionStarted]);
 
-  // Sync audio settings ke global vars & localStorage
   useEffect(() => {
     (window as any).__toa_volume = muted ? 0 : volume;
     (window as any).__toa_rate   = rate;
@@ -250,7 +268,6 @@ function TOAContent() {
     localStorage.setItem(LS_VOICE_KEY, selectedVoice);
   }, [volume, rate, selectedVoice, muted]);
 
-  // Init AudioQueue (sekali saja)
   useEffect(() => {
     audioQueueRef.current = new AudioQueue({
       onStart: (p) => setCurrentPanggilan(p),
@@ -261,16 +278,17 @@ function TOAContent() {
           { id: p.id, nama: p.santri_nama, waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }), asrama: p.nama_asrama },
           ...prev.slice(0, 29),
         ]);
-        fetch(`/api/panggilan/${p.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'selesai' }),
-        }).catch(() => {});
+        if (p.id !== -1) {
+          fetch(`/api/panggilan/${p.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'selesai' }),
+          }).catch(() => {});
+        }
       },
       onQueueChange: (count) => setQueueCount(count),
     });
 
-    // Heartbeat device
     const sendHeartbeat = () => {
       fetch('/api/panggilan/devices', {
         method: 'POST',
@@ -283,7 +301,6 @@ function TOAContent() {
     return () => { if (heartbeatRef.current) clearInterval(heartbeatRef.current); };
   }, []);
 
-  // ── connectSSE ────────────────────────────────────────────────────────────
   const connectSSE = useCallback(() => {
     if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
     setReconnecting(retryCountRef.current > 0);
@@ -310,7 +327,9 @@ function TOAContent() {
             { id: p.id, nama: p.santri_nama, waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) },
             ...prev.slice(0, 29),
           ]);
-          fetch(`/api/panggilan/${p.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'selesai' }) }).catch(() => {});
+          if (p.id !== -1) {
+            fetch(`/api/panggilan/${p.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'selesai' }) }).catch(() => {});
+          }
           return;
         }
         audioQueueRef.current?.push(p);
@@ -336,9 +355,7 @@ function TOAContent() {
     };
   }, [sessionStarted, authChecked, asrama]);
 
-  // ── Handler: Mulai Sesi (Unlock AudioContext + SpeechSynthesis) ───────────
   const handleStartSession = useCallback(() => {
-    // 1. Unlock Web Audio Context
     const ctx = getAudioContext();
     if (ctx) {
       const silent = ctx.createBuffer(1, 1, 22050);
@@ -348,7 +365,6 @@ function TOAContent() {
       src.start(0);
     }
 
-    // 2. Unlock SpeechSynthesis
     if ('speechSynthesis' in window) {
       window.speechSynthesis.resume();
       const warm = new SpeechSynthesisUtterance(' ');
@@ -359,7 +375,6 @@ function TOAContent() {
     setSessionStarted(true);
     sessionStartedRef.current = true;
 
-    // 3. Flush pending queue
     setTimeout(() => {
       const pending = [...pendingQueueRef.current];
       pendingQueueRef.current = [];
@@ -369,10 +384,8 @@ function TOAContent() {
   }, []);
 
   const handleTest = () => {
-    // Memastikan AudioContext aktif saat tombol Tes diketik
     getAudioContext();
-
-    let testBahasa = 'id', testJenis = 'auto';
+    let testBahasa = 'id', testJenis = 'pria';
     if (selectedVoice.startsWith('preset:')) {
       const parts = selectedVoice.split(':');
       if (parts[1]) testBahasa = parts[1];
@@ -433,10 +446,13 @@ function TOAContent() {
             Mulai Sesi TOA
           </button>
 
-          <Link href="/dashboard/panggilan"
-            className="flex items-center gap-1.5 text-gray-500 hover:text-gray-300 text-xs transition-colors">
-            <ArrowLeft size={13} /> Kembali ke Panggilan Santri
-          </Link>
+          {/* Sembunyikan tombol Kembali jika akun petugas_panggilan */}
+          {!isPetugasOnly && (
+            <Link href="/dashboard/panggilan"
+              className="flex items-center gap-1.5 text-gray-500 hover:text-gray-300 text-xs transition-colors">
+              <ArrowLeft size={13} /> Kembali ke Panggilan Santri
+            </Link>
+          )}
         </div>
       </div>
     );
@@ -457,11 +473,20 @@ function TOAContent() {
 
         <div className="px-5 pb-3 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <Link href="/dashboard/panggilan"
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 border border-white/10 flex items-center gap-1 text-xs font-bold transition-colors">
-              <ArrowLeft size={14} />
-              <span className="hidden sm:inline">Kembali</span>
-            </Link>
+            {/* Hanya tampilkan tombol Kembali untuk admin/staff */}
+            {!isPetugasOnly ? (
+              <Link href="/dashboard/panggilan"
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 border border-white/10 flex items-center gap-1 text-xs font-bold transition-colors">
+                <ArrowLeft size={14} />
+                <span className="hidden sm:inline">Kembali</span>
+              </Link>
+            ) : (
+              <Link href="/dashboard"
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 border border-white/10 flex items-center gap-1 text-xs font-bold transition-colors">
+                <Home size={14} />
+              </Link>
+            )}
+
             <div className={`p-2 rounded-xl ${connected ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-red-500/20 border border-red-500/30'}`}>
               <Radio size={14} className={connected ? 'text-emerald-400' : 'text-red-400'} />
             </div>
@@ -500,7 +525,7 @@ function TOAContent() {
         </div>
       </div>
 
-      {/* ─── Action Bar: Tes Audio & Reconnect (Selalu Mudah Diakses) ── */}
+      {/* ─── Action Bar: Tes Audio & Reconnect ───────────────────────── */}
       <div className="px-5 py-2.5 bg-white/5 border-b border-white/10 flex items-center justify-center gap-3">
         <button
           onClick={handleTest}
@@ -526,7 +551,7 @@ function TOAContent() {
         </div>
       )}
 
-      {/* ─── Settings Panel ───────────────────────────────────────────── */}
+      {/* ─── Settings Panel (Tombol Bersihkan Antrian Rata Tengah) ─── */}
       {showSettings && (
         <div className="bg-gray-900/90 border-b border-white/10 px-5 py-4 space-y-4 backdrop-blur-sm">
           <div className="flex items-center justify-between">
@@ -547,20 +572,16 @@ function TOAContent() {
                 className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none font-semibold">
                 <option value="">— Otomatis (Sesuai Format Panggilan) —</option>
                 <optgroup label="🇮🇩 Bahasa Indonesia">
-                  <option value="preset:id:pria">🇮🇩 Indonesia — Pria</option>
-                  <option value="preset:id:wanita">🇮🇩 Indonesia — Wanita</option>
+                  <option value="preset:id:pria">🇮🇩 Indonesia — Pria Murni</option>
                 </optgroup>
                 <optgroup label="🇸🇦 Bahasa Arab">
-                  <option value="preset:ar:pria">🇸🇦 Arab Fasih — Pria</option>
-                  <option value="preset:ar:wanita">🇸🇦 Arab Fasih — Wanita</option>
+                  <option value="preset:ar:pria">🇸🇦 Arab Fasih — Pria Murni</option>
                 </optgroup>
                 <optgroup label="☕ Bahasa Jawa">
-                  <option value="preset:jv:pria">☕ Jawa Halus — Pria</option>
-                  <option value="preset:jv:wanita">☕ Jawa Halus — Wanita</option>
+                  <option value="preset:jv:pria">☕ Jawa Halus — Pria Murni</option>
                 </optgroup>
                 <optgroup label="🇬🇧 Bahasa Inggris">
-                  <option value="preset:en:pria">🇬🇧 Inggris Native — Pria</option>
-                  <option value="preset:en:wanita">🇬🇧 Inggris Native — Wanita</option>
+                  <option value="preset:en:pria">🇬🇧 Inggris Native — Pria Murni</option>
                 </optgroup>
               </select>
             </div>
@@ -577,14 +598,15 @@ function TOAContent() {
             </div>
           </div>
 
-          <div className="flex gap-2 pt-1">
-            {(queueCount > 0 || currentPanggilan) && (
+          {/* Tombol Bersihkan Antrian: RATA TENGAH (Foto 2) */}
+          {(queueCount > 0 || currentPanggilan) && (
+            <div className="flex justify-center pt-2">
               <button onClick={handleClearQueue}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-bold border border-red-500/20 ml-auto">
-                <X size={13} /> Bersihkan Antrian
+                className="flex items-center justify-center gap-2 px-6 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl text-xs font-bold border border-red-500/30 active:scale-95 transition-all shadow-sm">
+                <X size={14} /> Bersihkan Antrian
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

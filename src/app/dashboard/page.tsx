@@ -463,17 +463,19 @@ export default function DashboardPage() {
           {/* Petugas Panggilan: tampilkan tombol langsung ke TOA */}
           {(role || '').toLowerCase().includes('petugas_panggilan') ? (
             <>
-              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col items-center justify-center p-6 text-center h-48 md:col-span-2">
-                <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>
+              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col items-center justify-center p-8 text-center min-h-[260px] md:col-span-2 space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>
                 </div>
-                <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-1">Sistem TOA Pemanggilan Santri</h4>
-                <p className="text-xs text-gray-500 mt-1 mb-4">Anda adalah petugas pemanggilan. Buka halaman TOA untuk menerima dan membunyikan panggilan santri secara langsung.</p>
+                <div>
+                  <h4 className="font-extrabold text-base text-gray-800 dark:text-gray-100 mb-1">Sistem TOA Pemanggilan Santri</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md leading-relaxed">Anda adalah petugas pemanggilan. Buka halaman TOA untuk menerima dan membunyikan panggilan santri secara langsung.</p>
+                </div>
                 <a
                   href={asramaName ? `/dashboard/panggilan/toa?asrama=${encodeURIComponent(asramaName)}` : '/dashboard/panggilan/toa'}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-orange-500/20"
+                  className="flex items-center gap-2.5 px-7 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-sm font-extrabold rounded-2xl transition-all shadow-lg shadow-orange-500/25 active:scale-95"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
                   Buka Halaman TOA
                 </a>
               </div>
