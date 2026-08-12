@@ -500,8 +500,8 @@ export default function KetertibanPage() {
                 className="flex-1 md:flex-none bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
                 title="Tambah Catatan Pelanggaran"
               >
-                <span className="hidden sm:inline">+ Tambah Catatan</span>
-                <span className="sm:hidden">+ Tambah Catatan</span>
+                <span className="hidden sm:inline">+ Catatan</span>
+                <span className="sm:hidden">+ Catatan</span>
               </button>
             )}
           </div>

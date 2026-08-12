@@ -523,33 +523,35 @@ export default function BillingPage() {
                 : 'Dasbor pemantauan status tagihan santri secara menyeluruh dari sistem keuangan pusat.'}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 self-start md:self-center">
-            <button
-              onClick={() => handleExportBilling('pdf', true)}
-              className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 border border-white/20 shadow-sm"
-              title="Preview PDF"
-            >
-              <FileText size={14} /> Preview
-            </button>
-            <button
-              onClick={() => handleExportBilling('pdf')}
-              className="px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm"
-              title="Download PDF"
-            >
-              <Download size={14} /> PDF
-            </button>
-            <button
-              onClick={() => handleExportBilling('excel')}
-              className="px-3 py-2 bg-green-500/80 hover:bg-green-500 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm"
-              title="Download Excel"
-            >
-              <Download size={14} /> Excel
-            </button>
+          <div className="flex flex-col w-full md:w-auto gap-2 self-start md:self-center">
+            <div className="grid grid-cols-3 gap-2 w-full md:w-auto">
+              <button
+                onClick={() => handleExportBilling('pdf', true)}
+                className="px-2 sm:px-3 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 border border-white/20 shadow-sm"
+                title="Preview PDF"
+              >
+                <FileText size={14} /> Preview
+              </button>
+              <button
+                onClick={() => handleExportBilling('pdf')}
+                className="px-2 sm:px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                title="Download PDF"
+              >
+                <Download size={14} /> PDF
+              </button>
+              <button
+                onClick={() => handleExportBilling('excel')}
+                className="px-2 sm:px-3 py-2 bg-green-500/80 hover:bg-green-500 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                title="Download Excel"
+              >
+                <Download size={14} /> Excel
+              </button>
+            </div>
             {userRole && ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(userRole) && (
               <button
                 onClick={handleSyncBilling}
                 disabled={syncing}
-                className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 border border-white/20 disabled:opacity-50 shadow-sm"
+                className="w-full px-3 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 border border-white/20 disabled:opacity-50 shadow-sm"
               >
                 <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
                 {syncing ? 'Menyinkronkan...' : 'Sinkron'}

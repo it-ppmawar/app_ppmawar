@@ -344,26 +344,27 @@ export default function FaceEnrollmentPage() {
         </div>
 
         {/* Step 1: Load models */}
-        <div className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${modelsReady ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'}`}>
-          <div>
-            <p className="font-bold text-sm text-gray-800 dark:text-white">
-              {modelsReady ? '✅ Model AI Siap' : '1. Load Model AI'}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              SSD MobileNet + Face Landmark + Face Recognition (~12MB, cached)
-            </p>
+        <div className={`flex flex-col gap-3 p-4 rounded-2xl border-2 transition-all ${modelsReady ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-bold text-sm text-gray-800 dark:text-white">
+                {modelsReady ? '✅ Model AI Siap' : '1. Load Model AI'}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                SSD MobileNet + Face Landmark + Face Recognition (~12MB, cached)
+              </p>
+            </div>
+            {modelsReady && <CheckCircle2 size={24} className="text-emerald-500 flex-shrink-0" />}
           </div>
-          {!modelsReady ? (
+          {!modelsReady && (
             <button
               onClick={handleLoadModels}
               disabled={modelsLoading}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold transition disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold transition disabled:opacity-50 shadow-md shadow-violet-600/20"
             >
-              {modelsLoading ? <Loader2 size={14} className="animate-spin" /> : <Brain size={14} />}
+              {modelsLoading ? <Loader2 size={16} className="animate-spin" /> : <Brain size={16} />}
               {modelsLoading ? 'Loading...' : 'Load Model'}
             </button>
-          ) : (
-            <CheckCircle2 size={24} className="text-emerald-500 flex-shrink-0" />
           )}
         </div>
 
@@ -456,8 +457,8 @@ export default function FaceEnrollmentPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-2">
-          <div className="relative flex-1 min-w-40">
+        <div className="space-y-2">
+          <div className="relative w-full">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
@@ -467,24 +468,26 @@ export default function FaceEnrollmentPage() {
               className="w-full pl-8 pr-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:text-white"
             />
           </div>
-          <select
-            value={filterMode}
-            onChange={(e) => setFilterMode(e.target.value as any)}
-            className="px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm dark:text-white"
-          >
-            <option value="all">Semua</option>
-            <option value="enrolled">✅ Enrolled</option>
-            <option value="unenrolled">⏳ Belum Enrolled</option>
-          </select>
-          <select
-            value={genderFilter}
-            onChange={(e) => setGenderFilter(e.target.value as any)}
-            className="px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm dark:text-white"
-          >
-            <option value="">Semua Gender</option>
-            <option value="Laki-laki">Putra</option>
-            <option value="Perempuan">Putri</option>
-          </select>
+          <div className="grid grid-cols-2 gap-2 w-full">
+            <select
+              value={filterMode}
+              onChange={(e) => setFilterMode(e.target.value as any)}
+              className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm dark:text-white"
+            >
+              <option value="all">Semua</option>
+              <option value="enrolled">✅ Enrolled</option>
+              <option value="unenrolled">⏳ Belum Enrolled</option>
+            </select>
+            <select
+              value={genderFilter}
+              onChange={(e) => setGenderFilter(e.target.value as any)}
+              className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm dark:text-white"
+            >
+              <option value="">Semua Gender</option>
+              <option value="Laki-laki">Putra</option>
+              <option value="Perempuan">Putri</option>
+            </select>
+          </div>
         </div>
 
         {/* List */}

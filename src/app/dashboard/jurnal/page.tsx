@@ -360,8 +360,8 @@ export default function JurnalPage() {
                 className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl text-sm transition-colors flex items-center justify-center gap-1"
                 title="Isi Jurnal"
               >
-                <span className="hidden sm:inline">+ Isi Jurnal</span>
-                <span className="sm:hidden">+ Isi Jurnal</span>
+                <span className="hidden sm:inline">+ Jurnal</span>
+                <span className="sm:hidden">+ Jurnal</span>
               </button>
             )}
           </div>
