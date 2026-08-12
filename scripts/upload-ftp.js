@@ -2,14 +2,14 @@
  * scripts/upload-ftp.js
  * Uploads upload_bundle/ directory to targetDir using basic-ftp.
  * Strategy: Plain FTP first (fastest for Jagoan Hosting), FTPS as fallback.
- * Fast connection timeout (15s) to fail fast on hung socket, long transfer timeout (180s).
+ * Track progress & fast connection timeout (10s) to fail fast on hung socket.
  */
 const ftp = require('basic-ftp');
 const path = require('path');
 const fs = require('fs');
 
-const CONNECT_TIMEOUT_MS = 15000; // 15s connect timeout to fail fast on hung socket
-const TRANSFER_TIMEOUT_MS = 180000; // 180s transfer timeout for large files
+const CONNECT_TIMEOUT_MS = 10000; // 10s connect timeout to fail fast on hung socket
+const TRANSFER_TIMEOUT_MS = 300000; // 300s (5m) transfer timeout for zip bundle
 
 async function connectFTP() {
   const server = process.env.FTP_SERVER;
@@ -68,7 +68,7 @@ async function connectFTP() {
   }
 }
 
-async function uploadWithRetry(maxAttempts = 5) {
+async function uploadWithRetry(maxAttempts = 4) {
   const targetDir = process.env.FTP_TARGET_DIR || '/public_html';
   const uploadBundleDir = path.resolve(__dirname, '../upload_bundle');
 
@@ -84,16 +84,27 @@ async function uploadWithRetry(maxAttempts = 5) {
     let client;
     try {
       client = await connectFTP();
+
+      let lastLoggedPct = -1;
+      client.trackProgress(info => {
+        const pct = Math.floor((info.bytes / info.bytesOverall) * 100);
+        if (pct >= lastLoggedPct + 20) {
+          lastLoggedPct = pct;
+          console.log(`🚀 Transferring ${info.name}: ${pct}% (${(info.bytes / 1024 / 1024).toFixed(1)}MB / ${(info.bytesOverall / 1024 / 1024).toFixed(1)}MB)`);
+        }
+      });
+
       console.log(`📤 Uploading to ${targetDir}...`);
       await client.uploadFromDir(uploadBundleDir, targetDir);
       console.log('🎉 Upload completed successfully!');
+      client.trackProgress(); // clear progress
       client.close();
       return; // Success
     } catch (err) {
       if (client) client.close();
       console.error(`❌ Attempt ${attempt} failed: ${err.message}`);
       if (attempt < maxAttempts) {
-        const delay = 3000 * attempt; // 3s, 6s, 9s, 12s backoff
+        const delay = 4000 * attempt; // 4s, 8s, 12s backoff
         console.log(`⏳ Retrying in ${delay / 1000}s...`);
         await new Promise(r => setTimeout(r, delay));
       } else {
