@@ -167,21 +167,21 @@ export default function DashboardPage() {
         {/* Tanggal — 2 Baris di HP (tidak pernah meluber) | 1 Baris di Desktop */}
         <div className="mt-5 flex justify-center w-full px-3">
 
-          {/* ── MOBILE: Stacked (Cormorant atas, Amiri bawah) ── */}
+          {/* ── MOBILE: Stacked (Amiri/Hijriyah atas, Cormorant/Masehi bawah) ── */}
           <div className="sm:hidden flex flex-col items-center gap-1.5 bg-[#0f172a]/90 backdrop-blur-md px-5 py-2.5 rounded-2xl shadow-lg border border-gray-800/90 w-fit max-w-full">
-            <span
-              className="text-[13px] text-slate-100 font-semibold tracking-wide leading-none whitespace-nowrap"
-              style={{ fontFamily: '"Cormorant Garamond", serif' }}
-            >
-              {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
-            </span>
-            <div className="w-full h-px bg-emerald-800/50 rounded-full" />
             <span
               className="text-[13px] text-emerald-400 font-bold leading-none whitespace-nowrap"
               style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif' }}
               dir="rtl"
             >
               {hijriDateStr || ''}
+            </span>
+            <div className="w-full h-px bg-emerald-800/50 rounded-full" />
+            <span
+              className="text-[13px] text-slate-100 font-semibold tracking-wide leading-none whitespace-nowrap"
+              style={{ fontFamily: '"Cormorant Garamond", serif' }}
+            >
+              {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
             </span>
           </div>
 
