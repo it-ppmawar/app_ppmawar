@@ -178,7 +178,7 @@ export default function DashboardPage() {
             </span>
             <div className="w-full h-px bg-emerald-800/50 rounded-full" />
             <span
-              className="text-[13px] text-slate-100 font-semibold tracking-wide leading-none whitespace-nowrap"
+              className="text-[10.5px] text-slate-200 font-medium tracking-wider leading-none whitespace-nowrap"
               style={{ fontFamily: '"Cormorant Garamond", serif' }}
             >
               {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
@@ -189,7 +189,7 @@ export default function DashboardPage() {
           <div className="hidden sm:grid grid-cols-[1fr_auto_1fr] items-center bg-[#0f172a]/90 backdrop-blur-md px-6 py-2.5 rounded-full shadow-lg border border-gray-800/90 gap-3 w-fit max-w-max">
             <div className="flex items-center justify-end">
               <span
-                className="text-[15px] text-slate-100 font-semibold tracking-wider whitespace-nowrap"
+                className="text-[11px] text-slate-200 font-medium tracking-wider whitespace-nowrap"
                 style={{ fontFamily: '"Cormorant Garamond", serif' }}
               >
                 {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}

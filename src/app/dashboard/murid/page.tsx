@@ -841,30 +841,30 @@ export default function DataMuridPage() {
                   title="Tambah Santri Baru"
                 >
                   <Plus size={14} />
-                  <span>+ Santri</span>
+                  <span>Santri</span>
                 </button>
               </div>
             )}
           </div>
 
           {selectedMurid.length > 0 && (role === 'admin' || role === 'staff') && (
-            <div className="flex flex-wrap justify-center sm:justify-start gap-2 pt-2 animate-in fade-in duration-200">
-              <button onClick={() => openBulkModal('quran')} className="px-3 py-2 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-colors flex items-center gap-1.5">
+            <div className="grid grid-cols-2 gap-2 pt-2 w-full max-w-md mx-auto sm:max-w-none sm:flex sm:flex-wrap animate-in fade-in duration-200">
+              <button onClick={() => openBulkModal('quran')} className="w-full sm:w-auto px-3 py-2 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5">
                 <CheckSquare size={14} /> Pindah Qur'an ({selectedMurid.length})
               </button>
-              <button onClick={() => openBulkModal('madin')} className="px-3 py-2 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-800 rounded-xl text-xs font-bold hover:bg-teal-100 transition-colors flex items-center gap-1.5">
+              <button onClick={() => openBulkModal('madin')} className="w-full sm:w-auto px-3 py-2 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-800 rounded-xl text-xs font-bold hover:bg-teal-100 transition-colors flex items-center justify-center gap-1.5">
                 <CheckSquare size={14} /> Pindah Madin 1 ({selectedMurid.length})
               </button>
-              <button onClick={() => openBulkModal('madin2')} className="px-3 py-2 bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 rounded-xl text-xs font-bold hover:bg-cyan-100 transition-colors flex items-center gap-1.5">
+              <button onClick={() => openBulkModal('madin2')} className="w-full sm:w-auto px-3 py-2 bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 rounded-xl text-xs font-bold hover:bg-cyan-100 transition-colors flex items-center justify-center gap-1.5">
                 <CheckSquare size={14} /> Set Madin 2 ({selectedMurid.length})
               </button>
-              <button onClick={() => openBulkModal('kamar')} className="px-3 py-2 bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-800 rounded-xl text-xs font-bold hover:bg-orange-100 transition-colors flex items-center gap-1.5">
+              <button onClick={() => openBulkModal('kamar')} className="w-full sm:w-auto px-3 py-2 bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-800 rounded-xl text-xs font-bold hover:bg-orange-100 transition-colors flex items-center justify-center gap-1.5">
                 <CheckSquare size={14} /> Pindah Kamar ({selectedMurid.length})
               </button>
-              <button onClick={handleConvertUserBulk} className="px-3 py-2 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800 rounded-xl text-xs font-bold hover:bg-purple-100 transition-colors flex items-center gap-1.5">
+              <button onClick={handleConvertUserBulk} className="w-full sm:w-auto px-3 py-2 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800 rounded-xl text-xs font-bold hover:bg-purple-100 transition-colors flex items-center justify-center gap-1.5">
                 <UserPlus size={14} /> Perbarui Akun ({selectedMurid.length})
               </button>
-              <button onClick={handleLuluskanBulk} className="px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-1.5">
+              <button onClick={handleLuluskanBulk} className="w-full sm:w-auto px-3 py-2 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center justify-center gap-1.5">
                 <CheckSquare size={14} /> Luluskan ({selectedMurid.length})
               </button>
             </div>
