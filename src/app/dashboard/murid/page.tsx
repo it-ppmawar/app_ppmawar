@@ -975,8 +975,8 @@ export default function DataMuridPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs max-w-[160px]" title={item.alamat}>
-                      <span className="line-clamp-3 leading-relaxed">{item.alamat || '-'}</span>
+                    <td className="px-4 py-3 text-xs max-w-[180px] whitespace-normal break-words" title={item.alamat}>
+                      <div className="line-clamp-3 leading-relaxed break-words">{item.alamat || '-'}</div>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-2">
