@@ -238,9 +238,8 @@ export default function PanggilanSantriPage() {
       const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
       const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
-      source.playbackRate.value = rate;
-      if (jenis === 'pria') source.detune.value = -350;
-      else if (jenis === 'wanita') source.detune.value = +250;
+      source.playbackRate.value = Math.max(0.5, Math.min(rate, 1.5));
+      source.detune.value = (jenis === 'wanita') ? +200 : -180;
       const gainNode = ctx.createGain();
       gainNode.gain.value = volume;
       source.connect(gainNode);
@@ -254,7 +253,16 @@ export default function PanggilanSantriPage() {
         utter.rate = rate;
         utter.volume = volume;
         utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : 'id-ID';
-        utter.pitch = jenis === 'pria' ? 0.78 : jenis === 'wanita' ? 1.18 : 1.0;
+        utter.pitch = (jenis === 'wanita') ? 1.15 : 0.85;
+
+        const voices = window.speechSynthesis.getVoices();
+        const maleKw = ['andika', 'male', 'man', 'laki', 'idm', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
+        const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(targetLang));
+        if (candidates.length > 0) {
+          const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
+          if (maleVoice && jenis !== 'wanita') utter.voice = maleVoice;
+        }
+
         window.speechSynthesis.speak(utter);
       }
     }

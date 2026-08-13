@@ -180,10 +180,10 @@ export default function FormatPanggilanPage() {
       source.buffer = audioBuffer;
       source.playbackRate.value = 0.9;
 
-      if (jenisSuara === 'pria') {
-        source.detune.value = -350;
-      } else if (jenisSuara === 'wanita') {
-        source.detune.value = +250;
+      if (jenisSuara === 'wanita') {
+        source.detune.value = +200;
+      } else {
+        source.detune.value = -180;
       }
 
       source.connect(ctx.destination);
@@ -195,7 +195,16 @@ export default function FormatPanggilanPage() {
         const utter = new SpeechSynthesisUtterance(preview);
         utter.rate = 0.88;
         utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : 'id-ID';
-        utter.pitch = jenisSuara === 'pria' ? 0.78 : jenisSuara === 'wanita' ? 1.18 : 1.0;
+        utter.pitch = jenisSuara === 'wanita' ? 1.15 : 0.85;
+
+        const voices = window.speechSynthesis.getVoices();
+        const maleKw = ['andika', 'male', 'man', 'laki', 'idm', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
+        const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(targetLang));
+        if (candidates.length > 0) {
+          const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
+          if (maleVoice && jenisSuara !== 'wanita') utter.voice = maleVoice;
+        }
+
         window.speechSynthesis.speak(utter);
       }
     }
