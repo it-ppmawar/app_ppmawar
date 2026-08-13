@@ -810,7 +810,7 @@ export default function DataMuridPage() {
             </div>
 
             {(role === 'admin' || role === 'staff') && (
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                 <button
                   onClick={() => {
                     setUploadFiles([]);
@@ -818,7 +818,7 @@ export default function DataMuridPage() {
                     setUploadResult(null);
                     setIsUploadModalOpen(true);
                   }}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-colors flex items-center gap-2 shadow-sm shrink-0"
+                  className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-colors flex items-center gap-1.5 shadow-sm shrink-0 whitespace-nowrap"
                   title="Upload & Sinkronkan Cerdas Data Kelas/Kamar dari Excel atau ZIP"
                 >
                   <Upload size={14} />
@@ -828,7 +828,7 @@ export default function DataMuridPage() {
                 <button
                   onClick={() => handleSyncMadin(false)}
                   disabled={syncingMadin}
-                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-colors flex items-center gap-2 shadow-sm disabled:opacity-70 shrink-0"
+                  className="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-70 shrink-0 whitespace-nowrap"
                   title="Sinkronisasi Pembagian Kelas Madin dari Excel 2026-2027"
                 >
                   <RefreshCw size={14} className={syncingMadin ? 'animate-spin' : ''} />
@@ -837,11 +837,11 @@ export default function DataMuridPage() {
 
                 <button
                   onClick={() => setIsAddModalOpen(true)}
-                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold transition-colors flex items-center gap-2 shadow-sm shrink-0"
+                  className="px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold transition-colors flex items-center gap-1.5 shadow-sm shrink-0 whitespace-nowrap"
                   title="Tambah Santri Baru"
                 >
                   <Plus size={14} />
-                  <span>Tambah Santri</span>
+                  <span>+ Santri</span>
                 </button>
               </div>
             )}
@@ -873,10 +873,10 @@ export default function DataMuridPage() {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
+            <thead className="bg-gray-100/80 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 text-xs font-extrabold uppercase tracking-wider border-b border-gray-100 dark:border-gray-700">
               <tr>
                 {(role === 'admin' || role === 'staff') && (
-                  <th className="px-4 py-4 w-12 text-center">
+                  <th className="px-4 py-4 w-10 text-center">
                     <input
                       type="checkbox"
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
@@ -978,24 +978,37 @@ export default function DataMuridPage() {
                     <td className="px-4 py-3 text-xs max-w-[180px] whitespace-normal break-words" title={item.alamat}>
                       <div className="line-clamp-3 leading-relaxed break-words">{item.alamat || '-'}</div>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => handleViewDetail(item)} className="text-[10px] bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm">
+                    <td className="px-3 py-3 text-center">
+                      <div className="grid grid-cols-2 gap-1.5 w-[136px] mx-auto">
+                        <button
+                          onClick={() => handleViewDetail(item)}
+                          className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition shadow-sm flex items-center justify-center gap-1"
+                        >
                           Detail
                         </button>
-                        {(role === 'admin' || role === 'staff') && (
+                        {(role === 'admin' || role === 'staff') ? (
                           <>
-                            <button onClick={() => handleConvertUser(item.murid_id)} className="text-[10px] bg-purple-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-purple-700 transition-colors shadow-sm" title="Jadikan User Wali Murid">
-                              <UserPlus size={14} className="inline-block" />
+                            <button
+                              onClick={() => handleConvertUser(item.murid_id)}
+                              className="w-full py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold rounded-lg transition shadow-sm flex items-center justify-center gap-1"
+                              title="Jadikan User Wali Murid"
+                            >
+                              <UserPlus size={13} /> Akun
                             </button>
-                            <button onClick={() => handleEditClick(item)} className="text-[10px] bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-sm">
+                            <button
+                              onClick={() => handleEditClick(item)}
+                              className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg transition shadow-sm flex items-center justify-center gap-1"
+                            >
                               Ubah
                             </button>
-                            <button onClick={() => handleLuluskan(item.murid_id)} className="text-[10px] bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-green-700 transition-colors shadow-sm" title="Pindahkan ke Alumni">
+                            <button
+                              onClick={() => handleLuluskan(item.murid_id)}
+                              className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition shadow-sm flex items-center justify-center gap-1"
+                            >
                               Luluskan
                             </button>
                           </>
-                        )}
+                        ) : null}
                       </div>
                     </td>
                   </tr>
