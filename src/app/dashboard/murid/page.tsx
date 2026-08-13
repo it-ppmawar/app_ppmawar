@@ -951,8 +951,8 @@ export default function DataMuridPage() {
                     <td className="px-4 py-3 font-mono text-xs text-gray-500">
                       {item.nis || '-'}
                     </td>
-                    <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
-                      {item.nama}
+                    <td className="px-4 py-3 font-bold text-gray-900 dark:text-white max-w-[180px] whitespace-normal break-words">
+                      <div className="line-clamp-3 leading-snug break-words">{item.nama}</div>
                     </td>
                     <td className="px-4 py-3 text-xs uppercase font-medium">
                       {item.jenis_kelamin || '-'}
