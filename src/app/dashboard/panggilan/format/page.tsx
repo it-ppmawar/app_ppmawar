@@ -34,8 +34,8 @@ const BAHASA_OPTIONS: { value: BahasaType; label: string; flag: string; voiceLan
 ];
 
 const SUARA_OPTIONS: { value: JenisSuaraType; label: string; icon: string; desc: string }[] = [
-  { value: 'pria', label: 'Pria', icon: '👨', desc: 'Pilih suara laki-laki di TOA' },
-  { value: 'wanita', label: 'Wanita', icon: '👩', desc: 'Pilih suara perempuan di TOA' },
+  { value: 'pria', label: 'Pria', icon: '👳', desc: 'Pilih suara laki-laki di TOA' },
+  { value: 'wanita', label: 'Wanita', icon: '🧕', desc: 'Pilih suara perempuan di TOA' },
   { value: 'auto', label: 'Otomatis', icon: '🔊', desc: 'Gunakan suara default perangkat' },
 ];
 
@@ -228,7 +228,7 @@ export default function FormatPanggilanPage() {
           {/* Baris 2: Subtitle kiri + Tombol Kembali kanan */}
           <div className="flex items-center justify-between gap-3">
             <p className="text-indigo-200 text-[11px] leading-snug">
-              Template teks pengumuman TOA · 4 Bahasa · Pria &amp; Wanita
+              Template teks pengumuman TOA&nbsp;·<br/>4 Bahasa&nbsp;·&nbsp;Pria &amp; Wanita
             </p>
             <Link href="/dashboard/panggilan"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-all border border-white/20 shadow-sm shrink-0">

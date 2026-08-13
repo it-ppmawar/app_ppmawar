@@ -502,7 +502,7 @@ export default function PanggilanSantriPage() {
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl z-50 max-h-72 overflow-y-auto">
                   {formatList.map(f => {
                     const bahasaFlag: Record<string, string> = { id: '🇮🇩', ar: '🇸🇦', jv: '☕', en: '🇬🇧' };
-                    const suaraIcon: Record<string, string> = { pria: '👨', wanita: '👩', auto: '🔊' };
+                    const suaraIcon: Record<string, string> = { pria: '👳', wanita: '🧕', auto: '🔊' };
                     return (
                       <button
                         key={f.id}
