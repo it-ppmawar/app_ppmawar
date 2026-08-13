@@ -216,20 +216,20 @@ export default function FormatPanggilanPage() {
       {/* Header */}
       <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-5 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden">
         <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full pointer-events-none" />
-        <div className="relative z-10 space-y-3">
-          {/* Baris 1: Judul, Subtitle 1 Baris & Tombol Kembali */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="bg-white/20 p-2 rounded-xl shrink-0">
-                <BookOpen size={20} />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-black leading-tight truncate">Kelola Format Panggilan</h1>
-                <p className="text-indigo-200 text-[11px] leading-tight mt-0.5 truncate">
-                  Template teks pengumuman TOA · 4 Bahasa · Pria &amp; Wanita
-                </p>
-              </div>
+        <div className="relative z-10 space-y-2.5">
+          {/* Baris 1: Ikon + Judul satu baris penuh */}
+          <div className="flex items-center gap-2.5">
+            <div className="bg-white/20 p-2 rounded-xl shrink-0">
+              <BookOpen size={20} />
             </div>
+            <h1 className="text-lg sm:text-xl font-black leading-tight">Kelola Format Panggilan</h1>
+          </div>
+
+          {/* Baris 2: Subtitle kiri + Tombol Kembali kanan */}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-indigo-200 text-[11px] leading-snug">
+              Template teks pengumuman TOA · 4 Bahasa · Pria &amp; Wanita
+            </p>
             <Link href="/dashboard/panggilan"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-all border border-white/20 shadow-sm shrink-0">
               <ArrowLeft size={14} />
@@ -237,12 +237,12 @@ export default function FormatPanggilanPage() {
             </Link>
           </div>
 
-          {/* Baris 2: 4 Badge 1 baris berdampingan (Ikon & Teks vertikal bertumpuk) */}
+          {/* Baris 3: 4 Badge 1 baris — ikon & teks vertikal bertumpuk, teks wrap */}
           <div className="grid grid-cols-4 gap-1.5 pt-0.5">
             {BAHASA_OPTIONS.map(b => (
-              <div key={b.value} className="flex flex-col items-center justify-center text-center p-1.5 bg-white/15 hover:bg-white/25 rounded-xl border border-white/10 transition-all">
-                <span className="text-sm leading-none mb-1">{b.flag}</span>
-                <span className="text-[10px] font-extrabold leading-tight text-white/95 truncate w-full">{b.label}</span>
+              <div key={b.value} className="flex flex-col items-center justify-center text-center p-1.5 bg-white/15 hover:bg-white/25 rounded-xl border border-white/10 transition-all gap-0.5">
+                <span className="text-sm leading-none">{b.flag}</span>
+                <span className="text-[9px] font-extrabold leading-tight text-white/95 w-full break-words">{b.label}</span>
               </div>
             ))}
           </div>

@@ -972,7 +972,7 @@ function NotifikasiContent() {
                             <div className="font-extrabold text-gray-900 dark:text-white">{b.nama_santri}</div>
                             <div className="text-xs text-gray-400 font-mono">NIS: {b.nis}</div>
                           </div>
-                          <span className="text-xs bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 px-2.5 py-1 rounded-full font-bold border border-red-200 dark:border-red-800">
+                          <span className="text-xs bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 px-2.5 py-1.5 rounded-full font-bold border border-red-200 dark:border-red-800 whitespace-nowrap text-center leading-tight shrink-0">
                             Belum Lunas
                           </span>
                         </div>
@@ -1375,7 +1375,7 @@ function NotifikasiContent() {
             <button
               onClick={fetchActiveReminders}
               disabled={loadingReminders}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-xl transition-colors border border-gray-200 dark:border-gray-600 self-start sm:self-auto shrink-0 shadow-sm"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-xl transition-colors border border-gray-200 dark:border-gray-600 self-center mx-auto sm:self-auto sm:mx-0 shrink-0 shadow-sm"
             >
               <RefreshCw size={12} className={loadingReminders ? 'animate-spin' : ''} />
               Segarkan Data
