@@ -61,6 +61,8 @@ export default function PanggilanSantriPage() {
   const [tujuan, setTujuan] = useState('');
   const [teksPanggilan, setTeksPanggilan] = useState('');
   const [pengulangan, setPengulangan] = useState(1);
+  const [volume, setVolume]           = useState(1.0);
+  const [rate, setRate]               = useState(0.88);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
 
@@ -196,6 +198,8 @@ export default function PanggilanSantriPage() {
           pengulangan,
           bahasa: selectedFormat?.bahasa || 'id',
           jenis_suara: selectedFormat?.jenis_suara || 'auto',
+          volume,
+          rate,
         }),
       });
       const d = await r.json();
@@ -217,13 +221,43 @@ export default function PanggilanSantriPage() {
     setSending(false);
   };
 
-  const handlePreviewTTS = () => {
-    if (!teksPanggilan || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(teksPanggilan);
-    utter.lang = selectedFormat?.bahasa === 'ar' ? 'ar-SA' : 'id-ID';
-    utter.rate = 0.9;
-    window.speechSynthesis.speak(utter);
+  const handlePreviewTTS = async () => {
+    if (!teksPanggilan || typeof window === 'undefined') return;
+    const lang  = selectedFormat?.bahasa || 'id';
+    const jenis = selectedFormat?.jenis_suara || 'pria';
+    const isArabicScript = /[\u0600-\u06FF]/.test(teksPanggilan);
+    const targetLang = (isArabicScript || lang === 'ar') ? 'ar' : lang === 'en' ? 'en' : 'id';
+    try {
+      const res = await fetch(`/api/tts?text=${encodeURIComponent(teksPanggilan)}&lang=${encodeURIComponent(targetLang)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const arrayBuffer = await res.arrayBuffer();
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) throw new Error('No AudioContext');
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') await ctx.resume();
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.playbackRate.value = rate;
+      if (jenis === 'pria') source.detune.value = -350;
+      else if (jenis === 'wanita') source.detune.value = +250;
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = volume;
+      source.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      source.start(0);
+    } catch (_) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.resume();
+        const utter = new SpeechSynthesisUtterance(teksPanggilan);
+        utter.rate = rate;
+        utter.volume = volume;
+        utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : 'id-ID';
+        utter.pitch = jenis === 'pria' ? 0.78 : jenis === 'wanita' ? 1.18 : 1.0;
+        window.speechSynthesis.speak(utter);
+      }
+    }
   };
 
   const statusBadge = (status: string) => {
@@ -549,7 +583,25 @@ export default function PanggilanSantriPage() {
             </div>
           </div>
 
-          {/* Tombol Kirim */}
+          {/* Volume & Kecepatan */}
+          <div className="grid grid-cols-2 gap-4 pt-1">
+            <div>
+              <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+                Volume: <span className="text-orange-500">{Math.round(volume * 100)}%</span>
+              </label>
+              <input type="range" min={0} max={1} step={0.05} value={volume}
+                onChange={e => setVolume(parseFloat(e.target.value))}
+                className="w-full accent-orange-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+                Kecepatan: <span className="text-orange-500">{rate}×</span>
+              </label>
+              <input type="range" min={0.6} max={1.3} step={0.05} value={rate}
+                onChange={e => setRate(parseFloat(e.target.value))}
+                className="w-full accent-orange-500" />
+            </div>
+          </div>
           <button
             onClick={handleSend}
             disabled={sending || !selectedSantri || !teksPanggilan.trim()}

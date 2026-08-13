@@ -95,6 +95,8 @@ export async function POST(request: Request) {
       tujuan,
       teks_panggilan,
       pengulangan = 1,
+      volume = 1.0,
+      rate = 0.88,
     } = body;
 
     // Ambil bahasa & jenis_suara dari format (jika format_id diisi)
@@ -153,29 +155,61 @@ export async function POST(request: Request) {
       }
     } catch (_) {}
 
-    const [result]: any = await pool.execute(
-      `INSERT INTO panggilan_santri 
-        (santri_id, santri_nama, santri_nama_panggilan, kamar_id, nama_kamar, nama_asrama, 
-         dipanggil_oleh, peran_pemanggil, nama_pemanggil, format_id, teks_panggilan, tujuan, pengulangan, bahasa, jenis_suara, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-      [
-        santri.murid_id,
-        santri.nama,
-        santri.nama_panggilan || santri.nama,
-        santri.kamar_id || null,
-        santri.nama_kamar || null,
-        santri.nama_asrama || null,
-        payload.userId || 0,
-        payload.role,
-        namaPemanggil,
-        format_id || null,
-        teks_panggilan,
-        tujuan || null,
-        pengulangan ?? 1,
-        bahasaPanggilan,
-        jenisSuaraPanggilan,
-      ]
-    );
+    // Coba simpan volume/rate ke kolom extra jika ada, fallback ke metadata di tujuan
+    let insertResult: any;
+    try {
+      [insertResult] = await pool.execute(
+        `INSERT INTO panggilan_santri 
+          (santri_id, santri_nama, santri_nama_panggilan, kamar_id, nama_kamar, nama_asrama, 
+           dipanggil_oleh, peran_pemanggil, nama_pemanggil, format_id, teks_panggilan, tujuan, pengulangan, bahasa, jenis_suara, volume, rate, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+        [
+          santri.murid_id,
+          santri.nama,
+          santri.nama_panggilan || santri.nama,
+          santri.kamar_id || null,
+          santri.nama_kamar || null,
+          santri.nama_asrama || null,
+          payload.userId || 0,
+          payload.role,
+          namaPemanggil,
+          format_id || null,
+          teks_panggilan,
+          tujuan || null,
+          pengulangan ?? 1,
+          bahasaPanggilan,
+          jenisSuaraPanggilan,
+          Math.min(Math.max(parseFloat(volume) || 1.0, 0), 1),
+          Math.min(Math.max(parseFloat(rate) || 0.88, 0.5), 2.0),
+        ]
+      );
+    } catch (_) {
+      // Fallback: tanpa kolom volume/rate (jika kolom belum ada di DB)
+      [insertResult] = await pool.execute(
+        `INSERT INTO panggilan_santri 
+          (santri_id, santri_nama, santri_nama_panggilan, kamar_id, nama_kamar, nama_asrama, 
+           dipanggil_oleh, peran_pemanggil, nama_pemanggil, format_id, teks_panggilan, tujuan, pengulangan, bahasa, jenis_suara, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+        [
+          santri.murid_id,
+          santri.nama,
+          santri.nama_panggilan || santri.nama,
+          santri.kamar_id || null,
+          santri.nama_kamar || null,
+          santri.nama_asrama || null,
+          payload.userId || 0,
+          payload.role,
+          namaPemanggil,
+          format_id || null,
+          teks_panggilan,
+          tujuan || null,
+          pengulangan ?? 1,
+          bahasaPanggilan,
+          jenisSuaraPanggilan,
+        ]
+      );
+    }
+    const result = insertResult;
 
     return NextResponse.json({ 
       success: true, 
@@ -183,6 +217,7 @@ export async function POST(request: Request) {
       id: result.insertId,
       asrama: santri.nama_asrama,
     });
+  // eslint-disable-next-line
   } catch (error: any) {
     console.error('[API Panggilan POST]', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });

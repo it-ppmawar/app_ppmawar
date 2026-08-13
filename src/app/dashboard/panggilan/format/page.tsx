@@ -216,29 +216,33 @@ export default function FormatPanggilanPage() {
       {/* Header */}
       <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-5 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden">
         <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/10 rounded-full pointer-events-none" />
-        <div className="flex items-center justify-between relative z-10">
+        <div className="relative z-10 space-y-3">
+          {/* Baris 1: Ikon + Judul satu baris */}
           <div className="flex items-center gap-3">
-            <div className="bg-white/20 p-2.5 rounded-xl">
+            <div className="bg-white/20 p-2.5 rounded-xl shrink-0">
               <BookOpen size={22} />
             </div>
-            <div>
-              <h1 className="text-xl font-black">Kelola Format Panggilan</h1>
-              <p className="text-indigo-200 text-xs">Template teks pengumuman TOA · 4 Bahasa · Pria & Wanita</p>
-            </div>
+            <h1 className="text-xl font-black leading-tight">Kelola Format Panggilan</h1>
           </div>
-
-          <Link href="/dashboard/panggilan"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-all border border-white/20 shadow-sm shrink-0">
-            <ArrowLeft size={15} />
-            <span>Kembali</span>
-          </Link>
-        </div>
-        <div className="mt-3 flex gap-2 flex-wrap relative z-10">
-          {BAHASA_OPTIONS.map(b => (
-            <span key={b.value} className="text-[10px] font-bold px-2.5 py-1 bg-white/15 rounded-full">
-              {b.flag} {b.label}
-            </span>
-          ))}
+          {/* Baris 2: Narasi kiri (2 baris) + Tombol Kembali kanan */}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-indigo-200 text-xs leading-relaxed">
+              Template teks pengumuman TOA&nbsp;·&nbsp;4&nbsp;Bahasa<br/>Pria &amp; Wanita
+            </p>
+            <Link href="/dashboard/panggilan"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-all border border-white/20 shadow-sm shrink-0">
+              <ArrowLeft size={15} />
+              <span>Kembali</span>
+            </Link>
+          </div>
+          {/* Baris 3: 4 Badge rata tengah */}
+          <div className="flex gap-2 flex-wrap justify-center pt-1">
+            {BAHASA_OPTIONS.map(b => (
+              <span key={b.value} className="text-[10px] font-bold px-2.5 py-1 bg-white/15 rounded-full">
+                {b.flag} {b.label}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -21,6 +21,8 @@ interface Panggilan {
   pengulangan?: number;
   bahasa?: string;          // 'id' | 'ar' | 'jv' | 'en'
   jenis_suara?: string;     // 'pria' | 'wanita' | 'auto'
+  volume?: number;
+  rate?: number;
   status?: string;
 }
 
@@ -172,8 +174,8 @@ class AudioQueue {
     const reqBahasa = p.bahasa || 'id';
     const reqJenis  = p.jenis_suara || 'pria'; // Selalu sinkron dari sender (Pria Murni)
 
-    const vol  = (window as any).__toa_volume ?? 1.0;
-    const rate = (window as any).__toa_rate ?? 0.88;
+    const vol  = p.volume ?? ((window as any).__toa_volume ?? 1.0);
+    const rate = p.rate   ?? ((window as any).__toa_rate   ?? 0.88);
 
     for (let i = 0; i < repeat; i++) {
       await playTTS(p.teks_panggilan, reqBahasa, reqJenis, vol, rate);
@@ -518,17 +520,17 @@ function TOAContent() {
         </div>
       </div>
 
-      {/* ─── Action Bar: Tes Audio & Reconnect ───────────────────────── */}
-      <div className="px-5 py-2.5 bg-white/5 border-b border-white/10 flex items-center justify-center gap-3">
+      {/* ─── Action Bar: Tes Audio & Reconnect (Presisi Ukuran Sama & Rata Tengah) ─── */}
+      <div className="px-5 py-2.5 bg-white/5 border-b border-white/10 grid grid-cols-2 gap-2.5 max-w-sm mx-auto w-full">
         <button
           onClick={handleTest}
-          className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-xs shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
+          className="flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-xs shadow-lg shadow-orange-500/20 active:scale-95 transition-all text-center"
         >
           <Play size={14} /> Tes Audio Sistem
         </button>
         <button
           onClick={connectSSE}
-          className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-gray-300 font-bold rounded-xl text-xs border border-white/10 active:scale-95 transition-all"
+          className="flex items-center justify-center gap-2 py-2.5 bg-white/10 hover:bg-white/20 text-gray-300 font-bold rounded-xl text-xs border border-white/10 active:scale-95 transition-all text-center"
         >
           <RefreshCw size={14} /> Reconnect
         </button>
@@ -563,20 +565,9 @@ function TOAContent() {
               <div className="px-3.5 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs flex items-center gap-2">
                 <Sparkles size={15} className="shrink-0 text-orange-400" />
                 <span>
-                  <strong>Sinkron Otomatis:</strong> Dialek/cengkok pengisi suara (Indonesia, Arab Fasih, Jawa, Inggris) 100% diatur dan disesuaikan dari format yang dipilih oleh perangkat pengirim panggilan.
+                  <strong>Sinkron Otomatis:</strong> Volume, kecepatan, dan cengkok pengisi suara (Indonesia, Arab Fasih, Jawa, Inggris) 100% diatur dan disesuaikan dari perangkat pengirim panggilan.
                 </span>
               </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-[11px] text-gray-400 mb-2 block font-bold uppercase tracking-wide">Volume: <span className="text-orange-400">{Math.round(volume * 100)}%</span></label>
-              <input type="range" min={0} max={1} step={0.05} value={volume} onChange={e => setVolume(parseFloat(e.target.value))} className="w-full accent-orange-500" />
-            </div>
-            <div>
-              <label className="text-[11px] text-gray-400 mb-2 block font-bold uppercase tracking-wide">Kecepatan: <span className="text-orange-400">{rate}×</span></label>
-              <input type="range" min={0.6} max={1.3} step={0.05} value={rate} onChange={e => setRate(parseFloat(e.target.value))} className="w-full accent-orange-500" />
             </div>
           </div>
 
