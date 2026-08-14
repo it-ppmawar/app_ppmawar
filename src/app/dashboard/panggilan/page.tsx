@@ -44,6 +44,16 @@ interface Device {
   last_seen: string;
 }
 
+function getEffectiveJenisSuara(jenis?: string, nama?: string): 'pria' | 'wanita' {
+  if (jenis === 'wanita') return 'wanita';
+  if (jenis === 'pria') return 'pria';
+  const n = (nama || '').toLowerCase();
+  if (n.includes('wanita') || n.includes('female') || n.includes('perempuan') || n.includes('putri')) {
+    return 'wanita';
+  }
+  return 'pria';
+}
+
 export default function PanggilanSantriPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -198,7 +208,7 @@ export default function PanggilanSantriPage() {
           teks_panggilan: teksPanggilan,
           pengulangan,
           bahasa: selectedFormat?.bahasa || 'id',
-          jenis_suara: selectedFormat?.jenis_suara || 'auto',
+          jenis_suara: getEffectiveJenisSuara(selectedFormat?.jenis_suara, selectedFormat?.nama),
           volume,
           rate,
         }),
@@ -225,7 +235,7 @@ export default function PanggilanSantriPage() {
   const handlePreviewTTS = async () => {
     if (!teksPanggilan || typeof window === 'undefined') return;
     const lang  = selectedFormat?.bahasa || 'id';
-    const jenis = selectedFormat?.jenis_suara || 'pria';
+    const jenis = getEffectiveJenisSuara(selectedFormat?.jenis_suara, selectedFormat?.nama);
     const isArabicScript = /[\u0600-\u06FF]/.test(teksPanggilan);
     const targetLang = isArabicScript ? 'ar' : (lang === 'ar' || lang === 'en' || lang === 'jv') ? lang : 'id';
     try {
@@ -258,10 +268,16 @@ export default function PanggilanSantriPage() {
 
         const voices = window.speechSynthesis.getVoices();
         const maleKw = ['andika', 'male', 'man', 'laki', 'idm', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
+        const femaleKw = ['female', 'woman', 'perempuan', 'wanita', 'wavenet-a', 'wavenet-c', 'wavenet-e', 'wavenet-f', 'standard-a', 'standard-c', 'standard-e', 'standard-f', 'zira', 'yuna', 'kyoko'];
         const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(targetLang));
         if (candidates.length > 0) {
-          const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
-          if (maleVoice && jenis !== 'wanita') utter.voice = maleVoice;
+          if (jenis === 'wanita') {
+            const femaleVoice = candidates.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
+            if (femaleVoice) utter.voice = femaleVoice;
+          } else {
+            const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
+            if (maleVoice) utter.voice = maleVoice;
+          }
         }
 
         window.speechSynthesis.speak(utter);

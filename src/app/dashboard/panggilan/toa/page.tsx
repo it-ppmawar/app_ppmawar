@@ -104,10 +104,16 @@ async function playTTS(
 
       const voices = window.speechSynthesis.getVoices();
       const maleKw = ['andika', 'male', 'man', 'laki', 'idm', 'wavenet-b', 'wavenet-d', 'standard-b', 'standard-d'];
+      const femaleKw = ['female', 'woman', 'perempuan', 'wanita', 'wavenet-a', 'wavenet-c', 'wavenet-e', 'wavenet-f', 'standard-a', 'standard-c', 'standard-e', 'standard-f', 'zira', 'yuna', 'kyoko'];
       const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(targetLang));
       if (candidates.length > 0) {
-        const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
-        if (maleVoice) utter.voice = maleVoice;
+        if (jenisSuara === 'wanita') {
+          const femaleVoice = candidates.find(v => femaleKw.some(kw => v.name.toLowerCase().includes(kw)));
+          if (femaleVoice) utter.voice = femaleVoice;
+        } else {
+          const maleVoice = candidates.find(v => maleKw.some(kw => v.name.toLowerCase().includes(kw)));
+          if (maleVoice) utter.voice = maleVoice;
+        }
       }
 
       let finished = false;
