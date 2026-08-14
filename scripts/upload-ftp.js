@@ -8,8 +8,8 @@ const ftp = require('basic-ftp');
 const path = require('path');
 const fs = require('fs');
 
-const CONNECT_TIMEOUT_MS = 10000; // 10s connect timeout to fail fast on hung socket
-const TRANSFER_TIMEOUT_MS = 300000; // 300s (5m) transfer timeout for zip bundle
+const CONNECT_TIMEOUT_MS = 12000; // 12s connect timeout
+const TRANSFER_TIMEOUT_MS = 90000;  // 90s transfer timeout per file (fail fast & retry)
 
 async function connectFTP() {
   const server = process.env.FTP_SERVER;
@@ -20,7 +20,7 @@ async function connectFTP() {
     throw new Error('FTP credentials missing in environment variables!');
   }
 
-  // Attempt 1: Plain FTP (fastest, primary for Jagoan Hosting)
+  // Attempt 1: Plain FTP (fastest & most reliable for Jagoan Hosting)
   const client1 = new ftp.Client(CONNECT_TIMEOUT_MS);
   client1.ftp.verbose = false;
   try {
@@ -68,7 +68,7 @@ async function connectFTP() {
   }
 }
 
-async function uploadWithRetry(maxAttempts = 4) {
+async function uploadWithRetry(maxAttempts = 5) {
   const targetDir = process.env.FTP_TARGET_DIR || '/public_html';
   const uploadBundleDir = path.resolve(__dirname, '../upload_bundle');
 
@@ -88,7 +88,7 @@ async function uploadWithRetry(maxAttempts = 4) {
       let lastLoggedPct = -1;
       client.trackProgress(info => {
         const pct = Math.floor((info.bytes / info.bytesOverall) * 100);
-        if (pct >= lastLoggedPct + 20) {
+        if (pct >= lastLoggedPct + 25) {
           lastLoggedPct = pct;
           console.log(`🚀 Transferring ${info.name}: ${pct}% (${(info.bytes / 1024 / 1024).toFixed(1)}MB / ${(info.bytesOverall / 1024 / 1024).toFixed(1)}MB)`);
         }
@@ -104,7 +104,7 @@ async function uploadWithRetry(maxAttempts = 4) {
       if (client) client.close();
       console.error(`❌ Attempt ${attempt} failed: ${err.message}`);
       if (attempt < maxAttempts) {
-        const delay = 4000 * attempt; // 4s, 8s, 12s backoff
+        const delay = 3000 * attempt; // 3s, 6s, 9s, 12s backoff
         console.log(`⏳ Retrying in ${delay / 1000}s...`);
         await new Promise(r => setTimeout(r, delay));
       } else {

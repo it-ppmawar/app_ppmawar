@@ -62,7 +62,21 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
-        run: node scripts/upload-ftp.js
+        run: |
+          for i in 1 2 3; do
+            echo "🚀 Fast FTP Upload (outer attempt $i/3)..."
+            if node scripts/upload-ftp.js; then
+              echo "✅ FTP upload completed successfully!"
+              break
+            fi
+            if [ $i -lt 3 ]; then
+              echo "⚠️ Upload encountered a temporary error, retrying in 5s..."
+              sleep 5
+            else
+              echo "❌ All attempts failed."
+              exit 1
+            fi
+          done
 
       - name: Trigger Instant Server Extraction & Restart
         run: |
