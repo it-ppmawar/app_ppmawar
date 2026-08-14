@@ -346,7 +346,7 @@ export default function PanggilanSantriPage() {
               <p className="text-orange-100 text-xs">Pengumuman via TOA / Mixer Asrama</p>
             </div>
           </div>
-          {/* Dua tombol berdampingan — penuh kiri & kanan, presisi sama */}
+          {/* Action Links */}
           <div className="mt-3 grid grid-cols-2 gap-2">
             <a
               href="/dashboard/panggilan/toa"
@@ -358,11 +358,11 @@ export default function PanggilanSantriPage() {
               <span className="text-[11px] leading-tight">Buka Halaman TOA</span>
             </a>
             <a
-              href="/dashboard/panggilan/setup"
-              className="flex flex-col items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-bold px-2 py-3 rounded-xl transition-colors border border-white/25 text-center"
+              href="/dashboard/panggilan/format"
+              className="flex flex-col items-center justify-center gap-1.5 bg-white/20 hover:bg-white/30 active:bg-white/40 text-white font-bold px-2 py-3 rounded-xl transition-colors text-center"
             >
-              <Wrench size={18} />
-              <span className="text-[11px] leading-tight">Panduan Setup Hardware</span>
+              <BookOpen size={18} />
+              <span className="text-[11px] leading-tight">Kelola Format Panggilan</span>
             </a>
           </div>
         </div>
@@ -434,19 +434,14 @@ export default function PanggilanSantriPage() {
         );
       })()}
 
-      {/* Button Kelola Format Panggilan — tepat di bawah kartu TOA Asrama & hanya untuk admin/staff/pengasuh */}
-      {user && (
-        ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].some((r: string) => (user.role || '').toLowerCase().includes(r)) ||
-        user.is_pengasuh || user.isPengasuh || user.is_pengurus_asrama
-      ) && (
-        <a
-          href="/dashboard/panggilan/format"
-          className="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 text-sm font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all shadow-sm active:scale-95"
-        >
-          <BookOpen size={18} />
-          Kelola Format Panggilan
-        </a>
-      )}
+      {/* Button Panduan Setup Hardware — tepat di bawah kartu TOA Asrama */}
+      <a
+        href="/dashboard/panggilan/setup"
+        className="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 text-sm font-extrabold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-2xl hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-all shadow-sm active:scale-95"
+      >
+        <Wrench size={18} />
+        Panduan Setup Hardware
+      </a>
 
       {/* Success/Error */}
       {successMsg && (
