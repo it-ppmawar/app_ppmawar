@@ -183,10 +183,10 @@ export default function DashboardPage() {
             </div>
 
             {/* Kanan: Tanggal Hijriyah (Rata Kanan) */}
-            <div className="flex items-center justify-end overflow-hidden" dir="rtl">
+            <div className="flex items-center justify-end overflow-hidden">
               <span
                 className="text-emerald-400 font-bold leading-none whitespace-nowrap"
-                style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif', fontSize: 'clamp(10px, 3.5vw, 14px)' }}
+                style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif', fontSize: 'clamp(9px, 2.3vw, 12px)' }}
               >
                 {hijriDateStr || ''}
               </span>
