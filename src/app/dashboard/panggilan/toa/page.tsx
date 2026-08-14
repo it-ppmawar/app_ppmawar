@@ -243,6 +243,13 @@ function TOAContent() {
   const [totalToday,       setTotalToday]       = useState(0);
   const [pendingCount,     setPendingCount]     = useState(0);
 
+  // Format list untuk Tes Audio Sistem bergilir
+  const [formatList, setFormatList] = useState<Array<{ nama: string; bahasa: string; jenis_suara: string; template: string }>>([]);
+  const testIndexRef = useRef(0);
+
+  // Daftar asrama dari petugas panggilan (untuk dropdown)
+  const [asramaList, setAsramaList] = useState<string[]>([]);
+
   // Audio Settings
   const [volume, setVolume] = useState(1.0);
   const [rate,   setRate]   = useState(0.88);
@@ -268,6 +275,27 @@ function TOAContent() {
     (window as any).__toa_voice  = selectedVoice;
     localStorage.setItem(LS_VOICE_KEY, selectedVoice);
   }, [volume, rate, selectedVoice, muted]);
+
+  // Fetch format list untuk tes audio bergilir
+  useEffect(() => {
+    fetch('/api/panggilan/format').then(r => r.json()).then(d => {
+      if (d.success && d.data.length > 0) setFormatList(d.data);
+    }).catch(() => {});
+  }, []);
+
+  // Fetch daftar asrama dari akun petugas_panggilan
+  useEffect(() => {
+    fetch('/api/users?role=petugas_panggilan').then(r => r.json()).then(d => {
+      if (d.success && d.data) {
+        const asramas: string[] = [];
+        d.data.forEach((u: any) => {
+          const a = u.asrama || u.nama_asrama || '';
+          if (a && !asramas.includes(a)) asramas.push(a);
+        });
+        setAsramaList(asramas.sort());
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     audioQueueRef.current = new AudioQueue({
@@ -386,17 +414,32 @@ function TOAContent() {
 
   const handleTest = () => {
     getAudioContext();
-    let testBahasa = 'id', testJenis = 'pria';
-    if (selectedVoice.startsWith('preset:')) {
-      const parts = selectedVoice.split(':');
-      if (parts[1]) testBahasa = parts[1];
-      if (parts[2]) testJenis  = parts[2];
+    if (formatList.length > 0) {
+      // Bergilir urut sesuai format list, loop balik ke awal jika sudah habis
+      const idx = testIndexRef.current % formatList.length;
+      const fmt = formatList[idx];
+      testIndexRef.current = idx + 1;
+      const preview = (fmt.template || 'Sistem panggilan santri siap digunakan.')
+        .replace(/{nama}/g, 'Ahmad Fauzi')
+        .replace(/{kamar}/g, 'Kamar Al-Ikhlas')
+        .replace(/{asrama}/g, 'Asrama A')
+        .replace(/{tujuan}/g, 'kantor pengurus')
+        .replace(/{teks}/g, 'Harap segera hadir.');
+      audioQueueRef.current?.push({
+        id: -1, santri_nama: `Tes — ${fmt.nama}`,
+        teks_panggilan: preview,
+        pengulangan: 1,
+        bahasa: fmt.bahasa || 'id',
+        jenis_suara: fmt.jenis_suara || 'pria',
+      });
+    } else {
+      // Fallback jika format belum dimuat
+      audioQueueRef.current?.push({
+        id: -1, santri_nama: 'Tes Sistem',
+        teks_panggilan: 'Assalamualaikum warahmatullahi wabarakatuh. Sistem panggilan santri siap digunakan.',
+        pengulangan: 1, bahasa: 'id', jenis_suara: 'pria',
+      });
     }
-    audioQueueRef.current?.push({
-      id: -1, santri_nama: 'Tes Sistem',
-      teks_panggilan: 'Assalamualaikum warahmatullahi wabarakatuh. Sistem panggilan santri siap digunakan.',
-      pengulangan: 1, bahasa: testBahasa, jenis_suara: testJenis,
-    });
   };
 
   const handleClearQueue = () => { audioQueueRef.current?.clear(); setCurrentPanggilan(null); };
@@ -563,9 +606,16 @@ function TOAContent() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[11px] text-gray-400 mb-1 block font-bold uppercase tracking-wide">Filter Asrama</label>
-              <input type="text" value={asrama} onChange={e => setAsrama(e.target.value)}
-                placeholder="Kosongkan = semua asrama"
-                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none focus:ring-1 focus:ring-orange-500" />
+              <select
+                value={asrama}
+                onChange={e => setAsrama(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"
+              >
+                <option value="">Semua Asrama</option>
+                {asramaList.map(a => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
             </div>
             <div className="sm:col-span-2">
               <div className="px-3.5 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs flex items-center gap-2">

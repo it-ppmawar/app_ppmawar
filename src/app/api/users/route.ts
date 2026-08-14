@@ -45,6 +45,8 @@ export async function GET(request: Request) {
       query += " WHERE role = 'pengasuh'";
     } else if (roleFilter === 'petugas') {
       query += " WHERE role LIKE 'petugas%'";
+    } else if (roleFilter === 'petugas_panggilan') {
+      query += " WHERE role LIKE '%petugas_panggilan%'";
     } else if (roleFilter === 'wali_alumni') {
       query += " WHERE role = 'wali_alumni'";
     }
