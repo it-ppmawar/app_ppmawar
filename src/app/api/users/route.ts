@@ -13,16 +13,20 @@ export async function GET(request: Request) {
     const token = cookieStore.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const payload = verifyToken(token);
-    if (!payload || ((payload as any).role !== 'admin' && (payload as any).role !== 'staff')) {
+    const { searchParams } = new URL(request.url);
+    const roleFilter = searchParams.get('role'); // 'pengelola', 'guru', 'wali_murid', 'petugas_panggilan'
+
+    const payload = verifyToken(token) as any;
+    const userRole = payload?.role || '';
+    const isStaffOrAdmin = userRole === 'admin' || userRole === 'staff';
+    const isAllowedRole = isStaffOrAdmin || userRole.includes('petugas_panggilan') || userRole.includes('pengurus') || userRole.includes('pengasuh');
+
+    if (!payload || (!isStaffOrAdmin && roleFilter !== 'petugas_panggilan') || !isAllowedRole) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Auto-migrate missing columns if needed
     await ensureUserColumns();
-
-    const { searchParams } = new URL(request.url);
-    const roleFilter = searchParams.get('role'); // 'pengelola', 'guru', 'wali_murid'
 
     let query = `
       SELECT users.id, users.username, users.role, users.nama, users.nip, users.murid_id, users.kamar_id, kamar.nama_kamar,

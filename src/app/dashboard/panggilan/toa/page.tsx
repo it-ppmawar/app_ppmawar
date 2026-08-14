@@ -285,16 +285,29 @@ function TOAContent() {
 
   // Fetch daftar asrama dari akun petugas_panggilan
   useEffect(() => {
+    const defaultAsramas = ['Asrama A', 'Asrama B', 'Asrama C', 'Asrama D', 'Asrama E', 'Asrama F'];
     fetch('/api/users?role=petugas_panggilan').then(r => r.json()).then(d => {
-      if (d.success && d.data) {
+      if (d.success && d.data && d.data.length > 0) {
         const asramas: string[] = [];
         d.data.forEach((u: any) => {
-          const a = u.asrama || u.nama_asrama || '';
+          let a = (u.asrama || u.nama_asrama || '').trim();
+          if (!a && u.nama) {
+            const match = u.nama.match(/Asrama\s+([A-Za-z0-9]+)/i);
+            if (match) a = `Asrama ${match[1].toUpperCase()}`;
+          }
+          if (!a && u.username) {
+            const match = u.username.match(/asrama_([a-z0-9]+)/i);
+            if (match) a = `Asrama ${match[1].toUpperCase()}`;
+          }
           if (a && !asramas.includes(a)) asramas.push(a);
         });
-        setAsramaList(asramas.sort());
+        setAsramaList(asramas.length > 0 ? asramas.sort() : defaultAsramas);
+      } else {
+        setAsramaList(defaultAsramas);
       }
-    }).catch(() => {});
+    }).catch(() => {
+      setAsramaList(defaultAsramas);
+    });
   }, []);
 
   useEffect(() => {
@@ -606,16 +619,21 @@ function TOAContent() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[11px] text-gray-400 mb-1 block font-bold uppercase tracking-wide">Filter Asrama</label>
-              <select
-                value={asrama}
-                onChange={e => setAsrama(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none"
-              >
-                <option value="">Semua Asrama</option>
-                {asramaList.map(a => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={asrama}
+                  onChange={e => setAsrama(e.target.value)}
+                  className="w-full px-3 py-2 pr-9 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none cursor-pointer"
+                >
+                  <option value="">Semua Asrama (Umum)</option>
+                  {asramaList.map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                  <ChevronDown size={14} />
+                </div>
+              </div>
             </div>
             <div className="sm:col-span-2">
               <div className="px-3.5 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs flex items-center gap-2">
