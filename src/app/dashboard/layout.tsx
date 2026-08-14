@@ -600,11 +600,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <CalendarDays size={18} /> <span className="text-sm">Jadwal Alumni</span>
                       </Link>
                     </li>
-                    <li>
-                      <Link href="/dashboard/kurikulum" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/kurikulum' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
-                        <BookOpen size={18} /> <span className="text-sm">Kurikulum Madin</span>
-                      </Link>
-                    </li>
                     {canAccessBilling && (
                       <li>
                         <Link href="/dashboard/billing" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/billing' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
@@ -619,29 +614,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </Link>
                       </li>
                     ) : null}
-
-                    {/* MENU GABUNGAN: Pairing & Face AI (2 Tab Terpadu) */}
-                    {['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) ? (
-                      <li>
-                        <Link
-                          href="/dashboard/pairing"
-                          onClick={() => setShowSidebar(false)}
-                          className={`flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
-                            pathname.startsWith('/dashboard/pairing') || pathname.startsWith('/dashboard/face-enrollment')
-                              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold'
-                              : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <QrCode size={18} /> <span className="text-sm">Pairing & Face AI</span>
-                          </div>
-                          <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full font-extrabold">
-                            2 Tab
-                          </span>
-                        </Link>
-                      </li>
-                    ) : null}
-
                     <li>
                       <Link href="/dashboard/ketertiban" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/ketertiban' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold' : 'hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 font-bold'}`}>
                         <FileWarning size={18} /> <span className="text-sm">Ketertiban Murid</span>
@@ -713,6 +685,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </Link>
                     </li>
                   )}
+                  {['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) && (
+                    <li>
+                      <Link
+                        href="/dashboard/pairing"
+                        onClick={() => setShowSidebar(false)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                          pathname.startsWith('/dashboard/pairing') || pathname.startsWith('/dashboard/face-enrollment')
+                            ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 font-bold'
+                            : 'hover:bg-cyan-50 dark:hover:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400 font-bold'
+                        }`}
+                      >
+                        <QrCode size={18} /> <span className="text-sm">Pairing & Face AI</span>
+                      </Link>
+                    </li>
+                  )}
                   {(user?.role === 'admin' || user?.role === 'staff') && (
                     <li>
                       <Link href="/dashboard/alumni" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/alumni' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
@@ -724,6 +711,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <li>
                       <Link href="/dashboard/kelas" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/kelas' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
                         <BookOpen size={18} /> <span className="text-sm">Manajemen Kelas</span>
+                      </Link>
+                    </li>
+                  )}
+                  {showQuranMadin && (
+                    <li>
+                      <Link href="/dashboard/kurikulum" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/kurikulum' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
+                        <BookOpen size={18} /> <span className="text-sm">Kurikulum Madin</span>
                       </Link>
                     </li>
                   )}
@@ -746,6 +740,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </div>
           )}
+
 
           {/* ========================================================================= */}
           {/* 3. GRUP MANAJEMEN SISTEM (Collapsible Accordion — Default Tertutup)       */}

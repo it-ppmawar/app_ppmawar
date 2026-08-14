@@ -373,7 +373,7 @@ export default function DashboardPage() {
       <section className="space-y-4">
         {/* Khusus Admin - Statistik Guru */}
         {role === 'admin' && (
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300 max-w-4xl mx-auto w-full">
             <div className="bg-gray-800 dark:bg-gray-900 px-4 py-3 text-white">
               <h3 className="text-sm font-semibold flex items-center gap-2"><Activity size={16} /> Statistik Absensi Guru</h3>
             </div>
@@ -398,48 +398,87 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {['quran', 'madin', 'kegiatan'].filter(tipe => role === 'admin' || role === 'staff' || allSchedules.some(s => s.tipe === tipe)).map((tipe) => {
-            const tipeName = tipe === 'quran' ? 'Qur\'an' : tipe === 'madin' ? 'Madin' : 'Kegiatan';
-            return (
-            <div key={tipe} className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 transition-colors duration-300">
-              <h4 className="text-xs font-bold text-green-700 dark:text-green-400 mb-3 border-b dark:border-gray-700 pb-2">Statistik Absensi {tipeName}</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs dark:text-gray-300">
-                  <span className="flex items-center gap-1 text-red-600 dark:text-red-400"><XCircle size={14} /> Alpha</span>
-                  <span className="font-bold">0% (0)</span>
-                </div>
-                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5"><div className="bg-red-500 dark:bg-red-400 h-1.5 rounded-full" style={{ width: '0%' }}></div></div>
+        {(() => {
+          const statTypes = ['quran', 'madin', 'kegiatan'].filter(
+            (tipe) => role === 'admin' || role === 'staff' || allSchedules.some((s) => s.tipe === tipe)
+          );
 
-                <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
-                  <span className="flex items-center gap-1 text-green-600 dark:text-green-400"><CheckCircle size={14} /> Hadir</span>
-                  <span className="font-bold">0% (0)</span>
-                </div>
-                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5"><div className="bg-green-500 dark:bg-green-400 h-1.5 rounded-full" style={{ width: '0%' }}></div></div>
+          if (statTypes.length === 0) return null;
 
-                <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
-                  <span className="flex items-center gap-1 text-orange-500 dark:text-orange-400"><AlertTriangle size={14} /> Izin</span>
-                  <span className="font-bold">0% (0)</span>
-                </div>
-                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5"><div className="bg-orange-400 h-1.5 rounded-full" style={{ width: '0%' }}></div></div>
+          return (
+            <div
+              className={`grid gap-4 ${
+                statTypes.length === 1
+                  ? 'grid-cols-1 max-w-md mx-auto w-full'
+                  : statTypes.length === 2
+                  ? 'grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto w-full'
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto w-full'
+              }`}
+            >
+              {statTypes.map((tipe) => {
+                const tipeName = tipe === 'quran' ? "Qur'an" : tipe === 'madin' ? 'Madin' : 'Kegiatan';
+                return (
+                  <div
+                    key={tipe}
+                    className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 transition-colors duration-300 w-full"
+                  >
+                    <h4 className="text-xs font-bold text-green-700 dark:text-green-400 mb-3 border-b dark:border-gray-700 pb-2">
+                      Statistik Absensi {tipeName}
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-xs dark:text-gray-300">
+                        <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                          <XCircle size={14} /> Alpha
+                        </span>
+                        <span className="font-bold">0% (0)</span>
+                      </div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                        <div className="bg-red-500 dark:bg-red-400 h-1.5 rounded-full" style={{ width: '0%' }}></div>
+                      </div>
 
-                <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
-                  <span className="flex items-center gap-1 text-blue-500 dark:text-blue-400"><Activity size={14} /> Sakit</span>
-                  <span className="font-bold">0% (0)</span>
-                </div>
-                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5"><div className="bg-blue-400 h-1.5 rounded-full" style={{ width: '0%' }}></div></div>
-              </div>
+                      <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
+                        <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                          <CheckCircle size={14} /> Hadir
+                        </span>
+                        <span className="font-bold">0% (0)</span>
+                      </div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                        <div className="bg-green-500 dark:bg-green-400 h-1.5 rounded-full" style={{ width: '0%' }}></div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
+                        <span className="flex items-center gap-1 text-orange-500 dark:text-orange-400">
+                          <AlertTriangle size={14} /> Izin
+                        </span>
+                        <span className="font-bold">0% (0)</span>
+                      </div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                        <div className="bg-orange-400 h-1.5 rounded-full" style={{ width: '0%' }}></div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
+                        <span className="flex items-center gap-1 text-blue-500 dark:text-blue-400">
+                          <Activity size={14} /> Sakit
+                        </span>
+                        <span className="font-bold">0% (0)</span>
+                      </div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                        <div className="bg-blue-400 h-1.5 rounded-full" style={{ width: '0%' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            );
-          })}
-        </div>
+          );
+        })()}
       </section>
       </>
       )}
 
       {/* Info Tambahan */}
       {!(role || '').toLowerCase().includes('petugas') && (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-8 max-w-4xl mx-auto w-full">
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
           <div className="bg-green-800 dark:bg-green-900 px-4 py-2 text-white text-xs font-semibold">Perizinan Terbaru</div>
           <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada perizinan 1 hari terakhir</div>
@@ -450,6 +489,7 @@ export default function DashboardPage() {
         </div>
       </div>
       )}
+
 
       {/* Info Petugas */}
       {(role || '').toLowerCase().includes('petugas') && (
