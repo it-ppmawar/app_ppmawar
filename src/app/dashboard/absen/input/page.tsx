@@ -319,20 +319,26 @@ function InputAbsenContent() {
       msg += `\n`;
     }
 
-    // 🤲 Doa — 1 paragraf mencakup semua status
+    // 🤲 Doa — 1 Paragraf Ringkas & Mencakup Semua
     const allAttended = sakit.length === 0 && izin.length === 0 && alpha.length === 0 && total > 0;
     let doaMsg = '';
     if (allAttended) {
-      doaMsg = `_MasyaAllah, seluruh santri hadir 100%! Semoga yang hadir senantiasa istiqomah & diberkahi dalam menuntut ilmu._`;
+      doaMsg = `_MasyaAllah, seluruh santri hadir 100%! Semoga senantiasa istiqomah & dianugerahi ilmu yang bermanfaat serta barokah oleh ALLAH Subhaanahu Wata'aala. اللهم آمين._`;
     } else {
       const parts: string[] = [];
-      if (sakit.length > 0)  parts.push('yang sakit segera diberi kesembuhan');
-      if (alpha.length > 0)  parts.push('yang belum hadir diberi semangat untuk segera kembali');
-      if (izin.length > 0)   parts.push('yang izin diberi kemudahan dalam urusannya');
-      if (hadir > 0)         parts.push('yang sudah hadir senantiasa diberi istiqomah');
-      doaMsg = `_Semoga ${parts.join(', ')}._`;
+      if (sakit.length > 0) parts.push('yang sakit lekas diberikan kesembuhan & keafiatan');
+      if (izin.length > 0) parts.push('yang berhalangan izin dimudahkan segala urusannya');
+      if (alpha.length > 0) parts.push('yang belum hadir diberikan semangat & kemudahan untuk kembali belajar');
+      if (hadir > 0) {
+        if (parts.length > 0) {
+          parts.push('serta yang hadir senantiasa istiqomah & dianugerahi kefahaman ilmu yang bermanfaat');
+        } else {
+          parts.push('yang hadir senantiasa istiqomah & dianugerahi kefahaman ilmu yang bermanfaat');
+        }
+      }
+      doaMsg = `_Semoga santri ${parts.join(', ')} oleh ALLAH Subhaanahu Wata'aala. اللهم آمين._`;
     }
-    msg += `🤲 ${doaMsg}\n_اللهم آمين_ 🤲\n\n`;
+    msg += `🤲 *Doa & Harapan:*\n${doaMsg}\n\n`;
 
     if (uploadedPhotoUrl) {
       msg += `📷 *Foto Kehadiran:* ${uploadedPhotoUrl}\n\n`;
