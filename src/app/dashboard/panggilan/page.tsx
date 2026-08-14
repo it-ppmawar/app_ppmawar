@@ -80,6 +80,7 @@ export default function PanggilanSantriPage() {
   // UI State
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [historyFilter, setHistoryFilter] = useState('');
@@ -233,36 +234,59 @@ export default function PanggilanSantriPage() {
   };
 
   const handlePreviewTTS = async () => {
-    if (!teksPanggilan || typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return;
+
+    // Gunakan teks panggilan aktif jika ada, atau fallback ke template format terpilih
+    let textToPlay = teksPanggilan.trim();
+    if (!textToPlay && selectedFormat) {
+      const namaPanggilan = selectedSantri ? (selectedSantri.nama_panggilan || selectedSantri.nama) : 'Ahmad Fauzi';
+      textToPlay = selectedFormat.template
+        .replace(/{nama}/g, namaPanggilan)
+        .replace(/{kamar}/g, selectedSantri?.nama_kamar || 'Kamar Al-Ikhlas')
+        .replace(/{asrama}/g, selectedSantri?.nama_asrama || 'Asrama A')
+        .replace(/{tujuan}/g, tujuan || 'kantor pengurus')
+        .replace(/{teks}/g, 'Harap segera hadir.');
+    }
+    if (!textToPlay) return;
+
     const lang  = selectedFormat?.bahasa || 'id';
     const jenis = getEffectiveJenisSuara(selectedFormat?.jenis_suara, selectedFormat?.nama);
-    const isArabicScript = /[\u0600-\u06FF]/.test(teksPanggilan);
+    const isArabicScript = /[\u0600-\u06FF]/.test(textToPlay);
     const targetLang = isArabicScript ? 'ar' : (lang === 'ar' || lang === 'en' || lang === 'jv') ? lang : 'id';
+
+    setIsPlayingPreview(true);
+
     try {
-      const res = await fetch(`/api/tts?text=${encodeURIComponent(teksPanggilan)}&lang=${encodeURIComponent(targetLang)}`);
+      const ttsUrl = `/api/tts?text=${encodeURIComponent(textToPlay)}&lang=${encodeURIComponent(targetLang)}`;
+      const res = await fetch(ttsUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const arrayBuffer = await res.arrayBuffer();
+
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) throw new Error('No AudioContext');
       const ctx = new AudioCtx();
       if (ctx.state === 'suspended') await ctx.resume();
+
       const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
       const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
-      source.playbackRate.value = Math.max(0.5, Math.min(rate, 1.5));
-      source.detune.value = (jenis === 'wanita') ? +200 : -180;
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = volume;
-      source.connect(gainNode);
-      gainNode.connect(ctx.destination);
+      source.playbackRate.value = 0.9; // Presisi 0.9 sama persis dengan halaman kelola format panggilan
+
+      if (jenis === 'wanita') {
+        source.detune.value = +200;
+      } else {
+        source.detune.value = -180;
+      }
+
+      source.onended = () => setIsPlayingPreview(false);
+      source.connect(ctx.destination);
       source.start(0);
     } catch (_) {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         window.speechSynthesis.resume();
-        const utter = new SpeechSynthesisUtterance(teksPanggilan);
-        utter.rate = rate;
-        utter.volume = volume;
+        const utter = new SpeechSynthesisUtterance(textToPlay);
+        utter.rate = 0.88;
         utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : targetLang === 'jv' ? 'jv-ID' : 'id-ID';
         utter.pitch = (jenis === 'wanita') ? 1.15 : 0.85;
 
@@ -280,7 +304,11 @@ export default function PanggilanSantriPage() {
           }
         }
 
+        utter.onend = () => setIsPlayingPreview(false);
+        utter.onerror = () => setIsPlayingPreview(false);
         window.speechSynthesis.speak(utter);
+      } else {
+        setIsPlayingPreview(false);
       }
     }
   };
@@ -570,12 +598,20 @@ export default function PanggilanSantriPage() {
               <label className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                 Teks Panggilan <span className="text-red-500">*</span>
               </label>
-              {teksPanggilan && (
+              {(teksPanggilan || selectedFormat) && (
                 <button
+                  type="button"
                   onClick={handlePreviewTTS}
-                  className="flex items-center gap-1 text-[10px] font-bold text-orange-600 dark:text-orange-400 hover:text-orange-700 transition-colors"
+                  disabled={isPlayingPreview}
+                  className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all shadow-sm active:scale-95 ${
+                    isPlayingPreview
+                      ? 'bg-orange-500 text-white animate-pulse'
+                      : 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/50'
+                  }`}
+                  title={`Dengarkan preview suara format ${selectedFormat?.nama || ''} persis seperti di kelola format`}
                 >
-                  <Volume2 size={12} /> Preview Suara
+                  <Volume2 size={13} className={isPlayingPreview ? 'animate-bounce' : ''} />
+                  {isPlayingPreview ? 'Memutar Suara...' : 'Preview Suara'}
                 </button>
               )}
             </div>
