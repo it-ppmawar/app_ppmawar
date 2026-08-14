@@ -4,6 +4,47 @@ import { useState, useEffect, useRef } from 'react';
 import { CalendarDays, Clock, MapPin, User, Edit, Trash2, CheckSquare, FileText, Download, Upload, X, Search, ChevronDown } from 'lucide-react';
 import { downloadTemplate } from '@/lib/downloadTemplate';
 
+// Custom time picker — avoids native Android Chrome dialog that clips "Setel" button
+function TimeInput({
+  value,
+  onChange,
+  required,
+}: {
+  value: string;
+  onChange: (e: { target: { value: string } }) => void;
+  required?: boolean;
+}) {
+  const parts = (value || '00:00').split(':');
+  const h = Math.min(23, Math.max(0, parseInt(parts[0] ?? '0') || 0));
+  const m = Math.min(59, Math.max(0, parseInt(parts[1] ?? '0') || 0));
+  const emit = (newH: number, newM: number) =>
+    onChange({ target: { value: `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}` } });
+  return (
+    <div className="w-full flex items-center gap-1 px-2 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+      <select
+        value={h}
+        onChange={e => emit(parseInt(e.target.value), m)}
+        required={required}
+        className="flex-1 bg-transparent text-center font-mono text-sm outline-none cursor-pointer dark:text-white"
+      >
+        {Array.from({ length: 24 }, (_, i) => (
+          <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+        ))}
+      </select>
+      <span className="font-bold text-gray-400 select-none">:</span>
+      <select
+        value={m}
+        onChange={e => emit(h, parseInt(e.target.value))}
+        className="flex-1 bg-transparent text-center font-mono text-sm outline-none cursor-pointer dark:text-white"
+      >
+        {Array.from({ length: 60 }, (_, i) => (
+          <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export default function JadwalPage() {
   const [jadwal, setJadwal] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -684,11 +725,11 @@ export default function JadwalPage() {
       </div>
 
       {(role === 'admin' || role === 'staff') && selectedJadwal.length > 0 && (
-        <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
-          <button onClick={() => { setBulkHari(''); setBulkJamMulai(''); setBulkJamSelesai(''); setIsBulkModalOpen(true); }} className="px-3 py-2.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center gap-1.5">
+        <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
+          <button onClick={() => { setBulkHari(''); setBulkJamMulai(''); setBulkJamSelesai(''); setIsBulkModalOpen(true); }} className="w-full px-2 py-2.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1.5">
             <CheckSquare size={14} /> Edit Jam/Hari Massal ({selectedJadwal.length})
           </button>
-          <button onClick={handleDeleteBulk} className="px-3 py-2.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-1.5">
+          <button onClick={handleDeleteBulk} className="w-full px-2 py-2.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-1.5">
             <Trash2 size={14} /> Hapus Massal ({selectedJadwal.length})
           </button>
         </div>
@@ -867,11 +908,11 @@ export default function JadwalPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Jam Mulai</label>
-                  <input type="time" value={editingJadwal.jam_mulai.substring(0, 5)} onChange={(e) => setEditingJadwal({ ...editingJadwal, jam_mulai: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg" required />
+                  <TimeInput value={editingJadwal.jam_mulai.substring(0, 5)} onChange={(e) => setEditingJadwal({ ...editingJadwal, jam_mulai: e.target.value })} required />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Jam Selesai</label>
-                  <input type="time" value={editingJadwal.jam_selesai.substring(0, 5)} onChange={(e) => setEditingJadwal({ ...editingJadwal, jam_selesai: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg" required />
+                  <TimeInput value={editingJadwal.jam_selesai.substring(0, 5)} onChange={(e) => setEditingJadwal({ ...editingJadwal, jam_selesai: e.target.value })} required />
                 </div>
               </div>
               <div>
@@ -970,11 +1011,11 @@ export default function JadwalPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Jam Mulai</label>
-                  <input type="time" value={newJadwal.jam_mulai} onChange={(e) => setNewJadwal({ ...newJadwal, jam_mulai: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg" required />
+                  <TimeInput value={newJadwal.jam_mulai} onChange={(e) => setNewJadwal({ ...newJadwal, jam_mulai: e.target.value })} required />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Jam Selesai</label>
-                  <input type="time" value={newJadwal.jam_selesai} onChange={(e) => setNewJadwal({ ...newJadwal, jam_selesai: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg" required />
+                  <TimeInput value={newJadwal.jam_selesai} onChange={(e) => setNewJadwal({ ...newJadwal, jam_selesai: e.target.value })} required />
                 </div>
               </div>
               <div>
