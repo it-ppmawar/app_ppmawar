@@ -165,13 +165,17 @@ export default function DashboardPage() {
             )}
           </div>
         {/* Tanggal — 1 Baris Presisi: Kiri Masehi (Rata Kiri), Tengah Pembatas, Kanan Hijriyah (Rata Kanan) */}
-        <div className="mt-5 flex justify-center w-full px-3 sm:px-4">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center bg-[#0f172a]/90 backdrop-blur-md px-3 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg border border-gray-800/90 gap-2 sm:gap-3 w-full sm:w-fit">
+        <div className="mt-5 flex justify-center w-full px-2 sm:px-4">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center bg-[#0f172a]/90 backdrop-blur-md px-3.5 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg border border-gray-800/90 gap-2 sm:gap-3.5 w-fit max-w-[98%] sm:max-w-max">
             {/* Kiri: Tanggal Masehi (Rata Kiri) */}
-            <div className="flex items-center justify-start overflow-hidden">
+            <div className="flex items-center justify-start min-w-0">
               <span
                 className="text-slate-300/90 font-medium whitespace-nowrap"
-                style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: 'clamp(7px, 2.3vw, 9.5px)', letterSpacing: '0.13em' }}
+                style={{
+                  fontFamily: '"Cormorant Garamond", serif',
+                  fontSize: 'clamp(8.5px, 2.5vw, 10.5px)',
+                  letterSpacing: '0.08em'
+                }}
               >
                 {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
               </span>
@@ -179,14 +183,17 @@ export default function DashboardPage() {
 
             {/* Tengah: Pembatas Presisi */}
             <div className="px-1 sm:px-1.5 flex items-center justify-center shrink-0">
-              <span className="text-emerald-500/50 font-light select-none" style={{ fontSize: 'clamp(10px, 3vw, 14px)' }}>|</span>
+              <span className="text-emerald-500/50 font-light select-none" style={{ fontSize: 'clamp(11px, 2.8vw, 14px)' }}>|</span>
             </div>
 
             {/* Kanan: Tanggal Hijriyah (Rata Kanan) */}
-            <div className="flex items-center justify-end overflow-hidden">
+            <div className="flex items-center justify-end min-w-0">
               <span
                 className="text-emerald-400 font-bold leading-none whitespace-nowrap"
-                style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif', fontSize: 'clamp(9px, 2.3vw, 12px)' }}
+                style={{
+                  fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif',
+                  fontSize: 'clamp(11px, 3.1vw, 14px)'
+                }}
               >
                 {hijriDateStr || ''}
               </span>
