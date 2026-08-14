@@ -227,7 +227,7 @@ export default function PanggilanSantriPage() {
     const lang  = selectedFormat?.bahasa || 'id';
     const jenis = selectedFormat?.jenis_suara || 'pria';
     const isArabicScript = /[\u0600-\u06FF]/.test(teksPanggilan);
-    const targetLang = (isArabicScript || lang === 'ar') ? 'ar' : lang === 'en' ? 'en' : 'id';
+    const targetLang = isArabicScript ? 'ar' : (lang === 'ar' || lang === 'en' || lang === 'jv') ? lang : 'id';
     try {
       const res = await fetch(`/api/tts?text=${encodeURIComponent(teksPanggilan)}&lang=${encodeURIComponent(targetLang)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -253,7 +253,7 @@ export default function PanggilanSantriPage() {
         const utter = new SpeechSynthesisUtterance(teksPanggilan);
         utter.rate = rate;
         utter.volume = volume;
-        utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : 'id-ID';
+        utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : targetLang === 'jv' ? 'jv-ID' : 'id-ID';
         utter.pitch = (jenis === 'wanita') ? 1.15 : 0.85;
 
         const voices = window.speechSynthesis.getVoices();

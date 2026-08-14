@@ -162,7 +162,7 @@ export default function FormatPanggilanPage() {
       .replace(/{teks}/g, 'Harap segera hadir.');
 
     const isArabicScript = /[\u0600-\u06FF]/.test(preview);
-    const targetLang = (isArabicScript || bahasa === 'ar') ? 'ar' : (bahasa === 'en' ? 'en' : 'id');
+    const targetLang = isArabicScript ? 'ar' : (bahasa === 'ar' || bahasa === 'en' || bahasa === 'jv') ? bahasa : 'id';
 
     try {
       const ttsUrl = `/api/tts?text=${encodeURIComponent(preview)}&lang=${encodeURIComponent(targetLang)}`;
@@ -194,7 +194,7 @@ export default function FormatPanggilanPage() {
         window.speechSynthesis.resume();
         const utter = new SpeechSynthesisUtterance(preview);
         utter.rate = 0.88;
-        utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : 'id-ID';
+        utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : targetLang === 'jv' ? 'jv-ID' : 'id-ID';
         utter.pitch = jenisSuara === 'wanita' ? 1.15 : 0.85;
 
         const voices = window.speechSynthesis.getVoices();

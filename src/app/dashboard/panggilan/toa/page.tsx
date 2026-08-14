@@ -53,7 +53,7 @@ async function playTTS(
   rate: number = 0.88
 ): Promise<void> {
   const isArabic = /[\u0600-\u06FF]/.test(text);
-  const targetLang = (isArabic || lang === 'ar') ? 'ar' : lang === 'en' ? 'en' : 'id';
+  const targetLang = isArabic ? 'ar' : (lang === 'ar' || lang === 'en' || lang === 'jv') ? lang : 'id';
 
   // 1. Primary Engine: Server-side TTS Proxy via Web Audio API
   try {
@@ -97,7 +97,7 @@ async function playTTS(
       window.speechSynthesis.resume();
 
       const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : 'id-ID';
+      utter.lang = targetLang === 'ar' ? 'ar-SA' : targetLang === 'en' ? 'en-US' : targetLang === 'jv' ? 'jv-ID' : 'id-ID';
       utter.rate = rate;
       utter.volume = volume;
       utter.pitch = (jenisSuara === 'wanita') ? 1.15 : 0.85;
