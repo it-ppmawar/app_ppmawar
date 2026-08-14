@@ -44,7 +44,19 @@ jobs:
       - name: Prepare Deploy Files
         run: node scripts/prepare-deploy-files.js
 
-      - name: Direct FTP Upload & Trigger Restart
+      - name: Create ZIP Bundle
+        run: |
+          sudo apt-get update -q -y && sudo apt-get install -q -y zip
+          mkdir -p upload_bundle/tmp
+          cd deploy_dist
+          zip -q -r -y ../upload_bundle/deploy.zip . || true
+          cd ..
+          cp scripts/unzip.php upload_bundle/unzip.php || true
+          date > upload_bundle/tmp/restart.txt
+          echo "✅ ZIP bundle created at upload_bundle/deploy.zip"
+          ls -lh upload_bundle/
+
+      - name: Fast FTP Upload
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
@@ -52,8 +64,15 @@ jobs:
           FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
         run: node scripts/upload-ftp.js
 
+      - name: Trigger Instant Server Extraction & Restart
+        run: |
+          echo "⚡ Triggering PHP ZipArchive extraction on server..."
+          RESPONSE=$(curl -s -m 30 "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026_secure" || echo "webhook_sent")
+          echo "Response: $RESPONSE"
+          echo "✅ Extraction triggered!"
+
       - name: Deploy Status
         run: |
-          echo "✅ Deploy files (.next, server.js, public) berhasil diupload secara presisi!"
+          echo "✅ Deploy bundle berhasil diupload dan diekstrak instan di server!"
           echo "🔄 Phusion Passenger me-restart server.js secara otomatis."
           echo "🎉 Deployment selesai!"

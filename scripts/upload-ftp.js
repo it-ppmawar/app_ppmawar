@@ -70,11 +70,14 @@ async function connectFTP() {
 
 async function uploadWithRetry(maxAttempts = 4) {
   const targetDir = process.env.FTP_TARGET_DIR || '/public_html';
-  const deployDistDir = path.resolve(__dirname, '../deploy_dist');
+  const uploadBundleDir = path.resolve(__dirname, '../upload_bundle');
 
-  if (!fs.existsSync(deployDistDir)) {
-    throw new Error(`deploy_dist folder NOT FOUND at ${deployDistDir}`);
+  if (!fs.existsSync(uploadBundleDir)) {
+    throw new Error(`upload_bundle folder NOT FOUND at ${uploadBundleDir}`);
   }
+
+  const files = fs.readdirSync(uploadBundleDir);
+  console.log(`📦 upload_bundle contents: ${files.join(', ')}`);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     console.log(`\n🔌 Connecting to FTP (attempt ${attempt}/${maxAttempts})...`);
@@ -91,9 +94,9 @@ async function uploadWithRetry(maxAttempts = 4) {
         }
       });
 
-      console.log(`📤 Uploading deploy_dist files to ${targetDir}...`);
-      await client.uploadFromDir(deployDistDir, targetDir);
-      console.log('🎉 Direct FTP Upload completed successfully!');
+      console.log(`📤 Uploading bundle to ${targetDir}...`);
+      await client.uploadFromDir(uploadBundleDir, targetDir);
+      console.log('🎉 Fast Bundle Upload completed successfully!');
       client.trackProgress(); // clear progress
       client.close();
       return; // Success

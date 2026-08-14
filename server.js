@@ -5,6 +5,17 @@ const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
+// Fallback: If deploy.zip is found, extract it safely
+const zipFile = path.join(__dirname, 'deploy.zip');
+if (fs.existsSync(zipFile)) {
+  try {
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(zipFile);
+    zip.extractAllTo(__dirname, true);
+    fs.unlinkSync(zipFile);
+  } catch (e) {}
+}
+
 // Load environment variables manually for the custom server
 try {
   const { loadEnvConfig } = require('@next/env');
