@@ -164,51 +164,34 @@ export default function DashboardPage() {
               </span>
             )}
           </div>
-        {/* Tanggal — 2 Baris di HP (tidak pernah meluber) | 1 Baris di Desktop */}
-        <div className="mt-5 flex justify-center w-full px-3">
-
-          {/* ── MOBILE: Stacked (Amiri/Hijriyah atas, Cormorant/Masehi bawah) ── */}
-          <div className="sm:hidden flex flex-col items-center gap-1.5 bg-[#0f172a]/90 backdrop-blur-md px-5 py-2.5 rounded-2xl shadow-lg border border-gray-800/90 w-fit max-w-full">
-            <span
-              className="text-[13px] text-emerald-400 font-bold leading-none whitespace-nowrap"
-              style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif' }}
-              dir="rtl"
-            >
-              {hijriDateStr || ''}
-            </span>
-            <div className="w-full h-px bg-emerald-800/50 rounded-full" />
-            <span
-              className="text-[8.5px] text-slate-300/90 font-medium tracking-[0.15em] leading-none whitespace-nowrap"
-              style={{ fontFamily: '"Cormorant Garamond", serif' }}
-            >
-              {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
-            </span>
-          </div>
-
-          {/* ── DESKTOP: Side-by-side satu baris ── */}
-          <div className="hidden sm:grid grid-cols-[1fr_auto_1fr] items-center bg-[#0f172a]/90 backdrop-blur-md px-6 py-2.5 rounded-full shadow-lg border border-gray-800/90 gap-3 w-fit max-w-max">
-            <div className="flex items-center justify-end">
+        {/* Tanggal — 1 Baris Presisi: Kiri Masehi (Rata Kiri), Tengah Pembatas, Kanan Hijriyah (Rata Kanan) */}
+        <div className="mt-5 flex justify-center w-full px-2 sm:px-3">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center bg-[#0f172a]/90 backdrop-blur-md px-4 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg border border-gray-800/90 gap-1.5 sm:gap-3 w-fit max-w-full">
+            {/* Kiri: Tanggal Masehi (Rata Kiri) */}
+            <div className="flex items-center justify-start min-w-0">
               <span
-                className="text-[9px] text-slate-300/90 font-medium tracking-[0.15em] whitespace-nowrap"
+                className="text-[8.5px] sm:text-[9.5px] text-slate-300/90 font-medium tracking-[0.12em] sm:tracking-[0.15em] whitespace-nowrap overflow-hidden text-ellipsis"
                 style={{ fontFamily: '"Cormorant Garamond", serif' }}
               >
                 {dateStr ? dateStr.toUpperCase() : 'MEMUAT...'}
               </span>
             </div>
-            <div className="px-1 flex items-center justify-center shrink-0">
-              <span className="text-emerald-500/50 font-light select-none">|</span>
+
+            {/* Tengah: Pembatas Presisi */}
+            <div className="px-1 sm:px-1.5 flex items-center justify-center shrink-0">
+              <span className="text-emerald-500/50 font-light select-none text-xs sm:text-sm">|</span>
             </div>
-            <div className="flex items-center justify-start">
+
+            {/* Kanan: Tanggal Hijriyah (Rata Kanan) */}
+            <div className="flex items-center justify-end min-w-0" dir="rtl">
               <span
-                className="text-sm text-emerald-400 font-bold leading-none whitespace-nowrap"
+                className="text-[11.5px] sm:text-sm text-emerald-400 font-bold leading-none whitespace-nowrap overflow-hidden text-ellipsis"
                 style={{ fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif' }}
-                dir="rtl"
               >
                 {hijriDateStr || ''}
               </span>
             </div>
           </div>
-
         </div>
 
       </div>
