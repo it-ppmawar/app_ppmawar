@@ -166,7 +166,7 @@ export default function DashboardPage() {
           </div>
         {/* Tanggal — 1 Baris Presisi: Kiri Masehi (Rata Kiri), Tengah Pembatas, Kanan Hijriyah (Rata Kanan) */}
         <div className="mt-5 flex justify-center w-full px-2 sm:px-4">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center bg-[#0f172a]/90 backdrop-blur-md px-3.5 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg border border-gray-800/90 gap-2 sm:gap-3.5 w-fit max-w-[98%] sm:max-w-max">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center bg-[#0f172a]/90 backdrop-blur-md px-3.5 sm:px-6 py-2 sm:py-2.5 rounded-full shadow-lg border border-gray-800/90 gap-1.5 sm:gap-3 w-fit max-w-[98%] sm:max-w-max">
             {/* Kiri: Tanggal Masehi (Rata Kiri) */}
             <div className="flex items-center justify-start min-w-0">
               <span
@@ -192,7 +192,7 @@ export default function DashboardPage() {
                 className="text-emerald-400 font-bold leading-none whitespace-nowrap"
                 style={{
                   fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif',
-                  fontSize: 'clamp(11px, 3.1vw, 14px)'
+                  fontSize: 'clamp(12.5px, 3.55vw, 15px)'
                 }}
               >
                 {hijriDateStr || ''}
