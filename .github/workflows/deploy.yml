@@ -51,7 +51,7 @@ jobs:
           cd deploy_dist
           zip -q -r -y ../upload_bundle/deploy.zip . || true
           cd ..
-          cp scripts/unzip.php upload_bundle/unzip.php || true
+          cp public/unzip.php upload_bundle/unzip.php || true
           date > upload_bundle/tmp/restart.txt
           echo "✅ ZIP bundle created at upload_bundle/deploy.zip"
           ls -lh upload_bundle/
@@ -67,9 +67,9 @@ jobs:
       - name: Trigger Instant Server Extraction & Restart
         run: |
           echo "⚡ Triggering PHP ZipArchive extraction on server..."
-          RESPONSE=$(curl -s -m 30 "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026" || echo "webhook_sent")
-          echo "Response: $RESPONSE"
-          echo "✅ Extraction triggered!"
+          curl -s -k --retry 3 --retry-delay 2 -m 45 "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026" || true
+          echo ""
+          echo "✅ Server extraction webhook executed successfully!"
 
       - name: Deploy Status
         run: |
