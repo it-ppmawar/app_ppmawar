@@ -52,3 +52,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+    const payload = token ? verifyToken(token) : null;
+    
+    if (!payload || ((payload as any).role !== 'admin' && (payload as any).role !== 'staff' && (payload as any).role !== 'pengurus_asrama')) {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    }
+
+    const { nis, murid_id } = await request.json();
+
+    if (!nis && !murid_id) {
+      return NextResponse.json({ error: 'NIS atau murid_id wajib diisi' }, { status: 400 });
+    }
+
+    if (murid_id) {
+      await pool.execute('UPDATE murid SET barcode_id = NULL WHERE murid_id = ?', [Number(murid_id)]);
+    } else {
+      await pool.execute('UPDATE murid SET barcode_id = NULL WHERE nis = ?', [String(nis)]);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Pairing kartu santri berhasil direset/dilepas.'
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
+  }
+}
+

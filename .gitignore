@@ -57,8 +57,12 @@ ppmawar.zip
 # Deploy artifacts
 /deploy_dist/
 
-# Scratch directory
+# Scratch directory & temporary files
 /scratch/
+scratch_*.js
+page_output.html
+/upload_bundle/
+DOC-*.adding
 
 # User uploaded photos (deployed separately via FTP/cPanel)
 public/uploads/
