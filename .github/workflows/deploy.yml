@@ -44,19 +44,7 @@ jobs:
       - name: Prepare Deploy Files
         run: node scripts/prepare-deploy-files.js
 
-      - name: Create ZIP Bundle & Restart Marker
-        run: |
-          sudo apt-get update -q -y && sudo apt-get install -q -y zip
-          echo "=== Creating ZIP ==="
-          mkdir -p upload_bundle/tmp
-          cd deploy_dist
-          zip -q -r -y ../upload_bundle/deploy.zip . || true
-          cd ..
-          date > upload_bundle/tmp/restart.txt
-          echo "✅ ZIP bundle created at upload_bundle/deploy.zip"
-          ls -lh upload_bundle/
-
-      - name: Upload ZIP Bundle via Fast Node.js FTP & Trigger Restart
+      - name: Direct FTP Upload & Trigger Restart
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
@@ -66,6 +54,6 @@ jobs:
 
       - name: Deploy Status
         run: |
-          echo "✅ Deploy bundle (ZIP + server.js) berhasil diupload dalam ~20 detik!"
-          echo "🔄 Phusion Passenger me-restart server.js & AdmZip meng-ekstrak update secara instan."
+          echo "✅ Deploy files (.next, server.js, public) berhasil diupload secara presisi!"
+          echo "🔄 Phusion Passenger me-restart server.js secara otomatis."
           echo "🎉 Deployment selesai!"
