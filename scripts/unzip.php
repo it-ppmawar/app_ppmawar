@@ -4,7 +4,7 @@
  * Secure standalone ZIP extractor for cPanel deployment.
  * Uses PHP native C-based ZipArchive to extract in <100ms without blocking Node.js.
  */
-$secret = 'ppmawar_deploy_2026_secure';
+$secret = 'ppmawar_deploy_2026';
 if (!isset($_GET['key']) || $_GET['key'] !== $secret) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized access']);

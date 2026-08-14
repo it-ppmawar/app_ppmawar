@@ -67,7 +67,7 @@ jobs:
       - name: Trigger Instant Server Extraction & Restart
         run: |
           echo "⚡ Triggering PHP ZipArchive extraction on server..."
-          RESPONSE=$(curl -s -m 30 "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026_secure" || echo "webhook_sent")
+          RESPONSE=$(curl -s -m 30 "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026" || echo "webhook_sent")
           echo "Response: $RESPONSE"
           echo "✅ Extraction triggered!"
 
