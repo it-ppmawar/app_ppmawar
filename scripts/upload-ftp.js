@@ -8,8 +8,8 @@ const ftp = require('basic-ftp');
 const path = require('path');
 const fs = require('fs');
 
-const CONNECT_TIMEOUT_MS = 12000; // 12s connect timeout
-const TRANSFER_TIMEOUT_MS = 90000;  // 90s transfer timeout per file (fail fast & retry)
+const CONNECT_TIMEOUT_MS = 20000; // 20s connect timeout
+const TRANSFER_TIMEOUT_MS = 120000; // 120s transfer timeout per file
 
 async function connectFTP() {
   const server = process.env.FTP_SERVER;
@@ -22,11 +22,12 @@ async function connectFTP() {
 
   // Attempt 1: Plain FTP (fastest & most reliable for Jagoan Hosting)
   const client1 = new ftp.Client(CONNECT_TIMEOUT_MS);
-  client1.ftp.verbose = false;
+  client1.ftp.verbose = true;
+  client1.ftp.ipFamily = 4; // Force IPv4
   try {
     await client1.access({ host: server, user, password, secure: false });
     client1.ftp.timeout = TRANSFER_TIMEOUT_MS;
-    console.log('✅ Connected via Plain FTP');
+    console.log('✅ Connected via Plain FTP (IPv4)');
     return client1;
   } catch (err1) {
     console.warn(`⚠️ Plain FTP failed (${err1.message})`);
@@ -35,7 +36,8 @@ async function connectFTP() {
 
   // Attempt 2: FTPS explicit TLS (ignore cert mismatch)
   const client2 = new ftp.Client(CONNECT_TIMEOUT_MS);
-  client2.ftp.verbose = false;
+  client2.ftp.verbose = true;
+  client2.ftp.ipFamily = 4; // Force IPv4
   try {
     await client2.access({
       host: server, user, password,
@@ -43,7 +45,7 @@ async function connectFTP() {
       secureOptions: { rejectUnauthorized: false }
     });
     client2.ftp.timeout = TRANSFER_TIMEOUT_MS;
-    console.log('✅ Connected via FTPS (explicit TLS)');
+    console.log('✅ Connected via FTPS (explicit TLS, IPv4)');
     return client2;
   } catch (err2) {
     console.warn(`⚠️ FTPS explicit failed (${err2.message})`);
@@ -52,7 +54,8 @@ async function connectFTP() {
 
   // Attempt 3: FTPS implicit TLS (ignore cert mismatch)
   const client3 = new ftp.Client(CONNECT_TIMEOUT_MS);
-  client3.ftp.verbose = false;
+  client3.ftp.verbose = true;
+  client3.ftp.ipFamily = 4; // Force IPv4
   try {
     await client3.access({
       host: server, user, password,
@@ -60,7 +63,7 @@ async function connectFTP() {
       secureOptions: { rejectUnauthorized: false }
     });
     client3.ftp.timeout = TRANSFER_TIMEOUT_MS;
-    console.log('✅ Connected via FTPS (implicit TLS)');
+    console.log('✅ Connected via FTPS (implicit TLS, IPv4)');
     return client3;
   } catch (err3) {
     client3.close();
@@ -68,7 +71,7 @@ async function connectFTP() {
   }
 }
 
-async function uploadWithRetry(maxAttempts = 5) {
+async function uploadWithRetry(maxAttempts = 3) {
   const targetDir = process.env.FTP_TARGET_DIR || '/public_html';
   const uploadBundleDir = path.resolve(__dirname, '../upload_bundle');
 

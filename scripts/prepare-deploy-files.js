@@ -77,13 +77,13 @@ function main() {
   });
   console.log('✅ .next copied successfully');
 
-  // 3. Copy public (exclude models/)
+  // 3. Copy public (exclude models/ and uploads/)
   console.log('📂 Copying public assets...');
   const pubSrc = path.join(rootDir, 'public');
   if (fs.existsSync(pubSrc)) {
     copyRecursiveSync(pubSrc, pubDst, (fp) => {
       const rel = path.relative(pubSrc, fp);
-      return !rel.startsWith('models');
+      return !rel.startsWith('models') && !rel.startsWith('uploads');
     });
   }
   console.log('✅ public copied successfully');
