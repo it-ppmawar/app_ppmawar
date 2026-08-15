@@ -85,13 +85,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Parameter tidak lengkap' }, { status: 400 });
     }
 
-    // Helper: kondisi tanggal untuk JOIN
-    const dateCond = isRentang
-      ? 'BETWEEN ? AND ?'
-      : '= ? AND YEAR({col}) = ?'; // diganti per query
-
-    // Helper params builder
-    const makeDateParams = (col: string): { cond: string; params: any[] } => {
+    // Helper params builder untuk tanggal
+    const makeDateCond = (col: string): { cond: string; params: any[] } => {
       if (isRentang) {
         return {
           cond: `${col} BETWEEN ? AND ?`,
@@ -109,9 +104,14 @@ export async function GET(request: Request) {
 
     if (tipe === 'madin') {
       if (!target_id) return NextResponse.json({ error: 'Pilih Kelas Madin' }, { status: 400 });
-      
-      const { cond: dateCond, params: dateParams } = makeDateParams('a.tanggal');
-      const { cond: dateCond_scan, params: dateParams_scan } = makeDateParams('ak.tanggal');
+
+      // Subquery hadir: tabel absensi tanpa alias
+      const { cond: subDateCond, params: subDateParams } = makeDateCond('tanggal');
+      // Subquery scan kamar: tabel absensi_kamar alias ak
+      const { cond: scanDateCond, params: scanDateParams } = makeDateCond('ak.tanggal');
+      // JOIN absensi utama: alias a
+      const { cond: joinDateCond, params: joinDateParams } = makeDateCond('a.tanggal');
+
       let whereCond = 'WHERE m.kelas_madin_id = ?';
       let whereParams: any[] = [target_id];
 
@@ -126,8 +126,7 @@ export async function GET(request: Request) {
         whereParams = [];
       }
 
-      // params: dateCond (untuk JOIN absensi), dateCond_scan (untuk JOIN absensi_kamar), whereParams
-      params = [...dateParams, ...dateParams_scan, ...whereParams];
+      params = [...subDateParams, ...scanDateParams, ...joinDateParams, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
           COUNT(DISTINCT att.tanggal) as hadir,
@@ -137,25 +136,27 @@ export async function GET(request: Request) {
         FROM murid m
         LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
         LEFT JOIN (
-          SELECT murid_id, tanggal FROM absensi WHERE status = 'Hadir' AND ${dateCond}
+          SELECT murid_id, tanggal FROM absensi WHERE status = 'Hadir' AND ${subDateCond}
           UNION
           SELECT ak.murid_id, ak.tanggal
           FROM absensi_kamar ak
           JOIN jadwal_madin jm ON jm.kelas_madin_id = (
             SELECT kelas_madin_id FROM murid WHERE murid_id = ak.murid_id LIMIT 1
           ) AND jm.hari = DAYNAME(ak.tanggal)
-          WHERE ${dateCond_scan}
+          WHERE ${scanDateCond}
         ) att ON m.murid_id = att.murid_id
-        LEFT JOIN absensi a ON m.murid_id = a.murid_id AND ${dateCond}
+        LEFT JOIN absensi a ON m.murid_id = a.murid_id AND ${joinDateCond}
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
       `;
     } else if (tipe === 'quran') {
       if (!target_id) return NextResponse.json({ error: "Pilih Kelas Qur'an" }, { status: 400 });
-      
-      const { cond: dateCond, params: dateParams } = makeDateParams('a.tanggal');
-      const { cond: dateCond_scan, params: dateParams_scan } = makeDateParams('ak.tanggal');
+
+      const { cond: subDateCond, params: subDateParams } = makeDateCond('tanggal');
+      const { cond: scanDateCond, params: scanDateParams } = makeDateCond('ak.tanggal');
+      const { cond: joinDateCond, params: joinDateParams } = makeDateCond('a.tanggal');
+
       let whereCond = 'WHERE m.kelas_quran_id = ?';
       let whereParams: any[] = [target_id];
 
@@ -170,8 +171,7 @@ export async function GET(request: Request) {
         whereParams = [];
       }
 
-      // params: dateCond (untuk JOIN absensi_quran), dateCond_scan (untuk JOIN absensi_kamar), whereParams
-      params = [...dateParams, ...dateParams_scan, ...whereParams];
+      params = [...subDateParams, ...scanDateParams, ...joinDateParams, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
           COUNT(DISTINCT att.tanggal) as hadir,
@@ -181,16 +181,16 @@ export async function GET(request: Request) {
         FROM murid m
         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
         LEFT JOIN (
-          SELECT murid_id, tanggal FROM absensi_quran WHERE status = 'Hadir' AND ${dateCond}
+          SELECT murid_id, tanggal FROM absensi_quran WHERE status = 'Hadir' AND ${subDateCond}
           UNION
           SELECT ak.murid_id, ak.tanggal
           FROM absensi_kamar ak
           JOIN jadwal_quran jq ON jq.kelas_quran_id = (
             SELECT kelas_quran_id FROM murid WHERE murid_id = ak.murid_id LIMIT 1
           ) AND jq.hari = DAYNAME(ak.tanggal)
-          WHERE ${dateCond_scan}
+          WHERE ${scanDateCond}
         ) att ON m.murid_id = att.murid_id
-        LEFT JOIN absensi_quran a ON m.murid_id = a.murid_id AND ${dateCond}
+        LEFT JOIN absensi_quran a ON m.murid_id = a.murid_id AND ${joinDateCond}
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
@@ -217,9 +217,10 @@ export async function GET(request: Request) {
         } catch (_) {}
       }
 
-      const { cond: dateCond1, params: dateParams1 } = makeDateParams('att_k.tanggal');
-      const { cond: dateCond2, params: dateParams2 } = makeDateParams('att_s.tanggal');
-      const { cond: dateCond3, params: dateParams3 } = makeDateParams('a.tanggal');
+      // Subquery untuk absensi_kegiatan (att_k.tanggal) & absensi_kamar (att_s.tanggal)
+      const { cond: subDateCond1, params: subDateParams1 } = makeDateCond('att_k.tanggal');
+      const { cond: subDateCond2, params: subDateParams2 } = makeDateCond('att_s.tanggal');
+      const { cond: joinDateCond, params: joinDateParams } = makeDateCond('a.tanggal');
 
       let whereCond = 'WHERE m.kamar_id = ?';
       let whereParams: any[] = [target_id];
@@ -233,7 +234,7 @@ export async function GET(request: Request) {
         whereParams = [asr];
       }
 
-      params = [...dateParams1, ...dateParams2, ...dateParams3, ...whereParams];
+      params = [...subDateParams1, ...subDateParams2, ...joinDateParams, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
           COUNT(DISTINCT att.tanggal) as hadir,
@@ -243,11 +244,11 @@ export async function GET(request: Request) {
         FROM murid m
         LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
         LEFT JOIN (
-          SELECT murid_id, tanggal FROM absensi_kegiatan att_k WHERE status = 'Hadir' AND ${dateCond1}
+          SELECT murid_id, tanggal FROM absensi_kegiatan att_k WHERE status = 'Hadir' AND ${subDateCond1}
           UNION
-          SELECT murid_id, tanggal FROM absensi_kamar att_s WHERE ${dateCond2}
+          SELECT murid_id, tanggal FROM absensi_kamar att_s WHERE ${subDateCond2}
         ) att ON m.murid_id = att.murid_id
-        LEFT JOIN absensi_kegiatan a ON m.murid_id = a.murid_id AND ${dateCond3}
+        LEFT JOIN absensi_kegiatan a ON m.murid_id = a.murid_id AND ${joinDateCond}
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
@@ -257,7 +258,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Akses ditolak. Rekapitulasi/monitoring kehadiran guru hanya khusus Admin dan Staf.' }, { status: 403 });
       }
 
-      const { cond: dateCond, params: dateParams } = makeDateParams('a.tanggal');
+      const { cond: joinDateCond, params: joinDateParams } = makeDateCond('a.tanggal');
 
       if (target_id && target_id !== 'all') {
         query = `
@@ -267,12 +268,12 @@ export async function GET(request: Request) {
             SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
             SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
           FROM guru g
-          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${dateCond}
+          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${joinDateCond}
           WHERE g.guru_id = ?
           GROUP BY g.guru_id, g.nip, g.nama, g.foto, g.alamat, g.no_hp
           ORDER BY g.nama ASC
         `;
-        params = [...dateParams, target_id];
+        params = [...joinDateParams, target_id];
       } else {
         query = `
           SELECT g.guru_id as id, g.nip as identifier, g.nama, g.foto, g.alamat, g.no_hp as nama_wali,
@@ -281,11 +282,11 @@ export async function GET(request: Request) {
             SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
             SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
           FROM guru g
-          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${dateCond}
+          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${joinDateCond}
           GROUP BY g.guru_id, g.nip, g.nama, g.foto, g.alamat, g.no_hp
           ORDER BY g.nama ASC
         `;
-        params = [...dateParams];
+        params = [...joinDateParams];
       }
     } else {
       return NextResponse.json({ error: 'Tipe rekap tidak valid' }, { status: 400 });
