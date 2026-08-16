@@ -2355,8 +2355,8 @@ function NotifikasiContent() {
       )}
       {/* Modal Dialog Konfigurasi WA Scheduler */}
       {schedulerModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
-          <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-gray-100 dark:border-gray-700 space-y-5 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] sm:pb-6 shadow-2xl border border-gray-100 dark:border-gray-700 space-y-5 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-emerald-100 dark:bg-emerald-950/60 rounded-xl text-emerald-600 dark:text-emerald-400">
@@ -2523,11 +2523,11 @@ function NotifikasiContent() {
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <div className="sticky bottom-0 bg-white dark:bg-gray-800 grid grid-cols-2 gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-700">
               <button
                 type="button"
                 onClick={() => setSchedulerModalOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 rounded-xl transition-colors"
+                className="py-3 text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 rounded-xl transition-colors"
               >
                 Tutup
               </button>
@@ -2535,10 +2535,10 @@ function NotifikasiContent() {
                 type="button"
                 disabled={isSchedulerSending}
                 onClick={() => handleBulkScheduleWA()}
-                className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50"
+                className="py-3 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 {isSchedulerSending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                {isSchedulerSending ? 'Sedang Memproses...' : 'Mulai Jadwalkan Sekarang'}
+                {isSchedulerSending ? 'Memproses...' : 'Mulai Jadwalkan'}
               </button>
             </div>
           </div>

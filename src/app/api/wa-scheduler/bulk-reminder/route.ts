@@ -80,7 +80,7 @@ export async function POST(request: Request) {
         quick_url: r.quick_url || 'https://app.ppmawar.or.id/'
       }));
     } else if (mode === 'all_schedules') {
-      // 2. Ambil jadwal sesuai kategori terpilih (Madin, Quran, Kegiatan) untuk penjadwalan harian / mingguan
+      // 2. Ambil jadwal hari ini sesuai kategori terpilih, lalu buat 1 pesan ringkasan per guru
       const appendRows = (rows: any[], tipe: string) => {
         for (const row of rows) {
           const quickPayload = {
@@ -110,15 +110,16 @@ export async function POST(request: Request) {
       };
 
       if (activeCategories.includes('madin')) {
+        // Filter hanya jadwal hari ini
         const queryMadin = `
           SELECT j.jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari,
                  m.nama_kelas as kelas_nama, j.guru_id, g.nama as guru_nama, g.no_hp as guru_whatsapp
           FROM jadwal_madin j
           JOIN kelas_madin m ON j.kelas_madin_id = m.kelas_id
           JOIN guru g ON j.guru_id = g.guru_id
-          WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
+          WHERE j.hari = ? AND g.no_hp IS NOT NULL AND g.no_hp != ''
         `;
-        const [madinRows] = await pool.execute<RowDataPacket[]>(queryMadin);
+        const [madinRows] = await pool.execute<RowDataPacket[]>(queryMadin, [currentDay]);
         appendRows(madinRows, 'madin');
       }
 
@@ -129,9 +130,9 @@ export async function POST(request: Request) {
           FROM jadwal_quran j
           JOIN kelas_quran q ON j.kelas_quran_id = q.id
           JOIN guru g ON j.guru_id = g.guru_id
-          WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
+          WHERE j.hari = ? AND g.no_hp IS NOT NULL AND g.no_hp != ''
         `;
-        const [quranRows] = await pool.execute<RowDataPacket[]>(queryQuran);
+        const [quranRows] = await pool.execute<RowDataPacket[]>(queryQuran, [currentDay]);
         appendRows(quranRows, 'quran');
       }
 
@@ -142,27 +143,34 @@ export async function POST(request: Request) {
           FROM jadwal_kegiatan jk
           JOIN kamar k ON jk.kamar_id = k.kamar_id
           JOIN guru g ON jk.guru_id = g.guru_id
-          WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
+          WHERE jk.hari = ? AND g.no_hp IS NOT NULL AND g.no_hp != ''
         `;
-        const [kegiatanRows] = await pool.execute<RowDataPacket[]>(queryKegiatan);
+        const [kegiatanRows] = await pool.execute<RowDataPacket[]>(queryKegiatan, [currentDay]);
         appendRows(kegiatanRows, 'kamar');
       }
 
-      // Gabungkan jadwal guru yang mengajar di jam, hari, dan tipe yang sama agar tidak duplikat kirim
+      // Deduplication ketat: 1 guru (per nomor HP) = 1 pesan saja
+      // Gabungkan semua jadwal hari ini milik guru yang sama ke dalam satu item
       const mergedMap = new Map<string, typeof itemsToSchedule[0]>();
       for (const item of itemsToSchedule) {
         const phone = formatToWaPhone(item.guru_whatsapp);
-        const key = `${phone}_${item.tipe}_${item.hari}_${item.jam_mulai}_${item.jam_selesai}`;
-        if (mergedMap.has(key)) {
-          const existing = mergedMap.get(key)!;
+        if (!phone) continue;
+        if (mergedMap.has(phone)) {
+          const existing = mergedMap.get(phone)!;
+          // Gabungkan kelas jika berbeda
           if (item.kelas_nama && !existing.kelas_nama.includes(item.kelas_nama)) {
             existing.kelas_nama = `${existing.kelas_nama} & ${item.kelas_nama}`;
           }
+          // Gabungkan mata pelajaran jika berbeda
           if (item.mata_pelajaran && !existing.mata_pelajaran.includes(item.mata_pelajaran)) {
             existing.mata_pelajaran = `${existing.mata_pelajaran} & ${item.mata_pelajaran}`;
           }
+          // Pertahankan jam mulai paling awal agar pengiriman lebih awal
+          if (item.jam_mulai < existing.jam_mulai) {
+            existing.jam_mulai = item.jam_mulai;
+          }
         } else {
-          mergedMap.set(key, { ...item });
+          mergedMap.set(phone, { ...item });
         }
       }
       itemsToSchedule = Array.from(mergedMap.values());

@@ -124,32 +124,46 @@ export function sanitizeTextForWaScheduler(text: string): string {
 
   let sanitized = text;
 
-  // Konversi salam & frasa bahasa Arab ke tulisan Latin yang rapi dan lengkap
+  // Langkah 1: Tangkap pola salam Arab dengan < > bracket SEBELUM strip karakter Arab
+  // Mencakup variasi dengan/tanpa harakat (tanda baca Arab)
   sanitized = sanitized
-    .replace(/[<>]+\s*السلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته\s*[<>]+/gi, "Assalamu'alaikum Warohmatullah,")
-    .replace(/[<>]+\s*السلام\s*عليكم\s*ورحمة\s*الله\s*[<>]+/gi, "Assalamu'alaikum Warohmatullah,")
-    .replace(/[<>]+\s*السلام\s*عليكم\s*[<>]+/gi, "Assalamu'alaikum Warohmatullah,")
-    .replace(/السلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته/gi, "Assalamu'alaikum Warohmatullah,")
-    .replace(/السلام\s*عليكم\s*ورحمة\s*الله/gi, "Assalamu'alaikum Warohmatullah,")
-    .replace(/السلام\s*عليكم/gi, "Assalamu'alaikum Warohmatullah,")
-    .replace(/والسلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته/gi, "Wassalamu'alaikum Warohmatullah,")
-    .replace(/والسلام\s*عليكم\s*ورحمة\s*الله/gi, "Wassalamu'alaikum Warohmatullah,")
-    .replace(/والسلام\s*عليكم/gi, "Wassalamu'alaikum Warohmatullah,")
-    .replace(/وعليكم\s*السلام\s*ورحمة\s*الله\s*وبركاته/gi, "Wa'alaikumussalam Warohmatullah,")
-    .replace(/وعليكم\s*السلام/gi, "Wa'alaikumussalam Warohmatullah,")
-    .replace(/جزاكم\s*الله\s*خيرا/gi, "Jazakumullah Khairan")
-    .replace(/بارك\s*الله\s*فيكم/gi, "Barakallahu Fiikum")
-    .replace(/إن\s*شاء\s*الله/gi, "Insya Allah")
-    .replace(/الحمد\s*لله/gi, "Alhamdulillah")
-    .replace(/أستغفر\s*الله/gi, "Astaghfirullah")
-    .replace(/سبحان\s*الله/gi, "Subhanallah")
-    .replace(/الله\s*أكبر/gi, "Allahu Akbar");
+    // Pola < السلام... > → Assalamu'alaikum
+    .replace(/<[^>]*(?:السلام|الس.*لام)[^>]*>/g, "Assalamu'alaikum Warohmatullah,")
+    // Pola < واالسلام... > → Wassalamu'alaikum
+    .replace(/<[^>]*(?:والسلام|وا.*لسلام)[^>]*>/g, "Wassalamu'alaikum Warohmatullah,");
 
-  // Jika masih ada karakter Arab lain yang tersisa, bersihkan agar tidak jadi '????'
-  sanitized = sanitized.replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, '').trim();
+  // Langkah 2: Konversi frasa salam Arab tanpa bracket (tanpa harakat)
+  sanitized = sanitized
+    .replace(/السلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته/g, "Assalamu'alaikum Warohmatullah,")
+    .replace(/السلام\s*عليكم\s*ورحمة\s*الله/g, "Assalamu'alaikum Warohmatullah,")
+    .replace(/السلام\s*عليكم/g, "Assalamu'alaikum Warohmatullah,")
+    .replace(/والسلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته/g, "Wassalamu'alaikum Warohmatullah,")
+    .replace(/والسلام\s*عليكم\s*ورحمة\s*الله/g, "Wassalamu'alaikum Warohmatullah,")
+    .replace(/والسلام\s*عليكم/g, "Wassalamu'alaikum Warohmatullah,")
+    .replace(/وعليكم\s*السلام\s*ورحمة\s*الله\s*وبركاته/g, "Wa'alaikumussalam Warohmatullah,")
+    .replace(/وعليكم\s*السلام/g, "Wa'alaikumussalam Warohmatullah,")
+    .replace(/جزاكم\s*الله\s*خيرا/g, "Jazakumullah Khairan")
+    .replace(/بارك\s*الله\s*فيكم/g, "Barakallahu Fiikum")
+    .replace(/إن\s*شاء\s*الله/g, "Insya Allah")
+    .replace(/الحمد\s*لله/g, "Alhamdulillah")
+    .replace(/أستغفر\s*الله/g, "Astaghfirullah")
+    .replace(/سبحان\s*الله/g, "Subhanallah")
+    .replace(/الله\s*أكبر/g, "Allahu Akbar");
 
-  // Rapikan tanda kurung kosong jika tersisa seperti <  > atau > <
-  sanitized = sanitized.replace(/<\s*>/g, '').replace(/>\s*</g, '').replace(/\n{3,}/g, '\n\n');
+  // Langkah 3: Hapus SEMUA sisa karakter Arab (termasuk berharakat) — unicode range Arab lengkap
+  sanitized = sanitized.replace(/[\u0600-\u06FF\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, '');
+
+  // Langkah 4: Bersihkan bracket yang berisi tanda tanya atau spasi kosong tersisa
+  // Contoh: < ??? > atau <     > atau < ? ? ? >
+  sanitized = sanitized.replace(/<[\s?!*]+>/g, '');
+  sanitized = sanitized.replace(/<\s*>/g, '');
+  // Bersihkan bracket yang isinya tidak bermakna (pendek ≤ 6 karakter)
+  sanitized = sanitized.replace(/<[^>]{0,6}>/g, '');
+
+  // Langkah 5: Rapikan spasi dan baris kosong berlebih
+  sanitized = sanitized.replace(/[ \t]{2,}/g, ' ');
+  sanitized = sanitized.replace(/\n{3,}/g, '\n\n');
+  sanitized = sanitized.trim();
 
   return sanitized;
 }
