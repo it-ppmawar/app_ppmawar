@@ -11,6 +11,20 @@ export interface ExportOptions {
   filename: string;
 }
 
+/**
+ * Membersihkan emoji dan karakter di luar WinAnsi/ASCII yang tidak didukung oleh font standar jsPDF (Helvetica)
+ * agar tidak menghasilkan karakter rusak seperti Ø=Üs, '(, Ø>ÝÕ pada dokumen PDF.
+ */
+export function sanitizeTextForPDF(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/[\u{1F300}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA70}-\u{1FAFF}\u{FE00}-\u{FE0F}]/gu, '')
+    .split('\n')
+    .map(line => line.trim().replace(/\s+/g, ' '))
+    .join('\n')
+    .trim();
+}
+
 export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }): string | void => {
   const { title, subtitle, period, columns, rows, filename, previewOnly } = options;
 
@@ -19,7 +33,7 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
   // Header
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(title, 105, 20, { align: 'center' });
+  doc.text(sanitizeTextForPDF(title), 105, 20, { align: 'center' });
   
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
@@ -27,7 +41,8 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
   // Info
   let startY = 30;
   if (subtitle) {
-    const subLines = subtitle.split('\n');
+    const cleanSubtitle = sanitizeTextForPDF(subtitle);
+    const subLines = cleanSubtitle.split('\n');
     subLines.forEach(line => {
       if (line.trim()) {
         doc.text(line.trim(), 14, startY);
@@ -36,7 +51,8 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
     });
   }
   if (period) {
-    const periodLines = period.split('\n');
+    const cleanPeriod = sanitizeTextForPDF(period);
+    const periodLines = cleanPeriod.split('\n');
     periodLines.forEach(line => {
       if (line.trim()) {
         doc.text(`Periode: ${line.trim()}`, 14, startY);
@@ -44,10 +60,13 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
       }
     });
   }
+
+  const cleanColumns = columns.map(c => typeof c === 'string' ? sanitizeTextForPDF(c) : c);
+  const cleanRows = rows.map(r => r.map(cell => typeof cell === 'string' ? sanitizeTextForPDF(cell) : cell));
   
   autoTable(doc, {
-    head: [columns],
-    body: rows,
+    head: [cleanColumns],
+    body: cleanRows,
     startY: startY + 2,
     theme: 'grid',
     styles: { fontSize: 9, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },

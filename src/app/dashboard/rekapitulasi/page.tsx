@@ -268,7 +268,8 @@ export default function RekapitulasiPage() {
     else if (filter.tipe === 'kegiatan') tipeText = 'Absensi Kegiatan Asrama';
     else if (filter.tipe === 'guru') tipeText = 'Absensi Pengajar / Guru';
     
-    const targetName = options.find(o => o.id.toString() === filter.target_id)?.nama || (filter.target_id === 'all' ? 'Semua Guru' : '-');
+    const rawTargetName = options.find(o => o.id.toString() === filter.target_id)?.nama || (filter.target_id === 'all' ? 'Semua Guru' : '-');
+    const targetName = rawTargetName.replace(/[\u{1F300}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA70}-\u{1FAFF}\u{FE00}-\u{FE0F}]/gu, '').trim();
     
     const title = 'REKAPITULASI KEHADIRAN';
     const subtitle = `Tipe: ${tipeText}\n${filter.tipe === 'guru' ? 'Guru' : 'Kelas/Kamar'}: ${targetName}`;
