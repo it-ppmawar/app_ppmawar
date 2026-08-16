@@ -19,7 +19,7 @@ if (fs.existsSync(zipFile)) {
 // Load environment variables manually for the custom server
 try {
   const { loadEnvConfig } = require('@next/env');
-  loadEnvConfig(process.cwd());
+  loadEnvConfig(__dirname);
 } catch (e) {
   console.warn('[ENV] loadEnvConfig warning:', e.message);
 }

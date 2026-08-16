@@ -31,7 +31,39 @@ if (!file_exists($zipFile)) {
 }
 
 if (!file_exists($zipFile)) {
-    echo "ERROR: deploy.zip not found at " . $zipFile . "\n";
+    echo "NOTICE: deploy.zip is not present (already extracted and clean).\n\n";
+    echo "=== ENVIRONMENT & FILE DIAGNOSTICS ===\n";
+    echo "server.js: " . (file_exists($targetDir . '/server.js') ? 'EXISTS (' . filesize($targetDir . '/server.js') . ' bytes)' : 'MISSING') . "\n";
+    echo ".htaccess: " . (file_exists($targetDir . '/.htaccess') ? 'EXISTS (' . filesize($targetDir . '/.htaccess') . ' bytes)' : 'MISSING') . "\n";
+    echo ".env: " . (file_exists($targetDir . '/.env') ? 'EXISTS (' . filesize($targetDir . '/.env') . ' bytes)' : 'MISSING') . "\n";
+    echo ".next dir: " . (is_dir($targetDir . '/.next') ? 'EXISTS' : 'MISSING') . "\n";
+    echo "node_modules: " . (is_dir($targetDir . '/node_modules') ? 'EXISTS' : 'MISSING') . "\n";
+    echo "tmp/restart.txt: " . (file_exists($targetDir . '/tmp/restart.txt') ? 'EXISTS (' . file_get_contents($targetDir . '/tmp/restart.txt') . ')' : 'MISSING') . "\n";
+
+    // Retouch restart.txt
+    $restartFile = $targetDir . '/tmp/restart.txt';
+    if (!is_dir(dirname($restartFile))) {
+        @mkdir(dirname($restartFile), 0755, true);
+    }
+    @file_put_contents($restartFile, date('Y-m-d H:i:s'));
+    echo "Touch tmp/restart.txt: RE-TOUCHED (" . date('Y-m-d H:i:s') . ")\n\n";
+
+    // Read .htaccess content
+    if (file_exists($targetDir . '/.htaccess')) {
+        echo "--- .htaccess CONTENT ---\n" . file_get_contents($targetDir . '/.htaccess') . "\n-------------------------\n\n";
+    }
+
+    // Check for error log files in targetDir
+    $logFiles = glob($targetDir . '/*.log');
+    if (!empty($logFiles)) {
+        foreach ($logFiles as $lf) {
+            echo "--- LOG: " . basename($lf) . " ---\n";
+            $lines = file($lf);
+            $lastLines = array_slice($lines, -25);
+            echo implode('', $lastLines) . "\n-------------------------\n\n";
+        }
+    }
+
     echo "Files in targetDir:\n";
     print_r(scandir($targetDir));
     exit;
