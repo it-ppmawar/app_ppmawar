@@ -61,7 +61,7 @@ function NotifikasiContent() {
 
   const defaultWaliInfoTemplate = `Assalamu'alaikum Wr. Wb. Bapak/Ibu Wali dari Ananda *{nama_santri}*.\n\nBerikut kami sampaikan informasi login default untuk mengakses aplikasi absensi PPMA:\n\n* Username: *{username}*\n* Password: *{password}*\n\nSilakan akses aplikasi pada tautan berikut: https://app.ppmawar.or.id/\n\nDemi keamanan akun, kami sarankan Bapak/Ibu untuk langsung mengubah password setelah berhasil login di halaman Profil.\n\nAtas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
 
-  const defaultGuruTemplate = `Assalamu'alaikum Wr. Wb. Ustadz/Ustadzah *{nama_guru}*.\n\nKami dari pengurus PPMA menginformasikan pengingat jadwal mengajar/tugas Anda:\n\n* Hari/Tanggal: {hari_tanggal}\n* Kategori: {kegiatan}\n* Tempat/Kelas: {kelas}\n* Jam: {jam}\n\nLink Absensi: {link_absen}\n\nMohon untuk mengisi absensi tepat waktu. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
+  const defaultGuruTemplate = `Assalamu'alaikum Wr. Wb. Ustadz/Ustadzah *{nama_guru}*.\n\nKami dari pengurus PPMA menginformasikan pengingat jadwal mengajar/tugas Anda:\n\n* Hari/Tanggal: {hari_tanggal}\n* Kategori: {kegiatan}\n* {label_mapel}: {mapel}\n* Tempat/Kelas: {kelas}\n* Jam: {jam}\n\nLink Absensi: {link_absen}\n\nMohon untuk mengisi absensi tepat waktu. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
 
   const defaultGuruInfoTemplate = `Assalamu'alaikum Wr. Wb. Ustadz/Ustadzah *{nama_guru}*.\n\nBerikut kami sampaikan informasi login default untuk mengakses aplikasi absensi PPMA:\n\n* Username: *{username}*\n* Password: *${"{password}"}*\n\nSilakan akses aplikasi pada tautan berikut: https://app.ppmawar.or.id/\n\nDemi keamanan akun, kami sarankan Anda untuk langsung mengubah password setelah berhasil login di halaman Profil.\n\nAtas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
 
@@ -306,10 +306,22 @@ function NotifikasiContent() {
   const [isSchedulerSending, setIsSchedulerSending] = useState(false);
   const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
   const [schedulerMode, setSchedulerMode] = useState<'active_today' | 'all_schedules'>('active_today');
+  const [schedulerCategories, setSchedulerCategories] = useState<string[]>(['madin']); // Default Madin sesuai permintaan user
   const [schedulerLeadTime, setSchedulerLeadTime] = useState(15);
   const [schedulerIsLoop, setSchedulerIsLoop] = useState(true);
   const [schedulerStatusMsg, setSchedulerStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string; details?: any[] } | null>(null);
   const [sendingSingleKey, setSendingSingleKey] = useState<string | null>(null);
+
+  const toggleSchedulerCategory = (cat: string) => {
+    setSchedulerCategories(prev => {
+      if (prev.includes(cat)) {
+        if (prev.length === 1) return prev; // Minimal 1 kategori tetap aktif
+        return prev.filter(c => c !== cat);
+      } else {
+        return [...prev, cat];
+      }
+    });
+  };
 
   const cleanPhoneStr = (p: string | null | undefined) => {
     if (!p) return '';
@@ -330,6 +342,7 @@ function NotifikasiContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: targetMode,
+          categories: schedulerCategories,
           leadTimeMinutes: schedulerLeadTime,
           isLoop: targetMode === 'all_schedules' ? (schedulerIsLoop ? 1 : 0) : 0,
           customTemplate: pesanGuruTemplate
@@ -605,7 +618,25 @@ function NotifikasiContent() {
     const phone = formatPhoneNumber(reminder.guru_whatsapp);
     if (!phone) return '#';
 
-    let tipeLabel = reminder.tipe === 'madin' ? 'Madin' : reminder.tipe === 'quran' ? "Al-Qur'an" : 'Asrama';
+    const t = (reminder.tipe || '').toLowerCase();
+    let labelMapel = 'Mapel';
+    let tipeLabel = 'Madin';
+    let valMapel = reminder.mata_pelajaran || '-';
+
+    if (t.includes('quran') || t.includes('qur_an')) {
+      labelMapel = 'Majlis';
+      tipeLabel = "Al-Qur'an";
+      valMapel = reminder.mata_pelajaran || reminder.kelas_nama || "Majlis Qur'an";
+    } else if (t.includes('kamar') || t.includes('kegiatan') || t.includes('asrama')) {
+      labelMapel = 'Kegiatan';
+      tipeLabel = 'Asrama';
+      valMapel = reminder.mata_pelajaran || 'Kegiatan Asrama';
+    } else {
+      labelMapel = 'Mapel';
+      tipeLabel = 'Madin';
+      valMapel = reminder.mata_pelajaran || 'Pelajaran Diniyah';
+    }
+
     const linkAbsen = reminder.quick_url || 'https://app.ppmawar.or.id/dashboard/absen';
 
     const rawHariTanggal = new Intl.DateTimeFormat('id-ID', {
@@ -622,12 +653,21 @@ function NotifikasiContent() {
       .replace(/{nama_guru}/g, reminder.guru_nama)
       .replace(/{hari_tanggal}/g, hariTanggal)
       .replace(/{kegiatan}/g, tipeLabel)
+      .replace(/{label_mapel}/g, labelMapel)
+      .replace(/{mapel}/g, valMapel)
       .replace(/{kelas}/g, reminder.kelas_nama)
       .replace(/{jam}/g, `${reminder.jam_mulai.substring(0, 5)} - ${reminder.jam_selesai.substring(0, 5)}`)
       .replace(/{link_absen}/g, linkAbsen);
 
     if (!text.includes(hariTanggal) && !pesanGuruTemplate.includes('{hari_tanggal}')) {
       text = text.replace(/\* Kategori:/i, `* Hari/Tanggal: ${hariTanggal}\n* Kategori:`);
+    }
+
+    if (!text.includes(labelMapel) && !text.includes(valMapel) && valMapel !== '-') {
+      text = text.replace(
+        new RegExp(`(\\* Kategori:.*?\\n)`, 'i'),
+        `$1* ${labelMapel}: ${valMapel}\n`
+      );
     }
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
@@ -916,24 +956,24 @@ function NotifikasiContent() {
                 rows={6}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-orange-400 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
               />
-              <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+              <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2.5 border-t border-black/5 dark:border-white/5">
                 <button
+                  type="button"
                   onClick={() => resetTemplate('wa_template_billing', defaultBillingTemplate, setPesanBillingTemplate)}
                   className="text-xs text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-1"
                 >⟳ Reset ke Templat Default</button>
-                <div className="flex items-center gap-2">
-                  {saveStatus['wa_template_billing'] === 'saved' && (
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                      <CheckCircle2 size={13} /> Tersimpan di Database ✓
-                    </span>
-                  )}
-                  <button
-                    onClick={() => saveTemplate('wa_template_billing', pesanBillingTemplate)}
-                    className="px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
-                  >
-                    Simpan Templat
-                  </button>
-                </div>
+                {saveStatus['wa_template_billing'] === 'saved' && (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => saveTemplate('wa_template_billing', pesanBillingTemplate)}
+                  className="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 min-w-[140px]"
+                >
+                  Simpan Templat
+                </button>
               </div>
             </div>
 
@@ -1188,24 +1228,24 @@ function NotifikasiContent() {
               className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-green-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
               placeholder="Tulis templat pesan info login..."
             />
-            <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+            <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2.5 border-t border-black/5 dark:border-white/5">
               <button
+                type="button"
                 onClick={() => resetTemplate('wa_template_wali_info', defaultWaliInfoTemplate, setPesanWaliInfoTemplate)}
                 className="text-xs text-green-600 dark:text-green-400 hover:underline flex items-center gap-1"
               >⟳ Reset ke Templat Default</button>
-              <div className="flex items-center gap-2">
-                {saveStatus['wa_template_wali_info'] === 'saved' && (
-                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                    <CheckCircle2 size={13} /> Tersimpan di Database ✓
-                  </span>
-                )}
-                <button
-                  onClick={() => saveTemplate('wa_template_wali_info', pesanWaliInfoTemplate)}
-                  className="px-3.5 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
-                >
-                  Simpan Templat
-                </button>
-              </div>
+              {saveStatus['wa_template_wali_info'] === 'saved' && (
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                  <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => saveTemplate('wa_template_wali_info', pesanWaliInfoTemplate)}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 min-w-[140px]"
+              >
+                Simpan Templat
+              </button>
             </div>
           </div>
         ) : (
@@ -1225,24 +1265,24 @@ function NotifikasiContent() {
               className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-green-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
               placeholder="Tulis templat pesan..."
             />
-            <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+            <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2.5 border-t border-black/5 dark:border-white/5">
               <button
+                type="button"
                 onClick={() => resetTemplate('wa_template_wali', defaultWaliTemplate, setPesanWaliTemplate)}
                 className="text-xs text-green-600 dark:text-green-400 hover:underline flex items-center gap-1"
               >⟳ Reset ke Templat Default</button>
-              <div className="flex items-center gap-2">
-                {saveStatus['wa_template_wali'] === 'saved' && (
-                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                    <CheckCircle2 size={13} /> Tersimpan di Database ✓
-                  </span>
-                )}
-                <button
-                  onClick={() => saveTemplate('wa_template_wali', pesanWaliTemplate)}
-                  className="px-3.5 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
-                >
-                  Simpan Templat
-                </button>
-              </div>
+              {saveStatus['wa_template_wali'] === 'saved' && (
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                  <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => saveTemplate('wa_template_wali', pesanWaliTemplate)}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 min-w-[140px]"
+              >
+                Simpan Templat
+              </button>
             </div>
           </div>
         )}
@@ -1560,31 +1600,31 @@ function NotifikasiContent() {
                 className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
                 placeholder="Tulis templat pesan info login guru..."
               />
-              <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+              <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2.5 border-t border-black/5 dark:border-white/5">
                 <button
+                  type="button"
                   onClick={() => resetTemplate('wa_template_guru_info', defaultGuruInfoTemplate, setPesanGuruInfoTemplate)}
                   className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
                 >⟳ Reset ke Templat Default</button>
-                <div className="flex items-center gap-2">
-                  {saveStatus['wa_template_guru_info'] === 'saved' && (
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                      <CheckCircle2 size={13} /> Tersimpan di Database ✓
-                    </span>
-                  )}
-                  <button
-                    onClick={() => saveTemplate('wa_template_guru_info', pesanGuruInfoTemplate)}
-                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
-                  >
-                    Simpan Templat
-                  </button>
-                </div>
+                {saveStatus['wa_template_guru_info'] === 'saved' && (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => saveTemplate('wa_template_guru_info', pesanGuruInfoTemplate)}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 min-w-[140px]"
+                >
+                  Simpan Templat
+                </button>
               </div>
             </div>
           ) : (
             <div className="mx-6 mt-5 mb-1 bg-amber-50/30 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30 rounded-xl p-4">
               <label className="block text-xs font-bold text-amber-800 dark:text-amber-400 mb-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <span>Edit Templat Pesan Guru</span>
-                <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500">Placeholder: &#123;nama_guru&#125;, &#123;kegiatan&#125;, &#123;kelas&#125;, &#123;jam&#125;</span>
+                <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500">Placeholder: &#123;nama_guru&#125;, &#123;kegiatan&#125;, &#123;label_mapel&#125;, &#123;mapel&#125;, &#123;kelas&#125;, &#123;jam&#125;</span>
               </label>
               <textarea
                 value={pesanGuruTemplate}
@@ -1593,28 +1633,28 @@ function NotifikasiContent() {
                   localStorage.setItem('wa_template_guru', e.target.value);
                 }}
                 onBlur={() => saveTemplate('wa_template_guru', pesanGuruTemplate)}
-                rows={4}
+                rows={5}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
                 placeholder="Tulis templat pesan..."
               />
-              <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+              <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2.5 border-t border-black/5 dark:border-white/5">
                 <button
+                  type="button"
                   onClick={() => resetTemplate('wa_template_guru', defaultGuruTemplate, setPesanGuruTemplate)}
                   className="text-xs text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
                 >⟳ Reset ke Templat Default</button>
-                <div className="flex items-center gap-2">
-                  {saveStatus['wa_template_guru'] === 'saved' && (
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                      <CheckCircle2 size={13} /> Tersimpan di Database ✓
-                    </span>
-                  )}
-                  <button
-                    onClick={() => saveTemplate('wa_template_guru', pesanGuruTemplate)}
-                    className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
-                  >
-                    Simpan Templat
-                  </button>
-                </div>
+                {saveStatus['wa_template_guru'] === 'saved' && (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => saveTemplate('wa_template_guru', pesanGuruTemplate)}
+                  className="px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 min-w-[140px]"
+                >
+                  Simpan Templat
+                </button>
               </div>
             </div>
           )}
@@ -1660,11 +1700,11 @@ function NotifikasiContent() {
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto shrink-0">
                         <button
                           type="button"
                           onClick={() => setSchedulerModalOpen(true)}
-                          className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 border border-gray-200 dark:border-gray-700 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                          className="px-3 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 border border-gray-200 dark:border-gray-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
                         >
                           <Settings2 size={13} />
                           Opsi & Looping
@@ -1673,7 +1713,7 @@ function NotifikasiContent() {
                           type="button"
                           disabled={isSchedulerSending || activeReminders.length === 0}
                           onClick={() => handleBulkScheduleWA('active_today')}
-                          className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md hover:shadow-emerald-500/20 active:scale-95 flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none"
+                          className="px-3 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md hover:shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none"
                         >
                           {isSchedulerSending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
                           {isSchedulerSending ? 'Menjadwalkan...' : 'Kirim Semua Otomatis'}
@@ -2394,6 +2434,43 @@ function NotifikasiContent() {
                   </label>
                 </div>
               )}
+
+              {/* Pilih Kategori Jadwal */}
+              <div className="p-3 bg-amber-50/40 dark:bg-amber-900/10 rounded-xl border border-amber-200/60 dark:border-amber-800/30">
+                <label className="block font-bold text-amber-800 dark:text-amber-300 mb-2.5 text-[11px] uppercase tracking-wider">
+                  Pilih Kategori Jadwal yang Dikirim
+                </label>
+                <div className="space-y-2">
+                  {[
+                    { key: 'madin', label: '📚 Madrasah Diniyah (Madin)', desc: 'Jadwal ngaji & pelajaran diniyah' },
+                    { key: 'quran', label: "🕌 Kelas Qur'an", desc: 'Majlis Al-Qur\'an & halaqoh' },
+                    { key: 'kamar', label: '🏠 Asrama / Kamar', desc: 'Kegiatan & piket asrama' },
+                  ].map(({ key, label, desc }) => {
+                    const checked = schedulerCategories.includes(key);
+                    return (
+                      <label
+                        key={key}
+                        className={`flex items-start gap-3 p-2.5 rounded-lg border cursor-pointer transition-all select-none ${
+                          checked
+                            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700'
+                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-60'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSchedulerCategory(key)}
+                          className="mt-0.5 accent-emerald-500 w-3.5 h-3.5 shrink-0"
+                        />
+                        <div>
+                          <span className={`block text-xs font-bold ${checked ? 'text-emerald-900 dark:text-emerald-200' : 'text-gray-600 dark:text-gray-400'}`}>{label}</span>
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500">{desc}</span>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
 
               {/* Status Ringkasan Hasil */}
               {schedulerStatusMsg && (

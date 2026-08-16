@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     const { 
       mode = 'active_today', // 'active_today' | 'all_schedules' | 'custom_list'
       customItems = [],
+      categories = ['madin', 'quran', 'kamar'],
       leadTimeMinutes: customLeadTime,
       isLoop: customIsLoop,
       loopInterval = 'daily',
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
     let currentDay = formatterDay.format(new Date());
     if (currentDay === 'Minggu') currentDay = 'Ahad';
 
-    const defaultGuruTemplate = `Assalamu'alaikum Wr. Wb. Ustadz/Ustadzah *{nama_guru}*.\n\nKami dari pengurus PPMA menginformasikan pengingat jadwal mengajar/tugas Anda:\n\n* Hari: {hari}\n* Kategori: {kegiatan}\n* Tempat/Kelas: {kelas}\n* Jam: {jam}\n\nLink Absensi Cepat: {link_absen}\n\nMohon untuk mengisi absensi tepat waktu. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
+    const defaultGuruTemplate = `Assalamu'alaikum Wr. Wb. Ustadz/Ustadzah *{nama_guru}*.\n\nKami dari pengurus PPMA menginformasikan pengingat jadwal mengajar/tugas Anda:\n\n* Hari/Tanggal: {hari_tanggal}\n* Kategori: {kegiatan}\n* {label_mapel}: {mapel}\n* Tempat/Kelas: {kelas}\n* Jam: {jam}\n\nLink Absensi: {link_absen}\n\nMohon untuk mengisi absensi tepat waktu. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
     const templateToUse = customTemplate || defaultGuruTemplate;
 
     let itemsToSchedule: {
@@ -61,10 +62,13 @@ export async function POST(request: Request) {
       quick_url: string;
     }[] = [];
 
+    const activeCategories = Array.isArray(categories) && categories.length > 0 ? categories : ['madin', 'quran', 'kamar'];
+
     if (mode === 'active_today') {
       // 1. Ambil pengingat aktif yang belum diabsen hari ini
       const activeReminders = await getActivePendingReminders();
-      itemsToSchedule = activeReminders.map(r => ({
+      const filteredReminders = activeReminders.filter(r => activeCategories.includes(r.tipe));
+      itemsToSchedule = filteredReminders.map(r => ({
         guru_nama: r.guru_nama,
         guru_whatsapp: r.guru_whatsapp,
         kelas_nama: r.kelas_nama,
@@ -76,36 +80,7 @@ export async function POST(request: Request) {
         quick_url: r.quick_url || 'https://app.ppmawar.or.id/'
       }));
     } else if (mode === 'all_schedules') {
-      // 2. Ambil seluruh jadwal (Madin, Quran, Kegiatan) untuk penjadwalan harian / mingguan
-      const queryMadin = `
-        SELECT j.jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari,
-               m.nama_kelas as kelas_nama, j.guru_id, g.nama as guru_nama, g.no_hp as guru_whatsapp
-        FROM jadwal_madin j
-        JOIN kelas_madin m ON j.kelas_madin_id = m.kelas_id
-        JOIN guru g ON j.guru_id = g.guru_id
-        WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
-      `;
-      const queryQuran = `
-        SELECT j.id as jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari,
-               q.nama_kelas as kelas_nama, j.guru_id, g.nama as guru_nama, g.no_hp as guru_whatsapp
-        FROM jadwal_quran j
-        JOIN kelas_quran q ON j.kelas_quran_id = q.id
-        JOIN guru g ON j.guru_id = g.guru_id
-        WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
-      `;
-      const queryKegiatan = `
-        SELECT jk.kegiatan_id as jadwal_id, jk.jam_mulai, jk.jam_selesai, jk.nama_kegiatan as mata_pelajaran, jk.hari,
-               k.nama_kamar as kelas_nama, jk.guru_id, g.nama as guru_nama, g.no_hp as guru_whatsapp
-        FROM jadwal_kegiatan jk
-        JOIN kamar k ON jk.kamar_id = k.kamar_id
-        JOIN guru g ON jk.guru_id = g.guru_id
-        WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
-      `;
-
-      const [madinRows] = await pool.execute<RowDataPacket[]>(queryMadin);
-      const [quranRows] = await pool.execute<RowDataPacket[]>(queryQuran);
-      const [kegiatanRows] = await pool.execute<RowDataPacket[]>(queryKegiatan);
-
+      // 2. Ambil jadwal sesuai kategori terpilih (Madin, Quran, Kegiatan) untuk penjadwalan harian / mingguan
       const appendRows = (rows: any[], tipe: string) => {
         for (const row of rows) {
           const quickPayload = {
@@ -134,9 +109,44 @@ export async function POST(request: Request) {
         }
       };
 
-      appendRows(madinRows, 'madin');
-      appendRows(quranRows, 'quran');
-      appendRows(kegiatanRows, 'kamar');
+      if (activeCategories.includes('madin')) {
+        const queryMadin = `
+          SELECT j.jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari,
+                 m.nama_kelas as kelas_nama, j.guru_id, g.nama as guru_nama, g.no_hp as guru_whatsapp
+          FROM jadwal_madin j
+          JOIN kelas_madin m ON j.kelas_madin_id = m.kelas_id
+          JOIN guru g ON j.guru_id = g.guru_id
+          WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
+        `;
+        const [madinRows] = await pool.execute<RowDataPacket[]>(queryMadin);
+        appendRows(madinRows, 'madin');
+      }
+
+      if (activeCategories.includes('quran')) {
+        const queryQuran = `
+          SELECT j.id as jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari,
+                 q.nama_kelas as kelas_nama, j.guru_id, g.nama as guru_nama, g.no_hp as guru_whatsapp
+          FROM jadwal_quran j
+          JOIN kelas_quran q ON j.kelas_quran_id = q.id
+          JOIN guru g ON j.guru_id = g.guru_id
+          WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
+        `;
+        const [quranRows] = await pool.execute<RowDataPacket[]>(queryQuran);
+        appendRows(quranRows, 'quran');
+      }
+
+      if (activeCategories.includes('kamar')) {
+        const queryKegiatan = `
+          SELECT jk.kegiatan_id as jadwal_id, jk.jam_mulai, jk.jam_selesai, jk.nama_kegiatan as mata_pelajaran, jk.hari,
+                 k.nama_kamar as kelas_nama, jk.guru_id, g.nama as guru_nama, g.no_hp as guru_whatsapp
+          FROM jadwal_kegiatan jk
+          JOIN kamar k ON jk.kamar_id = k.kamar_id
+          JOIN guru g ON jk.guru_id = g.guru_id
+          WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
+        `;
+        const [kegiatanRows] = await pool.execute<RowDataPacket[]>(queryKegiatan);
+        appendRows(kegiatanRows, 'kamar');
+      }
     } else if (mode === 'custom_list' && Array.isArray(customItems)) {
       itemsToSchedule = customItems;
     }
@@ -170,19 +180,46 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Bangun teks pesan dari template
-      const tipeLabel = item.tipe === 'quran' ? "Kelas Al-Qur'an" : item.tipe === 'madin' ? 'Madrasah Diniyah' : 'Asrama / Kamar';
-      const mapelLabel = item.mata_pelajaran ? `${item.mata_pelajaran} (${tipeLabel})` : tipeLabel;
+      // Bangun teks pesan dari template dengan label spesifik (Mapel / Majlis / Kegiatan)
+      const t = (item.tipe || '').toLowerCase();
+      let labelMapel = 'Mapel';
+      let kegiatanLabel = 'Madin';
+      let valMapel = item.mata_pelajaran || '-';
+
+      if (t.includes('quran') || t.includes('qur_an')) {
+        labelMapel = 'Majlis';
+        kegiatanLabel = "Al-Qur'an";
+        valMapel = item.mata_pelajaran || item.kelas_nama || "Majlis Qur'an";
+      } else if (t.includes('kamar') || t.includes('kegiatan') || t.includes('asrama')) {
+        labelMapel = 'Kegiatan';
+        kegiatanLabel = 'Asrama';
+        valMapel = item.mata_pelajaran || 'Kegiatan Asrama';
+      } else {
+        labelMapel = 'Mapel';
+        kegiatanLabel = 'Madin';
+        valMapel = item.mata_pelajaran || 'Pelajaran Diniyah';
+      }
+
       const jamLabel = `${item.jam_mulai ? item.jam_mulai.substring(0, 5) : '-'} - ${item.jam_selesai ? item.jam_selesai.substring(0, 5) : '-'}`;
 
       let messageText = templateToUse
         .replace(/{nama_guru}/g, item.guru_nama || 'Ustadz/Ustadzah')
         .replace(/{hari}/g, item.hari || currentDay)
         .replace(/{hari_tanggal}/g, `${item.hari || currentDay}, ${todayDateStr}`)
-        .replace(/{kegiatan}/g, mapelLabel)
+        .replace(/{kegiatan}/g, kegiatanLabel)
+        .replace(/{label_mapel}/g, labelMapel)
+        .replace(/{mapel}/g, valMapel)
         .replace(/{kelas}/g, item.kelas_nama || '-')
         .replace(/{jam}/g, jamLabel)
         .replace(/{link_absen}/g, item.quick_url || 'https://app.ppmawar.or.id/');
+
+      // Jika templat lama belum memuat baris Mapel/Majlis/Kegiatan, sisipkan secara otomatis di bawah baris Kategori
+      if (!messageText.includes(labelMapel) && !messageText.includes(valMapel) && valMapel !== '-') {
+        messageText = messageText.replace(
+          new RegExp(`(\\* Kategori:.*?\\n)`, 'i'),
+          `$1* ${labelMapel}: ${valMapel}\n`
+        );
+      }
 
       // Tentukan waktu scheduled_time
       // Jika mode active_today dan jam sudah lewat sekarang, jadwalkan 1-2 menit dari sekarang
