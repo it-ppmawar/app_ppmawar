@@ -3,7 +3,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { 
   Bell, AlertTriangle, CheckCircle2, MessageCircle, Phone, Search, 
   RefreshCw, Users, Check, Smartphone, Info, ChevronDown, ChevronUp, 
-  Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar 
+  Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar, Trash2 
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
@@ -304,6 +304,7 @@ function NotifikasiContent() {
 
   // State WA Scheduler Automation
   const [isSchedulerSending, setIsSchedulerSending] = useState(false);
+  const [isClearingPending, setIsClearingPending] = useState(false);
   const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
   const [schedulerMode, setSchedulerMode] = useState<'active_today' | 'all_schedules'>('active_today');
   const [schedulerCategories, setSchedulerCategories] = useState<string[]>(['madin']); // Default Madin sesuai permintaan user
@@ -321,6 +322,30 @@ function NotifikasiContent() {
         return [...prev, cat];
       }
     });
+  };
+
+  // Hapus semua antrean PENDING di wa.quizb.my.id
+  const handleClearPending = async () => {
+    if (!window.confirm('Hapus semua antrean PENDING di WA Scheduler?\nTindakan ini tidak dapat dibatalkan.')) return;
+    setIsClearingPending(true);
+    setSchedulerStatusMsg(null);
+    try {
+      const res = await fetch('/api/wa-scheduler/clear-pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSchedulerStatusMsg({ type: 'success', text: data.message });
+      } else {
+        setSchedulerStatusMsg({ type: 'error', text: data.error ?? 'Gagal menghapus antrean.' });
+      }
+    } catch {
+      setSchedulerStatusMsg({ type: 'error', text: 'Kesalahan jaringan saat menghapus antrean.' });
+    } finally {
+      setIsClearingPending(false);
+    }
   };
 
   const cleanPhoneStr = (p: string | null | undefined) => {
@@ -1741,6 +1766,17 @@ function NotifikasiContent() {
                         >
                           {isSchedulerSending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
                           {isSchedulerSending ? 'Menjadwalkan...' : 'Kirim Semua Otomatis'}
+                        </button>
+                        {/* Tombol Hapus Antrean Pending */}
+                        <button
+                          type="button"
+                          disabled={isClearingPending}
+                          onClick={handleClearPending}
+                          title="Hapus semua antrean PENDING di WA Scheduler"
+                          className="col-span-2 sm:col-span-1 px-3 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          {isClearingPending ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                          {isClearingPending ? 'Menghapus...' : 'Hapus Antrean Pending'}
                         </button>
                       </div>
                     </div>
