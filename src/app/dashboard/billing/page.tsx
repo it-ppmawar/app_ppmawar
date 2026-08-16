@@ -367,14 +367,14 @@ export default function BillingPage() {
     if (cleanNumber.startsWith('0')) {
       cleanNumber = '62' + cleanNumber.slice(1);
     }
-    const message = `Assalamu'alaikum Wr. Wb. Yth. Bapak/Ibu Wali dari Ananda *${namaSantri}*.\n\n` +
+    const message = `Assalamu'alaikum Warohmatullah, Yth. Bapak/Ibu Wali dari Ananda *${namaSantri}*.\n\n` +
       `Melalui pesan ini kami menginformasikan rincian tagihan administrasi ananda:\n` +
       `• Tagihan: ${namaTagihan}\n` +
       `• Periode: ${periode}\n` +
       `• Nominal: *${formatRupiah(nominal)}*\n` +
       `• Status: *Belum Lunas*\n\n` +
       `Informasi selengkapnya dapat dilihat pada tautan berikut: https://app.ppmawar.or.id/dashboard/billing\n\n` +
-      `Atas perhatian dan kerjasamanya kami ucapkan terima kasih.\nWassalamu'alaikum Wr. Wb.`;
+      `Atas perhatian dan kerjasamanya kami ucapkan terima kasih.\nWassalamu'alaikum Warohmatullah.`;
     return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
   };
 
@@ -390,12 +390,12 @@ export default function BillingPage() {
       ? belumItems.map(b => `• ${b.nama_tagihan}: *${formatRupiah(b.totalNominal)}*`).join('\n')
       : '• Seluruh Tagihan TELAH LUNAS';
     
-    const message = `Assalamu'alaikum Wr. Wb. Yth. Bapak/Ibu Wali dari Ananda *${namaSantri}*.\n\n` +
+    const message = `Assalamu'alaikum Warohmatullah, Yth. Bapak/Ibu Wali dari Ananda *${namaSantri}*.\n\n` +
       `Melalui pesan ini kami menginformasikan rincian tunggakan administrasi ananda:\n` +
       `${itemLines}\n\n` +
       `📌 *TOTAL TUNGGAKAN*: *${formatRupiah(totalNominal)}*\n\n` +
       `Informasi selengkapnya dapat dilihat pada tautan berikut: https://app.ppmawar.or.id/dashboard/billing\n\n` +
-      `Atas perhatian dan kerjasamanya kami ucapkan terima kasih.\nWassalamu'alaikum Wr. Wb.`;
+      `Atas perhatian dan kerjasamanya kami ucapkan terima kasih.\nWassalamu'alaikum Warohmatullah.`;
     return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
   };
 

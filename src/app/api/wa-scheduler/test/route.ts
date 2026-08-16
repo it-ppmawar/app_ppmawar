@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const min = String(testDate.getMinutes()).padStart(2, '0');
     const scheduledTime = `${y}-${m}-${d}T${h}:${min}`;
 
-    const testMessage = customMessage || `[Tes Integrasi PP Mawar]\n\nAssalamu'alaikum Wr. Wb.\nIni adalah pesan uji coba integrasi WhatsApp Scheduler otomatis dari aplikasi Absensi PP Mawar untuk pengujian akun (${username || 'Admin'}).\n\nWaktu Kirim: ${scheduledTime}\nStatus: Berhasil Terhubung!`;
+    const testMessage = customMessage || `[Tes Integrasi PP Mawar]\n\nAssalamu'alaikum Warohmatullah,\nIni adalah pesan uji coba integrasi WhatsApp Scheduler otomatis dari aplikasi Absensi PP Mawar untuk pengujian akun (${username || 'Admin'}).\n\nWaktu Kirim: ${scheduledTime}\nStatus: Berhasil Terhubung!`;
 
     const result = await sendWaSchedule({
       phone_number: targetPhone,

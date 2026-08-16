@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     let currentDay = formatterDay.format(new Date());
     if (currentDay === 'Minggu') currentDay = 'Ahad';
 
-    const defaultGuruTemplate = `Assalamu'alaikum Wr. Wb. Ustadz/Ustadzah *{nama_guru}*.\n\nKami dari pengurus PPMA menginformasikan pengingat jadwal mengajar/tugas Anda:\n\n* Hari/Tanggal: {hari_tanggal}\n* Kategori: {kegiatan}\n* {label_mapel}: {mapel}\n* Tempat/Kelas: {kelas}\n* Jam: {jam}\n\nLink Absensi: {link_absen}\n\nMohon untuk mengisi absensi tepat waktu. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Wr. Wb.`;
+    const defaultGuruTemplate = `Assalamu'alaikum Warohmatullah, Ustadz/Ustadzah *{nama_guru}*.\n\nKami dari pengurus PPMA menginformasikan pengingat jadwal mengajar/tugas Anda:\n\n* Hari/Tanggal: {hari_tanggal}\n* Kategori: {kegiatan}\n* {label_mapel}: {mapel}\n* Tempat/Kelas: {kelas}\n* Jam: {jam}\n\nLink Absensi: {link_absen}\n\nMohon untuk mengisi absensi tepat waktu. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Warohmatullah.`;
     const templateToUse = customTemplate || defaultGuruTemplate;
 
     let itemsToSchedule: {

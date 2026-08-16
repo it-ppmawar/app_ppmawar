@@ -124,19 +124,19 @@ export function sanitizeTextForWaScheduler(text: string): string {
 
   let sanitized = text;
 
-  // Konversi salam & frasa bahasa Arab ke tulisan Latin yang rapi
+  // Konversi salam & frasa bahasa Arab ke tulisan Latin yang rapi dan lengkap
   sanitized = sanitized
-    .replace(/[<>]+\s*السلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته\s*[<>]+/gi, "Assalamu'alaikum Wr. Wb.")
-    .replace(/[<>]+\s*السلام\s*عليكم\s*ورحمة\s*الله\s*[<>]+/gi, "Assalamu'alaikum Wr. Wb.")
-    .replace(/[<>]+\s*السلام\s*عليكم\s*[<>]+/gi, "Assalamu'alaikum")
-    .replace(/السلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته/gi, "Assalamu'alaikum Wr. Wb.")
-    .replace(/السلام\s*عليكم\s*ورحمة\s*الله/gi, "Assalamu'alaikum Wr. Wb.")
-    .replace(/السلام\s*عليكم/gi, "Assalamu'alaikum")
-    .replace(/والسلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته/gi, "Wassalamu'alaikum Wr. Wb.")
-    .replace(/والسلام\s*عليكم\s*ورحمة\s*الله/gi, "Wassalamu'alaikum Wr. Wb.")
-    .replace(/والسلام\s*عليكم/gi, "Wassalamu'alaikum")
-    .replace(/وعليكم\s*السلام\s*ورحمة\s*الله\s*وبركاته/gi, "Wa'alaikumussalam Wr. Wb.")
-    .replace(/وعليكم\s*السلام/gi, "Wa'alaikumussalam")
+    .replace(/[<>]+\s*السلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته\s*[<>]+/gi, "Assalamu'alaikum Warohmatullah,")
+    .replace(/[<>]+\s*السلام\s*عليكم\s*ورحمة\s*الله\s*[<>]+/gi, "Assalamu'alaikum Warohmatullah,")
+    .replace(/[<>]+\s*السلام\s*عليكم\s*[<>]+/gi, "Assalamu'alaikum Warohmatullah,")
+    .replace(/السلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته/gi, "Assalamu'alaikum Warohmatullah,")
+    .replace(/السلام\s*عليكم\s*ورحمة\s*الله/gi, "Assalamu'alaikum Warohmatullah,")
+    .replace(/السلام\s*عليكم/gi, "Assalamu'alaikum Warohmatullah,")
+    .replace(/والسلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته/gi, "Wassalamu'alaikum Warohmatullah,")
+    .replace(/والسلام\s*عليكم\s*ورحمة\s*الله/gi, "Wassalamu'alaikum Warohmatullah,")
+    .replace(/والسلام\s*عليكم/gi, "Wassalamu'alaikum Warohmatullah,")
+    .replace(/وعليكم\s*السلام\s*ورحمة\s*الله\s*وبركاته/gi, "Wa'alaikumussalam Warohmatullah,")
+    .replace(/وعليكم\s*السلام/gi, "Wa'alaikumussalam Warohmatullah,")
     .replace(/جزاكم\s*الله\s*خيرا/gi, "Jazakumullah Khairan")
     .replace(/بارك\s*الله\s*فيكم/gi, "Barakallahu Fiikum")
     .replace(/إن\s*شاء\s*الله/gi, "Insya Allah")
