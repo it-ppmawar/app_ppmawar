@@ -148,35 +148,35 @@ export async function POST(request: Request) {
         const [kegiatanRows] = await pool.execute<RowDataPacket[]>(queryKegiatan, [currentDay]);
         appendRows(kegiatanRows, 'kamar');
       }
-
-      // Deduplication ketat: 1 guru (per nomor HP) = 1 pesan saja
-      // Gabungkan semua jadwal hari ini milik guru yang sama ke dalam satu item
-      const mergedMap = new Map<string, typeof itemsToSchedule[0]>();
-      for (const item of itemsToSchedule) {
-        const phone = formatToWaPhone(item.guru_whatsapp);
-        if (!phone) continue;
-        if (mergedMap.has(phone)) {
-          const existing = mergedMap.get(phone)!;
-          // Gabungkan kelas jika berbeda
-          if (item.kelas_nama && !existing.kelas_nama.includes(item.kelas_nama)) {
-            existing.kelas_nama = `${existing.kelas_nama} & ${item.kelas_nama}`;
-          }
-          // Gabungkan mata pelajaran jika berbeda
-          if (item.mata_pelajaran && !existing.mata_pelajaran.includes(item.mata_pelajaran)) {
-            existing.mata_pelajaran = `${existing.mata_pelajaran} & ${item.mata_pelajaran}`;
-          }
-          // Pertahankan jam mulai paling awal agar pengiriman lebih awal
-          if (item.jam_mulai < existing.jam_mulai) {
-            existing.jam_mulai = item.jam_mulai;
-          }
-        } else {
-          mergedMap.set(phone, { ...item });
-        }
-      }
-      itemsToSchedule = Array.from(mergedMap.values());
     } else if (mode === 'custom_list' && Array.isArray(customItems)) {
       itemsToSchedule = customItems;
     }
+
+    // DEDUPLIKASI KETAT & PENGGABUNGAN KELAS GABUNGAN UNTUK SEMUA MODE:
+    // 1 Guru (per nomor HP) = 1 Pesan Saja dengan rincian kelas gabungan & 1 link absensi
+    const mergedMap = new Map<string, typeof itemsToSchedule[0]>();
+    for (const item of itemsToSchedule) {
+      const phone = formatToWaPhone(item.guru_whatsapp);
+      if (!phone) continue;
+      if (mergedMap.has(phone)) {
+        const existing = mergedMap.get(phone)!;
+        // Gabungkan kelas jika berbeda
+        if (item.kelas_nama && !existing.kelas_nama.toLowerCase().includes(item.kelas_nama.toLowerCase())) {
+          existing.kelas_nama = `${existing.kelas_nama} & ${item.kelas_nama}`;
+        }
+        // Gabungkan mata pelajaran jika berbeda
+        if (item.mata_pelajaran && !existing.mata_pelajaran.toLowerCase().includes(item.mata_pelajaran.toLowerCase())) {
+          existing.mata_pelajaran = `${existing.mata_pelajaran} & ${item.mata_pelajaran}`;
+        }
+        // Pertahankan jam mulai paling awal agar pengiriman tepat waktu
+        if (item.jam_mulai < existing.jam_mulai) {
+          existing.jam_mulai = item.jam_mulai;
+        }
+      } else {
+        mergedMap.set(phone, { ...item });
+      }
+    }
+    itemsToSchedule = Array.from(mergedMap.values());
 
     if (itemsToSchedule.length === 0) {
       return NextResponse.json({
