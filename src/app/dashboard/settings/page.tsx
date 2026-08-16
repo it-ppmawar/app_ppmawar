@@ -457,6 +457,17 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Tips Mengelola Libur (Ditempatkan di bawah Mode Libur Semester) */}
+          <div className="bg-blue-50/80 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-4 flex items-start gap-3.5">
+            <Bell className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" size={20} />
+            <div>
+              <h4 className="font-bold text-sm text-blue-900 dark:text-blue-300 mb-0.5">Tips Mengelola Libur</h4>
+              <p className="text-xs leading-relaxed text-blue-800 dark:text-blue-400">
+                Ketika Pesantren memasuki masa libur Ramadhan atau libur panjang lainnya, aktifkan <strong>Mode Libur Semester</strong> ini atau nonaktifkan sistem absensi otomatis. Hal ini mencegah sistem mencatat &quot;Alpha&quot; secara terus-menerus ke seluruh staf dan pembina yang dapat merusak data persentase kehadiran bulanan.
+              </p>
+            </div>
+          </div>
+
           <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-4">
             <div>
               <h3 className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -1119,16 +1130,6 @@ export default function SettingsPage() {
             )}
           </div>
         )}
-      </div>
-
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-3xl p-6 flex gap-4">
-        <Bell className="text-blue-500 shrink-0 mt-1" size={24} />
-        <div>
-          <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-1">Tips Mengelola Libur</h3>
-          <p className="text-sm text-blue-700 dark:text-blue-400">
-            Ketika Pesantren memasuki masa libur Ramadhan atau libur panjang lainnya, segera nonaktifkan sistem absensi otomatis ini. Hal ini mencegah sistem mencatat &quot;Alpha&quot; secara terus-menerus ke seluruh staf dan pembina yang dapat merusak data persentase kehadiran bulanan.
-          </p>
-        </div>
       </div>
     </div>
   );
