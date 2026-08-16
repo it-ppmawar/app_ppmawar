@@ -1,6 +1,10 @@
 'use client';
 import React, { useState, useEffect, Suspense } from 'react';
-import { Bell, AlertTriangle, CheckCircle2, MessageCircle, Phone, Search, RefreshCw, Users, Check, Smartphone, Info, ChevronDown, ChevronUp, Zap, Settings2 } from 'lucide-react';
+import { 
+  Bell, AlertTriangle, CheckCircle2, MessageCircle, Phone, Search, 
+  RefreshCw, Users, Check, Smartphone, Info, ChevronDown, ChevronUp, 
+  Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar 
+} from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
 function NotifikasiContent() {
@@ -296,6 +300,104 @@ function NotifikasiContent() {
       }));
       return newState;
     });
+  };
+
+  // State WA Scheduler Automation
+  const [isSchedulerSending, setIsSchedulerSending] = useState(false);
+  const [schedulerModalOpen, setSchedulerModalOpen] = useState(false);
+  const [schedulerMode, setSchedulerMode] = useState<'active_today' | 'all_schedules'>('active_today');
+  const [schedulerLeadTime, setSchedulerLeadTime] = useState(15);
+  const [schedulerIsLoop, setSchedulerIsLoop] = useState(true);
+  const [schedulerStatusMsg, setSchedulerStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string; details?: any[] } | null>(null);
+  const [sendingSingleKey, setSendingSingleKey] = useState<string | null>(null);
+
+  const cleanPhoneStr = (p: string | null | undefined) => {
+    if (!p) return '';
+    let c = p.toString().trim().replace(/[^0-9+]/g, '');
+    if (c.startsWith('+')) c = c.substring(1);
+    if (c.startsWith('0')) c = '62' + c.substring(1);
+    else if (c.startsWith('8')) c = '62' + c;
+    return c;
+  };
+
+  const handleBulkScheduleWA = async (overrideMode?: 'active_today' | 'all_schedules') => {
+    const targetMode = overrideMode || schedulerMode;
+    setIsSchedulerSending(true);
+    setSchedulerStatusMsg(null);
+    try {
+      const res = await fetch('/api/wa-scheduler/bulk-reminder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: targetMode,
+          leadTimeMinutes: schedulerLeadTime,
+          isLoop: targetMode === 'all_schedules' ? (schedulerIsLoop ? 1 : 0) : 0,
+          customTemplate: pesanGuruTemplate
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSchedulerStatusMsg({
+          type: 'success',
+          text: data.message || `Berhasil menjadwalkan ${data.sent} pesan ke antrean WA Scheduler!`,
+          details: data.results
+        });
+        // Update status terkirim
+        if (data.results && Array.isArray(data.results)) {
+          data.results.forEach((r: any) => {
+            if (r.success) {
+              const matched = activeReminders.find(ar => cleanPhoneStr(ar.guru_whatsapp) === r.phone);
+              if (matched) {
+                const key = `${matched.tipe}_${matched.jadwal_id}_${new Date().toLocaleDateString()}`;
+                markReminderAsSent(key);
+              }
+            }
+          });
+        }
+      } else {
+        setSchedulerStatusMsg({
+          type: 'error',
+          text: data.error || 'Gagal mengirim antrean ke WA Scheduler'
+        });
+      }
+    } catch (err: any) {
+      setSchedulerStatusMsg({
+        type: 'error',
+        text: 'Kesalahan jaringan: ' + err.message
+      });
+    } finally {
+      setIsSchedulerSending(false);
+    }
+  };
+
+  const handleSingleScheduleWA = async (r: any) => {
+    const reminderKey = `${r.tipe}_${r.jadwal_id}_${new Date().toLocaleDateString()}`;
+    setSendingSingleKey(reminderKey);
+    try {
+      const res = await fetch('/api/wa-scheduler/bulk-reminder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'custom_list',
+          customItems: [r],
+          leadTimeMinutes: schedulerLeadTime,
+          isLoop: 0,
+          customTemplate: pesanGuruTemplate
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.sent > 0) {
+        markReminderAsSent(reminderKey);
+        alert(`Jadwal pengingat otomatis untuk ${r.guru_nama} berhasil didaftarkan ke antrean WA Scheduler!`);
+      } else {
+        const err = data.results?.[0]?.error || data.error || 'Gagal menjadwalkan ke WA Scheduler';
+        alert(`Gagal: ${err}`);
+      }
+    } catch (err: any) {
+      alert(`Kesalahan jaringan: ${err.message}`);
+    } finally {
+      setSendingSingleKey(null);
+    }
   };
 
   // Fetch daftar kelas/kamar sesuai tipePesan (terbatasi dinamis oleh API kelas sesuai role yang login)
@@ -1539,6 +1641,68 @@ function NotifikasiContent() {
                 </div>
               ) : (
                 <>
+                  {/* Banner Otomatisasi WA Scheduler */}
+                  <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-200/80 dark:border-emerald-800/50 shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-2.5 w-2.5 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                          </span>
+                          <h4 className="font-extrabold text-sm text-emerald-950 dark:text-emerald-300 flex items-center gap-1.5">
+                            <Sparkles size={16} className="text-emerald-600 dark:text-emerald-400" />
+                            Otomatisasi WA Scheduler (wa.quizb.my.id)
+                          </h4>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                          Kirim notifikasi pengingat ke WhatsApp guru secara otomatis tanpa perlu membuka tautan satu per satu.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setSchedulerModalOpen(true)}
+                          className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 border border-gray-200 dark:border-gray-700 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                        >
+                          <Settings2 size={13} />
+                          Opsi & Looping
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isSchedulerSending || activeReminders.length === 0}
+                          onClick={() => handleBulkScheduleWA('active_today')}
+                          className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md hover:shadow-emerald-500/20 active:scale-95 flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none"
+                        >
+                          {isSchedulerSending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                          {isSchedulerSending ? 'Menjadwalkan...' : 'Kirim Semua Otomatis'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Status Alert Notifikasi Scheduler */}
+                    {schedulerStatusMsg && (
+                      <div className={`p-3 rounded-xl text-xs font-medium flex items-start justify-between gap-2 ${
+                        schedulerStatusMsg.type === 'success'
+                          ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800'
+                          : 'bg-red-100 text-red-900 dark:bg-red-950/60 dark:text-red-200 border border-red-300 dark:border-red-800'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          {schedulerStatusMsg.type === 'success' ? <CheckCircle2 size={16} className="text-emerald-600 shrink-0" /> : <AlertTriangle size={16} className="text-red-600 shrink-0" />}
+                          <span>{schedulerStatusMsg.text}</span>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setSchedulerStatusMsg(null)}
+                          className="text-[11px] font-bold underline shrink-0"
+                        >
+                          Tutup
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold mb-3 flex items-center gap-1.5">
                     <AlertTriangle size={13} className="animate-pulse" />
                     {activeReminders.length} guru/pengurus belum mengisi absensi pada jadwal aktif saat ini.
@@ -1624,13 +1788,14 @@ function NotifikasiContent() {
                                 <th className="px-4 py-3 font-bold rounded-l-xl">Nama Guru / Pengurus</th>
                                 <th className="px-4 py-3 font-bold">Kelas / Kamar</th>
                                 <th className="px-4 py-3 font-bold">Jam</th>
-                                <th className="px-4 py-3 font-bold text-right rounded-r-xl">Aksi</th>
+                                <th className="px-4 py-3 font-bold text-right rounded-r-xl">Aksi Notifikasi</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                               {filteredActiveReminders.map(r => {
                                 const reminderKey = `${r.tipe}_${r.jadwal_id}_${new Date().toLocaleDateString()}`;
                                 const isSent = sentReminderIds[reminderKey];
+                                const isSendingSingle = sendingSingleKey === reminderKey;
                                 const tipeLabel = r.tipe === 'madin' ? 'Madin' : r.tipe === 'quran' ? "Al-Qur'an" : 'Asrama';
                                 return (
                                   <tr key={reminderKey} className={`transition-colors ${
@@ -1658,20 +1823,36 @@ function NotifikasiContent() {
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                       {r.guru_whatsapp ? (
-                                        <a
-                                          href={getWaGuruReminderLink(r)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={() => markReminderAsSent(reminderKey)}
-                                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-105 active:scale-95 ${
-                                            isSent
-                                              ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 border border-green-200 dark:border-green-800'
-                                              : 'bg-[#25D366] hover:bg-[#1DA851] text-white'
-                                          }`}
-                                        >
-                                          {isSent ? <Check size={13} /> : <MessageCircle size={13} />}
-                                          {isSent ? 'Terkirim' : 'Ingatkan'}
-                                        </a>
+                                        <div className="inline-flex items-center gap-1.5">
+                                          {/* Tombol Auto WA Scheduler */}
+                                          <button
+                                            type="button"
+                                            onClick={() => handleSingleScheduleWA(r)}
+                                            disabled={isSendingSingle}
+                                            title="Jadwalkan otomatis via WA Scheduler"
+                                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 ${
+                                              isSent 
+                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' 
+                                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                            }`}
+                                          >
+                                            {isSendingSingle ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                                            {isSent ? 'Terjadwal' : 'Auto WA'}
+                                          </button>
+
+                                          {/* Tombol Manual WA.me */}
+                                          <a
+                                            href={getWaGuruReminderLink(r)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={() => markReminderAsSent(reminderKey)}
+                                            title="Kirim manual via tautan wa.me"
+                                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+                                          >
+                                            <MessageCircle size={12} className="text-[#25D366]" />
+                                            Manual
+                                          </a>
+                                        </div>
                                       ) : (
                                         <span className="text-[11px] text-gray-400 italic">No WA Kosong</span>
                                       )}
@@ -1688,6 +1869,7 @@ function NotifikasiContent() {
                           {filteredActiveReminders.map(r => {
                             const reminderKey = `${r.tipe}_${r.jadwal_id}_${new Date().toLocaleDateString()}`;
                             const isSent = sentReminderIds[reminderKey];
+                            const isSendingSingle = sendingSingleKey === reminderKey;
                             const tipeLabel = r.tipe === 'madin' ? 'Madin' : r.tipe === 'quran' ? "Al-Qur'an" : 'Asrama';
                             return (
                               <div key={reminderKey} className={`bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border transition-colors ${
@@ -1721,25 +1903,36 @@ function NotifikasiContent() {
                                   </div>
                                 </div>
 
-                                {/* Tombol Ingatkan bertumpuk di bawah */}
-                                <div>
+                                {/* Tombol Aksi bertumpuk */}
+                                <div className="grid grid-cols-2 gap-2">
                                   {r.guru_whatsapp ? (
-                                    <a
-                                      href={getWaGuruReminderLink(r)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={() => markReminderAsSent(reminderKey)}
-                                      className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold shadow-sm transition-all active:scale-95 ${
-                                        isSent
-                                          ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 border border-green-200 dark:border-green-800'
-                                          : 'bg-[#25D366] hover:bg-[#1DA851] text-white'
-                                      }`}
-                                    >
-                                      {isSent ? <Check size={16} /> : <MessageCircle size={16} />}
-                                      {isSent ? 'Pengingat Terkirim' : 'Kirim WA Ingatkan Guru'}
-                                    </a>
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSingleScheduleWA(r)}
+                                        disabled={isSendingSingle}
+                                        className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 disabled:opacity-50 ${
+                                          isSent
+                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                        }`}
+                                      >
+                                        {isSendingSingle ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+                                        {isSent ? 'Terjadwal' : 'Auto WA'}
+                                      </button>
+                                      <a
+                                        href={getWaGuruReminderLink(r)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => markReminderAsSent(reminderKey)}
+                                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700/60 hover:bg-gray-200 transition-all active:scale-95"
+                                      >
+                                        <MessageCircle size={13} className="text-[#25D366]" />
+                                        Manual
+                                      </a>
+                                    </>
                                   ) : (
-                                    <div className="w-full bg-gray-50 dark:bg-gray-900 text-center py-2.5 rounded-xl text-xs text-gray-400 italic">
+                                    <div className="col-span-2 bg-gray-50 dark:bg-gray-900 text-center py-2.5 rounded-xl text-xs text-gray-400 italic">
                                       Nomor WhatsApp Kosong
                                     </div>
                                   )}
@@ -2094,6 +2287,160 @@ function NotifikasiContent() {
               </div>
             </div>
           )}
+        </div>
+      )}
+      {/* Modal Dialog Konfigurasi WA Scheduler */}
+      {schedulerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-gray-100 dark:border-gray-700 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-emerald-100 dark:bg-emerald-950/60 rounded-xl text-emerald-600 dark:text-emerald-400">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-gray-800 dark:text-gray-100">
+                    Otomatisasi WA Scheduler
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Kirim jadwal pengingat ke wa.quizb.my.id</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSchedulerModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Pilihan Target Jadwal */}
+              <div>
+                <label className="block font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
+                  Target Pengiriman
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSchedulerMode('active_today')}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      schedulerMode === 'active_today'
+                        ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-200 font-bold ring-2 ring-emerald-400/20'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-extrabold text-xs">Jadwal Aktif Hari Ini</span>
+                      {schedulerMode === 'active_today' && <Check size={14} className="text-emerald-600" />}
+                    </div>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 font-normal">
+                      Hanya guru pada jadwal aktif saat ini ({activeReminders.length} jadwal).
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSchedulerMode('all_schedules')}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      schedulerMode === 'all_schedules'
+                        ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-200 font-bold ring-2 ring-emerald-400/20'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-extrabold text-xs">Semua Jadwal Rutin</span>
+                      {schedulerMode === 'all_schedules' && <Check size={14} className="text-emerald-600" />}
+                    </div>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 font-normal">
+                      Seluruh jadwal Madin, Qur'an, & Asrama dengan perulangan otomatis.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Waktu Pengingat Sebelum Masuk */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Waktu Pengingat Sebelum Masuk
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="120"
+                    value={schedulerLeadTime}
+                    onChange={(e) => setSchedulerLeadTime(parseInt(e.target.value) || 0)}
+                    className="w-20 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-lg text-center font-bold text-gray-800 dark:text-gray-200"
+                  />
+                  <span className="text-gray-500">Menit sebelum jam mulai mengajar</span>
+                </div>
+              </div>
+
+              {/* Toggle Looping Harian (jika mode all_schedules) */}
+              {schedulerMode === 'all_schedules' && (
+                <div className="flex items-center justify-between p-3 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/60">
+                  <div>
+                    <span className="font-bold text-emerald-950 dark:text-emerald-200 block">Ulangi Pengiriman Setiap Hari</span>
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400">Pesan akan dikirim otomatis setiap hari pada jam tersebut</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={schedulerIsLoop}
+                      onChange={(e) => setSchedulerIsLoop(e.target.checked)}
+                    />
+                    <div className="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                  </label>
+                </div>
+              )}
+
+              {/* Status Ringkasan Hasil */}
+              {schedulerStatusMsg && (
+                <div className={`p-3.5 rounded-xl border ${
+                  schedulerStatusMsg.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                    : 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200'
+                }`}>
+                  <div className="flex items-center gap-2 font-bold mb-1">
+                    {schedulerStatusMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                    <span>{schedulerStatusMsg.text}</span>
+                  </div>
+                  {schedulerStatusMsg.details && Array.isArray(schedulerStatusMsg.details) && (
+                    <div className="mt-2 max-h-32 overflow-y-auto space-y-1 text-[11px] pr-1">
+                      {schedulerStatusMsg.details.map((det: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center py-0.5 border-b border-black/5 dark:border-white/5">
+                          <span className="font-medium">{det.guru_nama} ({det.phone})</span>
+                          <span className={det.success ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'}>
+                            {det.success ? `✓ ${det.scheduled_time?.slice(11) || 'OK'}` : `✗ ${det.error || 'Gagal'}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => setSchedulerModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 rounded-xl transition-colors"
+              >
+                Tutup
+              </button>
+              <button
+                type="button"
+                disabled={isSchedulerSending}
+                onClick={() => handleBulkScheduleWA()}
+                className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isSchedulerSending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                {isSchedulerSending ? 'Sedang Memproses...' : 'Mulai Jadwalkan Sekarang'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

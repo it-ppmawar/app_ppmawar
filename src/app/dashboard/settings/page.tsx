@@ -20,8 +20,16 @@ export default function SettingsPage() {
     radius_absen: 50,
     rutinitas_sinkronisasi: 'manual',
     terakhir_sinkronisasi: '',
-    nomor_cs: '+628133129223'
+    nomor_cs: '+628133129223',
+    wa_scheduler_api_key: 'wa-key-923332d62d67d2511393e0c6d8ff5e59',
+    wa_scheduler_lead_time: 15,
+    wa_scheduler_is_loop: true,
+    wa_scheduler_endpoint: 'https://wa.quizb.my.id/api/send.php'
   });
+
+  const [testingWa, setTestingWa] = useState(false);
+  const [testWaPhone, setTestWaPhone] = useState('');
+  const [testWaResult, setTestWaResult] = useState<{ success?: boolean; message?: string } | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -43,7 +51,11 @@ export default function SettingsPage() {
           radius_absen: parseInt(json.data.radius_absen) || 50,
           rutinitas_sinkronisasi: json.data.rutinitas_sinkronisasi || 'manual',
           terakhir_sinkronisasi: json.data.terakhir_sinkronisasi || '',
-          nomor_cs: json.data.nomor_cs || '+628133129223'
+          nomor_cs: json.data.nomor_cs || '+628133129223',
+          wa_scheduler_api_key: json.data.wa_scheduler_api_key || 'wa-key-923332d62d67d2511393e0c6d8ff5e59',
+          wa_scheduler_lead_time: isNaN(parseInt(json.data.wa_scheduler_lead_time)) ? 15 : parseInt(json.data.wa_scheduler_lead_time),
+          wa_scheduler_is_loop: json.data.wa_scheduler_is_loop !== '0',
+          wa_scheduler_endpoint: json.data.wa_scheduler_endpoint || 'https://wa.quizb.my.id/api/send.php'
         });
       } else {
         setError(json.error || 'Gagal memuat pengaturan');
@@ -52,6 +64,35 @@ export default function SettingsPage() {
       setError('Kesalahan jaringan');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestWa = async () => {
+    if (!testWaPhone) {
+      alert('Masukkan nomor WhatsApp tujuan uji coba (contoh: 081234567890)');
+      return;
+    }
+    setTestingWa(true);
+    setTestWaResult(null);
+    try {
+      const res = await fetch('/api/wa-scheduler/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone_number: testWaPhone,
+          apiKey: settings.wa_scheduler_api_key
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setTestWaResult({ success: true, message: json.message + ` (Dijadwalkan: ${json.scheduled_time})` });
+      } else {
+        setTestWaResult({ success: false, message: json.error || 'Gagal mengirim pesan uji coba' });
+      }
+    } catch (err: any) {
+      setTestWaResult({ success: false, message: 'Kesalahan jaringan: ' + err.message });
+    } finally {
+      setTestingWa(false);
     }
   };
 
@@ -513,8 +554,123 @@ export default function SettingsPage() {
               <span className="text-sm font-bold text-gray-500">Meter</span>
             </div>
           </div>
-
         </div>
+      </div>
+
+          {/* Pengaturan Integrasi WhatsApp Scheduler */}
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                  <Bell size={22} className="text-emerald-500" />
+                  Integrasi Otomatisasi WhatsApp (wa.quizb.my.id)
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Kirim pengingat absensi guru otomatis tanpa perlu mengklik tautan secara manual. Pesan diproses via HP Android Admin.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40">
+                <label className="block text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider mb-2">
+                  API Key WA Scheduler
+                </label>
+                <input 
+                  type="text" 
+                  value={settings.wa_scheduler_api_key}
+                  onChange={(e) => setSettings({ ...settings, wa_scheduler_api_key: e.target.value })}
+                  placeholder="wa-key-..."
+                  className="w-full bg-white dark:bg-gray-800 border border-emerald-300 dark:border-emerald-700 px-4 py-2.5 rounded-xl text-sm font-mono font-bold text-emerald-950 dark:text-emerald-200 focus:ring-2 focus:ring-emerald-500 transition-all"
+                />
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1.5">
+                  Diperoleh dari dashboard akun Anda di <a href="https://wa.quizb.my.id/user_dashboard.php" target="_blank" rel="noreferrer" className="underline font-bold">wa.quizb.my.id</a>
+                </p>
+              </div>
+
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
+                  Waktu Pengingat Sebelum Masuk (Menit)
+                </label>
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="number" 
+                    min="0" 
+                    max="180" 
+                    value={settings.wa_scheduler_lead_time}
+                    onChange={(e) => setSettings({ ...settings, wa_scheduler_lead_time: parseInt(e.target.value) || 0 })}
+                    className="w-24 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-4 py-2 rounded-xl text-center font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    Menit sebelum jam mulai kelas/kegiatan
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1.5">
+                  Misal diisi 15, jadwal jam 14:00 akan dikirimkan otomatis pada pukul 13:45.
+                </p>
+              </div>
+            </div>
+
+            {/* Opsi Daily Looping */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200">Ulangi Pengiriman Harian (Daily Looping)</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Aktifkan agar jadwal pengingat berulang otomatis setiap hari tanpa perlu dijadwalkan ulang.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={settings.wa_scheduler_is_loop}
+                  onChange={(e) => setSettings({ ...settings, wa_scheduler_is_loop: e.target.checked })}
+                />
+                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                <span className={`ml-3 text-xs font-bold ${settings.wa_scheduler_is_loop ? 'text-emerald-600' : 'text-gray-400'}`}>
+                  {settings.wa_scheduler_is_loop ? 'Looping Harian Aktif' : 'Sekali Saja'}
+                </span>
+              </label>
+            </div>
+
+            {/* Kotak Uji Coba Koneksi Langsung */}
+            <div className="p-4 bg-blue-50/60 dark:bg-blue-950/20 rounded-xl border border-blue-200/80 dark:border-blue-800/40">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-blue-900 dark:text-blue-300 mb-1 flex items-center gap-1.5">
+                <RefreshCw size={14} className={testingWa ? 'animate-spin' : ''} />
+                Uji Coba Kirim Pesan Tes ke WhatsApp
+              </h4>
+              <p className="text-xs text-blue-700 dark:text-blue-400 mb-3">
+                Kirim pesan pengujian untuk memverifikasi apakah server WA Scheduler dan APK Android di HP Anda aktif.
+              </p>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <input 
+                  type="text" 
+                  value={testWaPhone}
+                  onChange={(e) => setTestWaPhone(e.target.value)}
+                  placeholder="Nomor WA Tujuan (Contoh: 081234567890)"
+                  className="bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 px-3 py-2 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={handleTestWa}
+                  disabled={testingWa}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
+                >
+                  {testingWa ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  {testingWa ? 'Mengirim...' : 'Kirim Pesan Tes'}
+                </button>
+              </div>
+              {testWaResult && (
+                <div className={`mt-2.5 p-2.5 rounded-lg text-xs font-bold flex items-center gap-2 ${
+                  testWaResult.success 
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300' 
+                    : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300 border border-red-300'
+                }`}>
+                  {testWaResult.success ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
+                  <span>{testWaResult.message}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex justify-end pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">

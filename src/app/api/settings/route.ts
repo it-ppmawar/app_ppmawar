@@ -40,7 +40,49 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { absensi_otomatis, waktu_tenggang, waktu_mulai, lat_pesantren, lng_pesantren, radius_absen, rutinitas_sinkronisasi, nomor_cs, mode_libur } = await request.json();
+    const { 
+      absensi_otomatis, 
+      waktu_tenggang, 
+      waktu_mulai, 
+      lat_pesantren, 
+      lng_pesantren, 
+      radius_absen, 
+      rutinitas_sinkronisasi, 
+      nomor_cs, 
+      mode_libur,
+      wa_scheduler_api_key,
+      wa_scheduler_endpoint,
+      wa_scheduler_lead_time,
+      wa_scheduler_is_loop
+    } = await request.json();
+
+    if (wa_scheduler_api_key !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['wa_scheduler_api_key', wa_scheduler_api_key.toString().trim(), wa_scheduler_api_key.toString().trim()]
+      );
+    }
+
+    if (wa_scheduler_endpoint !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['wa_scheduler_endpoint', wa_scheduler_endpoint.toString().trim(), wa_scheduler_endpoint.toString().trim()]
+      );
+    }
+
+    if (wa_scheduler_lead_time !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['wa_scheduler_lead_time', wa_scheduler_lead_time.toString().trim(), wa_scheduler_lead_time.toString().trim()]
+      );
+    }
+
+    if (wa_scheduler_is_loop !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['wa_scheduler_is_loop', wa_scheduler_is_loop ? '1' : '0', wa_scheduler_is_loop ? '1' : '0']
+      );
+    }
 
     if (nomor_cs !== undefined) {
       await pool.execute(
