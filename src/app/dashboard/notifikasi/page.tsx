@@ -2391,9 +2391,9 @@ function NotifikasiContent() {
       )}
       {/* Modal Dialog Konfigurasi WA Scheduler */}
       {schedulerModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
-          <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 pb-[calc(env(safe-area-inset-bottom,0px)+5rem)] sm:pb-6 shadow-2xl border border-gray-100 dark:border-gray-700 space-y-5 max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-3xl p-5 sm:p-6 shadow-2xl border border-gray-100 dark:border-gray-700 flex flex-col max-h-[78vh] sm:max-h-[82vh]">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-emerald-100 dark:bg-emerald-950/60 rounded-xl text-emerald-600 dark:text-emerald-400">
                   <Sparkles size={20} />
@@ -2406,14 +2406,15 @@ function NotifikasiContent() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setSchedulerModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg font-bold p-1 rounded-lg"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg font-bold p-1 rounded-lg transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-4 text-xs">
+            <div className="overflow-y-auto flex-1 py-3 pr-1 space-y-3.5 text-xs">
               {/* Pilihan Target Jadwal */}
               <div>
                 <label className="block font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
@@ -2559,11 +2560,11 @@ function NotifikasiContent() {
               )}
             </div>
 
-            <div className="sticky bottom-0 bg-white dark:bg-gray-800 grid grid-cols-2 gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <div className="shrink-0 grid grid-cols-2 gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-700">
               <button
                 type="button"
                 onClick={() => setSchedulerModalOpen(false)}
-                className="py-3 text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 rounded-xl transition-colors"
+                className="py-2.5 text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 rounded-xl transition-colors"
               >
                 Tutup
               </button>
@@ -2571,7 +2572,7 @@ function NotifikasiContent() {
                 type="button"
                 disabled={isSchedulerSending}
                 onClick={() => handleBulkScheduleWA()}
-                className="py-3 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 {isSchedulerSending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
                 {isSchedulerSending ? 'Memproses...' : 'Mulai Jadwalkan'}
