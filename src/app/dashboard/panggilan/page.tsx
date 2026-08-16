@@ -447,11 +447,17 @@ export default function PanggilanSantriPage() {
                 <RefreshCw size={12} />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {uniqueDevices.map((dev) => (
+            <div className={`gap-2 ${uniqueDevices.length === 1 ? 'flex justify-center' : 'grid grid-cols-2'}`}>
+              {uniqueDevices.map((dev, idx) => (
                 <div
                   key={dev.device_id}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold border ${
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold border ${
+                    uniqueDevices.length === 1 
+                      ? 'w-full max-w-sm' 
+                      : (uniqueDevices.length % 2 === 1 && idx === uniqueDevices.length - 1)
+                      ? 'col-span-2 max-w-sm mx-auto w-full'
+                      : ''
+                  } ${
                     dev.status === 'online'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'
                       : dev.status === 'idle'
@@ -468,7 +474,7 @@ export default function PanggilanSantriPage() {
                         : 'bg-gray-400'
                     }`}
                   />
-                  <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <span className="truncate leading-tight">{dev.nama_asrama || 'Semua Asrama'}</span>
                     <span className="text-[10px] opacity-60 leading-tight">({dev.status})</span>
                   </div>
