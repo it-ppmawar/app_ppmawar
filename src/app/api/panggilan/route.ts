@@ -140,6 +140,42 @@ export async function POST(request: Request) {
 
     const santri = santriRows[0];
 
+    // ── Cooldown check: wali & pengurus tidak boleh kirim terlalu sering ──
+    const isWali = payload.role === 'wali_murid' || payload.role === 'wali_alumni';
+    const isPengurus = payload.role.includes('pengurus_asrama');
+
+    if (isWali || isPengurus) {
+      const settingKey = isWali ? 'jeda_panggilan_wali' : 'jeda_panggilan_pengurus';
+      try {
+        const [[settingRow]] = await pool.execute<RowDataPacket[]>(
+          'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = ? LIMIT 1',
+          [settingKey]
+        );
+        const jedaMenit = parseInt((settingRow as any)?.nilai || '0');
+        if (jedaMenit > 0) {
+          // Cek panggilan terakhir dari user ini
+          const [[lastRow]] = await pool.execute<RowDataPacket[]>(
+            `SELECT created_at FROM panggilan_santri
+             WHERE dipanggil_oleh = ? AND created_at >= NOW() - INTERVAL ? MINUTE
+             ORDER BY created_at DESC LIMIT 1`,
+            [payload.userId || 0, jedaMenit]
+          );
+          if ((lastRow as any)?.created_at) {
+            const lastTime = new Date((lastRow as any).created_at).getTime();
+            const sisaMs = (jedaMenit * 60 * 1000) - (Date.now() - lastTime);
+            const sisaMenit = Math.ceil(sisaMs / 60000);
+            const sisaDetik = Math.ceil(sisaMs / 1000);
+            return NextResponse.json({
+              error: `Mohon tunggu ${sisaMenit > 1 ? sisaMenit + ' menit' : sisaDetik + ' detik'} lagi sebelum mengirim panggilan berikutnya`,
+              cooldown: true,
+              sisa_detik: Math.max(0, Math.ceil(sisaMs / 1000)),
+              jeda_menit: jedaMenit,
+            }, { status: 429 });
+          }
+        }
+      } catch (_) { /* skip jika setting belum ada */ }
+    }
+
     // Ambil nama pemanggil
     let namaPemanggil = payload.username;
     try {

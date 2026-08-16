@@ -10,9 +10,26 @@ export async function GET(request: Request) {
     const token = cookieStore.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const payload = verifyToken(token);
-    if (!payload || ((payload as any).role !== 'admin' && (payload as any).role !== 'staff')) {
+    const payload = verifyToken(token) as any;
+    if (!payload) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    const isAdminOrStaff = payload.role === 'admin' || payload.role === 'staff';
+    const { searchParams } = new URL(request.url);
+    const publicOnly = searchParams.get('public') === '1';
+
+    // Non-admin hanya boleh baca setting jeda panggilan (untuk keperluan UI)
+    if (!isAdminOrStaff && !publicOnly) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!isAdminOrStaff && publicOnly) {
+      // Hanya kembalikan setting jeda panggilan
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('jeda_panggilan_wali', 'jeda_panggilan_pengurus')"
+      );
+      const settings: Record<string, string> = {};
+      rows.forEach((row: any) => { settings[row.nama_pengaturan] = row.nilai; });
+      return NextResponse.json({ success: true, data: settings });
     }
 
     const [rows] = await pool.execute<RowDataPacket[]>('SELECT * FROM pengaturan_absensi_otomatis');
@@ -53,7 +70,9 @@ export async function PUT(request: Request) {
       wa_scheduler_api_key,
       wa_scheduler_endpoint,
       wa_scheduler_lead_time,
-      wa_scheduler_is_loop
+      wa_scheduler_is_loop,
+      jeda_panggilan_wali,
+      jeda_panggilan_pengurus
     } = await request.json();
 
     if (wa_scheduler_api_key !== undefined) {
@@ -148,6 +167,22 @@ export async function PUT(request: Request) {
       await pool.execute(
         'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
         ['rutinitas_sinkronisasi', rutinitas_sinkronisasi.toString(), rutinitas_sinkronisasi.toString()]
+      );
+    }
+
+    if (jeda_panggilan_wali !== undefined) {
+      const val = Math.max(0, parseInt(jeda_panggilan_wali) || 0).toString();
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['jeda_panggilan_wali', val, val]
+      );
+    }
+
+    if (jeda_panggilan_pengurus !== undefined) {
+      const val = Math.max(0, parseInt(jeda_panggilan_pengurus) || 0).toString();
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['jeda_panggilan_pengurus', val, val]
       );
     }
 

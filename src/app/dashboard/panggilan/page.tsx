@@ -85,6 +85,11 @@ export default function PanggilanSantriPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [historyFilter, setHistoryFilter] = useState('');
 
+  // Cooldown state (jeda pengiriman untuk wali & pengurus)
+  const [cooldownSisa, setCooldownSisa] = useState(0); // detik tersisa
+  const [jedaMenit, setJedaMenit] = useState(0);       // setting jeda dari admin
+  const cooldownRef = useRef<NodeJS.Timeout | null>(null);
+
   const searchRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -102,6 +107,35 @@ export default function PanggilanSantriPage() {
     const t = setInterval(fetchDevices, 15000);
     return () => clearInterval(t);
   }, [fetchDevices]);
+
+  // Fetch setting jeda panggilan untuk role wali/pengurus
+  useEffect(() => {
+    fetch('/api/settings?public=1').then(r => r.json()).then(d => {
+      if (d.success) {
+        const role = (user?.role || '').toLowerCase();
+        const isWali = role === 'wali_murid' || role === 'wali_alumni';
+        const isPengurus = role.includes('pengurus_asrama');
+        if (isWali) setJedaMenit(parseInt(d.data.jeda_panggilan_wali || '0') || 0);
+        else if (isPengurus) setJedaMenit(parseInt(d.data.jeda_panggilan_pengurus || '0') || 0);
+      }
+    }).catch(() => {});
+  }, [user]);
+
+  // Countdown timer for cooldown
+  useEffect(() => {
+    if (cooldownSisa <= 0) return;
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setCooldownSisa(prev => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
+  }, [cooldownSisa]);
 
   // Auth guard: SEMUA petugas_panggilan (per-asrama & umum) → redirect ke TOA
   useEffect(() => {
@@ -193,6 +227,7 @@ export default function PanggilanSantriPage() {
   const handleSend = async () => {
     if (!selectedSantri) { setErrorMsg('Pilih santri terlebih dahulu'); return; }
     if (!teksPanggilan.trim()) { setErrorMsg('Teks panggilan tidak boleh kosong'); return; }
+    if (cooldownSisa > 0) return; // blokir jika masih cooldown
 
     setSending(true);
     setErrorMsg('');
@@ -215,8 +250,14 @@ export default function PanggilanSantriPage() {
         }),
       });
       const d = await r.json();
-      if (d.success) {
+      if (r.status === 429 && d.cooldown) {
+        // Kena cooldown dari server
+        setCooldownSisa(d.sisa_detik || jedaMenit * 60);
+        setErrorMsg('');
+      } else if (d.success) {
         setSuccessMsg(d.message || 'Panggilan berhasil dikirim!');
+        // Mulai cooldown lokal setelah berhasil kirim
+        if (jedaMenit > 0) setCooldownSisa(jedaMenit * 60);
         // Reset form
         setSelectedSantri(null);
         setSearchQ('');
@@ -443,7 +484,7 @@ export default function PanggilanSantriPage() {
         Panduan Setup Hardware
       </a>
 
-      {/* Success/Error */}
+      {/* Success/Error/Cooldown */}
       {successMsg && (
         <div className="flex items-center gap-3 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl text-green-700 dark:text-green-300 animate-[slideDown_0.3s_ease]">
           <CheckCircle2 size={18} className="shrink-0" />
@@ -455,6 +496,34 @@ export default function PanggilanSantriPage() {
           <AlertCircle size={18} className="shrink-0" />
           <span className="text-sm font-semibold">{errorMsg}</span>
           <button onClick={() => setErrorMsg('')} className="ml-auto"><X size={16}/></button>
+        </div>
+      )}
+      {cooldownSisa > 0 && (
+        <div className="flex items-center gap-3 px-4 py-3.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-2xl text-amber-800 dark:text-amber-300">
+          <Clock size={18} className="shrink-0 text-amber-500 animate-pulse" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold leading-tight">Sedang dalam jeda pengiriman</p>
+            <p className="text-xs mt-0.5 opacity-75">
+              Panggilan berikutnya dapat dikirim dalam{' '}
+              <span className="font-bold tabular-nums">
+                {cooldownSisa >= 60
+                  ? `${Math.floor(cooldownSisa / 60)} mnt ${cooldownSisa % 60} dtk`
+                  : `${cooldownSisa} dtk`}
+              </span>
+            </p>
+          </div>
+          {/* Animated progress bar */}
+          <div className="w-12 h-12 relative shrink-0">
+            <svg viewBox="0 0 36 36" className="w-12 h-12 -rotate-90">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" strokeOpacity="0.1" strokeWidth="3"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" strokeOpacity="0.8" strokeWidth="3"
+                strokeDasharray={`${100 - (cooldownSisa / (jedaMenit * 60)) * 100} 100`}
+                strokeLinecap="round" className="text-amber-500"/>
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black tabular-nums">
+              {cooldownSisa >= 60 ? `${Math.floor(cooldownSisa / 60)}m` : `${cooldownSisa}s`}
+            </span>
+          </div>
         </div>
       )}
 
@@ -660,11 +729,17 @@ export default function PanggilanSantriPage() {
           </div>
           <button
             onClick={handleSend}
-            disabled={sending || !selectedSantri || !teksPanggilan.trim()}
-            className="w-full flex items-center justify-center gap-2.5 py-4 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:from-red-600 hover:via-orange-600 hover:to-amber-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white font-black text-sm rounded-2xl transition-all shadow-lg shadow-orange-500/30 disabled:shadow-none active:scale-95"
+            disabled={sending || !selectedSantri || !teksPanggilan.trim() || cooldownSisa > 0}
+            className={`w-full flex items-center justify-center gap-2.5 py-4 font-black text-sm rounded-2xl transition-all shadow-lg active:scale-95 ${
+              cooldownSisa > 0
+                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 cursor-not-allowed shadow-none border border-amber-200 dark:border-amber-700'
+                : 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:from-red-600 hover:via-orange-600 hover:to-amber-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white shadow-orange-500/30 disabled:shadow-none'
+            }`}
           >
             {sending ? (
               <><Loader2 size={18} className="animate-spin" /> Mengirim...</>
+            ) : cooldownSisa > 0 ? (
+              <><Clock size={18} className="animate-pulse" /> Tunggu {cooldownSisa >= 60 ? `${Math.floor(cooldownSisa/60)}m ${cooldownSisa%60}s` : `${cooldownSisa}s`}</>
             ) : (
               <><Send size={18} /> Kirim Panggilan ke TOA</>
             )}

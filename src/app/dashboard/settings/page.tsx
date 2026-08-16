@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2 } from 'lucide-react';
+import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone } from 'lucide-react';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -24,7 +24,9 @@ export default function SettingsPage() {
     wa_scheduler_api_key: 'wa-key-923332d62d67d2511393e0c6d8ff5e59',
     wa_scheduler_lead_time: 15,
     wa_scheduler_is_loop: true,
-    wa_scheduler_endpoint: 'https://wa.quizb.my.id/api/send.php'
+    wa_scheduler_endpoint: 'https://wa.quizb.my.id/api/send.php',
+    jeda_panggilan_wali: 5,
+    jeda_panggilan_pengurus: 2
   });
 
   const [testingWa, setTestingWa] = useState(false);
@@ -55,7 +57,9 @@ export default function SettingsPage() {
           wa_scheduler_api_key: json.data.wa_scheduler_api_key || 'wa-key-923332d62d67d2511393e0c6d8ff5e59',
           wa_scheduler_lead_time: isNaN(parseInt(json.data.wa_scheduler_lead_time)) ? 15 : parseInt(json.data.wa_scheduler_lead_time),
           wa_scheduler_is_loop: json.data.wa_scheduler_is_loop !== '0',
-          wa_scheduler_endpoint: json.data.wa_scheduler_endpoint || 'https://wa.quizb.my.id/api/send.php'
+          wa_scheduler_endpoint: json.data.wa_scheduler_endpoint || 'https://wa.quizb.my.id/api/send.php',
+          jeda_panggilan_wali: isNaN(parseInt(json.data.jeda_panggilan_wali)) ? 5 : parseInt(json.data.jeda_panggilan_wali),
+          jeda_panggilan_pengurus: isNaN(parseInt(json.data.jeda_panggilan_pengurus)) ? 2 : parseInt(json.data.jeda_panggilan_pengurus)
         });
       } else {
         setError(json.error || 'Gagal memuat pengaturan');
@@ -681,6 +685,101 @@ export default function SettingsPage() {
                   <span>{testWaResult.message}</span>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Pengaturan Jeda Panggilan Santri (Anti-Crowded / Giliran Merata) */}
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600 space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                <Megaphone size={22} className="text-orange-500" />
+                Jeda Antrian Panggilan Santri (Anti-Crowded)
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Atur jeda waktu tunggu (cooldown) setelah mengirim panggilan sebelum akun Wali Murid atau Pengurus Asrama dapat mengirim panggilan kembali, agar antrian tertib dan giliran santri merata.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Jeda Wali Murid */}
+              <div className="p-4 bg-orange-50/50 dark:bg-orange-950/20 rounded-xl border border-orange-200/60 dark:border-orange-800/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-orange-900 dark:text-orange-300 uppercase tracking-wider">
+                    Jeda untuk Wali Murid / Alumni
+                  </label>
+                  <span className="text-xs font-black text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-md">
+                    {settings.jeda_panggilan_wali === 0 ? 'Tanpa Jeda (0 mnt)' : `${settings.jeda_panggilan_wali} Menit`}
+                  </span>
+                </div>
+                <p className="text-[11px] text-orange-700 dark:text-orange-400">
+                  Waktu tunggu antar panggilan yang dikirim oleh Wali Murid / Alumni. (0 = nonaktif / bebas kirim).
+                </p>
+                <div className="flex items-center gap-3 pt-1">
+                  <input 
+                    type="range"
+                    min="0"
+                    max="30"
+                    step="1"
+                    value={settings.jeda_panggilan_wali}
+                    onChange={(e) => setSettings({ ...settings, jeda_panggilan_wali: parseInt(e.target.value) || 0 })}
+                    className="w-full accent-orange-500 cursor-pointer"
+                  />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <input 
+                      type="number"
+                      min="0"
+                      max="120"
+                      value={settings.jeda_panggilan_wali}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value);
+                        setSettings({ ...settings, jeda_panggilan_wali: isNaN(v) ? 0 : Math.max(0, v) });
+                      }}
+                      className="w-16 bg-white dark:bg-gray-800 border border-orange-300 dark:border-orange-700 px-2 py-1 rounded-lg text-center font-bold text-xs text-orange-950 dark:text-orange-200"
+                    />
+                    <span className="text-xs font-bold text-orange-800 dark:text-orange-300">Menit</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Jeda Pengurus Asrama */}
+              <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200/60 dark:border-amber-800/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider">
+                    Jeda untuk Pengurus Asrama
+                  </label>
+                  <span className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md">
+                    {settings.jeda_panggilan_pengurus === 0 ? 'Tanpa Jeda (0 mnt)' : `${settings.jeda_panggilan_pengurus} Menit`}
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  Waktu tunggu antar panggilan yang dikirim oleh akun Pengurus Asrama. (0 = nonaktif / bebas kirim).
+                </p>
+                <div className="flex items-center gap-3 pt-1">
+                  <input 
+                    type="range"
+                    min="0"
+                    max="15"
+                    step="1"
+                    value={settings.jeda_panggilan_pengurus}
+                    onChange={(e) => setSettings({ ...settings, jeda_panggilan_pengurus: parseInt(e.target.value) || 0 })}
+                    className="w-full accent-amber-500 cursor-pointer"
+                  />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <input 
+                      type="number"
+                      min="0"
+                      max="60"
+                      value={settings.jeda_panggilan_pengurus}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value);
+                        setSettings({ ...settings, jeda_panggilan_pengurus: isNaN(v) ? 0 : Math.max(0, v) });
+                      }}
+                      className="w-16 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 px-2 py-1 rounded-lg text-center font-bold text-xs text-amber-950 dark:text-amber-200"
+                    />
+                    <span className="text-xs font-bold text-amber-800 dark:text-amber-300">Menit</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
