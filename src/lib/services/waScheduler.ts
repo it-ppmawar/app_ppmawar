@@ -116,6 +116,45 @@ export function calculateScheduledTimeWIB(
 }
 
 /**
+ * Membersihkan teks dari karakter non-Latin (seperti teks Arab) yang menyebabkan tanda tanya '????'
+ * pada server database gateway WhatsApp yang belum mendukung charset utf8mb4.
+ */
+export function sanitizeTextForWaScheduler(text: string): string {
+  if (!text) return '';
+
+  let sanitized = text;
+
+  // Konversi salam & frasa bahasa Arab ke tulisan Latin yang rapi
+  sanitized = sanitized
+    .replace(/[<>]+\s*السلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته\s*[<>]+/gi, "Assalamu'alaikum Wr. Wb.")
+    .replace(/[<>]+\s*السلام\s*عليكم\s*ورحمة\s*الله\s*[<>]+/gi, "Assalamu'alaikum Wr. Wb.")
+    .replace(/[<>]+\s*السلام\s*عليكم\s*[<>]+/gi, "Assalamu'alaikum")
+    .replace(/السلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته/gi, "Assalamu'alaikum Wr. Wb.")
+    .replace(/السلام\s*عليكم\s*ورحمة\s*الله/gi, "Assalamu'alaikum Wr. Wb.")
+    .replace(/السلام\s*عليكم/gi, "Assalamu'alaikum")
+    .replace(/والسلام\s*عليكم\s*ورحمة\s*الله\s*وبركاته/gi, "Wassalamu'alaikum Wr. Wb.")
+    .replace(/والسلام\s*عليكم\s*ورحمة\s*الله/gi, "Wassalamu'alaikum Wr. Wb.")
+    .replace(/والسلام\s*عليكم/gi, "Wassalamu'alaikum")
+    .replace(/وعليكم\s*السلام\s*ورحمة\s*الله\s*وبركاته/gi, "Wa'alaikumussalam Wr. Wb.")
+    .replace(/وعليكم\s*السلام/gi, "Wa'alaikumussalam")
+    .replace(/جزاكم\s*الله\s*خيرا/gi, "Jazakumullah Khairan")
+    .replace(/بارك\s*الله\s*فيكم/gi, "Barakallahu Fiikum")
+    .replace(/إن\s*شاء\s*الله/gi, "Insya Allah")
+    .replace(/الحمد\s*لله/gi, "Alhamdulillah")
+    .replace(/أستغفر\s*الله/gi, "Astaghfirullah")
+    .replace(/سبحان\s*الله/gi, "Subhanallah")
+    .replace(/الله\s*أكبر/gi, "Allahu Akbar");
+
+  // Jika masih ada karakter Arab lain yang tersisa, bersihkan agar tidak jadi '????'
+  sanitized = sanitized.replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/g, '').trim();
+
+  // Rapikan tanda kurung kosong jika tersisa seperti <  > atau > <
+  sanitized = sanitized.replace(/<\s*>/g, '').replace(/>\s*</g, '').replace(/\n{3,}/g, '\n\n');
+
+  return sanitized;
+}
+
+/**
  * Mengirim request penjadwalan pesan ke wa.quizb.my.id API
  */
 export async function sendWaSchedule(options: SendWaScheduleOptions): Promise<{
@@ -139,12 +178,14 @@ export async function sendWaSchedule(options: SendWaScheduleOptions): Promise<{
     };
   }
 
+  const cleanMessage = sanitizeTextForWaScheduler(options.message);
+
   const apiKey = options.apiKey || DEFAULT_WA_SCHEDULER_KEY;
   const endpoint = options.endpoint || DEFAULT_WA_SCHEDULER_ENDPOINT;
 
   const payload: any = {
     phone_number: formattedPhone,
-    message: options.message,
+    message: cleanMessage,
     scheduled_time: options.scheduled_time,
   };
 
