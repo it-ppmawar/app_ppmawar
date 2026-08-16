@@ -36,8 +36,8 @@ function NotifikasiContent() {
   const [guruSearch, setGuruSearch] = useState('');
   const [selectedGuruId, setSelectedGuruId] = useState('');
 
-  // Tab aktif pada kartu terpadu Admin/Staff: 'auto' | 'manual' | 'info_akun'
-  const [guruCardTab, setGuruCardTab] = useState<'auto' | 'manual' | 'info_akun'>('auto');
+  // Tab aktif pada kartu terpadu Admin/Staff: 'auto' | 'manual' | 'rekap' | 'info_akun'
+  const [guruCardTab, setGuruCardTab] = useState<'auto' | 'manual' | 'rekap' | 'info_akun'>('auto');
   const [manualMode, setManualMode] = useState<'absensi' | 'info_akun' | 'pembayaran'>('absensi');
 
   // State untuk Tab Tagihan & Pembayaran
@@ -57,7 +57,7 @@ function NotifikasiContent() {
 
   const defaultWaliTemplate = `Assalamu'alaikum Warohmatullah, Bapak/Ibu Wali dari Ananda *{nama_santri}*.\n\nKami dari pengurus PPMA menginformasikan perkembangan kehadiran ananda hari ini:\n\n* Kegiatan: {kegiatan}\n* Tempat/Kelas: {kelas}\n* Status Absensi: *{status}*\n\nUntuk informasi kehadiran lebih lengkap, dapat dilihat melalui tautan berikut:\n{link_laporan}\n\nDemikian informasi yang dapat kami sampaikan. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Warohmatullah.`;
 
-  const defaultBillingTemplate = `Assalamu'alaikum Warohmatullah,\n\nYth. Bapak/Ibu Wali dari Ananda *{nama_santri}*,\n\nSemoga Bapak/Ibu sekeluarga senantiasa dalam keadaan sehat wal \'afiat dan mendapat lindungan serta keberkahan dari Allah SWT.\n\nMelalui pesan ini, kami dari pengurus *Pondok Pesantren Miftahul Anwar (PPMA)* hendak menyampaikan informasi rincian tagihan administrasi ananda yang masih tercatat belum terlunasi:\n\n📋 *Rincian Tagihan*\n• Jenis Tagihan: {nama_tagihan}\n• Periode: {periode}\n• Total Nominal: *{nominal}*\n• Status: *⚠️ Belum Lunas*\n\nBapak/Ibu dapat melakukan konfirmasi pembayaran atau melihat informasi lebih lanjut melalui aplikasi berikut:\n🔗 https://app.ppmawar.or.id/dashboard/billing\n\nApabila Bapak/Ibu telah melakukan pembayaran, mohon konfirmasi kepada pihak Tata Usaha (TU) Pesantren agar segera diproses. Jika ada pertanyaan atau kendala, kami siap membantu.\n\nDemikian informasi ini kami sampaikan. Atas perhatian dan kerjasamanya, kami ucapkan terima kasih yang sebesar-besarnya.\n\nWassalamu\'alaikum Warohmatullah.\n\n_Pengurus PPMA_`;
+  const defaultBillingTemplate = `Assalamu'alaikum Warohmatullah,\n\nYth. Bapak/Ibu Wali dari Ananda *{nama_santri}*,\n\nSemoga Bapak/Ibu sekeluarga senantiasa dalam keadaan sehat wal \'afiat dan mendapat lindungan serta keberkahan dari Allah SWT.\n\nMelalui pesan ini, kami dari pengurus *Pondok Pesantren Matholi'ul Anwar (PPMA)* hendak menyampaikan informasi rincian tagihan administrasi ananda yang masih tercatat belum terlunasi:\n\n📋 *Rincian Tagihan*\n• Jenis Tagihan: {nama_tagihan}\n• Periode: {periode}\n• Total Nominal: *{nominal}*\n• Status: *⚠️ Belum Lunas*\n\nBapak/Ibu dapat melakukan konfirmasi pembayaran atau melihat informasi lebih lanjut melalui aplikasi berikut:\n🔗 https://app.ppmawar.or.id/dashboard/billing\n\nApabila Bapak/Ibu telah melakukan pembayaran, mohon konfirmasi kepada pihak Tata Usaha (TU) Pesantren agar segera diproses. Jika ada pertanyaan atau kendala, kami siap membantu.\n\nDemikian informasi ini kami sampaikan. Atas perhatian dan kerjasamanya, kami ucapkan terima kasih yang sebesar-besarnya.\n\nWassalamu\'alaikum Warohmatullah.\n\n_Pengurus PP. Matholi'ul Anwar_`;
 
   const defaultWaliInfoTemplate = `Assalamu'alaikum Warohmatullah, Bapak/Ibu Wali dari Ananda *{nama_santri}*.\n\nBerikut kami sampaikan informasi login default untuk mengakses aplikasi absensi PPMA:\n\n* Username: *{username}*\n* Password: *{password}*\n\nSilakan akses aplikasi pada tautan berikut: https://app.ppmawar.or.id/\n\nDemi keamanan akun, kami sarankan Bapak/Ibu untuk langsung mengubah password setelah berhasil login di halaman Profil.\n\nAtas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Warohmatullah.`;
 
@@ -65,11 +65,77 @@ function NotifikasiContent() {
 
   const defaultGuruInfoTemplate = `Assalamu'alaikum Warohmatullah, Ustadz/Ustadzah *{nama_guru}*.\n\nBerikut kami sampaikan informasi login default untuk mengakses aplikasi absensi PPMA:\n\n* Username: *{username}*\n* Password: *${"{password}"}*\n\nSilakan akses aplikasi pada tautan berikut: https://app.ppmawar.or.id/\n\nDemi keamanan akun, kami sarankan Anda untuk langsung mengubah password setelah berhasil login di halaman Profil.\n\nAtas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Warohmatullah.`;
 
+  const defaultRekapGuruTemplate = `Assalamu'alaikum Warohmatullah,\n\nYth. {nama_guru}\n\nBerikut kami sampaikan Rekapitulasi Absensi Mengajar Anda untuk periode {bulan_tahun}:\n\n📚 *Daftar Kelas & Mapel yang Diampu:*\n{daftar_kelas}\n\n📊 *Ringkasan Kehadiran Mengajar:*\n{ringkasan_kehadiran}\n\n🔗 *Link Preview Detail Rekapitulasi:*\n{link_rekap}\n\nSilakan klik tautan di atas untuk melihat rincian presensi kehadiran santri per kelas yang Anda ampu atau mengunduh ringkasannya.\n\nWassalamu'alaikum Warohmatullah,\n_Pengurus PP. Matholi'ul Anwar_`;
+
   const [pesanWaliTemplate, setPesanWaliTemplate] = useState(defaultWaliTemplate);
   const [pesanWaliInfoTemplate, setPesanWaliInfoTemplate] = useState(defaultWaliInfoTemplate);
   const [pesanGuruTemplate, setPesanGuruTemplate] = useState(defaultGuruTemplate);
   const [pesanGuruInfoTemplate, setPesanGuruInfoTemplate] = useState(defaultGuruInfoTemplate);
   const [pesanBillingTemplate, setPesanBillingTemplate] = useState(defaultBillingTemplate);
+  const [pesanRekapGuruTemplate, setPesanRekapGuruTemplate] = useState(defaultRekapGuruTemplate);
+
+  // State Siaran Rekap Bulanan Guru
+  const [rekapBulan, setRekapBulan] = useState(new Date().getMonth() + 1);
+  const [rekapTahun, setRekapTahun] = useState(new Date().getFullYear());
+  const [rekapCategories, setRekapCategories] = useState<string[]>(['madin']); // Default Madin aktif
+  const [isRekapSending, setIsRekapSending] = useState(false);
+  const [isRekapScheduling, setIsRekapScheduling] = useState(false);
+  const [rekapStatusMsg, setRekapStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string; details?: any[] } | null>(null);
+
+  const toggleRekapCategory = (cat: string) => {
+    setRekapCategories(prev => {
+      if (prev.includes(cat)) {
+        if (prev.length === 1) return prev; // Minimal 1 kategori
+        return prev.filter(c => c !== cat);
+      } else {
+        return [...prev, cat];
+      }
+    });
+  };
+
+  const handleSendRekapWA = async (mode: 'send_now' | 'schedule_monthly') => {
+    if (mode === 'schedule_monthly') {
+      setIsRekapScheduling(true);
+    } else {
+      setIsRekapSending(true);
+    }
+    setRekapStatusMsg(null);
+
+    try {
+      const res = await fetch('/api/wa-scheduler/bulk-rekap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bulan: rekapBulan,
+          tahun: rekapTahun,
+          categories: rekapCategories,
+          template: pesanRekapGuruTemplate,
+          mode,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRekapStatusMsg({
+          type: 'success',
+          text: data.message,
+          details: data.results,
+        });
+      } else {
+        setRekapStatusMsg({
+          type: 'error',
+          text: data.error || 'Gagal memproses pengiriman rekapitulasi.',
+        });
+      }
+    } catch {
+      setRekapStatusMsg({
+        type: 'error',
+        text: 'Kesalahan jaringan saat mengirim rekapitulasi.',
+      });
+    } finally {
+      setIsRekapSending(false);
+      setIsRekapScheduling(false);
+    }
+  };
 
   const [saveStatus, setSaveStatus] = useState<Record<string, string>>({});
 
@@ -134,6 +200,9 @@ function NotifikasiContent() {
       const storedBilling = localStorage.getItem('wa_template_billing');
       if (storedBilling) setPesanBillingTemplate(storedBilling);
 
+      const storedGuruRekap = localStorage.getItem('wa_template_guru_rekap');
+      if (storedGuruRekap) setPesanRekapGuruTemplate(storedGuruRekap);
+
       try {
         const storageKey = 'wa_reminded_teachers';
         const stored = localStorage.getItem(storageKey);
@@ -173,6 +242,10 @@ function NotifikasiContent() {
           if (t.wa_template_guru_info) {
             setPesanGuruInfoTemplate(t.wa_template_guru_info);
             if (typeof window !== 'undefined') localStorage.setItem('wa_template_guru_info', t.wa_template_guru_info);
+          }
+          if (t.wa_template_guru_rekap) {
+            setPesanRekapGuruTemplate(t.wa_template_guru_rekap);
+            if (typeof window !== 'undefined') localStorage.setItem('wa_template_guru_rekap', t.wa_template_guru_rekap);
           }
           if (t.wa_template_billing) {
             setPesanBillingTemplate(t.wa_template_billing);
@@ -1573,60 +1646,69 @@ function NotifikasiContent() {
             </button>
           </div>
 
-          {/* Tab Switcher */}
-          <div className="flex flex-col border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 w-full">
-            {/* Baris 1: Pengingat Otomatis & Pilih Manual berdampingan */}
-            <div className="flex w-full">
-              <button
-                type="button"
-                onClick={() => setGuruCardTab('auto')}
-                className={`flex-1 py-3 text-sm font-bold transition-colors ${
-                  guruCardTab === 'auto'
-                    ? 'text-amber-700 dark:text-amber-400 border-b-2 border-amber-500 bg-white dark:bg-gray-800'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
-                }`}
-              >
-                <span className="inline-flex items-center justify-center gap-1.5 max-w-full text-center px-2">
-                  <AlertTriangle size={15} className={`shrink-0 ${guruCardTab === 'auto' ? 'text-amber-500' : 'text-gray-400'}`} />
-                  <span>Pengingat Otomatis</span>
-                  {loadingReminders ? (
-                    <span className="shrink-0 w-4 h-4 flex items-center justify-center"><RefreshCw size={11} className="animate-spin text-amber-400" /></span>
-                  ) : activeReminders.length > 0 ? (
-                    <span className="shrink-0 bg-amber-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none">{activeReminders.length}</span>
-                  ) : (
-                    <span className="shrink-0 bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none">✓</span>
-                  )}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setGuruCardTab('manual')}
-                className={`flex-1 py-3 text-sm font-bold transition-colors ${
-                  guruCardTab === 'manual'
-                    ? 'text-blue-700 dark:text-blue-400 border-b-2 border-blue-500 bg-white dark:bg-gray-800'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
-                }`}
-              >
-                <span className="inline-flex items-center justify-center gap-1.5 max-w-full text-center px-2">
-                  <Settings2 size={15} className={`shrink-0 ${guruCardTab === 'manual' ? 'text-blue-500' : 'text-gray-400'}`} />
-                  <span>Pilih Manual</span>
-                </span>
-              </button>
-            </div>
-
-            {/* Baris 2: Info Akun Guru & Staff memanjang secara penuh */}
+          {/* Tab Switcher: 4 Pilihan Tab (Pengingat Otomatis, Pilih Manual, Rekap Bulanan, Info Akun) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 w-full">
             <button
               type="button"
-              onClick={() => setGuruCardTab('info_akun')}
-              className={`w-full py-3 text-sm font-bold transition-colors border-t border-gray-100 dark:border-gray-700/50 ${
-                guruCardTab === 'info_akun'
-                  ? 'text-emerald-700 dark:text-emerald-400 border-b-2 border-emerald-500 bg-white dark:bg-gray-800'
+              onClick={() => setGuruCardTab('auto')}
+              className={`py-3 text-xs sm:text-sm font-bold transition-colors border-r border-b sm:border-b-0 border-gray-100 dark:border-gray-700/60 ${
+                guruCardTab === 'auto'
+                  ? 'text-amber-700 dark:text-amber-400 border-b-2 border-b-amber-500 bg-white dark:bg-gray-800'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
               }`}
             >
-              <span className="inline-flex items-center justify-center gap-1.5 w-full">
-                <Info size={15} className={guruCardTab === 'info_akun' ? 'text-emerald-500' : 'text-gray-400'} />
-                <span>Info Akun Guru & Staff</span>
+              <span className="inline-flex items-center justify-center gap-1.5 max-w-full text-center px-2">
+                <AlertTriangle size={14} className={`shrink-0 ${guruCardTab === 'auto' ? 'text-amber-500' : 'text-gray-400'}`} />
+                <span>Pengingat Otomatis</span>
+                {loadingReminders ? (
+                  <span className="shrink-0 w-4 h-4 flex items-center justify-center"><RefreshCw size={11} className="animate-spin text-amber-400" /></span>
+                ) : activeReminders.length > 0 ? (
+                  <span className="shrink-0 bg-amber-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none">{activeReminders.length}</span>
+                ) : (
+                  <span className="shrink-0 bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none">✓</span>
+                )}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setGuruCardTab('manual')}
+              className={`py-3 text-xs sm:text-sm font-bold transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-gray-700/60 ${
+                guruCardTab === 'manual'
+                  ? 'text-blue-700 dark:text-blue-400 border-b-2 border-b-blue-500 bg-white dark:bg-gray-800'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
+              }`}
+            >
+              <span className="inline-flex items-center justify-center gap-1.5 max-w-full text-center px-2">
+                <Settings2 size={14} className={`shrink-0 ${guruCardTab === 'manual' ? 'text-blue-500' : 'text-gray-400'}`} />
+                <span>Pilih Manual</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setGuruCardTab('rekap')}
+              className={`py-3 text-xs sm:text-sm font-bold transition-colors border-r border-gray-100 dark:border-gray-700/60 ${
+                guruCardTab === 'rekap'
+                  ? 'text-purple-700 dark:text-purple-400 border-b-2 border-b-purple-500 bg-white dark:bg-gray-800'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
+              }`}
+            >
+              <span className="inline-flex items-center justify-center gap-1.5 max-w-full text-center px-2">
+                <Calendar size={14} className={guruCardTab === 'rekap' ? 'text-purple-500' : 'text-gray-400'} />
+                <span>Rekap Bulanan Guru</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setGuruCardTab('info_akun')}
+              className={`py-3 text-xs sm:text-sm font-bold transition-colors ${
+                guruCardTab === 'info_akun'
+                  ? 'text-emerald-700 dark:text-emerald-400 border-b-2 border-b-emerald-500 bg-white dark:bg-gray-800'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
+              }`}
+            >
+              <span className="inline-flex items-center justify-center gap-1.5 max-w-full text-center px-2">
+                <Info size={14} className={guruCardTab === 'info_akun' ? 'text-emerald-500' : 'text-gray-400'} />
+                <span>Info Akun Guru</span>
               </span>
             </button>
           </div>
@@ -1664,6 +1746,43 @@ function NotifikasiContent() {
                   type="button"
                   onClick={() => saveTemplate('wa_template_guru_info', pesanGuruInfoTemplate)}
                   className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 min-w-[140px]"
+                >
+                  Simpan Templat
+                </button>
+              </div>
+            </div>
+          ) : guruCardTab === 'rekap' ? (
+            <div className="mx-6 mt-5 mb-1 bg-purple-50/20 dark:bg-purple-950/10 border border-purple-200/40 dark:border-purple-900/20 rounded-xl p-4 animate-[fadeIn_0.3s_ease-out]">
+              <label className="block text-xs font-bold text-purple-900 dark:text-purple-300 mb-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span>Edit Templat Pesan Rekapitulasi Bulanan Guru</span>
+                <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500">Placeholder: &#123;nama_guru&#125;, &#123;bulan_tahun&#125;, &#123;daftar_kelas&#125;, &#123;ringkasan_kehadiran&#125;, &#123;link_rekap&#125;</span>
+              </label>
+              <textarea
+                value={pesanRekapGuruTemplate}
+                onChange={(e) => {
+                  setPesanRekapGuruTemplate(e.target.value);
+                  localStorage.setItem('wa_template_guru_rekap', e.target.value);
+                }}
+                onBlur={() => saveTemplate('wa_template_guru_rekap', pesanRekapGuruTemplate)}
+                rows={6}
+                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
+                placeholder="Tulis templat pesan rekapitulasi guru..."
+              />
+              <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2.5 border-t border-black/5 dark:border-white/5">
+                <button
+                  type="button"
+                  onClick={() => resetTemplate('wa_template_guru_rekap', defaultRekapGuruTemplate, setPesanRekapGuruTemplate)}
+                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                >⟳ Reset ke Templat Default</button>
+                {saveStatus['wa_template_guru_rekap'] === 'saved' && (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => saveTemplate('wa_template_guru_rekap', pesanRekapGuruTemplate)}
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 min-w-[140px]"
                 >
                   Simpan Templat
                 </button>
@@ -2188,6 +2307,158 @@ function NotifikasiContent() {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ---- TAB: Rekap Bulanan Guru ---- */}
+          {guruCardTab === 'rekap' && (
+            <div className="p-6 pt-4 space-y-5 animate-[fadeIn_0.3s_ease-out]">
+              {/* Header Box Penjelasan */}
+              <div className="p-4 bg-gradient-to-r from-purple-50 via-indigo-50/40 to-purple-50/30 dark:from-purple-950/30 dark:via-indigo-950/20 dark:to-purple-950/10 rounded-2xl border border-purple-200/60 dark:border-purple-800/40">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-purple-600 text-white rounded-xl shadow-sm">
+                      <Calendar size={18} />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-purple-950 dark:text-purple-200">
+                        Siaran Rekapitulasi Absensi Bulanan ke Guru
+                      </h4>
+                      <p className="text-xs text-purple-800/80 dark:text-purple-300/80 mt-0.5">
+                        Kirim ringkasan mengajar dan link preview rekap santri per kelas langsung ke WhatsApp guru.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Konfigurasi Periode & Kategori */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Pilih Periode Bulan & Tahun */}
+                <div className="p-4 bg-white dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    1. Periode Rekapitulasi
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] text-gray-500 dark:text-gray-400 mb-1 font-medium">Bulan</label>
+                      <select
+                        value={rekapBulan}
+                        onChange={(e) => setRekapBulan(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                      >
+                        {[
+                          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+                        ].map((m, idx) => (
+                          <option key={idx + 1} value={idx + 1}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-gray-500 dark:text-gray-400 mb-1 font-medium">Tahun</label>
+                      <select
+                        value={rekapTahun}
+                        onChange={(e) => setRekapTahun(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                      >
+                        {[2025, 2026, 2027, 2028].map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    Rekapitulasi akan menghitung kehadiran guru & santri pada bulan terpilih.
+                  </p>
+                </div>
+
+                {/* 2. Pilih Kategori Jadwal (Checkbox) */}
+                <div className="p-4 bg-white dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    2. Kategori Jadwal Mengajar
+                  </label>
+                  <div className="space-y-2">
+                    {[
+                      { key: 'madin', label: '📚 Madrasah Diniyah (Madin)', desc: 'Jadwal & pelajaran diniyah (Aktif)' },
+                      { key: 'quran', label: "🕌 Kelas Qur'an", desc: 'Majlis Al-Qur\'an & Tahfidz' },
+                      { key: 'kamar', label: '🏠 Asrama / Kamar', desc: 'Kegiatan & piket asrama' },
+                    ].map(({ key, label, desc }) => {
+                      const checked = rekapCategories.includes(key);
+                      return (
+                        <label
+                          key={key}
+                          className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all select-none ${
+                            checked
+                              ? 'bg-purple-50/70 dark:bg-purple-950/30 border-purple-300 dark:border-purple-700 text-purple-950 dark:text-purple-200'
+                              : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 opacity-60'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleRekapCategory(key)}
+                            className="mt-0.5 accent-purple-600 w-3.5 h-3.5 shrink-0"
+                          />
+                          <div>
+                            <span className="block text-xs font-bold">{label}</span>
+                            <span className="text-[10px] text-gray-400 dark:text-gray-500">{desc}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Alert Rekapitulasi */}
+              {rekapStatusMsg && (
+                <div className={`p-4 rounded-2xl border ${
+                  rekapStatusMsg.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                    : 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200'
+                }`}>
+                  <div className="flex items-center gap-2 font-bold mb-1 text-xs">
+                    {rekapStatusMsg.type === 'success' ? <CheckCircle2 size={16} className="text-emerald-600" /> : <AlertTriangle size={16} className="text-red-600" />}
+                    <span>{rekapStatusMsg.text}</span>
+                  </div>
+                  {rekapStatusMsg.details && Array.isArray(rekapStatusMsg.details) && (
+                    <div className="mt-2.5 max-h-36 overflow-y-auto space-y-1 text-[11px] pr-1">
+                      {rekapStatusMsg.details.map((det: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center py-1 border-b border-black/5 dark:border-white/5">
+                          <span className="font-medium">{det.guru_nama} ({det.phone})</span>
+                          <span className={det.success ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'}>
+                            {det.success ? '✓ Terjadwal' : `✗ ${det.error || 'Gagal'}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tombol Aksi Kirim / Jadwalkan Rekap */}
+              <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isRekapScheduling || isRekapSending}
+                  onClick={() => handleSendRekapWA('schedule_monthly')}
+                  className="w-full sm:w-auto px-5 py-3 text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 border border-purple-200 dark:border-purple-800 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                  title="Jadwalkan pengiriman otomatis setiap tanggal 1 jam 08:00 WIB"
+                >
+                  {isRekapScheduling ? <Loader2 size={15} className="animate-spin" /> : <Clock size={15} />}
+                  <span>{isRekapScheduling ? 'Menjadwalkan...' : 'Jadwalkan Tiap Tgl 1 (Looping Bulanan)'}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={isRekapSending || isRekapScheduling}
+                  onClick={() => handleSendRekapWA('send_now')}
+                  className="w-full sm:w-auto px-6 py-3 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
+                >
+                  {isRekapSending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                  <span>{isRekapSending ? 'Sedang Mengirim...' : 'Kirim Rekap Sekarang'}</span>
+                </button>
+              </div>
             </div>
           )}
 
