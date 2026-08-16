@@ -3,7 +3,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { 
   Bell, AlertTriangle, CheckCircle2, MessageCircle, Phone, Search, 
   RefreshCw, Users, Check, Smartphone, Info, ChevronDown, ChevronUp, 
-  Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar, Trash2, Award 
+  Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar, Trash2, Award, Power 
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
@@ -21,6 +21,7 @@ function NotifikasiContent() {
 
   // State untuk default pesan WA dinamis
   const [role, setRole] = useState('guru');
+  const [isModeLibur, setIsModeLibur] = useState(false);
   const [tipePesan, setTipePesan] = useState<'madin' | 'quran' | 'kamar'>(initKegiatan);
   const [selectedKategoriId, setSelectedKategoriId] = useState(initKelas);
   const [selectedKategoriNama, setSelectedKategoriNama] = useState('');
@@ -307,6 +308,16 @@ function NotifikasiContent() {
       })
       .catch(() => {});
 
+    // Ambil status mode libur
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data?.mode_libur === '1') {
+          setIsModeLibur(true);
+        }
+      })
+      .catch(() => {});
+
     // Ambil detail profil untuk mendapatkan role
     fetch('/api/auth/me')
       .then(res => res.json())
@@ -449,9 +460,9 @@ function NotifikasiContent() {
     });
   };
 
-  // Hapus semua antrean PENDING di wa.quizb.my.id
+  // Batalkan & Hapus semua antrean di wa.quizb.my.id saat libur mendadak
   const handleClearPending = async () => {
-    if (!window.confirm('Hapus semua antrean PENDING di WA Scheduler?\nTindakan ini tidak dapat dibatalkan.')) return;
+    if (!window.confirm('Batalkan & hapus SEMUA antrean pesan otomatis di WA Scheduler?\n\nTindakan ini akan menghentikan pengiriman pesan di gateway wa.quizb.my.id seketika agar tidak ada guru yang menerima notifikasi saat pondok libur.')) return;
     setIsClearingPending(true);
     setSchedulerStatusMsg(null);
     try {
@@ -462,9 +473,9 @@ function NotifikasiContent() {
       });
       const data = await res.json();
       if (data.success) {
-        setSchedulerStatusMsg({ type: 'success', text: data.message });
+        setSchedulerStatusMsg({ type: 'success', text: data.message || 'Semua antrean pengiriman otomatis berhasil dibatalkan dan dibersihkan!' });
       } else {
-        setSchedulerStatusMsg({ type: 'error', text: data.error ?? 'Gagal menghapus antrean.' });
+        setSchedulerStatusMsg({ type: 'error', text: data.error ?? 'Gagal membatalkan antrean.' });
       }
     } catch {
       setSchedulerStatusMsg({ type: 'error', text: 'Kesalahan jaringan saat menghapus antrean.' });
@@ -1938,16 +1949,16 @@ function NotifikasiContent() {
                           {isSchedulerSending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
                           {isSchedulerSending ? 'Menjadwalkan...' : 'Kirim Semua Otomatis'}
                         </button>
-                        {/* Tombol Hapus Antrean Pending */}
+                        {/* Tombol Batalkan / Hapus Semua Antrean (Libur Mendadak) */}
                         <button
                           type="button"
                           disabled={isClearingPending}
                           onClick={handleClearPending}
-                          title="Hapus semua antrean PENDING di WA Scheduler"
-                          className="col-span-2 sm:col-span-1 px-3 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          title="Batalkan & Hapus semua antrean di WA Scheduler saat libur mendadak"
+                          className="col-span-2 sm:col-span-1 px-3 py-2.5 text-xs font-bold text-red-700 dark:text-red-300 bg-red-100/90 hover:bg-red-200 dark:bg-red-950/60 dark:hover:bg-red-900/80 border border-red-300 dark:border-red-800 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm active:scale-95"
                         >
-                          {isClearingPending ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                          {isClearingPending ? 'Menghapus...' : 'Hapus Antrean Pending'}
+                          {isClearingPending ? <Loader2 size={13} className="animate-spin" /> : <Power size={13} />}
+                          <span>{isClearingPending ? 'Membatalkan...' : '🛑 Batalkan Semua Antrean (Libur)'}</span>
                         </button>
                       </div>
                     </div>
@@ -1973,6 +1984,19 @@ function NotifikasiContent() {
                       </div>
                     )}
                   </div>
+
+                  {/* Banner Peringatan Mode Libur */}
+                  {isModeLibur && (
+                    <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
+                      <div className="flex items-center gap-2.5 font-bold">
+                        <AlertTriangle size={18} className="text-amber-600 shrink-0" />
+                        <span>🏖️ Mode Libur Pondok Sedang Aktif — Pengingat WA otomatis dijeda sementara.</span>
+                      </div>
+                      <a href="/dashboard/settings" className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-sm self-start sm:self-auto shrink-0 transition-transform active:scale-95">
+                        Ubah di Pengaturan
+                      </a>
+                    </div>
+                  )}
 
                   <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold mb-3 flex items-center gap-1.5">
                     <AlertTriangle size={13} className="animate-pulse" />

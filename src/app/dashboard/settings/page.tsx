@@ -33,6 +33,66 @@ export default function SettingsPage() {
   const [testWaPhone, setTestWaPhone] = useState('');
   const [testWaResult, setTestWaResult] = useState<{ success?: boolean; message?: string } | null>(null);
 
+  // State untuk Kontrol Darurat WA Scheduler
+  const [cancelingWa, setCancelingWa] = useState(false);
+  const [reschedulingWa, setReschedulingWa] = useState(false);
+  const [waActionMsg, setWaActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleCancelAllWa = async () => {
+    if (!window.confirm('Batalkan & hapus semua pengiriman pesan otomatis di WA Scheduler?\n\nTindakan ini akan menghentikan seluruh antrean pesan di gateway wa.quizb.my.id seketika.')) {
+      return;
+    }
+    setCancelingWa(true);
+    setWaActionMsg(null);
+    try {
+      const res = await fetch('/api/wa-scheduler/clear-pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setWaActionMsg({ type: 'success', text: json.message || 'Semua pengiriman otomatis berhasil dibatalkan dan antrean dibersihkan!' });
+      } else {
+        setWaActionMsg({ type: 'error', text: json.error || 'Gagal membatalkan pengiriman.' });
+      }
+    } catch {
+      setWaActionMsg({ type: 'error', text: 'Kesalahan jaringan saat membatalkan pengiriman.' });
+    } finally {
+      setCancelingWa(false);
+    }
+  };
+
+  const handleRescheduleAllWa = async () => {
+    if (!window.confirm('Aktifkan & jadwalkan ulang seluruh pengingat mengajar otomatis ke dewan guru?')) {
+      return;
+    }
+    setReschedulingWa(true);
+    setWaActionMsg(null);
+    try {
+      const res = await fetch('/api/wa-scheduler/bulk-reminder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'all_schedules',
+          categories: ['madin'],
+          leadTimeMinutes: settings.wa_scheduler_lead_time,
+          isLoop: settings.wa_scheduler_is_loop ? 1 : 0,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setWaActionMsg({ type: 'success', text: json.message || 'Pengiriman otomatis berhasil diaktifkan & dijadwalkan ulang!' });
+      } else {
+        setWaActionMsg({ type: 'error', text: json.error || 'Gagal menjadwalkan ulang pengiriman.' });
+      }
+    } catch {
+      setWaActionMsg({ type: 'error', text: 'Kesalahan jaringan saat menjadwalkan ulang.' });
+    } finally {
+      setReschedulingWa(false);
+    }
+  };
+
   useEffect(() => {
     fetchSettings();
     fetchGSheetStatus();
@@ -439,9 +499,11 @@ export default function SettingsPage() {
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700">
             <div>
-              <h3 className="font-bold text-gray-800 dark:text-gray-200 text-lg">Mode Libur Semester</h3>
+              <h3 className="font-bold text-gray-800 dark:text-gray-200 text-lg flex items-center gap-2">
+                🏖️ Mode Libur Pondok (Day Off / Libur Mendadak)
+              </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-lg">
-                Jika diaktifkan, seluruh proses pencatatan alpa otomatis (Auto-Alpa) dan notifikasi akan dinonaktifkan sementara selama masa liburan sekolah/semester.
+                Jika diaktifkan, seluruh proses pencatatan alpa otomatis (Auto-Alpa) dan pengiriman notifikasi pengingat WA dijeda sementara selama masa liburan.
               </p>
             </div>
             
@@ -451,23 +513,38 @@ export default function SettingsPage() {
                   type="checkbox" 
                   className="sr-only peer"
                   checked={settings.mode_libur}
-                  onChange={(e) => setSettings({ ...settings, mode_libur: e.target.checked })}
+                  onChange={async (e) => {
+                    const isChecked = e.target.checked;
+                    if (isChecked) {
+                      const confirmClear = window.confirm(
+                        'Aktifkan Mode Libur Pondok?\n\n' +
+                        'Sistem juga akan otomatis membatalkan/menghapus seluruh antrean pengingat di WhatsApp Scheduler agar tidak ada guru yang menerima notifikasi saat libur.'
+                      );
+                      if (confirmClear) {
+                        setSettings(prev => ({ ...prev, mode_libur: true }));
+                        // Panggil auto-clear pending di background
+                        fetch('/api/wa-scheduler/clear-pending', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }).catch(() => {});
+                      }
+                    } else {
+                      setSettings(prev => ({ ...prev, mode_libur: false }));
+                    }
+                  }}
                 />
                 <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-500"></div>
               </label>
               <span className={`font-black text-sm ${settings.mode_libur ? 'text-green-600' : 'text-gray-400'}`}>
-                {settings.mode_libur ? 'AKTIF' : 'NONAKTIF'}
+                {settings.mode_libur ? 'LIBUR AKTIF' : 'NORMAL / MASUK'}
               </span>
             </div>
           </div>
 
-          {/* Tips Mengelola Libur (Ditempatkan di bawah Mode Libur Semester) */}
+          {/* Tips Mengelola Libur */}
           <div className="bg-blue-50/80 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-4 flex items-start gap-3.5">
             <Bell className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" size={20} />
             <div>
               <h4 className="font-bold text-sm text-blue-900 dark:text-blue-300 mb-0.5">Tips Mengelola Libur</h4>
               <p className="text-xs leading-relaxed text-blue-800 dark:text-blue-400">
-                Ketika Pesantren memasuki masa libur Ramadhan atau libur panjang lainnya, aktifkan <strong>Mode Libur Semester</strong> ini atau nonaktifkan sistem absensi otomatis. Hal ini mencegah sistem mencatat &quot;Alpha&quot; secara terus-menerus ke seluruh staf dan pembina yang dapat merusak data persentase kehadiran bulanan.
+                Ketika Pesantren memasuki masa libur (Ramadhan, haul, atau libur mendadak), aktifkan <strong>Mode Libur Pondok</strong> ini. Sistem akan otomatis membatalkan pengingat WA dan mencegah sistem mencatat &quot;Alpha&quot; secara terus-menerus ke seluruh dewan guru. Saat kegiatan aktif kembali, matikan mode libur dan tekan tombol <strong>Aktifkan & Jadwalkan Kembali</strong>.
               </p>
             </div>
           </div>
@@ -685,6 +762,57 @@ export default function SettingsPage() {
                   <span>{testWaResult.message}</span>
                 </div>
               )}
+            </div>
+
+            {/* Kontrol Darurat Libur Mendadak & Jadwalkan Ulang */}
+            <div className="p-5 bg-gradient-to-r from-red-50/80 via-amber-50/40 to-emerald-50/80 dark:from-red-950/25 dark:via-amber-950/20 dark:to-emerald-950/25 rounded-2xl border border-red-200/80 dark:border-red-900/40 space-y-3.5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 bg-red-600 text-white rounded-xl shadow-sm shrink-0 mt-0.5">
+                  <Power size={18} />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100">
+                    Kontrol Darurat: Batalkan / Aktifkan Pengiriman Otomatis
+                  </h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">
+                    Gunakan tombol di bawah jika pondok <strong>libur mendadak</strong> untuk membatalkan seluruh antrean pesan seketika, atau <strong>aktifkan kembali</strong> saat kegiatan belajar-mengajar normal.
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Alert Aksi WA */}
+              {waActionMsg && (
+                <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                  waActionMsg.type === 'success'
+                    ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800'
+                    : 'bg-red-100 text-red-900 dark:bg-red-950/60 dark:text-red-200 border border-red-300 dark:border-red-800'
+                }`}>
+                  {waActionMsg.type === 'success' ? <CheckCircle size={15} className="text-emerald-600 shrink-0" /> : <AlertTriangle size={15} className="text-red-600 shrink-0" />}
+                  <span>{waActionMsg.text}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <button
+                  type="button"
+                  disabled={cancelingWa || reschedulingWa}
+                  onClick={handleCancelAllWa}
+                  className="py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
+                >
+                  {cancelingWa ? <Loader2 size={14} className="animate-spin" /> : <Power size={14} />}
+                  <span>{cancelingWa ? 'Membatalkan Antrean...' : '🛑 Batalkan Semua Antrean (Libur)'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={reschedulingWa || cancelingWa}
+                  onClick={handleRescheduleAllWa}
+                  className="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
+                >
+                  {reschedulingWa ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                  <span>{reschedulingWa ? 'Mengaktifkan Jadwal...' : '▶️ Aktifkan & Jadwalkan Ulang (Normal)'}</span>
+                </button>
+              </div>
             </div>
           </div>
 
