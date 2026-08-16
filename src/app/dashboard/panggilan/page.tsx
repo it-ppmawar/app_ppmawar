@@ -365,9 +365,11 @@ export default function PanggilanSantriPage() {
     h.nama_asrama?.toLowerCase().includes(historyFilter.toLowerCase())
   );
 
-  const isPengasuhOrAdmin = user && (
-    ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(user.role) ||
-    user.is_pengasuh || user.isPengasuh || user.is_pengurus_asrama
+  const roleLower = (user?.role || '').toLowerCase();
+  const isExcludedRole = ['wali_murid', 'alumni', 'wali_alumni', 'pengurus_asrama', 'pengurus'].some(r => roleLower.includes(r));
+  const canManageTOA = !isExcludedRole && (
+    ['admin', 'staff', 'pengasuh'].some(r => roleLower.includes(r)) ||
+    Boolean(user?.is_pengasuh || user?.isPengasuh)
   );
 
   return (
@@ -387,25 +389,27 @@ export default function PanggilanSantriPage() {
               <p className="text-orange-100 text-xs">Pengumuman via TOA / Mixer Asrama</p>
             </div>
           </div>
-          {/* Action Links */}
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <a
-              href="/dashboard/panggilan/toa"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col items-center justify-center gap-1.5 bg-white/20 hover:bg-white/30 active:bg-white/40 text-white font-bold px-2 py-3 rounded-xl transition-colors text-center"
-            >
-              <ExternalLink size={18} />
-              <span className="text-[11px] leading-tight">Buka Halaman TOA</span>
-            </a>
-            <a
-              href="/dashboard/panggilan/format"
-              className="flex flex-col items-center justify-center gap-1.5 bg-white/20 hover:bg-white/30 active:bg-white/40 text-white font-bold px-2 py-3 rounded-xl transition-colors text-center"
-            >
-              <BookOpen size={18} />
-              <span className="text-[11px] leading-tight">Kelola Format Panggilan</span>
-            </a>
-          </div>
+          {/* Action Links — hanya untuk Admin, Staff, Pengasuh */}
+          {canManageTOA && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <a
+                href="/dashboard/panggilan/toa"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center justify-center gap-1.5 bg-white/20 hover:bg-white/30 active:bg-white/40 text-white font-bold px-2 py-3 rounded-xl transition-colors text-center"
+              >
+                <ExternalLink size={18} />
+                <span className="text-[11px] leading-tight">Buka Halaman TOA</span>
+              </a>
+              <a
+                href="/dashboard/panggilan/format"
+                className="flex flex-col items-center justify-center gap-1.5 bg-white/20 hover:bg-white/30 active:bg-white/40 text-white font-bold px-2 py-3 rounded-xl transition-colors text-center"
+              >
+                <BookOpen size={18} />
+                <span className="text-[11px] leading-tight">Kelola Format Panggilan</span>
+              </a>
+            </div>
+          )}
         </div>
       </div>
 
@@ -475,14 +479,16 @@ export default function PanggilanSantriPage() {
         );
       })()}
 
-      {/* Button Panduan Setup Hardware — tepat di bawah kartu TOA Asrama */}
-      <a
-        href="/dashboard/panggilan/setup"
-        className="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 text-sm font-extrabold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-2xl hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-all shadow-sm active:scale-95"
-      >
-        <Wrench size={18} />
-        Panduan Setup Hardware
-      </a>
+      {/* Button Panduan Setup Hardware — hanya untuk Admin, Staff, Pengasuh */}
+      {canManageTOA && (
+        <a
+          href="/dashboard/panggilan/setup"
+          className="flex items-center justify-center gap-2.5 w-full py-3.5 px-4 text-sm font-extrabold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-2xl hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-all shadow-sm active:scale-95"
+        >
+          <Wrench size={18} />
+          Panduan Setup Hardware
+        </a>
+      )}
 
       {/* Success/Error/Cooldown */}
       {successMsg && (
