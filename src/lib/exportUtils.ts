@@ -27,18 +27,28 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
   // Info
   let startY = 30;
   if (subtitle) {
-    doc.text(subtitle, 14, startY);
-    startY += 6;
+    const subLines = subtitle.split('\n');
+    subLines.forEach(line => {
+      if (line.trim()) {
+        doc.text(line.trim(), 14, startY);
+        startY += 6;
+      }
+    });
   }
   if (period) {
-    doc.text(`Periode: ${period}`, 14, startY);
-    startY += 6;
+    const periodLines = period.split('\n');
+    periodLines.forEach(line => {
+      if (line.trim()) {
+        doc.text(`Periode: ${line.trim()}`, 14, startY);
+        startY += 6;
+      }
+    });
   }
   
   autoTable(doc, {
     head: [columns],
     body: rows,
-    startY: startY + 6,
+    startY: startY + 2,
     theme: 'grid',
     styles: { fontSize: 9, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
     headStyles: { fillColor: [255, 255, 255], fontStyle: 'bold' } // Formal white design
@@ -55,10 +65,14 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
 export const exportToExcel = (options: ExportOptions) => {
   const { title, subtitle, period, columns, rows, filename } = options;
   
-  const headerData = [
+  const headerData: any[][] = [
     [title],
   ];
-  if (subtitle) headerData.push([subtitle]);
+  if (subtitle) {
+    subtitle.split('\n').forEach(line => {
+      if (line.trim()) headerData.push([line.trim()]);
+    });
+  }
   if (period) headerData.push([`Periode: ${period}`]);
   headerData.push([]); // Empty row
   headerData.push(columns);
