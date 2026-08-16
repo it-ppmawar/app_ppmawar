@@ -339,6 +339,7 @@ function NotifikasiContent() {
     try {
       const res = await fetch('/api/wa-scheduler/bulk-reminder', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: targetMode,
@@ -348,6 +349,21 @@ function NotifikasiContent() {
           customTemplate: pesanGuruTemplate
         })
       });
+
+      // Deteksi jika server mengembalikan HTML (error page / redirect)
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const htmlText = await res.text();
+        console.error('Non-JSON response from bulk-reminder:', res.status, htmlText.slice(0, 300));
+        setSchedulerStatusMsg({
+          type: 'error',
+          text: res.status === 401
+            ? 'Sesi login habis. Silakan refresh halaman dan login ulang.'
+            : `Server error (HTTP ${res.status}). Coba refresh halaman lalu coba lagi.`
+        });
+        return;
+      }
+
       const data = await res.json();
       if (data.success) {
         setSchedulerStatusMsg({
@@ -389,6 +405,7 @@ function NotifikasiContent() {
     try {
       const res = await fetch('/api/wa-scheduler/bulk-reminder', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: 'custom_list',
@@ -398,6 +415,13 @@ function NotifikasiContent() {
           customTemplate: pesanGuruTemplate
         })
       });
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        alert(res.status === 401 ? 'Sesi login habis. Silakan login ulang.' : `Server error (HTTP ${res.status}). Silakan coba sesaat lagi.`);
+        return;
+      }
+
       const data = await res.json();
       if (data.success && data.sent > 0) {
         markReminderAsSent(reminderKey);

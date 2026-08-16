@@ -147,6 +147,25 @@ export async function POST(request: Request) {
         const [kegiatanRows] = await pool.execute<RowDataPacket[]>(queryKegiatan);
         appendRows(kegiatanRows, 'kamar');
       }
+
+      // Gabungkan jadwal guru yang mengajar di jam, hari, dan tipe yang sama agar tidak duplikat kirim
+      const mergedMap = new Map<string, typeof itemsToSchedule[0]>();
+      for (const item of itemsToSchedule) {
+        const phone = formatToWaPhone(item.guru_whatsapp);
+        const key = `${phone}_${item.tipe}_${item.hari}_${item.jam_mulai}_${item.jam_selesai}`;
+        if (mergedMap.has(key)) {
+          const existing = mergedMap.get(key)!;
+          if (item.kelas_nama && !existing.kelas_nama.includes(item.kelas_nama)) {
+            existing.kelas_nama = `${existing.kelas_nama} & ${item.kelas_nama}`;
+          }
+          if (item.mata_pelajaran && !existing.mata_pelajaran.includes(item.mata_pelajaran)) {
+            existing.mata_pelajaran = `${existing.mata_pelajaran} & ${item.mata_pelajaran}`;
+          }
+        } else {
+          mergedMap.set(key, { ...item });
+        }
+      }
+      itemsToSchedule = Array.from(mergedMap.values());
     } else if (mode === 'custom_list' && Array.isArray(customItems)) {
       itemsToSchedule = customItems;
     }
@@ -162,22 +181,21 @@ export async function POST(request: Request) {
       });
     }
 
-    // Proses pengiriman antrean ke WA Scheduler secara berurutan
+    // Proses pengiriman antrean ke WA Scheduler secara paralel chunk (concurrency: 5) untuk mencegah timeout server
     const results: any[] = [];
     let successCount = 0;
     let failCount = 0;
 
-    for (const item of itemsToSchedule) {
+    const processSingleItem = async (item: typeof itemsToSchedule[0]) => {
       const formattedPhone = formatToWaPhone(item.guru_whatsapp);
       if (!formattedPhone || formattedPhone.length < 9) {
-        results.push({
+        failCount++;
+        return {
           guru_nama: item.guru_nama,
           phone: item.guru_whatsapp,
           success: false,
           error: 'Nomor WhatsApp tidak valid atau kosong'
-        });
-        failCount++;
-        continue;
+        };
       }
 
       // Bangun teks pesan dari template dengan label spesifik (Mapel / Majlis / Kegiatan)
@@ -222,22 +240,22 @@ export async function POST(request: Request) {
       }
 
       // Tentukan waktu scheduled_time
-      // Jika mode active_today dan jam sudah lewat sekarang, jadwalkan 1-2 menit dari sekarang
       const rawJam = item.jam_mulai || '07:00';
       let scheduleTimeStr = calculateScheduledTimeWIB(rawJam, effectiveLeadTime, todayDateStr);
 
-      // Pastikan scheduled_time tidak di masa lalu
-      const scheduleDate = new Date(scheduleTimeStr + ':00+07:00');
-      const nowWIB = new Date();
-      if (scheduleDate.getTime() <= nowWIB.getTime()) {
-        // Jika sudah lewat / sedang berlangsung, set pengiriman 2 menit dari sekarang
-        const nextMin = new Date(nowWIB.getTime() + 2 * 60 * 1000);
-        const y = nextMin.getFullYear();
-        const m = String(nextMin.getMonth() + 1).padStart(2, '0');
-        const d = String(nextMin.getDate()).padStart(2, '0');
-        const h = String(nextMin.getHours()).padStart(2, '0');
-        const min = String(nextMin.getMinutes()).padStart(2, '0');
-        scheduleTimeStr = `${y}-${m}-${d}T${h}:${min}`;
+      // Pastikan scheduled_time tidak di masa lalu jika loop = 0
+      if (effectiveIsLoop === 0) {
+        const scheduleDate = new Date(scheduleTimeStr + ':00+07:00');
+        const nowWIB = new Date();
+        if (scheduleDate.getTime() <= nowWIB.getTime()) {
+          const nextMin = new Date(nowWIB.getTime() + 2 * 60 * 1000);
+          const y = nextMin.getFullYear();
+          const m = String(nextMin.getMonth() + 1).padStart(2, '0');
+          const d = String(nextMin.getDate()).padStart(2, '0');
+          const h = String(nextMin.getHours()).padStart(2, '0');
+          const min = String(nextMin.getMinutes()).padStart(2, '0');
+          scheduleTimeStr = `${y}-${m}-${d}T${h}:${min}`;
+        }
       }
 
       const sendResult = await sendWaSchedule({
@@ -252,23 +270,31 @@ export async function POST(request: Request) {
 
       if (sendResult.success) {
         successCount++;
-        results.push({
+        return {
           guru_nama: item.guru_nama,
           phone: formattedPhone,
           scheduled_time: scheduleTimeStr,
           success: true,
           data: sendResult.data
-        });
+        };
       } else {
         failCount++;
-        results.push({
+        return {
           guru_nama: item.guru_nama,
           phone: formattedPhone,
           scheduled_time: scheduleTimeStr,
           success: false,
           error: sendResult.message
-        });
+        };
       }
+    };
+
+    // Eksekusi secara batch paralel per 5 item
+    const chunkSize = 5;
+    for (let i = 0; i < itemsToSchedule.length; i += chunkSize) {
+      const chunk = itemsToSchedule.slice(i, i + chunkSize);
+      const chunkResults = await Promise.all(chunk.map(item => processSingleItem(item)));
+      results.push(...chunkResults);
     }
 
     return NextResponse.json({
