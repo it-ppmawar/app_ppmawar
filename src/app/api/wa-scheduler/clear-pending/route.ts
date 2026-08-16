@@ -63,24 +63,43 @@ async function loginWaScheduler(): Promise<string | null> {
 }
 
 /**
- * Ambil daftar semua scheduled message (pending) dari wa.quizb.my.id
+ * Ambil daftar semua scheduled message (pending) dari wa.quizb.my.id di SEMUA halaman
  */
 async function fetchPendingSchedules(sessionCookie: string): Promise<{ id: string; status: string }[]> {
-  const res = await fetch(`${WA_BASE}/api/schedules.php?page=1&limit=1000`, {
-    method: 'GET',
-    headers: {
-      'Cookie': sessionCookie,
-      'User-Agent': 'Mozilla/5.0',
-    },
-  });
-  if (!res.ok) return [];
-  const data = await res.json().catch(() => null);
-  if (!data) return [];
-  // Respons bisa berupa { data: [...] } atau array langsung
-  const rows: any[] = Array.isArray(data) ? data : (data.data ?? data.schedules ?? []);
-  return rows
-    .filter((r: any) => (r.status ?? '').toLowerCase() === 'pending')
-    .map((r: any) => ({ id: String(r.id), status: r.status }));
+  const allSchedules: { id: string; status: string }[] = [];
+  let page = 1;
+  const maxPages = 20;
+
+  while (page <= maxPages) {
+    try {
+      const res = await fetch(`${WA_BASE}/api/schedules.php?page=${page}`, {
+        method: 'GET',
+        headers: {
+          'Cookie': sessionCookie,
+          'User-Agent': 'Mozilla/5.0',
+        },
+      });
+      if (!res.ok) break;
+      const data = await res.json().catch(() => null);
+      if (!data) break;
+      const rows: any[] = Array.isArray(data) ? data : (data.data ?? data.schedules ?? []);
+      if (!rows || rows.length === 0) break;
+
+      const pendingRows = rows
+        .filter((r: any) => (r.status ?? '').toLowerCase() === 'pending')
+        .map((r: any) => ({ id: String(r.id), status: r.status }));
+
+      allSchedules.push(...pendingRows);
+
+      // Jika jumlah baris sedikit (misal halaman terakhir), stop
+      if (rows.length < 10) break;
+      page++;
+    } catch {
+      break;
+    }
+  }
+
+  return allSchedules;
 }
 
 /**
