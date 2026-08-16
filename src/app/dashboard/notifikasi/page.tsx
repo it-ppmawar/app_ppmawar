@@ -3,7 +3,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { 
   Bell, AlertTriangle, CheckCircle2, MessageCircle, Phone, Search, 
   RefreshCw, Users, Check, Smartphone, Info, ChevronDown, ChevronUp, 
-  Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar, Trash2 
+  Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar, Trash2, Award 
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
@@ -74,6 +74,10 @@ function NotifikasiContent() {
   const [pesanBillingTemplate, setPesanBillingTemplate] = useState(defaultBillingTemplate);
   const [pesanRekapGuruTemplate, setPesanRekapGuruTemplate] = useState(defaultRekapGuruTemplate);
 
+  const defaultKepalaMadinTemplate = `Assalamu'alaikum Warohmatullah,\n\nYth. *Kepala Madrasah Diniyah (Madin)*\nPondok Pesantren Matholi'ul Anwar\n\nBerikut kami sampaikan Laporan Rekapitulasi Kehadiran Dewan Guru Madin untuk periode {bulan_tahun}:\n\n📊 *Ringkasan Presensi Dewan Guru Madin:*\n• Total Dewan Guru: {total_guru} Guru\n• Rata-rata Kehadiran: {avg_kehadiran}%\n{ringkasan_kehadiran}\n\n🔗 *Link Preview Detail Evaluasi Dewan Guru:*\n{link_laporan}\n\nTautan di atas berisi daftar lengkap kehadiran masing-masing guru, rincian jadwal kelas yang diampu, serta fitur ekspor/cetak laporan resmi untuk evaluasi madrasah.\n\nWassalamu'alaikum Warohmatullah,\n_Pengurus PP. Matholi'ul Anwar_`;
+
+  const [pesanKepalaMadinTemplate, setPesanKepalaMadinTemplate] = useState(defaultKepalaMadinTemplate);
+
   // State Siaran Rekap Bulanan Guru
   const [rekapBulan, setRekapBulan] = useState(new Date().getMonth() + 1);
   const [rekapTahun, setRekapTahun] = useState(new Date().getFullYear());
@@ -81,6 +85,14 @@ function NotifikasiContent() {
   const [isRekapSending, setIsRekapSending] = useState(false);
   const [isRekapScheduling, setIsRekapScheduling] = useState(false);
   const [rekapStatusMsg, setRekapStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string; details?: any[] } | null>(null);
+
+  // State Siaran Khusus Kepala Madin
+  const [selectedKepalaMadinId, setSelectedKepalaMadinId] = useState('');
+  const [kepalaMadinPhone, setKepalaMadinPhone] = useState('');
+  const [kepalaMadinNama, setKepalaMadinNama] = useState('Kepala Madrasah Diniyah');
+  const [isKepalaMadinSending, setIsKepalaMadinSending] = useState(false);
+  const [isKepalaMadinScheduling, setIsKepalaMadinScheduling] = useState(false);
+  const [kepalaMadinStatusMsg, setKepalaMadinStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   const toggleRekapCategory = (cat: string) => {
     setRekapCategories(prev => {
@@ -134,6 +146,42 @@ function NotifikasiContent() {
     } finally {
       setIsRekapSending(false);
       setIsRekapScheduling(false);
+    }
+  };
+
+  const handleSendKepalaMadin = async (mode: 'send_now' | 'schedule_monthly') => {
+    if (!kepalaMadinPhone.trim()) {
+      alert('Silakan pilih guru Kepala Madin atau masukkan nomor WhatsApp tujuan terlebih dahulu.');
+      return;
+    }
+    if (mode === 'schedule_monthly') setIsKepalaMadinScheduling(true);
+    else setIsKepalaMadinSending(true);
+    setKepalaMadinStatusMsg(null);
+
+    try {
+      const res = await fetch('/api/wa-scheduler/rekap-kepala-madin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bulan: rekapBulan,
+          tahun: rekapTahun,
+          kepala_nama: kepalaMadinNama,
+          phone_number: kepalaMadinPhone,
+          template: pesanKepalaMadinTemplate,
+          mode,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setKepalaMadinStatusMsg({ type: 'success', text: data.message });
+      } else {
+        setKepalaMadinStatusMsg({ type: 'error', text: data.error || 'Gagal mengirim laporan ke Kepala Madin.' });
+      }
+    } catch {
+      setKepalaMadinStatusMsg({ type: 'error', text: 'Kesalahan jaringan saat mengirim laporan.' });
+    } finally {
+      setIsKepalaMadinSending(false);
+      setIsKepalaMadinScheduling(false);
     }
   };
 
@@ -246,6 +294,10 @@ function NotifikasiContent() {
           if (t.wa_template_guru_rekap) {
             setPesanRekapGuruTemplate(t.wa_template_guru_rekap);
             if (typeof window !== 'undefined') localStorage.setItem('wa_template_guru_rekap', t.wa_template_guru_rekap);
+          }
+          if (t.wa_template_kepala_madin) {
+            setPesanKepalaMadinTemplate(t.wa_template_kepala_madin);
+            if (typeof window !== 'undefined') localStorage.setItem('wa_template_kepala_madin', t.wa_template_kepala_madin);
           }
           if (t.wa_template_billing) {
             setPesanBillingTemplate(t.wa_template_billing);
@@ -2458,6 +2510,98 @@ function NotifikasiContent() {
                   {isRekapSending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                   <span>{isRekapSending ? 'Sedang Mengirim...' : 'Kirim Rekap Sekarang'}</span>
                 </button>
+              </div>
+
+              {/* Card Khusus Laporan ke Kepala Madin */}
+              <div className="mt-8 pt-6 border-t-2 border-dashed border-purple-200 dark:border-purple-800/60 space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-amber-500 text-white rounded-xl shadow-sm">
+                    <Award size={18} />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100">
+                      👑 Laporan Evaluasi Khusus Kepala Madrasah Diniyah (Madin)
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Kirim rekapitulasi kehadiran seluruh dewan guru Madin bulan terpilih langsung ke WhatsApp Kepala Madin.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-purple-50/40 dark:bg-purple-950/20 p-4 rounded-2xl border border-purple-200/50 dark:border-purple-800/30">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                      Pilih Akun Guru (Kepala Madin)
+                    </label>
+                    <select
+                      value={selectedKepalaMadinId}
+                      onChange={(e) => {
+                        const gid = e.target.value;
+                        setSelectedKepalaMadinId(gid);
+                        const selected = guruList.find(g => String(g.guru_id) === gid);
+                        if (selected) {
+                          setKepalaMadinNama(selected.nama || 'Kepala Madin');
+                          setKepalaMadinPhone(selected.whatsapp || '');
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                    >
+                      <option value="">-- Pilih dari Daftar Dewan Guru / Pengurus --</option>
+                      {guruList.map(g => (
+                        <option key={g.guru_id} value={g.guru_id}>
+                          {g.nama} {g.jabatan ? `(${g.jabatan})` : ''} - {g.whatsapp || 'No WA (-) '}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                      Nomor WhatsApp Tujuan Kepala Madin
+                    </label>
+                    <input
+                      type="text"
+                      value={kepalaMadinPhone}
+                      onChange={(e) => setKepalaMadinPhone(e.target.value)}
+                      placeholder="Contoh: 081234567890"
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Status Alert Kepala Madin */}
+                {kepalaMadinStatusMsg && (
+                  <div className={`p-3.5 rounded-2xl border text-xs flex items-center gap-2 font-bold ${
+                    kepalaMadinStatusMsg.type === 'success'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                      : 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200'
+                  }`}>
+                    {kepalaMadinStatusMsg.type === 'success' ? <CheckCircle2 size={16} className="text-emerald-600 shrink-0" /> : <AlertTriangle size={16} className="text-red-600 shrink-0" />}
+                    <span>{kepalaMadinStatusMsg.text}</span>
+                  </div>
+                )}
+
+                {/* Tombol Aksi Kepala Madin */}
+                <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-1">
+                  <button
+                    type="button"
+                    disabled={isKepalaMadinScheduling || isKepalaMadinSending}
+                    onClick={() => handleSendKepalaMadin('schedule_monthly')}
+                    className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 border border-amber-300 dark:border-amber-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isKepalaMadinScheduling ? <Loader2 size={14} className="animate-spin" /> : <Clock size={14} />}
+                    <span>{isKepalaMadinScheduling ? 'Menjadwalkan...' : 'Jadwalkan ke Kepala Madin Tiap Tgl 1'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isKepalaMadinSending || isKepalaMadinScheduling}
+                    onClick={() => handleSendKepalaMadin('send_now')}
+                    className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 active:scale-95"
+                  >
+                    {isKepalaMadinSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                    <span>{isKepalaMadinSending ? 'Mengirim...' : 'Kirim ke Kepala Madin Sekarang'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
