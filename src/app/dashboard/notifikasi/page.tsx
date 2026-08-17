@@ -1709,71 +1709,76 @@ function NotifikasiContent() {
             </button>
           </div>
 
-          {/* Tab Switcher: 4 Pilihan Tab (Pengingat Otomatis, Pilih Manual, Rekap Bulanan, Info Akun) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 w-full">
-            <button
-              type="button"
-              onClick={() => setGuruCardTab('auto')}
-              className={`py-3 text-xs sm:text-sm font-bold transition-colors border-r border-b sm:border-b-0 border-gray-100 dark:border-gray-700/60 ${
-                guruCardTab === 'auto'
-                  ? 'text-amber-700 dark:text-amber-400 border-b-2 border-b-amber-500 bg-white dark:bg-gray-800'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
-              }`}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5 max-w-full text-center px-2">
-                <AlertTriangle size={14} className={`shrink-0 ${guruCardTab === 'auto' ? 'text-amber-500' : 'text-gray-400'}`} />
+          {/* Tab Switcher: 4 Pilihan Tab Berdampingan Rapi Model Tabel Jadwal */}
+          <div className="p-3 bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() => setGuruCardTab('auto')}
+                className={`py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                  guruCardTab === 'auto'
+                    ? 'bg-amber-500 text-white shadow-md font-extrabold'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
+                }`}
+              >
+                <AlertTriangle size={15} className={`shrink-0 ${guruCardTab === 'auto' ? 'text-white' : 'text-amber-500'}`} />
                 <span>Pengingat Otomatis</span>
                 {loadingReminders ? (
-                  <span className="shrink-0 w-4 h-4 flex items-center justify-center"><RefreshCw size={11} className="animate-spin text-amber-400" /></span>
+                  <span className="shrink-0 w-4 h-4 flex items-center justify-center"><RefreshCw size={11} className="animate-spin text-amber-300" /></span>
                 ) : activeReminders.length > 0 ? (
-                  <span className="shrink-0 bg-amber-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none">{activeReminders.length}</span>
+                  <span className={`shrink-0 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none ${
+                    guruCardTab === 'auto' ? 'bg-white text-amber-600' : 'bg-amber-500 text-white'
+                  }`}>
+                    {activeReminders.length}
+                  </span>
                 ) : (
-                  <span className="shrink-0 bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none">✓</span>
+                  <span className={`shrink-0 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none ${
+                    guruCardTab === 'auto' ? 'bg-white text-green-600' : 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400'
+                  }`}>
+                    ✓
+                  </span>
                 )}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setGuruCardTab('manual')}
-              className={`py-3 text-xs sm:text-sm font-bold transition-colors border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-gray-700/60 ${
-                guruCardTab === 'manual'
-                  ? 'text-blue-700 dark:text-blue-400 border-b-2 border-b-blue-500 bg-white dark:bg-gray-800'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
-              }`}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5 max-w-full text-center px-2">
-                <Settings2 size={14} className={`shrink-0 ${guruCardTab === 'manual' ? 'text-blue-500' : 'text-gray-400'}`} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGuruCardTab('manual')}
+                className={`py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                  guruCardTab === 'manual'
+                    ? 'bg-blue-600 text-white shadow-md font-extrabold'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
+                }`}
+              >
+                <Settings2 size={15} className={`shrink-0 ${guruCardTab === 'manual' ? 'text-white' : 'text-blue-500'}`} />
                 <span>Pilih Manual</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setGuruCardTab('rekap')}
-              className={`py-3 text-xs sm:text-sm font-bold transition-colors border-r border-gray-100 dark:border-gray-700/60 ${
-                guruCardTab === 'rekap'
-                  ? 'text-purple-700 dark:text-purple-400 border-b-2 border-b-purple-500 bg-white dark:bg-gray-800'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
-              }`}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5 max-w-full text-center px-2">
-                <Calendar size={14} className={guruCardTab === 'rekap' ? 'text-purple-500' : 'text-gray-400'} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGuruCardTab('rekap')}
+                className={`py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                  guruCardTab === 'rekap'
+                    ? 'bg-purple-600 text-white shadow-md font-extrabold'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
+                }`}
+              >
+                <Calendar size={15} className={`shrink-0 ${guruCardTab === 'rekap' ? 'text-white' : 'text-purple-500'}`} />
                 <span>Rekap Bulanan Guru</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setGuruCardTab('info_akun')}
-              className={`py-3 text-xs sm:text-sm font-bold transition-colors ${
-                guruCardTab === 'info_akun'
-                  ? 'text-emerald-700 dark:text-emerald-400 border-b-2 border-b-emerald-500 bg-white dark:bg-gray-800'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
-              }`}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5 max-w-full text-center px-2">
-                <Info size={14} className={guruCardTab === 'info_akun' ? 'text-emerald-500' : 'text-gray-400'} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGuruCardTab('info_akun')}
+                className={`py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                  guruCardTab === 'info_akun'
+                    ? 'bg-emerald-600 text-white shadow-md font-extrabold'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
+                }`}
+              >
+                <Smartphone size={15} className={`shrink-0 ${guruCardTab === 'info_akun' ? 'text-white' : 'text-emerald-500'}`} />
                 <span>Info Akun Guru</span>
-              </span>
-            </button>
+              </button>
+            </div>
           </div>
 
           {/* Kolom Edit Templat Pesan Guru */}
