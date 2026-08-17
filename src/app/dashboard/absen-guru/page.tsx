@@ -453,23 +453,21 @@ export default function AbsenGuruPage() {
 
         {/* ── Loading skeleton ─────────────────────────────────────────────────── */}
         {loading && (
-          <div className="overflow-x-auto -mx-4 px-4 pb-2">
-            <div className="grid gap-3 pb-1" style={{ gridTemplateColumns: 'repeat(6, minmax(150px, 1fr))', minWidth: '960px' }}>
-              {[...Array(12)].map((_,i) => (
-                <div key={i} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 animate-pulse overflow-hidden">
-                  <div className="h-10 bg-gray-200 dark:bg-gray-700" />
-                  <div className="p-3 space-y-2">
-                    <div className="flex gap-2 items-center"><div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0"/><div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full flex-1"/></div>
-                    <div className="h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full w-3/4"/>
-                    <div className="h-6 bg-gray-100 dark:bg-gray-800 rounded-xl w-full mt-1"/>
-                  </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 pb-1">
+            {[...Array(12)].map((_,i) => (
+              <div key={i} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 animate-pulse overflow-hidden">
+                <div className="h-10 bg-gray-200 dark:bg-gray-700" />
+                <div className="p-3 space-y-2">
+                  <div className="flex gap-2 items-center"><div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0"/><div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full flex-1"/></div>
+                  <div className="h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full w-3/4"/>
+                  <div className="h-6 bg-gray-100 dark:bg-gray-800 rounded-xl w-full mt-1"/>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* ── Jadwal Card Grid — 6 kartu per baris di horizontal scroll ────────────── */}
+        {/* ── Jadwal Card Grid — Responsif menyesuaikan lebar layar ──────────────── */}
         {!loading && !error && (
           filteredCards.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
@@ -478,9 +476,8 @@ export default function AbsenGuruPage() {
               <p className="text-xs text-gray-300 mt-1">Coba ubah filter tab atau waktu</p>
             </div>
           ) : (
-            <div className="overflow-x-auto -mx-4 px-4 pb-2">
-              <div className="grid gap-3 pb-1" style={{ gridTemplateColumns: 'repeat(6, minmax(150px, 1fr))', minWidth: '960px' }}>
-                {filteredCards.map((card, idx) => {
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 pb-1">
+              {filteredCards.map((card, idx) => {
                   const sc = STATUS_COLOR[card.status || 'default'] || STATUS_COLOR.default;
                   const hc = TIPE_HEADER[card.tipe] || 'bg-gray-500';
                   return (
@@ -542,7 +539,6 @@ export default function AbsenGuruPage() {
                   );
                 })}
               </div>
-            </div>
           )
         )}
       </div>
