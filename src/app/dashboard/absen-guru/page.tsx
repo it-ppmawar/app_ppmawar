@@ -265,18 +265,22 @@ export default function AbsenGuruPage() {
                 <div className="font-mono font-extrabold text-2xl text-teal-800 dark:text-teal-300 tracking-widest leading-tight">{clockStr}</div>
               </div>
             </div>
-            {/* Row 2: Controls — 3 bagian seimbang: kiri=tanggal, tengah=refresh, kanan=jam */}
-            <div className="flex items-center justify-between gap-2 mt-2">
-              {/* Kiri: input tanggal — dibatasi supaya tidak terlalu lebar di HP */}
-              <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)}
-                className="text-xs border border-teal-200 dark:border-teal-800 rounded-xl px-2 py-1.5 bg-white/70 dark:bg-teal-950/50 text-teal-800 dark:text-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400 w-[130px] sm:w-auto" />
-              {/* Tengah: tombol refresh presisi di tengah */}
-              <button onClick={fetchData} disabled={loading}
-                className="p-2 rounded-xl bg-white/70 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 hover:bg-white border border-teal-200 dark:border-teal-800 transition-colors shadow-sm">
-                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              </button>
-              {/* Kanan: jam — hanya mobile (desktop sudah tampil di Row 1) */}
-              <div className="sm:hidden font-mono font-extrabold text-base text-teal-800 dark:text-teal-300 tracking-widest text-right">
+            {/* Row 2: Controls — Mobile: Grid 3 kolom sama lebar (Refresh presisi di tengah), Desktop: Flex berdampingan */}
+            <div className="grid grid-cols-3 sm:flex items-center sm:gap-2 mt-2">
+              {/* Kolom 1 — Kiri: input tanggal */}
+              <div className="flex justify-start sm:block">
+                <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)}
+                  className="text-xs border border-teal-200 dark:border-teal-800 rounded-xl px-2 py-1.5 bg-white/70 dark:bg-teal-950/50 text-teal-800 dark:text-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400 w-full max-w-[130px] sm:w-auto" />
+              </div>
+              {/* Kolom 2 — Tengah: tombol refresh (presisi di tengah di HP) */}
+              <div className="flex justify-center sm:block">
+                <button onClick={fetchData} disabled={loading}
+                  className="p-2 rounded-xl bg-white/70 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 hover:bg-white border border-teal-200 dark:border-teal-800 transition-colors shadow-sm">
+                  <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                </button>
+              </div>
+              {/* Kolom 3 — Kanan: jam (hanya mobile, desktop sudah di kanan atas) */}
+              <div className="sm:hidden flex justify-end font-mono font-extrabold text-base text-teal-800 dark:text-teal-300 tracking-widest">
                 {clockStr}
               </div>
             </div>
