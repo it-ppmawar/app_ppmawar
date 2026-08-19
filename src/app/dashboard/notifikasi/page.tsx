@@ -79,21 +79,63 @@ function NotifikasiContent() {
 
   const [pesanKepalaMadinTemplate, setPesanKepalaMadinTemplate] = useState(defaultKepalaMadinTemplate);
 
+  // Hitung default bulan rekapitulasi: bulan sebelum bulan berjalan (karena rekap dikirim awal bulan untuk bulan kemarin)
+  const defaultPrevMonthDate = (() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  })();
+
   // State Siaran Rekap Bulanan Guru
-  const [rekapBulan, setRekapBulan] = useState(new Date().getMonth() + 1);
-  const [rekapTahun, setRekapTahun] = useState(new Date().getFullYear());
+  const [rekapBulan, setRekapBulan] = useState(defaultPrevMonthDate.getMonth() + 1);
+  const [rekapTahun, setRekapTahun] = useState(defaultPrevMonthDate.getFullYear());
   const [rekapCategories, setRekapCategories] = useState<string[]>(['madin']); // Default Madin aktif
   const [isRekapSending, setIsRekapSending] = useState(false);
   const [isRekapScheduling, setIsRekapScheduling] = useState(false);
   const [rekapStatusMsg, setRekapStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string; details?: any[] } | null>(null);
 
-  // State Siaran Khusus Kepala Madin
+  // State Siaran Khusus Kepala Madin (Putra vs Putri vs Gabungan)
+  const [kepalaMadinTarget, setKepalaMadinTarget] = useState<'putra' | 'putri' | 'all'>('putra');
   const [selectedKepalaMadinId, setSelectedKepalaMadinId] = useState('');
   const [kepalaMadinPhone, setKepalaMadinPhone] = useState('');
-  const [kepalaMadinNama, setKepalaMadinNama] = useState('Kepala Madrasah Diniyah');
+  const [kepalaMadinNama, setKepalaMadinNama] = useState('Kepala Madin Putra');
   const [isKepalaMadinSending, setIsKepalaMadinSending] = useState(false);
   const [isKepalaMadinScheduling, setIsKepalaMadinScheduling] = useState(false);
   const [kepalaMadinStatusMsg, setKepalaMadinStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedGid = localStorage.getItem('kepala_madin_putra_id') || '';
+      const savedPhone = localStorage.getItem('kepala_madin_putra_phone') || '';
+      if (savedGid) setSelectedKepalaMadinId(savedGid);
+      if (savedPhone) setKepalaMadinPhone(savedPhone);
+    }
+  }, []);
+
+  const handleTargetKepalaMadinChange = (target: 'putra' | 'putri' | 'all') => {
+    setKepalaMadinTarget(target);
+    const targetLabel = target === 'putri' ? 'Kepala Madin Putri' : target === 'putra' ? 'Kepala Madin Putra' : 'Kepala Madrasah Diniyah';
+    setKepalaMadinNama(targetLabel);
+    if (typeof window !== 'undefined') {
+      const savedGid = localStorage.getItem(`kepala_madin_${target}_id`) || '';
+      const savedPhone = localStorage.getItem(`kepala_madin_${target}_phone`) || '';
+      setSelectedKepalaMadinId(savedGid);
+      setKepalaMadinPhone(savedPhone);
+    }
+  };
+
+  const handleSelectKepalaMadin = (gid: string) => {
+    setSelectedKepalaMadinId(gid);
+    const selected = guruList.find(g => String(g.guru_id) === gid);
+    if (selected) {
+      const name = selected.nama || (kepalaMadinTarget === 'putri' ? 'Kepala Madin Putri' : kepalaMadinTarget === 'putra' ? 'Kepala Madin Putra' : 'Kepala Madin');
+      setKepalaMadinNama(name);
+      setKepalaMadinPhone(selected.whatsapp || '');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`kepala_madin_${kepalaMadinTarget}_id`, gid);
+        localStorage.setItem(`kepala_madin_${kepalaMadinTarget}_phone`, selected.whatsapp || '');
+      }
+    }
+  };
 
   const toggleRekapCategory = (cat: string) => {
     setRekapCategories(prev => {
@@ -166,6 +208,7 @@ function NotifikasiContent() {
         body: JSON.stringify({
           bulan: rekapBulan,
           tahun: rekapTahun,
+          target_wilayah: kepalaMadinTarget,
           kepala_nama: kepalaMadinNama,
           phone_number: kepalaMadinPhone,
           template: pesanKepalaMadinTemplate,
@@ -2396,20 +2439,18 @@ function NotifikasiContent() {
             <div className="p-6 pt-4 space-y-5 animate-[fadeIn_0.3s_ease-out]">
               {/* Header Box Penjelasan */}
               <div className="p-4 bg-gradient-to-r from-purple-50 via-indigo-50/40 to-purple-50/30 dark:from-purple-950/30 dark:via-indigo-950/20 dark:to-purple-950/10 rounded-2xl border border-purple-200/60 dark:border-purple-800/40">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-purple-600 text-white rounded-xl shadow-sm">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-purple-600 text-white rounded-xl shadow-sm shrink-0">
                       <Calendar size={18} />
                     </div>
-                    <div>
-                      <h4 className="font-extrabold text-sm text-purple-950 dark:text-purple-200">
-                        Siaran Rekapitulasi Absensi Bulanan ke Guru
-                      </h4>
-                      <p className="text-xs text-purple-800/80 dark:text-purple-300/80 mt-0.5">
-                        Kirim ringkasan mengajar dan link preview rekap santri per kelas langsung ke WhatsApp guru.
-                      </p>
-                    </div>
+                    <h4 className="font-extrabold text-sm text-purple-950 dark:text-purple-200 leading-tight">
+                      Siaran Rekapitulasi Absensi Bulanan ke Guru
+                    </h4>
                   </div>
+                  <p className="text-xs text-purple-800/80 dark:text-purple-300/80">
+                    Kirim ringkasan mengajar dan link preview rekap santri per kelas langsung ke WhatsApp guru.
+                  </p>
                 </div>
               </div>
 
@@ -2543,36 +2584,55 @@ function NotifikasiContent() {
 
               {/* Card Khusus Laporan ke Kepala Madin */}
               <div className="mt-8 pt-6 border-t-2 border-dashed border-purple-200 dark:border-purple-800/60 space-y-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-amber-500 text-white rounded-xl shadow-sm">
-                    <Award size={18} />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100">
-                      👑 Laporan Evaluasi Khusus Kepala Madrasah Diniyah (Madin)
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-amber-500 text-white rounded-xl shadow-sm shrink-0">
+                      <Award size={18} />
+                    </div>
+                    <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100 leading-tight">
+                      Laporan Evaluasi Khusus Kepala Madrasah Diniyah (Madin)
                     </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Kirim rekapitulasi kehadiran seluruh dewan guru Madin bulan terpilih langsung ke WhatsApp Kepala Madin.
-                    </p>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Kirim rekapitulasi kehadiran seluruh dewan guru Madin bulan terpilih langsung ke WhatsApp Kepala Madin.
+                  </p>
+                </div>
+
+                {/* Pilih Sasaran Wilayah Kepala Madin: Putra vs Putri vs Semua */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Sasaran Kepala Madin
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5 bg-gray-100 dark:bg-gray-900/60 p-1 rounded-2xl border border-gray-200/50 dark:border-gray-700/60">
+                    {[
+                      { key: 'putra', label: 'Madin Putra' },
+                      { key: 'putri', label: 'Madin Putri' },
+                      { key: 'all', label: 'Semua Madin' },
+                    ].map((tab) => (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => handleTargetKepalaMadinChange(tab.key as any)}
+                        className={`py-2 px-1 text-xs font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1 ${
+                          kepalaMadinTarget === tab.key
+                            ? 'bg-amber-500 text-white shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                        }`}
+                      >
+                        <span>{tab.label}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-purple-50/40 dark:bg-purple-950/20 p-4 rounded-2xl border border-purple-200/50 dark:border-purple-800/30">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Pilih Akun Guru (Kepala Madin)
+                      Pilih Akun Guru ({kepalaMadinTarget === 'putra' ? 'Kepala Madin Putra' : kepalaMadinTarget === 'putri' ? 'Kepala Madin Putri' : 'Kepala Madin'})
                     </label>
                     <select
                       value={selectedKepalaMadinId}
-                      onChange={(e) => {
-                        const gid = e.target.value;
-                        setSelectedKepalaMadinId(gid);
-                        const selected = guruList.find(g => String(g.guru_id) === gid);
-                        if (selected) {
-                          setKepalaMadinNama(selected.nama || 'Kepala Madin');
-                          setKepalaMadinPhone(selected.whatsapp || '');
-                        }
-                      }}
+                      onChange={(e) => handleSelectKepalaMadin(e.target.value)}
                       className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
                     >
                       <option value="">-- Pilih dari Daftar Dewan Guru / Pengurus --</option>
@@ -2586,12 +2646,17 @@ function NotifikasiContent() {
 
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Nomor WhatsApp Tujuan Kepala Madin
+                      Nomor WhatsApp Tujuan ({kepalaMadinTarget === 'putra' ? 'Madin Putra' : kepalaMadinTarget === 'putri' ? 'Madin Putri' : 'Kepala Madin'})
                     </label>
                     <input
                       type="text"
                       value={kepalaMadinPhone}
-                      onChange={(e) => setKepalaMadinPhone(e.target.value)}
+                      onChange={(e) => {
+                        setKepalaMadinPhone(e.target.value);
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem(`kepala_madin_${kepalaMadinTarget}_phone`, e.target.value);
+                        }
+                      }}
                       placeholder="Contoh: 081234567890"
                       className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-purple-500 outline-none"
                     />
@@ -2619,7 +2684,7 @@ function NotifikasiContent() {
                     className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 border border-amber-300 dark:border-amber-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     {isKepalaMadinScheduling ? <Loader2 size={14} className="animate-spin" /> : <Clock size={14} />}
-                    <span>{isKepalaMadinScheduling ? 'Menjadwalkan...' : 'Jadwalkan ke Kepala Madin Tiap Tgl 1'}</span>
+                    <span>{isKepalaMadinScheduling ? 'Menjadwalkan...' : `Jadwalkan ke Kepala ${kepalaMadinTarget === 'putri' ? 'Madin Putri' : kepalaMadinTarget === 'putra' ? 'Madin Putra' : 'Madin'} Tiap Tgl 1`}</span>
                   </button>
                   <button
                     type="button"
@@ -2628,7 +2693,7 @@ function NotifikasiContent() {
                     className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 active:scale-95"
                   >
                     {isKepalaMadinSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                    <span>{isKepalaMadinSending ? 'Mengirim...' : 'Kirim ke Kepala Madin Sekarang'}</span>
+                    <span>{isKepalaMadinSending ? 'Mengirim...' : `Kirim ke Kepala ${kepalaMadinTarget === 'putri' ? 'Madin Putri' : kepalaMadinTarget === 'putra' ? 'Madin Putra' : 'Madin'} Sekarang`}</span>
                   </button>
                 </div>
               </div>

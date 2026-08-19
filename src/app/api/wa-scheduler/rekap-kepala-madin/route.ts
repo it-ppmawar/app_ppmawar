@@ -57,7 +57,8 @@ export async function POST(request: Request) {
 
     const bulan = Number(body.bulan || currentMonth);
     const tahun = Number(body.tahun || currentYear);
-    const kepalaNama = body.kepala_nama || 'Kepala Madrasah Diniyah';
+    const targetWilayah: 'putra' | 'putri' | 'all' = body.target_wilayah || 'putra';
+    const kepalaNama = body.kepala_nama || (targetWilayah === 'putri' ? 'Kepala Madin Putri' : targetWilayah === 'putra' ? 'Kepala Madin Putra' : 'Kepala Madrasah Diniyah');
     const rawPhone = body.phone_number;
     const customTemplate = body.template || DEFAULT_KEPALA_MADIN_TEMPLATE;
     const mode: 'send_now' | 'schedule_monthly' = body.mode || 'send_now';
@@ -69,13 +70,26 @@ export async function POST(request: Request) {
 
     const bulanTahunStr = `${NAMA_BULAN[bulan] || `Bulan ${bulan}`} ${tahun}`;
 
-    // 1. Hitung total guru Madin
+    let targetWhere = '';
+    let wilayahSub = '';
+    if (targetWilayah === 'putra') {
+      targetWhere = `WHERE (km.nama_kelas LIKE '%PUTRA%' OR km.nama_kelas LIKE '%PA%')`;
+      wilayahSub = ' (Madin Putra)';
+    } else if (targetWilayah === 'putri') {
+      targetWhere = `WHERE (km.nama_kelas LIKE '%PUTRI%' OR km.nama_kelas LIKE '%PI%')`;
+      wilayahSub = ' (Madin Putri)';
+    }
+
+    // 1. Hitung total guru Madin sesuai sasaran wilayah
     const [madinTeachers] = await pool.execute<RowDataPacket[]>(
-      `SELECT DISTINCT guru_id FROM jadwal_madin`
+      `SELECT DISTINCT jm.guru_id 
+       FROM jadwal_madin jm
+       JOIN kelas_madin km ON jm.kelas_madin_id = km.kelas_id
+       ${targetWhere}`
     );
     const totalGuru = madinTeachers.length;
 
-    // 2. Hitung ringkasan presensi seluruh guru Madin
+    // 2. Hitung ringkasan presensi guru Madin sesuai sasaran wilayah
     const guruIds = madinTeachers.map(t => t.guru_id);
     let totalHadir = 0;
     let totalIzin = 0;
@@ -113,11 +127,12 @@ export async function POST(request: Request) {
 • Izin / Sakit: ${totalIzin + totalSakit} Sesi
 • Tanpa Keterangan: ${totalAlpha} Sesi`;
 
-    // 3. Generate Token Kepala Madin (30 hari)
+    // 3. Generate Token Kepala Madin (30 hari) dengan target_wilayah
     const reportToken = signToken({
       type: 'rekap_kepala_madin',
       bulan,
       tahun,
+      target_wilayah: targetWilayah,
     }, '30d');
 
     const reportUrl = `https://app.ppmawar.or.id/rekap/kepala-madin?token=${reportToken}`;
@@ -125,7 +140,7 @@ export async function POST(request: Request) {
     // 4. Render template
     let msg = customTemplate
       .replace(/{nama_kepala}/g, `*${kepalaNama}*`)
-      .replace(/{bulan_tahun}/g, `*${bulanTahunStr}*`)
+      .replace(/{bulan_tahun}/g, `*${bulanTahunStr}${wilayahSub}*`)
       .replace(/{total_guru}/g, String(totalGuru))
       .replace(/{avg_kehadiran}/g, String(avgPct))
       .replace(/{ringkasan_kehadiran}/g, ringkasanFormatted)

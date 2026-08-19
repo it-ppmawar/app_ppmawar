@@ -26,14 +26,23 @@ export async function GET(request: Request) {
 
     const bulan = Number(payload.bulan || new Date().getMonth() + 1);
     const tahun = Number(payload.tahun || new Date().getFullYear());
+    const targetWilayah: 'putra' | 'putri' | 'all' = payload.target_wilayah || 'all';
 
-    // 1. Ambil seluruh guru yang memiliki jadwal Madin aktif
+    let targetWhere = '';
+    if (targetWilayah === 'putra') {
+      targetWhere = `WHERE (km.nama_kelas LIKE '%PUTRA%' OR km.nama_kelas LIKE '%PA%')`;
+    } else if (targetWilayah === 'putri') {
+      targetWhere = `WHERE (km.nama_kelas LIKE '%PUTRI%' OR km.nama_kelas LIKE '%PI%')`;
+    }
+
+    // 1. Ambil guru yang memiliki jadwal Madin aktif sesuai sasaran wilayah
     const [madinTeachers] = await pool.execute<RowDataPacket[]>(
       `SELECT DISTINCT g.guru_id, g.nama, g.nip, g.no_hp, g.foto, g.jabatan, g.jenis_kelamin,
               km.nama_kelas as kelas_nama, jm.mata_pelajaran, jm.hari, jm.jam_mulai, jm.jam_selesai
        FROM jadwal_madin jm
        JOIN kelas_madin km ON jm.kelas_madin_id = km.kelas_id
        JOIN guru g ON jm.guru_id = g.guru_id
+       ${targetWhere}
        ORDER BY g.nama ASC, km.nama_kelas ASC`
     );
 
@@ -146,6 +155,7 @@ export async function GET(request: Request) {
           bulan,
           tahun,
           bulan_nama: NAMA_BULAN[bulan] || `Bulan ${bulan}`,
+          wilayah: targetWilayah,
         },
         summary: {
           total_guru: teachersWithAtt.length,

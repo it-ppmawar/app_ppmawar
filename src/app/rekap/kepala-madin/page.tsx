@@ -145,10 +145,10 @@ function RekapKepalaMadinContent() {
             </div>
             <div>
               <h1 className="font-extrabold text-sm sm:text-base leading-tight tracking-tight">
-                Laporan Evaluasi Kehadiran Dewan Guru
+                Laporan Evaluasi Kehadiran Dewan Guru {periode.wilayah === 'putra' ? 'Madin Putra' : periode.wilayah === 'putri' ? 'Madin Putri' : 'Madin'}
               </h1>
               <p className="text-[11px] text-purple-200/90 font-medium">
-                Kepala Madrasah Diniyah • PP. Matholi'ul Anwar
+                Kepala Madrasah Diniyah {periode.wilayah === 'putra' ? '(Putra)' : periode.wilayah === 'putri' ? '(Putri)' : ''} • PP. Matholi'ul Anwar
               </p>
             </div>
           </div>
@@ -170,10 +170,10 @@ function RekapKepalaMadinContent() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-gray-100 dark:border-gray-800">
             <div>
               <span className="px-2.5 py-0.5 bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 font-bold text-[10px] rounded-full uppercase tracking-wider border border-purple-300/40">
-                Evaluasi Bulanan Pimpinan
+                Evaluasi Bulanan {periode.wilayah === 'putra' ? 'Madin Putra' : periode.wilayah === 'putri' ? 'Madin Putri' : 'Pimpinan'}
               </span>
               <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-gray-100 mt-1">
-                Rekapitulasi Presensi Mengajar Madin
+                Rekapitulasi Presensi Mengajar {periode.wilayah === 'putra' ? 'Madin Putra' : periode.wilayah === 'putri' ? 'Madin Putri' : 'Madin'}
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
                 Periode Laporan: <strong className="text-purple-700 dark:text-purple-400">{periode.bulan_nama} {periode.tahun}</strong>

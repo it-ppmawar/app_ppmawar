@@ -434,7 +434,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       <Download size={18} />
                     </div>
                     <div>
-                      <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1">Install Aplikasi Absensi</h5>
+                      <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1">Install Aplikasi SALAM</h5>
                       <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-tight mb-2">Tambahkan ke layar utama HP Anda agar lebih cepat diakses seperti aplikasi biasa.</p>
                       <button
                         onClick={() => {
