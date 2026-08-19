@@ -345,7 +345,7 @@ function InputAbsenContent() {
     }
 
     msg += `🔗 *Lihat Detail Absensi:* https://app.ppmawar.or.id/dashboard/absen\n`;
-    msg += `\n_Diinput via Pintasan Absen Online PPMA_\n_https://app.ppmawar.or.id_`;
+    msg += `\n_Diinput via Pintasan Salam Mawar_\n_https://app.ppmawar.or.id_`;
     return msg;
   };
 
