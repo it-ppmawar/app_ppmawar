@@ -192,7 +192,7 @@ export default function DashboardPage() {
                 className="text-emerald-400 font-bold leading-none whitespace-nowrap"
                 style={{
                   fontFamily: '"Amiri", "Cairo", "Noto Naskh Arabic", serif',
-                  fontSize: 'clamp(9.5px, 2.7vw, 11.5px)'
+                  fontSize: 'clamp(10.5px, 3vw, 12.5px)'
                 }}
               >
                 {hijriDateStr || ''}
