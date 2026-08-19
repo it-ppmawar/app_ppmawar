@@ -1,11 +1,11 @@
-name: Deploy Next.js to cPanel
+﻿name: Deploy Next.js to cPanel
 
 on:
-  workflow_dispatch:  # Deploy manual via GitHub Actions UI
+  workflow_dispatch:
   push:
     branches:
       - main
-    paths:            # Deploy jika file penting berubah
+    paths:
       - 'src/**'
       - 'public/**'
       - 'scripts/**'
@@ -21,7 +21,7 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Checkout Code
@@ -33,8 +33,17 @@ jobs:
           node-version: 22
           cache: 'npm'
 
+      - name: Cache Next.js Build
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**') }}
+          restore-keys: |
+            nextjs-${{ hashFiles('package-lock.json') }}-
+            nextjs-
+
       - name: Install Dependencies
-        run: npm ci || npm install --legacy-peer-deps
+        run: npm ci --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund
 
       - name: Build Next.js
         run: npm run build
@@ -46,14 +55,13 @@ jobs:
 
       - name: Create ZIP Bundle
         run: |
-          sudo apt-get update -q -y && sudo apt-get install -q -y zip
           mkdir -p upload_bundle/tmp
           cd deploy_dist
-          zip -q -r -y ../upload_bundle/deploy.zip . || true
+          zip -q -r -y ../upload_bundle/deploy.zip .
           cd ..
           cp public/unzip.php upload_bundle/unzip.php || true
           date > upload_bundle/tmp/restart.txt
-          echo "✅ ZIP bundle created at upload_bundle/deploy.zip"
+          echo ZIP bundle created
           ls -lh upload_bundle/
 
       - name: Fast FTP Upload
@@ -64,15 +72,15 @@ jobs:
           FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR }}
         run: node scripts/upload-ftp.js
 
-      - name: Trigger Instant Server Extraction & Restart
+      - name: Trigger Instant Server Extraction and Restart
         run: |
-          echo "⚡ Triggering PHP ZipArchive extraction on server..."
-          RESPONSE=$(curl -s -k --retry 3 --retry-delay 3 -m 60 "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026" || true)
-          echo "$RESPONSE"
-          echo "✅ Server extraction webhook executed!"
+          echo Triggering PHP ZipArchive extraction on server...
+          RESPONSE=$(curl -s -k --retry 3 --retry-delay 3 -m 60 https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026 || true)
+          echo $RESPONSE
+          echo Server extraction webhook executed!
 
       - name: Deploy Status
         run: |
-          echo "✅ Deploy bundle berhasil diupload dan diekstrak instan di server!"
-          echo "🔄 Phusion Passenger me-restart server.js secara otomatis."
-          echo "🎉 Deployment selesai!"
+          echo Deploy bundle berhasil diupload dan diekstrak instan di server!
+          echo Phusion Passenger me-restart server.js secara otomatis.
+          echo Deployment selesai!
