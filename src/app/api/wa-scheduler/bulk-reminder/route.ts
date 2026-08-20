@@ -13,6 +13,97 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+const WA_BASE = 'https://wa.quizb.my.id';
+const WA_USERNAME = 'gusimad';
+const WA_PASSWORD = '123';
+
+/**
+ * Login ke wa.quizb.my.id, return session cookie string
+ */
+async function loginWa(): Promise<string | null> {
+  try {
+    const loginPageRes = await fetch(`${WA_BASE}/login.php`, {
+      method: 'GET',
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    const loginPageHtml = await loginPageRes.text();
+    const csrfMatch = loginPageHtml.match(/csrf_token[^>]*value="([^"]+)"/);
+    if (!csrfMatch) return null;
+    const csrfToken = csrfMatch[1];
+    const loginPageCookies = loginPageRes.headers.getSetCookie?.() ??
+      (loginPageRes.headers.get('set-cookie') ? [loginPageRes.headers.get('set-cookie')!] : []);
+    const sessionId = loginPageCookies.find(c => c.startsWith('PHPSESSID='))?.split(';')[0] || '';
+
+    const loginRes = await fetch(`${WA_BASE}/login.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': sessionId,
+        'User-Agent': 'Mozilla/5.0',
+      },
+      body: new URLSearchParams({ csrf_token: csrfToken, username: WA_USERNAME, password: WA_PASSWORD }).toString(),
+      redirect: 'manual',
+    });
+    const loginCookies = loginRes.headers.getSetCookie?.() ??
+      (loginRes.headers.get('set-cookie') ? [loginRes.headers.get('set-cookie')!] : []);
+    const allCookies = [...loginPageCookies, ...loginCookies].map(c => c.split(';')[0]).filter(Boolean).join('; ');
+    return allCookies || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Hapus semua antrean PENDING milik nomor-nomor tertentu sebelum menjadwalkan ulang.
+ * Mencegah duplikasi pesan jika tombol "Kirim Semua Otomatis" diklik lebih dari sekali.
+ */
+async function clearPendingForPhones(phones: Set<string>, sessionCookie: string): Promise<void> {
+  try {
+    let page = 1;
+    const maxPages = 20;
+    const idsToDelete: string[] = [];
+
+    while (page <= maxPages) {
+      const res = await fetch(`${WA_BASE}/api/schedules.php?page=${page}`, {
+        method: 'GET',
+        headers: { 'Cookie': sessionCookie, 'User-Agent': 'Mozilla/5.0' },
+      });
+      if (!res.ok) break;
+      const data = await res.json().catch(() => null);
+      const rows: any[] = Array.isArray(data) ? data : (data?.data ?? data?.schedules ?? []);
+      if (!rows || rows.length === 0) break;
+
+      for (const r of rows) {
+        if ((r.status ?? '').toLowerCase() === 'pending') {
+          const rowPhone = formatToWaPhone(r.phone_number || r.phone || '');
+          if (rowPhone && phones.has(rowPhone)) {
+            idsToDelete.push(String(r.id));
+          }
+        }
+      }
+      if (rows.length < 10) break;
+      page++;
+    }
+
+    if (idsToDelete.length === 0) return;
+
+    // Hapus secara batch
+    const chunkSize = 10;
+    for (let i = 0; i < idsToDelete.length; i += chunkSize) {
+      const chunk = idsToDelete.slice(i, i + chunkSize);
+      await Promise.all(chunk.map(id =>
+        fetch(`${WA_BASE}/api/schedules.php`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', 'Cookie': sessionCookie, 'User-Agent': 'Mozilla/5.0' },
+          body: JSON.stringify({ id }),
+        }).catch(() => null)
+      ));
+    }
+  } catch {
+    // Gagal hapus tidak membatalkan proses scheduling
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();
@@ -187,6 +278,24 @@ export async function POST(request: Request) {
         failed: 0,
         results: []
       });
+    }
+
+    // ANTI-DUPLIKASI: Hapus antrean PENDING yang sudah ada untuk nomor-nomor yang akan dijadwalkan
+    // agar tidak ada pesan ganda jika tombol ditekan lebih dari sekali dalam satu hari
+    try {
+      const targetPhones = new Set(
+        itemsToSchedule
+          .map(item => formatToWaPhone(item.guru_whatsapp))
+          .filter(p => p && p.length >= 9)
+      );
+      if (targetPhones.size > 0) {
+        const waSession = await loginWa();
+        if (waSession) {
+          await clearPendingForPhones(targetPhones, waSession);
+        }
+      }
+    } catch {
+      // Proses hapus gagal tidak membatalkan scheduling
     }
 
     // Proses pengiriman antrean ke WA Scheduler secara paralel chunk (concurrency: 5) untuk mencegah timeout server
