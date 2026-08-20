@@ -59,6 +59,9 @@ export async function PUT(request: Request) {
 
     const { 
       absensi_otomatis, 
+      absensi_otomatis_madin,
+      absensi_otomatis_quran,
+      absensi_otomatis_kegiatan,
       waktu_tenggang, 
       waktu_mulai, 
       lat_pesantren, 
@@ -111,10 +114,34 @@ export async function PUT(request: Request) {
     }
 
     if (absensi_otomatis !== undefined) {
-      // Use REPLACE INTO or INSERT ... ON DUPLICATE KEY UPDATE just in case
       await pool.execute(
         'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
         ['absensi_otomatis_guru', absensi_otomatis ? '1' : '0', absensi_otomatis ? '1' : '0']
+      );
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
+        ['absensi_otomatis', absensi_otomatis ? '1' : '0', absensi_otomatis ? '1' : '0']
+      );
+    }
+
+    if (absensi_otomatis_madin !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
+        ['absensi_otomatis_madin', absensi_otomatis_madin ? '1' : '0', absensi_otomatis_madin ? '1' : '0']
+      );
+    }
+
+    if (absensi_otomatis_quran !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
+        ['absensi_otomatis_quran', absensi_otomatis_quran ? '1' : '0', absensi_otomatis_quran ? '1' : '0']
+      );
+    }
+
+    if (absensi_otomatis_kegiatan !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
+        ['absensi_otomatis_kegiatan', absensi_otomatis_kegiatan ? '1' : '0', absensi_otomatis_kegiatan ? '1' : '0']
       );
     }
 

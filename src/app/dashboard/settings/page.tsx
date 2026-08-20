@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone } from 'lucide-react';
+import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone, BookOpen, Users } from 'lucide-react';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -12,6 +12,9 @@ export default function SettingsPage() {
 
   const [settings, setSettings] = useState({
     absensi_otomatis: false,
+    absensi_otomatis_madin: true,
+    absensi_otomatis_quran: false,
+    absensi_otomatis_kegiatan: false,
     mode_libur: false,
     waktu_tenggang: 2,
     waktu_mulai: 30,
@@ -104,7 +107,10 @@ export default function SettingsPage() {
       const json = await res.json();
       if (json.success) {
         setSettings({
-          absensi_otomatis: json.data.absensi_otomatis_guru === '1',
+          absensi_otomatis: json.data.absensi_otomatis_guru === '1' || json.data.absensi_otomatis === '1',
+          absensi_otomatis_madin: json.data.absensi_otomatis_madin !== '0',
+          absensi_otomatis_quran: json.data.absensi_otomatis_quran === '1',
+          absensi_otomatis_kegiatan: json.data.absensi_otomatis_kegiatan === '1',
           mode_libur: json.data.mode_libur === '1',
           waktu_tenggang: isNaN(parseInt(json.data.waktu_tenggang_absensi)) ? 2 : parseInt(json.data.waktu_tenggang_absensi),
           waktu_mulai: isNaN(parseInt(json.data.waktu_mulai_absensi)) ? 30 : parseInt(json.data.waktu_mulai_absensi),
@@ -473,28 +479,102 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700">
-            <div>
-              <h3 className="font-bold text-gray-800 dark:text-gray-200 text-lg">Status Absensi Otomatis</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-lg">
-                Jika diaktifkan, sistem akan otomatis mencatat status "Alpha" untuk Guru/Pembina yang memiliki jadwal pada hari ini namun tidak menekan tombol absensi hingga batas waktu tenggang habis.
-              </p>
+          <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <h3 className="font-bold text-gray-800 dark:text-gray-200 text-lg">Status Absensi Otomatis (Master)</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-lg">
+                  Jika diaktifkan, sistem akan otomatis mencatat status &quot;Alpha&quot; untuk Guru/Pembina yang memiliki jadwal pada hari ini namun tidak menekan tombol absensi hingga batas waktu tenggang habis.
+                </p>
+              </div>
+              
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                <label className="relative inline-flex items-center cursor-pointer scale-125 origin-right">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={settings.absensi_otomatis}
+                    onChange={(e) => setSettings({ ...settings, absensi_otomatis: e.target.checked })}
+                  />
+                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-500"></div>
+                </label>
+                <span className={`font-black text-sm ${settings.absensi_otomatis ? 'text-green-600' : 'text-gray-400'}`}>
+                  {settings.absensi_otomatis ? 'AKTIF' : 'NONAKTIF'}
+                </span>
+              </div>
             </div>
-            
-            <div className="flex flex-col items-end gap-2 shrink-0">
-              <label className="relative inline-flex items-center cursor-pointer scale-125 origin-right">
-                <input 
-                  type="checkbox" 
-                  className="sr-only peer"
-                  checked={settings.absensi_otomatis}
-                  onChange={(e) => setSettings({ ...settings, absensi_otomatis: e.target.checked })}
-                />
-                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-500"></div>
-              </label>
-              <span className={`font-black text-sm ${settings.absensi_otomatis ? 'text-green-600' : 'text-gray-400'}`}>
-                {settings.absensi_otomatis ? 'AKTIF' : 'NONAKTIF'}
-              </span>
-            </div>
+
+            {/* Perincian Target Kategori Jadwal */}
+            {settings.absensi_otomatis && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Target Kategori Jadwal Otomatis:
+                  </h4>
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                    Pilih kategori yang ingin diberlakukan pencatatan Alpa otomatis
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* 1. Madin */}
+                  <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_madin ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+                    <div>
+                      <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                        <BookOpen size={14} className="text-indigo-600 dark:text-indigo-400" /> Guru Madin
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Madrasah Diniyah</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer"
+                        checked={settings.absensi_otomatis_madin}
+                        onChange={(e) => setSettings({ ...settings, absensi_otomatis_madin: e.target.checked })}
+                      />
+                      <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                    </label>
+                  </div>
+
+                  {/* 2. Qur'an */}
+                  <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_quran ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+                    <div>
+                      <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                        <BookOpen size={14} className="text-emerald-600 dark:text-emerald-400" /> Guru Qur'an
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Kelas Al-Qur'an</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer"
+                        checked={settings.absensi_otomatis_quran}
+                        onChange={(e) => setSettings({ ...settings, absensi_otomatis_quran: e.target.checked })}
+                      />
+                      <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+
+                  {/* 3. Kegiatan Asrama */}
+                  <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_kegiatan ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+                    <div>
+                      <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                        <Users size={14} className="text-amber-600 dark:text-amber-400" /> Pembina Kegiatan
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Kegiatan Asrama</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer"
+                        checked={settings.absensi_otomatis_kegiatan}
+                        onChange={(e) => setSettings({ ...settings, absensi_otomatis_kegiatan: e.target.checked })}
+                      />
+                      <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-amber-600"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700">

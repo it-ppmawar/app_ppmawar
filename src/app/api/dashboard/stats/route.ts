@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
@@ -24,14 +24,18 @@ export async function GET() {
 
     // 1. Ambil pengaturan absensi otomatis
     const [settingRows] = await pool.execute<RowDataPacket[]>(
-      "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('absensi_otomatis', 'waktu_tenggang', 'mode_libur')"
+      "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('absensi_otomatis', 'absensi_otomatis_guru', 'absensi_otomatis_madin', 'absensi_otomatis_quran', 'absensi_otomatis_kegiatan', 'waktu_tenggang', 'waktu_tenggang_absensi', 'mode_libur')"
     );
     const settings: Record<string, any> = {};
     settingRows.forEach(r => { settings[r.nama_pengaturan] = r.nilai; });
 
-    const isAutoAbsenActive = settings['absensi_otomatis'] === '1' || settings['absensi_otomatis'] === 'true' || settings['absensi_otomatis'] === 1;
+    const isAutoAbsenGlobal = settings['absensi_otomatis'] === '1' || settings['absensi_otomatis_guru'] === '1' || settings['absensi_otomatis'] === 'true' || settings['absensi_otomatis'] === 1;
+    const isAutoAbsenMadin = isAutoAbsenGlobal && (settings['absensi_otomatis_madin'] !== '0');
+    const isAutoAbsenQuran = isAutoAbsenGlobal && (settings['absensi_otomatis_quran'] === '1' || settings['absensi_otomatis_quran'] === 'true');
+    const isAutoAbsenKegiatan = isAutoAbsenGlobal && (settings['absensi_otomatis_kegiatan'] === '1' || settings['absensi_otomatis_kegiatan'] === 'true');
+
     const isModeLibur = settings['mode_libur'] === '1' || settings['mode_libur'] === 'true' || settings['mode_libur'] === 1;
-    const waktuTenggangHours = parseFloat(settings['waktu_tenggang'] || '2') || 2;
+    const waktuTenggangHours = parseFloat(settings['waktu_tenggang'] || settings['waktu_tenggang_absensi'] || '2') || 2;
 
     // Helper untuk konversi HH:mm:ss ke detik
     const parseTimeToSec = (t: string) => {
@@ -64,6 +68,11 @@ export async function GET() {
       const distinctIds = Array.from(new Set(categoryRows.map(j => j.guru_id)));
       let hadir = 0, izin = 0, sakit = 0, alpha = 0;
 
+      let isCatAutoActive = false;
+      if (categoryKey === 'madin') isCatAutoActive = isAutoAbsenMadin;
+      else if (categoryKey === 'quran') isCatAutoActive = isAutoAbsenQuran;
+      else if (categoryKey === 'kegiatan') isCatAutoActive = isAutoAbsenKegiatan;
+
       distinctIds.forEach(gId => {
         const guruAbsens = absenGuruRows.filter(a => a.guru_id === gId);
         const specificAbsen = guruAbsens.find(a => {
@@ -79,7 +88,7 @@ export async function GET() {
         else if (recordedStatus === 'Sakit') sakit++;
         else if (recordedStatus === 'Alpha') alpha++;
         else {
-          if (isAutoAbsenActive && !isModeLibur) {
+          if (isCatAutoActive && !isModeLibur) {
             const schedules = categoryRows.filter(j => j.guru_id === gId);
             const allPassed = schedules.length > 0 && schedules.every(s => {
               const selesaiSec = parseTimeToSec(s.jam_selesai);
