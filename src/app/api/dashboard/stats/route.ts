@@ -41,8 +41,7 @@ export async function GET() {
     };
     const currentSecs = parseTimeToSec(currentTimeStr);
 
-    // 2. STATISTIK GURU HARI INI
-    // Ambil semua jadwal guru hari ini
+    // 2. STATISTIK GURU HARI INI (Dipisah: Madin, Quran, Kegiatan & Total)
     const [jadwalGuruRows] = await pool.execute<RowDataPacket[]>(`
       SELECT j.jadwal_id, j.guru_id, j.jam_mulai, j.jam_selesai, 'madin' as tipe
       FROM jadwal_madin j WHERE j.hari = ? AND j.guru_id IS NOT NULL AND j.guru_id > 0
@@ -54,57 +53,71 @@ export async function GET() {
       FROM jadwal_kegiatan j WHERE j.hari = ? AND j.guru_id IS NOT NULL AND j.guru_id > 0
     `, [currentDay, currentDay, currentDay]);
 
-    // Ambil data absensi_guru hari ini
     const [absenGuruRows] = await pool.execute<RowDataPacket[]>(`
       SELECT ag.guru_id, ag.status, ag.jadwal_madin_id, ag.jadwal_quran_id, ag.kegiatan_id
       FROM absensi_guru ag
       WHERE ag.tanggal = ?
     `, [todayStr]);
 
-    const guruMapAbsen = new Map<number, string>();
-    absenGuruRows.forEach(a => {
-      guruMapAbsen.set(a.guru_id, a.status);
-    });
+    // Helper kalkulasi statistik guru per kategori jadwal
+    const calcCategoryGuruStats = (categoryRows: any[], categoryKey: 'madin' | 'quran' | 'kegiatan') => {
+      const distinctIds = Array.from(new Set(categoryRows.map(j => j.guru_id)));
+      let hadir = 0, izin = 0, sakit = 0, alpha = 0;
 
-    let totalGuruJadwal = 0;
-    let guruHadir = 0;
-    let guruIzin = 0;
-    let guruSakit = 0;
-    let guruAlpha = 0;
+      distinctIds.forEach(gId => {
+        const guruAbsens = absenGuruRows.filter(a => a.guru_id === gId);
+        const specificAbsen = guruAbsens.find(a => {
+          if (categoryKey === 'madin') return a.jadwal_madin_id !== null && a.jadwal_madin_id !== undefined;
+          if (categoryKey === 'quran') return a.jadwal_quran_id !== null && a.jadwal_quran_id !== undefined;
+          if (categoryKey === 'kegiatan') return a.kegiatan_id !== null && a.kegiatan_id !== undefined;
+          return true;
+        }) || guruAbsens[0];
 
-    // Hitung berdasarkan guru unik yang memiliki jadwal hari ini
-    const distinctGuruIds = Array.from(new Set(jadwalGuruRows.map(j => j.guru_id)));
-    totalGuruJadwal = distinctGuruIds.length;
-
-    distinctGuruIds.forEach(gId => {
-      const recordedStatus = guruMapAbsen.get(gId);
-      if (recordedStatus === 'Hadir') {
-        guruHadir++;
-      } else if (recordedStatus === 'Izin') {
-        guruIzin++;
-      } else if (recordedStatus === 'Sakit') {
-        guruSakit++;
-      } else if (recordedStatus === 'Alpha') {
-        guruAlpha++;
-      } else {
-        // Belum ada record absensi guru hari ini
-        if (isAutoAbsenActive && !isModeLibur) {
-          // Periksa apakah seluruh jadwal guru ini untuk hari ini telah melewati jam_selesai + waktu_tenggang
-          const guruSchedules = jadwalGuruRows.filter(j => j.guru_id === gId);
-          const allPassed = guruSchedules.length > 0 && guruSchedules.every(s => {
-            const selesaiSec = parseTimeToSec(s.jam_selesai);
-            const deadlineSec = selesaiSec + (waktuTenggangHours * 3600);
-            return currentSecs > deadlineSec;
-          });
-          if (allPassed) {
-            guruAlpha++;
+        const recordedStatus = specificAbsen?.status;
+        if (recordedStatus === 'Hadir') hadir++;
+        else if (recordedStatus === 'Izin') izin++;
+        else if (recordedStatus === 'Sakit') sakit++;
+        else if (recordedStatus === 'Alpha') alpha++;
+        else {
+          if (isAutoAbsenActive && !isModeLibur) {
+            const schedules = categoryRows.filter(j => j.guru_id === gId);
+            const allPassed = schedules.length > 0 && schedules.every(s => {
+              const selesaiSec = parseTimeToSec(s.jam_selesai);
+              const deadlineSec = selesaiSec + (waktuTenggangHours * 3600);
+              return currentSecs > deadlineSec;
+            });
+            if (allPassed) alpha++;
           }
         }
-      }
-    });
+      });
+
+      return {
+        total: distinctIds.length,
+        hadir,
+        izin,
+        sakit,
+        alpha
+      };
+    };
+
+    const madinGuruSchedules = jadwalGuruRows.filter(j => j.tipe === 'madin');
+    const quranGuruSchedules = jadwalGuruRows.filter(j => j.tipe === 'quran');
+    const kegiatanGuruSchedules = jadwalGuruRows.filter(j => j.tipe === 'kegiatan');
+
+    const guruMadin = calcCategoryGuruStats(madinGuruSchedules, 'madin');
+    const guruQuran = calcCategoryGuruStats(quranGuruSchedules, 'quran');
+    const guruKegiatan = calcCategoryGuruStats(kegiatanGuruSchedules, 'kegiatan');
+
+    const allGuruDistinctIds = Array.from(new Set(jadwalGuruRows.map(j => j.guru_id)));
+    const guruOverall = {
+      total: allGuruDistinctIds.length,
+      hadir: guruMadin.hadir + guruQuran.hadir + guruKegiatan.hadir,
+      izin: guruMadin.izin + guruQuran.izin + guruKegiatan.izin,
+      sakit: guruMadin.sakit + guruQuran.sakit + guruKegiatan.sakit,
+      alpha: guruMadin.alpha + guruQuran.alpha + guruKegiatan.alpha,
+    };
 
     // 3. STATISTIK ABSENSI SANTRI HARI INI (Madin, Quran, Kegiatan)
-    // a. Madin
     const [madinStats] = await pool.execute<RowDataPacket[]>(`
       SELECT 
         SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
@@ -116,7 +129,6 @@ export async function GET() {
       WHERE tanggal = ?
     `, [todayStr]);
 
-    // b. Quran
     const [quranStats] = await pool.execute<RowDataPacket[]>(`
       SELECT 
         SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
@@ -128,7 +140,6 @@ export async function GET() {
       WHERE tanggal = ?
     `, [todayStr]);
 
-    // c. Kegiatan
     const [kegiatanStats] = await pool.execute<RowDataPacket[]>(`
       SELECT 
         SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
@@ -167,11 +178,10 @@ export async function GET() {
       tanggal: todayStr,
       hari: currentDay,
       guru: {
-        total: totalGuruJadwal,
-        hadir: guruHadir,
-        izin: guruIzin,
-        sakit: guruSakit,
-        alpha: guruAlpha,
+        total: guruOverall,
+        madin: guruMadin,
+        quran: guruQuran,
+        kegiatan: guruKegiatan,
       },
       santri: {
         madin: formatStatObj(madinStats[0]),

@@ -385,28 +385,99 @@ export default function DashboardPage() {
 
       {/* Statistik */}
       <section className="space-y-4">
-        {/* Khusus Admin - Statistik Guru */}
-        {role === 'admin' && (
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300 max-w-4xl mx-auto w-full">
-            <div className="bg-gray-800 dark:bg-gray-900 px-4 py-3 text-white">
-              <h3 className="text-sm font-semibold flex items-center gap-2"><Activity size={16} /> Statistik Absensi Guru Hari Ini</h3>
+        {/* Khusus Admin & Staff - Statistik Guru (Diperinci per Kategori) */}
+        {(role === 'admin' || role === 'staff') && (
+          <div className="space-y-3 max-w-5xl mx-auto w-full">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                <Activity size={16} className="text-green-600 dark:text-green-400" />
+                Statistik Absensi Dewan Guru & Pembina Hari Ini
+              </h3>
             </div>
-            <div className="grid grid-cols-4 divide-x dark:divide-gray-700 border-b dark:border-gray-700">
-              <div className="p-3 text-center">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total</p>
-                <p className="text-lg font-bold text-gray-800 dark:text-gray-200">{dashboardStats?.guru?.total ?? 0}</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* 1. Guru Madin */}
+              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
+                <div className="bg-gradient-to-r from-indigo-700 to-indigo-800 dark:from-indigo-900 dark:to-indigo-950 px-4 py-2.5 text-white flex justify-between items-center">
+                  <h4 className="text-xs font-bold flex items-center gap-1.5"><BookOpen size={14} /> Guru Madin</h4>
+                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">
+                    {dashboardStats?.guru?.madin?.total ?? 0} Terjadwal
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 divide-x dark:divide-gray-700 border-b dark:border-gray-700">
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Total</p>
+                    <p className="text-base font-bold text-gray-800 dark:text-gray-200">{dashboardStats?.guru?.madin?.total ?? 0}</p>
+                  </div>
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Hadir</p>
+                    <p className="text-base font-bold text-green-600 dark:text-green-400">{dashboardStats?.guru?.madin?.hadir ?? 0}</p>
+                  </div>
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Izin</p>
+                    <p className="text-base font-bold text-orange-500 dark:text-orange-400">{dashboardStats?.guru?.madin?.izin ?? 0}</p>
+                  </div>
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Alpha</p>
+                    <p className="text-base font-bold text-red-600 dark:text-red-400">{dashboardStats?.guru?.madin?.alpha ?? 0}</p>
+                  </div>
+                </div>
               </div>
-              <div className="p-3 text-center">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Hadir</p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400">{dashboardStats?.guru?.hadir ?? 0}</p>
+
+              {/* 2. Guru Qur'an */}
+              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
+                <div className="bg-gradient-to-r from-emerald-700 to-emerald-800 dark:from-emerald-900 dark:to-emerald-950 px-4 py-2.5 text-white flex justify-between items-center">
+                  <h4 className="text-xs font-bold flex items-center gap-1.5"><BookOpen size={14} /> Guru Qur'an</h4>
+                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">
+                    {dashboardStats?.guru?.quran?.total ?? 0} Terjadwal
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 divide-x dark:divide-gray-700 border-b dark:border-gray-700">
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Total</p>
+                    <p className="text-base font-bold text-gray-800 dark:text-gray-200">{dashboardStats?.guru?.quran?.total ?? 0}</p>
+                  </div>
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Hadir</p>
+                    <p className="text-base font-bold text-green-600 dark:text-green-400">{dashboardStats?.guru?.quran?.hadir ?? 0}</p>
+                  </div>
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Izin</p>
+                    <p className="text-base font-bold text-orange-500 dark:text-orange-400">{dashboardStats?.guru?.quran?.izin ?? 0}</p>
+                  </div>
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Alpha</p>
+                    <p className="text-base font-bold text-red-600 dark:text-red-400">{dashboardStats?.guru?.quran?.alpha ?? 0}</p>
+                  </div>
+                </div>
               </div>
-              <div className="p-3 text-center">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Izin</p>
-                <p className="text-lg font-bold text-orange-500 dark:text-orange-400">{dashboardStats?.guru?.izin ?? 0}</p>
-              </div>
-              <div className="p-3 text-center">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Alpha</p>
-                <p className="text-lg font-bold text-red-600 dark:text-red-400">{dashboardStats?.guru?.alpha ?? 0}</p>
+
+              {/* 3. Pembina Kegiatan Asrama */}
+              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
+                <div className="bg-gradient-to-r from-amber-700 to-amber-800 dark:from-amber-900 dark:to-amber-950 px-4 py-2.5 text-white flex justify-between items-center">
+                  <h4 className="text-xs font-bold flex items-center gap-1.5"><Users size={14} /> Pembina Kegiatan</h4>
+                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">
+                    {dashboardStats?.guru?.kegiatan?.total ?? 0} Terjadwal
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 divide-x dark:divide-gray-700 border-b dark:border-gray-700">
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Total</p>
+                    <p className="text-base font-bold text-gray-800 dark:text-gray-200">{dashboardStats?.guru?.kegiatan?.total ?? 0}</p>
+                  </div>
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Hadir</p>
+                    <p className="text-base font-bold text-green-600 dark:text-green-400">{dashboardStats?.guru?.kegiatan?.hadir ?? 0}</p>
+                  </div>
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Izin</p>
+                    <p className="text-base font-bold text-orange-500 dark:text-orange-400">{dashboardStats?.guru?.kegiatan?.izin ?? 0}</p>
+                  </div>
+                  <div className="p-2.5 text-center">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Alpha</p>
+                    <p className="text-base font-bold text-red-600 dark:text-red-400">{dashboardStats?.guru?.kegiatan?.alpha ?? 0}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
