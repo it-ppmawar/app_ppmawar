@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const [showEditNama, setShowEditNama] = useState(false);
   const [editNamaValue, setEditNamaValue] = useState('');
   const [savingNama, setSavingNama] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
 
   useEffect(() => {
     // Menentukan ucapan berdasarkan waktu
@@ -85,9 +86,22 @@ export default function DashboardPage() {
       }
     };
 
+    const fetchDashboardStats = async () => {
+      try {
+        const res = await fetch('/api/dashboard/stats');
+        const json = await res.json();
+        if (json.success) {
+          setDashboardStats(json);
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard stats', err);
+      }
+    };
+
     fetchUser();
     fetchSchedules();
     fetchAllSchedules();
+    fetchDashboardStats();
 
     // Populate dates on mount to avoid hydration mismatch
     const today = new Date();
@@ -375,24 +389,24 @@ export default function DashboardPage() {
         {role === 'admin' && (
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300 max-w-4xl mx-auto w-full">
             <div className="bg-gray-800 dark:bg-gray-900 px-4 py-3 text-white">
-              <h3 className="text-sm font-semibold flex items-center gap-2"><Activity size={16} /> Statistik Absensi Guru</h3>
+              <h3 className="text-sm font-semibold flex items-center gap-2"><Activity size={16} /> Statistik Absensi Guru Hari Ini</h3>
             </div>
             <div className="grid grid-cols-4 divide-x dark:divide-gray-700 border-b dark:border-gray-700">
               <div className="p-3 text-center">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total</p>
-                <p className="text-lg font-bold text-gray-800 dark:text-gray-200">0</p>
+                <p className="text-lg font-bold text-gray-800 dark:text-gray-200">{dashboardStats?.guru?.total ?? 0}</p>
               </div>
               <div className="p-3 text-center">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Hadir</p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400">0</p>
+                <p className="text-lg font-bold text-green-600 dark:text-green-400">{dashboardStats?.guru?.hadir ?? 0}</p>
               </div>
               <div className="p-3 text-center">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Izin</p>
-                <p className="text-lg font-bold text-orange-500 dark:text-orange-400">0</p>
+                <p className="text-lg font-bold text-orange-500 dark:text-orange-400">{dashboardStats?.guru?.izin ?? 0}</p>
               </div>
               <div className="p-3 text-center">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Alpha</p>
-                <p className="text-lg font-bold text-red-600 dark:text-red-400">0</p>
+                <p className="text-lg font-bold text-red-600 dark:text-red-400">{dashboardStats?.guru?.alpha ?? 0}</p>
               </div>
             </div>
           </div>
@@ -417,53 +431,59 @@ export default function DashboardPage() {
             >
               {statTypes.map((tipe) => {
                 const tipeName = tipe === 'quran' ? "Qur'an" : tipe === 'madin' ? 'Madin' : 'Kegiatan';
+                const stat = dashboardStats?.santri?.[tipe as 'madin' | 'quran' | 'kegiatan'] || {
+                  hadir: 0, izin: 0, sakit: 0, alpha: 0, total: 0,
+                  hadirPct: 0, izinPct: 0, sakitPct: 0, alphaPct: 0
+                };
+
                 return (
                   <div
                     key={tipe}
                     className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 transition-colors duration-300 w-full"
                   >
-                    <h4 className="text-xs font-bold text-green-700 dark:text-green-400 mb-3 border-b dark:border-gray-700 pb-2">
-                      Statistik Absensi {tipeName}
+                    <h4 className="text-xs font-bold text-green-700 dark:text-green-400 mb-3 border-b dark:border-gray-700 pb-2 flex justify-between items-center">
+                      <span>Statistik Absensi {tipeName} Hari Ini</span>
+                      {stat.total > 0 && <span className="text-[10px] bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 px-2 py-0.5 rounded-full font-bold">{stat.total} Santri</span>}
                     </h4>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-xs dark:text-gray-300">
                         <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
                           <XCircle size={14} /> Alpha
                         </span>
-                        <span className="font-bold">0% (0)</span>
+                        <span className="font-bold">{stat.alphaPct}% ({stat.alpha})</span>
                       </div>
-                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-                        <div className="bg-red-500 dark:bg-red-400 h-1.5 rounded-full" style={{ width: '0%' }}></div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-red-500 dark:bg-red-400 h-1.5 rounded-full transition-all duration-500" style={{ width: `${stat.alphaPct}%` }}></div>
                       </div>
 
                       <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
                         <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
                           <CheckCircle size={14} /> Hadir
                         </span>
-                        <span className="font-bold">0% (0)</span>
+                        <span className="font-bold">{stat.hadirPct}% ({stat.hadir})</span>
                       </div>
-                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-                        <div className="bg-green-500 dark:bg-green-400 h-1.5 rounded-full" style={{ width: '0%' }}></div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-green-500 dark:bg-green-400 h-1.5 rounded-full transition-all duration-500" style={{ width: `${stat.hadirPct}%` }}></div>
                       </div>
 
                       <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
                         <span className="flex items-center gap-1 text-orange-500 dark:text-orange-400">
                           <AlertTriangle size={14} /> Izin
                         </span>
-                        <span className="font-bold">0% (0)</span>
+                        <span className="font-bold">{stat.izinPct}% ({stat.izin})</span>
                       </div>
-                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-                        <div className="bg-orange-400 h-1.5 rounded-full" style={{ width: '0%' }}></div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-orange-400 h-1.5 rounded-full transition-all duration-500" style={{ width: `${stat.izinPct}%` }}></div>
                       </div>
 
                       <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
                         <span className="flex items-center gap-1 text-blue-500 dark:text-blue-400">
                           <Activity size={14} /> Sakit
                         </span>
-                        <span className="font-bold">0% (0)</span>
+                        <span className="font-bold">{stat.sakitPct}% ({stat.sakit})</span>
                       </div>
-                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-                        <div className="bg-blue-400 h-1.5 rounded-full" style={{ width: '0%' }}></div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-blue-400 h-1.5 rounded-full transition-all duration-500" style={{ width: `${stat.sakitPct}%` }}></div>
                       </div>
                     </div>
                   </div>

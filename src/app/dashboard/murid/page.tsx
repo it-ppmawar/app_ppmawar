@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Users, Search, Plus, Filter, User, MapPin, CheckSquare, Edit, UserPlus, Camera, RefreshCw, FileText, Download, X, Upload, FileSpreadsheet } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Users, Search, Plus, Filter, User, MapPin, CheckSquare, Edit, UserPlus, Camera, RefreshCw, FileText, Download, X, Upload, FileSpreadsheet, ChevronLeft, ChevronRight } from 'lucide-react';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
 import Link from 'next/link';
 
@@ -30,6 +30,19 @@ export default function DataMuridPage() {
   const [murid, setMurid] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
+
+  // Debounce search agar pengetikan & penghapusan 100% responsif tanpa jeda/lag
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 120);
+    return () => clearTimeout(handler);
+  }, [search]);
+
   const [role, setRole] = useState('murid');
   const [userAsrama, setUserAsrama] = useState<string | null>(null);
 
@@ -420,14 +433,8 @@ export default function DataMuridPage() {
     }
   };
 
-  const filteredMurid = murid.filter(m => {
-    const s = search.toLowerCase();
-    const matchSearch = m.nama.toLowerCase().includes(s) ||
-      (m.nis && m.nis.toLowerCase().includes(s)) ||
-      (m.kelas_madin && m.kelas_madin.toLowerCase().includes(s)) ||
-      (m.kelas_quran && m.kelas_quran.toLowerCase().includes(s)) ||
-      (m.nama_kamar && m.nama_kamar.toLowerCase().includes(s)) ||
-      (m.alamat && m.alamat.toLowerCase().includes(s));
+  const filteredMurid = useMemo(() => {
+    const s = debouncedSearch.trim().toLowerCase();
 
     // Tentukan batasan gender jika role adalah pengurus_asrama
     let genderConstraint: string | null = null;
@@ -447,26 +454,37 @@ export default function DataMuridPage() {
       }
     }
 
-    const matchMadin = filterMadin
-      ? (filterMadin === '__none__' 
-          ? ((!m.kelas_madin || m.kelas_madin === '-') && (!m.kelas_madin_2 || m.kelas_madin_2 === '-') && (!genderConstraint || m.jenis_kelamin === genderConstraint)) 
-          : (m.kelas_madin === filterMadin || m.kelas_madin_2 === filterMadin))
-      : true;
+    return murid.filter(m => {
+      const matchSearch = !s || (
+        (m.nama && m.nama.toLowerCase().includes(s)) ||
+        (m.nis && m.nis.toLowerCase().includes(s)) ||
+        (m.kelas_madin && m.kelas_madin.toLowerCase().includes(s)) ||
+        (m.kelas_quran && m.kelas_quran.toLowerCase().includes(s)) ||
+        (m.nama_kamar && m.nama_kamar.toLowerCase().includes(s)) ||
+        (m.alamat && m.alamat.toLowerCase().includes(s))
+      );
 
-    const matchQuran = filterQuran
-      ? (filterQuran === '__none__' 
-          ? ((!m.kelas_quran || m.kelas_quran === '-') && (!genderConstraint || m.jenis_kelamin === genderConstraint)) 
-          : m.kelas_quran === filterQuran)
-      : true;
+      const matchMadin = filterMadin
+        ? (filterMadin === '__none__' 
+            ? ((!m.kelas_madin || m.kelas_madin === '-') && (!m.kelas_madin_2 || m.kelas_madin_2 === '-') && (!genderConstraint || m.jenis_kelamin === genderConstraint)) 
+            : (m.kelas_madin === filterMadin || m.kelas_madin_2 === filterMadin))
+        : true;
 
-    const matchKamar = filterKamar
-      ? (filterKamar === '__none__' 
-          ? ((!m.nama_kamar || m.nama_kamar === '-') && (!genderConstraint || m.jenis_kelamin === genderConstraint)) 
-          : m.nama_kamar === filterKamar)
-      : true;
+      const matchQuran = filterQuran
+        ? (filterQuran === '__none__' 
+            ? ((!m.kelas_quran || m.kelas_quran === '-') && (!genderConstraint || m.jenis_kelamin === genderConstraint)) 
+            : m.kelas_quran === filterQuran)
+        : true;
 
-    return matchSearch && matchMadin && matchQuran && matchKamar;
-  });
+      const matchKamar = filterKamar
+        ? (filterKamar === '__none__' 
+            ? ((!m.nama_kamar || m.nama_kamar === '-') && (!genderConstraint || m.jenis_kelamin === genderConstraint)) 
+            : m.nama_kamar === filterKamar)
+        : true;
+
+      return matchSearch && matchMadin && matchQuran && matchKamar;
+    });
+  }, [murid, debouncedSearch, filterMadin, filterQuran, filterKamar, role, userAsrama]);
 
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
 
@@ -479,28 +497,33 @@ export default function DataMuridPage() {
   };
 
   // Helper: normalisasi nilai sort agar tanda baca (titik, koma, dll) tidak mempengaruhi urutan
-  // Contoh: "A. EMIL" → "A EMIL" sehingga tetap diurutkan sebelum "ALFIANNUR"
   const normalizeSortKey = (val: string): string =>
     val
-      .replace(/[^\w\s]/g, ' ') // ganti semua tanda baca (non-alphanumeric, non-space) dengan spasi
-      .replace(/\s+/g, ' ')     // hilangkan spasi ganda hasil penggantian
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
       .trim();
 
-  const sortedMurid = [...filteredMurid].sort((a, b) => {
-    if (!sortConfig) return 0;
-    let valA = a[sortConfig.key];
-    let valB = b[sortConfig.key];
-    if (valA === null || valA === undefined) valA = '';
-    if (valB === null || valB === undefined) valB = '';
+  const sortedMurid = useMemo(() => {
+    if (!sortConfig) return filteredMurid;
+    return [...filteredMurid].sort((a, b) => {
+      let valA = a[sortConfig.key];
+      let valB = b[sortConfig.key];
+      if (valA === null || valA === undefined) valA = '';
+      if (valB === null || valB === undefined) valB = '';
 
-    // Normalisasi dulu (khusus kolom teks) agar tanda baca tidak mengacaukan urutan
-    const strA = normalizeSortKey(valA.toString());
-    const strB = normalizeSortKey(valB.toString());
+      const strA = normalizeSortKey(valA.toString());
+      const strB = normalizeSortKey(valB.toString());
 
-    // Gunakan numeric localeCompare untuk natural sort
-    const compareResult = strA.localeCompare(strB, 'id', { numeric: true, sensitivity: 'base' });
-    return sortConfig.direction === 'ascending' ? compareResult : -compareResult;
-  });
+      const compareResult = strA.localeCompare(strB, 'id', { numeric: true, sensitivity: 'base' });
+      return sortConfig.direction === 'ascending' ? compareResult : -compareResult;
+    });
+  }, [filteredMurid, sortConfig]);
+
+  const totalPages = Math.ceil(sortedMurid.length / pageSize) || 1;
+  const paginatedMurid = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedMurid.slice(start, start + pageSize);
+  }, [sortedMurid, currentPage, pageSize]);
 
   const getSortIcon = (key: string) => {
     if (!sortConfig || sortConfig.key !== key) return ' ⇅';
@@ -915,7 +938,7 @@ export default function DataMuridPage() {
                   </td>
                 </tr>
               ) : (
-                sortedMurid.map((item) => (
+                paginatedMurid.map((item) => (
                   <tr key={item.murid_id} className={`transition-colors text-gray-700 dark:text-gray-200 ${(role === 'admin' || role === 'staff') && selectedMurid.includes(item.murid_id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50'}`}>
                     {(role === 'admin' || role === 'staff') && (
                       <td className="px-4 py-3 text-center">
@@ -1019,6 +1042,36 @@ export default function DataMuridPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {sortedMurid.length > 0 && (
+          <div className="px-4 py-3 bg-gray-50/80 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600 dark:text-gray-400">
+            <div>
+              Menampilkan <span className="font-bold text-gray-900 dark:text-white">{Math.min((currentPage - 1) * pageSize + 1, sortedMurid.length)}</span> - <span className="font-bold text-gray-900 dark:text-white">{Math.min(currentPage * pageSize, sortedMurid.length)}</span> dari <span className="font-bold text-gray-900 dark:text-white">{sortedMurid.length}</span> santri
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm flex items-center gap-1"
+                >
+                  <ChevronLeft size={14} /> Prev
+                </button>
+                <span className="px-3 py-1.5 font-bold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-xl">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-bold hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm flex items-center gap-1"
+                >
+                  Next <ChevronRight size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Bulk Move Modal */}
