@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, X as XIcon, User, MapPin, QrCode, Brain } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, X as XIcon, User, MapPin, QrCode, Brain, BookOpen, HeartPulse, Send, FileText, CheckCircle2 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -53,7 +53,9 @@ function InputAbsenContent() {
   const tipe = searchParams.get('tipe');
   const kelas_id = searchParams.get('kelas_id');
   const jadwal_id = searchParams.get('jadwal_id');
+  const actionParam = searchParams.get('action');
 
+  const [activeTab, setActiveTab] = useState<'absen' | 'izin'>(actionParam === 'izin' ? 'izin' : 'absen');
   const [murid, setMurid] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,8 +68,15 @@ function InputAbsenContent() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [sudahAbsen, setSudahAbsen] = useState(false);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
-  const [jadwalInfo, setJadwalInfo] = useState<{ mata_pelajaran: string; jam_mulai: string; jam_selesai: string } | null>(null);
+  const [jadwalInfo, setJadwalInfo] = useState<{ mata_pelajaran: string; jam_mulai: string; jam_selesai: string; guru_nama?: string } | null>(null);
   const [tanggalAbsen, setTanggalAbsen] = useState('');
+
+  // Izin / Sakit state
+  const [izinStatus, setIzinStatus] = useState<'Izin' | 'Sakit'>('Izin');
+  const [izinKeterangan, setIzinKeterangan] = useState('');
+  const [izinFoto, setIzinFoto] = useState<string | null>(null);
+  const [submittingIzin, setSubmittingIzin] = useState(false);
+  const [izinSuccess, setIzinSuccess] = useState(false);
 
   // Camera state
   const [showCamera, setShowCamera] = useState(false);
@@ -156,6 +165,50 @@ function InputAbsenContent() {
       alert('Terjadi kesalahan saat memproses foto');
     } finally {
       setUploadingPhoto(false);
+    }
+  };
+
+  const handleIzinPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setIzinFoto(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleIzinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!izinKeterangan.trim()) {
+      alert('Harap isi alasan atau keterangan izin/sakit.');
+      return;
+    }
+
+    setSubmittingIzin(true);
+    try {
+      const res = await fetch('/api/absen/izin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipe,
+          jadwal_id,
+          status: izinStatus,
+          keterangan: izinKeterangan,
+          foto_bukti: izinFoto
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIzinSuccess(true);
+      } else {
+        alert(data.error || 'Gagal mengirim permohonan izin/sakit');
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan jaringan saat mengirim izin/sakit');
+    } finally {
+      setSubmittingIzin(false);
     }
   };
 
@@ -684,272 +737,445 @@ function InputAbsenContent() {
         </div>
       )}
 
-      {/* Set Massal 4 Tombol */}
-      <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 mb-4 animate-in fade-in duration-300">
-        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2.5">⚡ Set Massal ({murid.length} Santri)</p>
-        <div className="grid grid-cols-4 gap-1.5">
-          <button
-            onClick={() => setAllStatus('Hadir')}
-            className="py-2.5 text-xs font-bold rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border dark:border-emerald-800/60 transition-all active:scale-95"
-          >
-            Hadir All
-          </button>
-          <button
-            onClick={() => setAllStatus('Izin')}
-            className="py-2.5 text-xs font-bold rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 dark:border dark:border-amber-800/60 transition-all active:scale-95"
-          >
-            Izin All
-          </button>
-          <button
-            onClick={() => setAllStatus('Sakit')}
-            className="py-2.5 text-xs font-bold rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 dark:border dark:border-blue-800/60 transition-all active:scale-95"
-          >
-            Sakit All
-          </button>
-          <button
-            onClick={() => setAllStatus('Alpha')}
-            className="py-2.5 text-xs font-bold rounded-xl bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-300 dark:border dark:border-red-800/60 transition-all active:scale-95"
-          >
-            Alpha All
-          </button>
-        </div>
+      {/* Tab Switcher: Absensi Santri vs Ajukan Izin / Sakit */}
+      <div className="grid grid-cols-2 p-1.5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm gap-1.5">
+        <button
+          type="button"
+          onClick={() => setActiveTab('absen')}
+          className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+            activeTab === 'absen'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+          }`}
+        >
+          <BookOpen size={16} />
+          <span>Absensi Santri (Masuk)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('izin')}
+          className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+            activeTab === 'izin'
+              ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+          }`}
+        >
+          <HeartPulse size={16} />
+          <span>Ajukan Izin / Sakit</span>
+        </button>
       </div>
 
-      {/* Tampilan Desktop (Tabel) */}
-      <div className="hidden md:block bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
-              <tr>
-                <th className="px-4 py-4 w-10 text-center">NO</th>
-                <th className="px-4 py-4">NAMA SANTRI</th>
-                <th className="px-4 py-4">NAMA PANGGILAN</th>
-                <th className="px-4 py-4 text-center">KEHADIRAN</th>
-                <th className="px-4 py-4">KETERANGAN</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {murid.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-8 text-gray-500">Tidak ada data santri di kelas ini.</td></tr>
-              ) : (
-                murid.map((item, index) => (
-                  <tr key={item.murid_id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-4 py-3 text-center text-gray-400 font-medium">{index + 1}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-9 h-9 rounded-full overflow-hidden relative shrink-0 ${getFotoUrl(item.foto, item.nis) ? 'cursor-pointer hover:opacity-80' : ''}`}
-                          onClick={() => getFotoUrl(item.foto, item.nis) ? setZoomPhoto(getFotoUrl(item.foto, item.nis)) : null}
-                        >
-                          <div
-                            className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold"
-                            style={{ backgroundColor: getAvatarColor(item.nama) }}
-                          >
-                            <span>{getInitials(item.nama)}</span>
-                          </div>
-                          {getFotoUrl(item.foto, item.nis) && (
-                            <img
-                              src={getFotoUrl(item.foto, item.nis)}
-                              alt={item.nama}
-                              className="absolute inset-0 w-full h-full object-cover"
-                              onError={(e) => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.display = 'none'; e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; }}
-                            />
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-bold text-gray-900 dark:text-white">{item.nama}</div>
-                          <div className="text-xs text-gray-400 font-mono flex flex-col gap-0.5">
-                            <span>NIS: {item.nis || '-'}</span>
-                            {item.alamat && (
-                              <span className="text-[10px] text-gray-500 max-w-[250px] truncate block" title={item.alamat}>
-                                Alamat: {item.alamat}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        placeholder="Panggilan..."
-                        value={item.nama_panggilan || ''}
-                        onChange={(e) => handleNamaPanggilanChange(item.murid_id, e.target.value)}
-                        className="w-full max-w-[120px] px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 dark:text-indigo-300"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="inline-flex bg-gray-100 dark:bg-gray-900 rounded-lg p-1 gap-1">
-                        {['Hadir', 'Izin', 'Sakit', 'Alpha'].map(status => (
-                          <button
-                            key={status}
-                            type="button"
-                            onClick={() => handleStatusChange(item.murid_id, status)}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
-                              item.status === status 
-                                ? status === 'Hadir' ? 'bg-green-500 text-white shadow-sm'
-                                : status === 'Izin' ? 'bg-blue-500 text-white shadow-sm'
-                                : status === 'Sakit' ? 'bg-orange-500 text-white shadow-sm'
-                                : 'bg-red-500 text-white shadow-sm'
-                                : 'text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800'
-                            }`}
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        placeholder="Catatan..."
-                        value={item.keterangan || ''}
-                        onChange={(e) => handleKeteranganChange(item.murid_id, e.target.value)}
-                        className="w-full min-w-[150px] px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500"
-                        disabled={item.status === 'Hadir'}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Tampilan Mobile (Kartu Bertumpuk) */}
-      <div className="block md:hidden space-y-4">
-        {murid.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 text-center text-gray-500 border border-gray-100 dark:border-gray-700">Tidak ada data santri di kelas ini.</div>
+      {activeTab === 'izin' ? (
+        izinSuccess ? (
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 border border-gray-100 dark:border-gray-700 shadow-lg text-center animate-in fade-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 size={36} />
+            </div>
+            <h2 className="text-xl font-extrabold text-gray-900 dark:text-white mb-2">
+              Permohonan {izinStatus} Berhasil Tercatat!
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 max-w-md mx-auto">
+              Status ketidakhadiran Anda telah tersimpan resmi di sistem untuk jadwal ini. Anda tidak akan terkena sanksi alpa otomatis.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-sm mx-auto">
+              <button
+                type="button"
+                onClick={() => setActiveTab('absen')}
+                className="w-full px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+              >
+                Buka Absensi Santri
+              </button>
+              <Link
+                href="/dashboard/absen"
+                className="w-full px-5 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition text-center"
+              >
+                Kembali ke Jadwal
+              </Link>
+            </div>
+          </div>
         ) : (
-          murid.map((item, index) => (
-            <div key={item.murid_id} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 space-y-3">
-              {/* Header Row: Foto + Nama Lengkap */}
-              <div className="flex items-start gap-3">
-                <div
-                  className={`w-12 h-12 rounded-xl overflow-hidden relative shrink-0 mt-0.5 ${getFotoUrl(item.foto, item.nis) ? 'cursor-pointer hover:opacity-80' : ''}`}
-                  onClick={() => getFotoUrl(item.foto, item.nis) ? setZoomPhoto(getFotoUrl(item.foto, item.nis)) : null}
-                >
-                  <div
-                    className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: getAvatarColor(item.nama) }}
-                  >
-                    <span>{getInitials(item.nama)}</span>
-                  </div>
-                  {getFotoUrl(item.foto, item.nis) && (
-                    <img
-                      src={getFotoUrl(item.foto, item.nis)}
-                      alt={item.nama}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      onError={(e) => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.display = 'none'; e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; }}
-                    />
-                  )}
+          <form onSubmit={handleIzinSubmit} className="bg-white dark:bg-gray-800 rounded-3xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm space-y-5 animate-in fade-in duration-300">
+            <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-700">
+              <div className="p-2.5 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl">
+                <HeartPulse size={22} />
+              </div>
+              <div>
+                <h2 className="text-base font-extrabold text-gray-900 dark:text-white">Formulir Izin / Sakit Mengajar</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Gunakan formulir ini jika berhalangan hadir agar kehadiran tercatat resmi dan terhindar dari alpa otomatis.</p>
+              </div>
+            </div>
+
+            {/* Rincian Target */}
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/60 space-y-2 text-xs">
+              {jadwalInfo?.guru_nama && (
+                <div className="flex justify-between items-center py-1 border-b border-gray-200/50 dark:border-gray-800">
+                  <span className="text-gray-500 dark:text-gray-400">Guru / Pembina:</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{jadwalInfo.guru_nama}</span>
                 </div>
-                {/* Nama Lengkap (Maksimal 2 Baris) */}
-                <div className="flex-1 min-w-0">
-                  <div className="font-extrabold text-gray-900 dark:text-white flex items-start gap-1.5 leading-snug">
-                    <span className="text-gray-400 text-xs font-semibold shrink-0 mt-0.5">{index + 1}.</span>
-                    <span className="line-clamp-2">{item.nama}</span>
-                  </div>
+              )}
+              <div className="flex justify-between items-center py-1 border-b border-gray-200/50 dark:border-gray-800">
+                <span className="text-gray-500 dark:text-gray-400">Kelas / Kamar:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{namaTarget}</span>
+              </div>
+              {jadwalInfo?.mata_pelajaran && (
+                <div className="flex justify-between items-center py-1 border-b border-gray-200/50 dark:border-gray-800">
+                  <span className="text-gray-500 dark:text-gray-400">Mata Pelajaran:</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{jadwalInfo.mata_pelajaran}</span>
                 </div>
-              </div>
-
-              {/* Input Nama Panggilan — Baris tersendiri, rata kiri sejajar NIS & Alamat */}
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-gray-500 dark:text-gray-400 shrink-0 font-medium">Panggilan:</span>
-                <input
-                  type="text"
-                  placeholder="Panggilan..."
-                  value={item.nama_panggilan || ''}
-                  onChange={(e) => handleNamaPanggilanChange(item.murid_id, e.target.value)}
-                  className="flex-1 px-2.5 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md text-xs focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-700 dark:text-indigo-300"
-                />
-              </div>
-
-              {/* Info: NIS, Wali & Alamat (maks 2 baris) */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap text-[11px] text-gray-500 dark:text-gray-400 font-mono">
-                  <span>NIS: <strong className="text-gray-700 dark:text-gray-300">{item.nis || '-'}</strong></span>
-                  {item.nama_wali && (
-                    <>
-                      <span className="text-gray-300 dark:text-gray-600">•</span>
-                      <div className="flex items-center gap-1 text-slate-500 dark:text-gray-400">
-                        <User size={11} className="shrink-0 text-indigo-400" />
-                        <span>Wali: <strong className="text-gray-700 dark:text-gray-300">{item.nama_wali}</strong></span>
-                      </div>
-                    </>
-                  )}
-                </div>
-                {item.alamat && (
-                  <div className="flex items-start gap-1 text-[11px] text-gray-500 dark:text-gray-400 leading-tight">
-                    <MapPin size={12} className="shrink-0 text-teal-500 mt-0.5" />
-                    <span className="line-clamp-2" title={item.alamat}>
-                      Alamat: <span className="text-gray-700 dark:text-gray-300">{item.alamat}</span>
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Grid Status Kehadiran Mobile */}
-              <div className="grid grid-cols-4 gap-1.5 bg-gray-100 dark:bg-gray-900 rounded-xl p-1">
-                {['Hadir', 'Izin', 'Sakit', 'Alpha'].map(status => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => handleStatusChange(item.murid_id, status)}
-                    className={`py-2 text-xs font-bold rounded-lg transition-all text-center ${
-                      item.status === status 
-                        ? status === 'Hadir' ? 'bg-green-500 text-white shadow-sm'
-                        : status === 'Izin' ? 'bg-blue-500 text-white shadow-sm'
-                        : status === 'Sakit' ? 'bg-orange-500 text-white shadow-sm'
-                        : 'bg-red-500 text-white shadow-sm'
-                        : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-gray-800/50'
-                    }`}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
-
-              {/* Catatan (hanya jika bukan Hadir) */}
-              {item.status !== 'Hadir' && (
-                <div className="ml-0.5">
-                  <input
-                    type="text"
-                    placeholder="Masukkan catatan (alasan izin/sakit/keterangan)..."
-                    value={item.keterangan || ''}
-                    onChange={(e) => handleKeteranganChange(item.murid_id, e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500"
-                  />
+              )}
+              {jadwalInfo?.jam_mulai && (
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-gray-500 dark:text-gray-400">Jadwal:</span>
+                  <span className="font-mono font-bold text-gray-900 dark:text-white">
+                    {jadwalInfo.jam_mulai}{jadwalInfo.jam_selesai ? ` - ${jadwalInfo.jam_selesai}` : ''} WIB
+                  </span>
                 </div>
               )}
             </div>
-          ))
-        )}
-      </div>
 
-      <div className="fixed bottom-16 sm:bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 p-4 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] z-40">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="text-sm font-bold text-gray-600 dark:text-gray-300">
-            Total Hadir: <span className="text-green-600 dark:text-green-400">{murid.filter(m => m.status === 'Hadir').length}</span> / {murid.length}
+            {/* Pilihan Status Berhalangan */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
+                Pilih Status Berhalangan:
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIzinStatus('Izin')}
+                  className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-1.5 text-center ${
+                    izinStatus === 'Izin'
+                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 shadow-sm ring-2 ring-amber-400/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-amber-300 text-gray-600 dark:text-gray-400'
+                  }`}
+                >
+                  <span className="w-4 h-4 rounded-full bg-amber-500 mb-1" />
+                  <span className="font-bold text-sm">Izin Mengajar</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Ada Keperluan / Udzur</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIzinStatus('Sakit')}
+                  className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-1.5 text-center ${
+                    izinStatus === 'Sakit'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 shadow-sm ring-2 ring-blue-400/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 text-gray-600 dark:text-gray-400'
+                  }`}
+                >
+                  <span className="w-4 h-4 rounded-full bg-blue-500 mb-1" />
+                  <span className="font-bold text-sm">Sakit</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Kondisi Badan Tidak Fit</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Alasan / Keterangan */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                Alasan / Keterangan:
+              </label>
+              <textarea
+                rows={3}
+                value={izinKeterangan}
+                onChange={(e) => setIzinKeterangan(e.target.value)}
+                placeholder={izinStatus === 'Sakit' ? 'Contoh: Sakit demam tinggi sejak semalam...' : 'Contoh: Ada keperluan mendesak keluarga di luar kota...'}
+                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-amber-500 transition"
+              />
+              {/* Quick Reason Chips (Rata Tengah) */}
+              <div className="flex flex-wrap justify-center gap-1.5 mt-2 text-center">
+                {(izinStatus === 'Sakit' 
+                  ? ['Demam / Flu', 'Sakit Kepala', 'Rawat Inap / Medis', 'Kurang Sehat'] 
+                  : ['Urusan Keluarga Mendesak', 'Acara Pondok / Dinas', 'Perjalanan Luar Kota', 'Tugas Mendadak']
+                ).map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => setIzinKeterangan(prev => prev ? `${prev}, ${chip}` : chip)}
+                    className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/80 dark:hover:bg-gray-600 text-[11px] text-gray-700 dark:text-gray-300 rounded-lg transition active:scale-95 text-center"
+                  >
+                    + {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Foto Bukti / Surat Dokter */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                Foto Surat Dokter / Bukti (Opsional):
+              </label>
+              <label className="border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-500 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition bg-gray-50/50 dark:bg-gray-900/30">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleIzinPhotoUpload}
+                  className="hidden"
+                />
+                <Camera size={24} className="text-gray-400" />
+                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                  {izinFoto ? 'Ganti Foto Bukti' : 'Pilih atau Ambil Foto Bukti'}
+                </span>
+                <span className="text-[10px] text-gray-400">JPG, PNG (Opsional)</span>
+              </label>
+
+              {izinFoto && (
+                <div className="mt-3 relative w-full h-40 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <img src={izinFoto} alt="Bukti Izin" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setIzinFoto(null)}
+                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 shadow-md hover:bg-red-700 transition"
+                  >
+                    <XIcon size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Tombol Submit */}
+            <button
+              type="submit"
+              disabled={submittingIzin}
+              className={`w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-white transition-all shadow-md flex items-center justify-center gap-2 active:scale-98 ${
+                submittingIzin
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700'
+              }`}
+            >
+              {submittingIzin ? (
+                <span>Menyimpan Permohonan...</span>
+              ) : (
+                <>
+                  <Send size={16} />
+                  <span>Kirim Permohonan {izinStatus}</span>
+                </>
+              )}
+            </button>
+          </form>
+        )
+      ) : (
+        <>
+          {/* Set Massal 4 Tombol */}
+          <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 mb-4 animate-in fade-in duration-300">
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2.5">⚡ Set Massal ({murid.length} Santri)</p>
+            <div className="grid grid-cols-4 gap-1.5">
+              <button
+                onClick={() => setAllStatus('Hadir')}
+                className="py-2.5 text-xs font-bold rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border dark:border-emerald-800/60 transition-all active:scale-95"
+              >
+                Hadir All
+              </button>
+              <button
+                onClick={() => setAllStatus('Izin')}
+                className="py-2.5 text-xs font-bold rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 dark:border dark:border-amber-800/60 transition-all active:scale-95"
+              >
+                Izin All
+              </button>
+              <button
+                onClick={() => setAllStatus('Sakit')}
+                className="py-2.5 text-xs font-bold rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 dark:border dark:border-blue-800/60 transition-all active:scale-95"
+              >
+                Sakit All
+              </button>
+              <button
+                onClick={() => setAllStatus('Alpha')}
+                className="py-2.5 text-xs font-bold rounded-xl bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-300 dark:border dark:border-red-800/60 transition-all active:scale-95"
+              >
+                Alpha All
+              </button>
+            </div>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving || murid.length === 0}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50"
-          >
-            {saving ? (
-              <Clock className="animate-spin" size={20} />
-            ) : (
-              <Save size={20} />
-            )}
-            {saving 
-              ? (sudahAbsen ? 'Memperbarui...' : 'Menyimpan...') 
-              : (sudahAbsen ? 'Perbarui Absensi' : 'Simpan Absensi')
-            }
-          </button>
-        </div>
-      </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">
+                    <th className="py-4 px-6">Santri</th>
+                    <th className="py-4 px-6 text-center">Status Kehadiran</th>
+                    <th className="py-4 px-6">Catatan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
+                  {murid.map((item) => (
+                    <tr key={item.murid_id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <div
+                            style={{ backgroundColor: getAvatarColor(item.nama) }}
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-extrabold shadow-sm shrink-0 uppercase select-none"
+                          >
+                            {getInitials(item.nama)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                              <span>{item.nama}</span>
+                              {item.nama_panggilan && (
+                                <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded">
+                                  ({item.nama_panggilan})
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5 flex items-center gap-2">
+                              <span>NIS: {item.nis}</span>
+                              {item.nama_wali && (
+                                <span>• Wali: <strong className="text-gray-700 dark:text-gray-300">{item.nama_wali}</strong></span>
+                              )}
+                            </div>
+                            {item.alamat && (
+                              <div className="text-[11px] text-gray-400 dark:text-gray-400 mt-0.5 flex items-center gap-1">
+                                <MapPin size={11} className="text-teal-500 shrink-0" />
+                                <span className="line-clamp-1">{item.alamat}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center justify-center gap-1 bg-gray-50 dark:bg-gray-900 p-1 rounded-xl w-max mx-auto border border-gray-100 dark:border-gray-800">
+                          {['Hadir', 'Izin', 'Sakit', 'Alpha'].map((st) => (
+                            <button
+                              key={st}
+                              type="button"
+                              onClick={() => handleStatusChange(item.murid_id, st)}
+                              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                item.status === st
+                                  ? st === 'Hadir'
+                                    ? 'bg-green-600 text-white shadow-sm'
+                                    : st === 'Izin'
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : st === 'Sakit'
+                                    ? 'bg-amber-600 text-white shadow-sm'
+                                    : 'bg-red-600 text-white shadow-sm'
+                                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                              }`}
+                            >
+                              {st}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <input
+                          type="text"
+                          placeholder="Keterangan..."
+                          value={item.keterangan || ''}
+                          onChange={(e) => handleKeteranganChange(item.murid_id, e.target.value)}
+                          className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {murid.map((item) => (
+              <div
+                key={item.murid_id}
+                className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 space-y-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    style={{ backgroundColor: getAvatarColor(item.nama) }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-extrabold shadow-sm shrink-0 uppercase select-none"
+                  >
+                    {getInitials(item.nama)}
+                  </div>
+                  <div>
+                    <div className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-1.5 flex-wrap">
+                      <span>{item.nama}</span>
+                      {item.nama_panggilan && (
+                        <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded">
+                          ({item.nama_panggilan})
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">
+                      NIS: {item.nis}
+                    </div>
+                    {item.nama_wali && (
+                      <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+                        <User size={11} className="shrink-0 text-indigo-400" />
+                        <span>Wali: <strong className="text-gray-700 dark:text-gray-300">{item.nama_wali}</strong></span>
+                      </div>
+                    )}
+                    {item.alamat && (
+                      <div className="text-[11px] text-gray-400 dark:text-gray-400 mt-0.5 flex items-center gap-1">
+                        <MapPin size={11} className="text-teal-500 shrink-0" />
+                        <span className="line-clamp-1">{item.alamat}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Grid Status Mobile */}
+                <div className="grid grid-cols-4 gap-1.5 bg-gray-100 dark:bg-gray-900 rounded-xl p-1">
+                  {['Hadir', 'Izin', 'Sakit', 'Alpha'].map(status => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => handleStatusChange(item.murid_id, status)}
+                      className={`py-2 text-xs font-bold rounded-lg transition-all text-center ${
+                        item.status === status 
+                          ? status === 'Hadir' ? 'bg-green-500 text-white shadow-sm'
+                          : status === 'Izin' ? 'bg-blue-500 text-white shadow-sm'
+                          : status === 'Sakit' ? 'bg-amber-500 text-white shadow-sm'
+                          : 'bg-red-500 text-white shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-gray-800/50'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Catatan (hanya jika bukan Hadir) */}
+                {item.status !== 'Hadir' && (
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Masukkan catatan (alasan izin/sakit/keterangan)..."
+                      value={item.keterangan || ''}
+                      onChange={(e) => handleKeteranganChange(item.murid_id, e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="fixed bottom-16 sm:bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 p-4 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] z-40">
+            <div className="max-w-4xl mx-auto flex items-center justify-between">
+              <div className="text-sm font-bold text-gray-600 dark:text-gray-300">
+                Total Hadir: <span className="text-green-600 dark:text-green-400">{murid.filter(m => m.status === 'Hadir').length}</span> / {murid.length}
+              </div>
+              <button
+                onClick={handleSave}
+                disabled={saving || murid.length === 0}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50"
+              >
+                {saving ? (
+                  <Clock className="animate-spin" size={20} />
+                ) : (
+                  <Save size={20} />
+                )}
+                {saving 
+                  ? (sudahAbsen ? 'Memperbarui...' : 'Menyimpan...') 
+                  : (sudahAbsen ? 'Perbarui Absensi' : 'Simpan Absensi')
+                }
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Zoom Photo Modal */}
       {zoomPhoto && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm cursor-zoom-out" onClick={() => setZoomPhoto(null)}>

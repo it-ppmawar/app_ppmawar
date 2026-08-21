@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CalendarCheck, Clock, BookOpen, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, QrCode, Brain, Lock, LockOpen, CheckCircle, Hourglass } from 'lucide-react';
+import { CalendarCheck, Clock, BookOpen, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, QrCode, Brain, Lock, LockOpen, CheckCircle, Hourglass, HeartPulse } from 'lucide-react';
 import Link from 'next/link';
 
 type TipeFilter = 'semua' | 'quran' | 'madin' | 'kegiatan';
@@ -347,14 +347,17 @@ export default function InputAbsenPage() {
                   kegiatan: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
                 };
 
-                const cardContent = (
-                  <div className={`p-5 rounded-2xl border transition-all ${
-                    isAktif
-                      ? `${sudahAbsen ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'} hover:shadow-md cursor-pointer group`
-                      : isSelesai
-                        ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-75 cursor-not-allowed'
-                        : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 opacity-75 cursor-not-allowed'
-                  }`}>
+                return (
+                  <div
+                    key={`${sched.tipe}-${sched.jadwal_id}`}
+                    className={`p-5 rounded-2xl border transition-all ${
+                      isAktif
+                        ? `${sudahAbsen ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'} hover:shadow-md`
+                        : isSelesai
+                          ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-75'
+                          : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 opacity-75'
+                    }`}
+                  >
                     <div className="flex justify-between items-start mb-3 gap-2 flex-wrap">
                       <div className="flex flex-col gap-1.5">
                         <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg flex items-center gap-1.5 w-max ${
@@ -382,42 +385,49 @@ export default function InputAbsenPage() {
                     <h3 className={`text-lg font-bold mb-1 transition-colors ${
                       isAktif
                         ? sudahAbsen
-                          ? 'text-green-800 dark:text-green-300 group-hover:text-green-600'
-                          : 'text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400'
+                          ? 'text-green-800 dark:text-green-300'
+                          : 'text-gray-900 dark:text-white'
                         : 'text-gray-500 dark:text-gray-400'
                     }`}>
                       {sched.mata_pelajaran || 'Mata Pelajaran'}
                     </h3>
 
-                    <div className="flex items-center gap-4 text-xs font-semibold mt-4">
+                    <div className="flex items-center gap-4 text-xs font-semibold mt-3">
                       <div className={`flex items-center gap-1.5 ${isAktif ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400'}`}>
                         <BookOpen size={14} className={sched.tipe === 'madin' ? 'text-teal-500' : sched.tipe === 'kegiatan' ? 'text-purple-500' : 'text-emerald-500'} />
                         <span>{sched.nama_kelas}</span>
                       </div>
-                      {isAktif ? (
-                        <div className={`flex items-center gap-1.5 ml-auto font-bold ${sudahAbsen ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                          {sudahAbsen ? 'Perbarui Absensi' : 'Input Absen'}
-                          <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                        </div>
-                      ) : (
+                      {!isAktif && (
                         <div className="ml-auto text-gray-400 italic">
                           {isSelesai ? (sudahAbsen ? <span className="text-green-500 not-italic flex items-center gap-1"><CheckCircle2 size={12} /> Selesai & Terisi</span> : 'Ditutup') : 'Terkunci'}
                         </div>
                       )}
                     </div>
-                  </div>
-                );
 
-                return isAktif ? (
-                  <Link
-                    href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${sched.kelas_id}&jadwal_id=${sched.jadwal_id}`}
-                    key={`${sched.tipe}-${sched.jadwal_id}`}
-                  >
-                    {cardContent}
-                  </Link>
-                ) : (
-                  <div key={`${sched.tipe}-${sched.jadwal_id}`}>
-                    {cardContent}
+                    {isAktif && (
+                      <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-blue-100 dark:border-blue-900/40">
+                        <Link
+                          href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${sched.kelas_id}&jadwal_id=${sched.jadwal_id}&action=izin`}
+                          className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                          title="Ajukan Izin atau Sakit Mengajar"
+                        >
+                          <HeartPulse size={13} className="text-amber-600 dark:text-amber-400" />
+                          <span>Izin / Sakit</span>
+                        </Link>
+
+                        <Link
+                          href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${sched.kelas_id}&jadwal_id=${sched.jadwal_id}`}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95 ${
+                            sudahAbsen
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
+                        >
+                          <span>{sudahAbsen ? 'Perbarui Absensi' : 'Input Absen'}</span>
+                          <ArrowRight size={13} />
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 );
               })}

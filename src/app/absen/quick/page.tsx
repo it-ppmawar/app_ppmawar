@@ -705,8 +705,8 @@ function QuickAbsenContent() {
                     placeholder={izinStatus === 'Sakit' ? 'Contoh: Sakit demam tinggi sejak semalam...' : 'Contoh: Ada keperluan mendesak keluarga di luar kota...'}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
                   />
-                  {/* Quick Reason Chips */}
-                  <div className="flex flex-wrap gap-1.5 mt-2">
+                  {/* Quick Reason Chips (Rata Tengah) */}
+                  <div className="flex flex-wrap justify-center gap-1.5 mt-2 text-center">
                     {(izinStatus === 'Sakit' 
                       ? ['Demam / Flu', 'Sakit Kepala', 'Rawat Inap / Medis', 'Kurang Sehat'] 
                       : ['Urusan Keluarga Mendesak', 'Acara Pondok / Dinas', 'Perjalanan Luar Kota', 'Tugas Mendadak']
@@ -715,7 +715,7 @@ function QuickAbsenContent() {
                         key={chip}
                         type="button"
                         onClick={() => setIzinKeterangan(prev => prev ? `${prev}, ${chip}` : chip)}
-                        className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 text-[11px] text-slate-300 rounded-lg transition active:scale-95"
+                        className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 text-[11px] text-slate-300 rounded-lg transition active:scale-95 text-center"
                       >
                         + {chip}
                       </button>

@@ -171,27 +171,63 @@ export async function GET(request: Request) {
 
     const sudah_absen = existing.length > 0;
 
-    // Query info jadwal (mata pelajaran, jam) untuk ditampilkan di header halaman
-    let jadwalInfo: { mata_pelajaran: string; jam_mulai: string; jam_selesai: string } | null = null;
+    // Query info jadwal (mata pelajaran, jam, guru) untuk ditampilkan di header halaman
+    let jadwalInfo: { mata_pelajaran: string; jam_mulai: string; jam_selesai: string; guru_id?: number; guru_nama?: string } | null = null;
     try {
       if (tipe === 'madin') {
         const [rows]: any = await pool.execute(
-          'SELECT mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_madin WHERE (jadwal_id = ? AND jadwal_id > 0) OR kelas_madin_id = ? ORDER BY (jadwal_id = ?) DESC LIMIT 1',
+          `SELECT j.mata_pelajaran, j.jam_mulai, j.jam_selesai, j.guru_id, g.nama AS guru_nama 
+           FROM jadwal_madin j 
+           LEFT JOIN guru g ON j.guru_id = g.guru_id 
+           WHERE (j.jadwal_id = ? AND j.jadwal_id > 0) OR j.kelas_madin_id = ? 
+           ORDER BY (j.jadwal_id = ?) DESC LIMIT 1`,
           [jadwal_id || 0, kelas_id, jadwal_id || 0]
         );
-        if (rows.length > 0) jadwalInfo = { mata_pelajaran: rows[0].mata_pelajaran || '', jam_mulai: rows[0].jam_mulai || '', jam_selesai: rows[0].jam_selesai || '' };
+        if (rows.length > 0) {
+          jadwalInfo = {
+            mata_pelajaran: rows[0].mata_pelajaran || '',
+            jam_mulai: rows[0].jam_mulai || '',
+            jam_selesai: rows[0].jam_selesai || '',
+            guru_id: rows[0].guru_id,
+            guru_nama: rows[0].guru_nama || 'Guru Madin'
+          };
+        }
       } else if (tipe === 'quran') {
         const [rows]: any = await pool.execute(
-          'SELECT mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_quran WHERE (id = ? AND id > 0) OR kelas_quran_id = ? ORDER BY (id = ?) DESC LIMIT 1',
+          `SELECT j.mata_pelajaran, j.jam_mulai, j.jam_selesai, j.guru_id, g.nama AS guru_nama 
+           FROM jadwal_quran j 
+           LEFT JOIN guru g ON j.guru_id = g.guru_id 
+           WHERE (j.id = ? AND j.id > 0) OR j.kelas_quran_id = ? 
+           ORDER BY (j.id = ?) DESC LIMIT 1`,
           [jadwal_id || 0, kelas_id, jadwal_id || 0]
         );
-        if (rows.length > 0) jadwalInfo = { mata_pelajaran: rows[0].mata_pelajaran || '', jam_mulai: rows[0].jam_mulai || '', jam_selesai: rows[0].jam_selesai || '' };
+        if (rows.length > 0) {
+          jadwalInfo = {
+            mata_pelajaran: rows[0].mata_pelajaran || '',
+            jam_mulai: rows[0].jam_mulai || '',
+            jam_selesai: rows[0].jam_selesai || '',
+            guru_id: rows[0].guru_id,
+            guru_nama: rows[0].guru_nama || "Guru Qur'an"
+          };
+        }
       } else if (tipe === 'kegiatan') {
         const [rows]: any = await pool.execute(
-          'SELECT nama_kegiatan AS mata_pelajaran, jam_mulai, jam_selesai FROM jadwal_kegiatan WHERE (kegiatan_id = ? AND kegiatan_id > 0) OR kamar_id = ? ORDER BY (kegiatan_id = ?) DESC LIMIT 1',
+          `SELECT j.nama_kegiatan AS mata_pelajaran, j.jam_mulai, j.jam_selesai, j.guru_id, g.nama AS guru_nama 
+           FROM jadwal_kegiatan j 
+           LEFT JOIN guru g ON j.guru_id = g.guru_id 
+           WHERE (j.kegiatan_id = ? AND j.kegiatan_id > 0) OR j.kamar_id = ? 
+           ORDER BY (j.kegiatan_id = ?) DESC LIMIT 1`,
           [jadwal_id || 0, kelas_id, jadwal_id || 0]
         );
-        if (rows.length > 0) jadwalInfo = { mata_pelajaran: rows[0].mata_pelajaran || '', jam_mulai: rows[0].jam_mulai || '', jam_selesai: rows[0].jam_selesai || '' };
+        if (rows.length > 0) {
+          jadwalInfo = {
+            mata_pelajaran: rows[0].mata_pelajaran || '',
+            jam_mulai: rows[0].jam_mulai || '',
+            jam_selesai: rows[0].jam_selesai || '',
+            guru_id: rows[0].guru_id,
+            guru_nama: rows[0].guru_nama || 'Pembina Asrama'
+          };
+        }
       }
     } catch (e) {
       console.error('Error fetching jadwal info:', e);
