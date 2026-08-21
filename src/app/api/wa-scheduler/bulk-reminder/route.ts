@@ -151,6 +151,7 @@ export async function POST(request: Request) {
       hari: string;
       tipe: string;
       quick_url: string;
+      quick_izin_url?: string;
     }[] = [];
 
     const activeCategories = Array.isArray(categories) && categories.length > 0 ? categories : ['madin', 'quran', 'kamar'];
@@ -168,7 +169,8 @@ export async function POST(request: Request) {
         jam_selesai: r.jam_selesai,
         hari: r.hari,
         tipe: r.tipe,
-        quick_url: r.quick_url || 'https://app.ppmawar.or.id/'
+        quick_url: r.quick_url || 'https://app.ppmawar.or.id/',
+        quick_izin_url: r.quick_izin_url
       }));
     } else if (mode === 'all_schedules') {
       // 2. Ambil jadwal hari ini sesuai kategori terpilih, lalu buat 1 pesan ringkasan per guru
@@ -185,6 +187,7 @@ export async function POST(request: Request) {
           };
           const quick_token = signToken(quickPayload, '7d');
           const quick_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}`;
+          const quick_izin_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}&action=izin`;
 
           itemsToSchedule.push({
             guru_nama: row.guru_nama,
@@ -195,7 +198,8 @@ export async function POST(request: Request) {
             jam_selesai: row.jam_selesai,
             hari: row.hari,
             tipe,
-            quick_url
+            quick_url,
+            quick_izin_url
           });
         }
       };
@@ -336,6 +340,8 @@ export async function POST(request: Request) {
       }
 
       const jamLabel = `${item.jam_mulai ? item.jam_mulai.substring(0, 5) : '-'} - ${item.jam_selesai ? item.jam_selesai.substring(0, 5) : '-'}`;
+      const quickUrl = item.quick_url || 'https://app.ppmawar.or.id/';
+      const quickIzinUrl = item.quick_izin_url || (quickUrl.includes('?') ? `${quickUrl}&action=izin` : `${quickUrl}?action=izin`);
 
       let messageText = templateToUse
         .replace(/{nama_guru}/g, item.guru_nama || 'Ustadz/Ustadzah')
@@ -346,7 +352,16 @@ export async function POST(request: Request) {
         .replace(/{mapel}/g, valMapel)
         .replace(/{kelas}/g, item.kelas_nama || '-')
         .replace(/{jam}/g, jamLabel)
-        .replace(/{link_absen}/g, item.quick_url || 'https://app.ppmawar.or.id/');
+        .replace(/{link_absen}/g, quickUrl)
+        .replace(/{link_izin}/g, quickIzinUrl);
+
+      // Jika templat belum memiliki link_izin, sisipkan otomatis di bawah Link Absensi
+      if (!messageText.includes(quickIzinUrl)) {
+        messageText = messageText.replace(
+          quickUrl,
+          `${quickUrl}\n\n*Link Izin / Sakit (Jika Berhalangan):*\n${quickIzinUrl}`
+        );
+      }
 
       // Jika templat lama belum memuat baris Mapel/Majlis/Kegiatan, sisipkan secara otomatis di bawah baris Kategori
       if (!messageText.includes(labelMapel) && !messageText.includes(valMapel) && valMapel !== '-') {

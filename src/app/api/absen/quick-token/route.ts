@@ -70,11 +70,13 @@ export async function POST(request: Request) {
 
     const quickToken = signToken(quickPayload, `${waktuTenggang}h`);
     const quickUrl = `https://app.ppmawar.or.id/absen/quick?token=${quickToken}`;
+    const quickIzinUrl = `https://app.ppmawar.or.id/absen/quick?token=${quickToken}&action=izin`;
 
     return NextResponse.json({
       success: true,
       token: quickToken,
-      url: quickUrl
+      url: quickUrl,
+      izin_url: quickIzinUrl
     });
   } catch (error: any) {
     console.error('Error generating quick token:', error);

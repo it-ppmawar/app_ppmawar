@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen, HeartPulse, Check, AlertTriangle, FileText } from 'lucide-react';
 import Link from 'next/link';
 
 // Avatar & Photo helper
@@ -43,6 +43,7 @@ function QuickAbsenContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
+  const actionParam = searchParams.get('action');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +52,14 @@ function QuickAbsenContent() {
   const [submitting, setSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+
+  // Izin / Sakit States
+  const [activeTab, setActiveTab] = useState<'absen' | 'izin'>(actionParam === 'izin' ? 'izin' : 'absen');
+  const [izinStatus, setIzinStatus] = useState<'Izin' | 'Sakit'>('Izin');
+  const [izinKeterangan, setIzinKeterangan] = useState('');
+  const [izinFoto, setIzinFoto] = useState<string>('');
+  const [submittingIzin, setSubmittingIzin] = useState(false);
+  const [izinSuccess, setIzinSuccess] = useState<string | null>(null);
 
   // Camera & Photo Upload States
   const [photoUrl, setPhotoUrl] = useState<string>('');
@@ -456,6 +465,35 @@ function QuickAbsenContent() {
     }
   };
 
+  const handleIzinSubmit = async () => {
+    if (!token || submittingIzin) return;
+    setSubmittingIzin(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/absen/quick-izin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          status: izinStatus,
+          keterangan: izinKeterangan,
+          foto_bukti: izinFoto || null
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setIzinSuccess(result.message || `Permohonan ${izinStatus} berhasil dicatat.`);
+      } else {
+        setError(result.error || 'Gagal mengirim permohonan.');
+      }
+    } catch (err: any) {
+      setError('Terjadi kesalahan: ' + err.message);
+    } finally {
+      setSubmittingIzin(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4">
@@ -518,43 +556,30 @@ function QuickAbsenContent() {
       </header>
 
       <main className="max-w-2xl mx-auto p-4 space-y-4">
-        {/* Banner Notifikasi Mode Edit Absensi */}
-        {isAlreadyFilled && (
-          <div className="bg-blue-950/80 border border-blue-500/50 text-blue-200 p-3.5 rounded-xl flex items-center gap-3 text-xs shadow-md">
-            <CheckCircle2 className="w-5 h-5 text-blue-400 shrink-0" />
-            <div>
-              <p className="font-bold text-blue-300">Mode Edit / Perbarui Absensi</p>
-              <p className="text-[11px] text-blue-200/90 leading-relaxed mt-0.5">
-                Absensi kelas ini sudah pernah diisi sebelumnya. Status yang tersimpan telah dimuat otomatis dan dapat Anda sesuaikan kembali, lalu klik <strong>"Perbarui Absensi Kelas"</strong>.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Info Card */}
-        <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border border-emerald-700/50 rounded-2xl p-4">
-          <h2 className="text-lg font-bold text-emerald-300">{jadwal.nama_kelas}</h2>
-          <p className="text-sm text-slate-300 font-medium">{jadwal.mata_pelajaran || 'Pengajaran Madin/Al-Qur\'an'}</p>
-          <div className="flex items-center justify-between text-xs text-slate-400 mt-3 pt-2 border-t border-emerald-800/40">
-            <span>🕒 {jadwal.jam_mulai} - {jadwal.jam_selesai} WIB</span>
-            <span>📅 {new Date(date + 'T00:00:00+07:00').toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).replace(/^Minggu,/i, 'Ahad,').replace(/^Minggu /i, 'Ahad ')}</span>
-          </div>
-        </div>
-
-        {/* Tombol Pintasan Absen (Scan QR & Scan Wajah AI) */}
-        <div className="grid grid-cols-2 gap-3">
-          <Link
-            href="/dashboard/scan-absen?mode=qr"
-            className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl shadow-sm text-xs font-bold transition active:scale-95"
+        {/* Tab Switcher: Masuk (Absen Santri) vs Izin / Sakit */}
+        <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl shadow-inner">
+          <button
+            type="button"
+            onClick={() => { setActiveTab('absen'); setIzinSuccess(null); }}
+            className={`py-2.5 px-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 ${
+              activeTab === 'absen'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
           >
-            <QrCode size={16} /> Scan QR Kartu
-          </Link>
-          <Link
-            href="/dashboard/scan-absen?mode=face"
-            className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl shadow-sm text-xs font-bold transition active:scale-95"
+            <BookOpen size={15} /> Absensi Santri (Masuk)
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveTab('izin'); }}
+            className={`py-2.5 px-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 ${
+              activeTab === 'izin'
+                ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
           >
-            <Brain size={16} /> Scan Wajah AI
-          </Link>
+            <HeartPulse size={15} /> Ajukan Izin / Sakit
+          </button>
         </div>
 
         {/* Error Alert */}
@@ -564,6 +589,243 @@ function QuickAbsenContent() {
             <p>{error}</p>
           </div>
         )}
+
+        {/* TAMPILAN 1: FORMULIR IZIN / SAKIT GURU */}
+        {activeTab === 'izin' ? (
+          <div className="space-y-4">
+            {izinSuccess ? (
+              <div className="bg-slate-900 border border-emerald-500/50 rounded-2xl p-6 text-center space-y-4 shadow-xl animate-in fade-in zoom-in duration-200">
+                <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/40">
+                  <CheckCircle2 size={36} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-emerald-300">Permohonan Berhasil Dicatat</h2>
+                  <p className="text-xs text-slate-300 mt-2 leading-relaxed max-w-md mx-auto">
+                    {izinSuccess}
+                  </p>
+                </div>
+                <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-[11px] text-emerald-200 text-left space-y-1">
+                  <p className="font-bold flex items-center gap-1.5"><Sparkles size={13} /> Info Otomatisasi Kehadiran:</p>
+                  <p>Status Anda telah tercatat sebagai <strong>{izinStatus}</strong> pada sistem. Anda <strong>tidak akan divonis Alpha otomatis</strong> saat waktu tenggang berakhir.</p>
+                </div>
+                <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIzinSuccess(null)}
+                    className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition"
+                  >
+                    ✏️ Ubah Data Izin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('absen')}
+                    className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition"
+                  >
+                    📋 Buka Absensi Santri
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5 shadow-lg">
+                <div className="border-b border-slate-800 pb-3">
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <HeartPulse className="text-amber-400" size={18} />
+                    Formulir Izin / Sakit Mengajar
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Gunakan formulir ini jika Anda berhalangan hadir agar kehadiran tercatat resmi dan terhindar dari alpa otomatis.
+                  </p>
+                </div>
+
+                {/* Info Guru & Jadwal */}
+                <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800/80 text-xs space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Guru / Pembina:</span>
+                    <span className="font-bold text-slate-200">{guru_nama}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Kelas / Kamar:</span>
+                    <span className="font-bold text-emerald-400">{jadwal?.nama_kelas || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Mata Pelajaran:</span>
+                    <span className="font-bold text-slate-200">{jadwal?.mata_pelajaran || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Jadwal:</span>
+                    <span className="font-bold text-slate-200">{jadwal?.jam_mulai} - {jadwal?.jam_selesai} WIB</span>
+                  </div>
+                </div>
+
+                {/* Status Selector */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-2">
+                    Pilih Status Berhalangan:
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIzinStatus('Izin')}
+                      className={`p-3.5 rounded-xl border text-center transition flex flex-col items-center gap-1.5 ${
+                        izinStatus === 'Izin'
+                          ? 'bg-amber-950/60 border-amber-500 text-amber-300 shadow-md ring-2 ring-amber-500/30'
+                          : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <span className="text-xl">🟡</span>
+                      <span className="font-bold text-sm">Izin Mengajar</span>
+                      <span className="text-[10px] text-slate-400">Ada Keperluan / Udzur</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIzinStatus('Sakit')}
+                      className={`p-3.5 rounded-xl border text-center transition flex flex-col items-center gap-1.5 ${
+                        izinStatus === 'Sakit'
+                          ? 'bg-blue-950/60 border-blue-500 text-blue-300 shadow-md ring-2 ring-blue-500/30'
+                          : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <span className="text-xl">🔵</span>
+                      <span className="font-bold text-sm">Sakit</span>
+                      <span className="text-[10px] text-slate-400">Kondisi Badan Tidak Fit</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Alasan / Keterangan */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    Alasan / Keterangan:
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={izinKeterangan}
+                    onChange={(e) => setIzinKeterangan(e.target.value)}
+                    placeholder={izinStatus === 'Sakit' ? 'Contoh: Sakit demam tinggi sejak semalam...' : 'Contoh: Ada keperluan mendesak keluarga di luar kota...'}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+                  />
+                  {/* Quick Reason Chips */}
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {(izinStatus === 'Sakit' 
+                      ? ['Demam / Flu', 'Sakit Kepala', 'Rawat Inap / Medis', 'Kurang Sehat'] 
+                      : ['Urusan Keluarga Mendesak', 'Acara Pondok / Dinas', 'Perjalanan Luar Kota', 'Tugas Mendadak']
+                    ).map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() => setIzinKeterangan(prev => prev ? `${prev}, ${chip}` : chip)}
+                        className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 text-[11px] text-slate-300 rounded-lg transition active:scale-95"
+                      >
+                        + {chip}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Lampiran Foto Bukti (Opsional) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    Foto Surat Dokter / Bukti (Opsional):
+                  </label>
+                  {izinFoto ? (
+                    <div className="relative rounded-xl overflow-hidden border border-slate-700 max-w-xs mx-auto">
+                      <img src={izinFoto} alt="Bukti Izin" className="w-full h-40 object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setIzinFoto('')}
+                        className="absolute top-2 right-2 p-1.5 bg-rose-600/90 text-white rounded-full text-xs shadow-md"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-800 hover:border-slate-700 rounded-xl cursor-pointer bg-slate-950/40 transition">
+                      <Camera className="w-6 h-6 text-slate-400 mb-1" />
+                      <span className="text-xs font-medium text-slate-300">Pilih atau Ambil Foto Bukti</span>
+                      <span className="text-[10px] text-slate-500">JPG, PNG (Opsional)</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              if (ev.target?.result) setIzinFoto(ev.target.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="button"
+                  onClick={handleIzinSubmit}
+                  disabled={submittingIzin}
+                  className="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition shadow-lg flex items-center justify-center gap-2 active:scale-95"
+                >
+                  {submittingIzin ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Mengirim Permohonan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={15} />
+                      <span>Kirim Permohonan {izinStatus}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* TAMPILAN 2: ABSENSI SANTRI (MASUK) */
+          <>
+            {/* Banner Notifikasi Mode Edit Absensi */}
+            {isAlreadyFilled && (
+              <div className="bg-blue-950/80 border border-blue-500/50 text-blue-200 p-3.5 rounded-xl flex items-center gap-3 text-xs shadow-md">
+                <CheckCircle2 className="w-5 h-5 text-blue-400 shrink-0" />
+                <div>
+                  <p className="font-bold text-blue-300">Mode Edit / Perbarui Absensi</p>
+                  <p className="text-[11px] text-blue-200/90 leading-relaxed mt-0.5">
+                    Absensi kelas ini sudah pernah diisi sebelumnya. Status yang tersimpan telah dimuat otomatis dan dapat Anda sesuaikan kembali, lalu klik <strong>"Perbarui Absensi Kelas"</strong>.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Info Card */}
+            <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border border-emerald-700/50 rounded-2xl p-4">
+              <h2 className="text-lg font-bold text-emerald-300">{jadwal.nama_kelas}</h2>
+              <p className="text-sm text-slate-300 font-medium">{jadwal.mata_pelajaran || 'Pengajaran Madin/Al-Qur\'an'}</p>
+              <div className="flex items-center justify-between text-xs text-slate-400 mt-3 pt-2 border-t border-emerald-800/40">
+                <span>🕒 {jadwal.jam_mulai} - {jadwal.jam_selesai} WIB</span>
+                <span>📅 {new Date(date + 'T00:00:00+07:00').toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).replace(/^Minggu,/i, 'Ahad,').replace(/^Minggu /i, 'Ahad ')}</span>
+              </div>
+            </div>
+
+            {/* Tombol Pintasan Absen (Scan QR & Scan Wajah AI) */}
+            <div className="grid grid-cols-2 gap-3">
+              <Link
+                href="/dashboard/scan-absen?mode=qr"
+                className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl shadow-sm text-xs font-bold transition active:scale-95"
+              >
+                <QrCode size={16} /> Scan QR Kartu
+              </Link>
+              <Link
+                href="/dashboard/scan-absen?mode=face"
+                className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl shadow-sm text-xs font-bold transition active:scale-95"
+              >
+                <Brain size={16} /> Scan Wajah AI
+              </Link>
+            </div>
 
         {/* Quick Batch Select (Set Massal Sesuai Desain HP) */}
         <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 space-y-2.5 shadow-sm">
@@ -719,7 +981,7 @@ function QuickAbsenContent() {
           })}
         </div>
 
-        {/* Floating Submit Button */}
+        {/* Floating Submit Button (Khusus Mode Masuk/Absen Santri) */}
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 z-30">
           <div className="max-w-2xl mx-auto">
             <button
@@ -739,6 +1001,8 @@ function QuickAbsenContent() {
             </button>
           </div>
         </div>
+        </>
+        )}
       </main>
 
       {/* Modal Zoom Foto Santri */}

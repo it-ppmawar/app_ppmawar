@@ -176,6 +176,7 @@ export async function GET() {
       "ALTER TABLE absensi_quran CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
       "ALTER TABLE absensi_kegiatan CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
       "ALTER TABLE absensi_guru CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+      "ALTER TABLE absensi_guru ADD COLUMN IF NOT EXISTS foto_bukti VARCHAR(255) NULL;",
       "ALTER TABLE billing CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
       "ALTER TABLE webauthn_credentials CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
 
