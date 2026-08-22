@@ -599,6 +599,13 @@ function QuickAbsenContent() {
                   <CheckCircle2 size={36} />
                 </div>
                 <div>
+                  {/* Doa Teks Arab */}
+                  <div className="text-2xl sm:text-3xl font-bold text-amber-300 font-serif mb-1 tracking-wide select-none py-1" dir="rtl">
+                    {izinStatus === 'Sakit' ? 'شَفَاكُمُ اللهُ وَعَافَاكُمْ' : 'أَعَانَكُمُ اللهُ بِالتَّيْسِيْرِ'}
+                  </div>
+                  <p className="text-[11px] text-slate-400 italic mb-3 select-none">
+                    {izinStatus === 'Sakit' ? 'Semoga Allah memberikan kesembuhan dan keafiatan kepada Anda.' : 'Semoga Allah senantiasa menolong Anda dengan segala kemudahan.'}
+                  </p>
                   <h2 className="text-lg font-bold text-emerald-300">Permohonan Berhasil Dicatat</h2>
                   <p className="text-xs text-slate-300 mt-2 leading-relaxed max-w-md mx-auto">
                     {izinSuccess}

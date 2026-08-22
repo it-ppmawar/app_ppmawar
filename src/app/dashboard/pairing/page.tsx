@@ -6,7 +6,7 @@ import {
   Camera, Save, XCircle, Search, CheckCircle, Upload, FileImage,
   Loader2, Brain, ScanFace, Users, CheckCircle2, AlertCircle,
   RefreshCw, Play, Pause, ChevronRight, Sparkles, ImageOff,
-  QrCode, Trash2, Check, ArrowRight, ShieldAlert, Sparkle, Link2
+  QrCode, Trash2, Check, ArrowRight, ShieldAlert, Sparkle, Link2, HelpCircle
 } from 'lucide-react';
 import Script from 'next/script';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -573,7 +573,31 @@ function PairingAndFacePageInner() {
               {popup.type === 'success' ? <CheckCircle size={32} /> : popup.type === 'warning' ? <XCircle size={32} className="text-yellow-600" /> : <XCircle size={32} />}
             </div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{popup.title}</h3>
-            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6 leading-relaxed">{popup.text}</p>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 leading-relaxed">{popup.text}</p>
+
+            {/* Panduan Izin Kamera — hanya muncul saat error kamera */}
+            {popup.type === 'error' && popup.title === 'Akses Kamera Gagal' && (
+              <div className="mb-4 text-left space-y-3">
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-2xl">
+                  <p className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-2 flex items-center gap-1.5">
+                    <HelpCircle size={14} /> Cara Mengizinkan Kamera:
+                  </p>
+                  <ol className="text-xs text-amber-700 dark:text-amber-300 space-y-1 pl-1 list-decimal list-inside leading-relaxed">
+                    <li>Ketuk ikon <strong>🔒 kunci / info</strong> di bilah alamat browser</li>
+                    <li>Pilih <strong>Izin situs</strong> atau <strong>Pengaturan</strong></li>
+                    <li>Ubah <strong>Kamera</strong> dari &ldquo;Blokir&rdquo; menjadi <strong>Izinkan</strong></li>
+                    <li>Muat ulang halaman ini</li>
+                  </ol>
+                </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full py-2.5 rounded-2xl font-bold text-white bg-amber-500 hover:bg-amber-600 transition active:scale-95 flex items-center justify-center gap-2 text-sm"
+                >
+                  <RefreshCw size={16} /> Muat Ulang Halaman
+                </button>
+              </div>
+            )}
+
             <button onClick={() => setPopup(null)} className={`w-full py-3 rounded-xl font-bold text-white transition-transform active:scale-95 ${popup.type === 'success' ? 'bg-green-600 hover:bg-green-700' : popup.type === 'warning' ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}>
               Oke, Mengerti
             </button>

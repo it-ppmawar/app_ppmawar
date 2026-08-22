@@ -772,6 +772,15 @@ function InputAbsenContent() {
             <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 size={36} />
             </div>
+            
+            {/* Doa Teks Arab */}
+            <div className="text-2xl sm:text-3xl font-bold text-amber-500 dark:text-amber-400 font-serif mb-1 tracking-wide select-none py-1" dir="rtl">
+              {izinStatus === 'Sakit' ? 'شَفَاكُمُ اللهُ وَعَافَاكُمْ' : 'أَعَانَكُمُ اللهُ بِالتَّيْسِيْرِ'}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 italic mb-4 select-none">
+              {izinStatus === 'Sakit' ? 'Semoga Allah memberikan kesembuhan dan keafiatan kepada Anda.' : 'Semoga Allah senantiasa menolong Anda dengan segala kemudahan.'}
+            </p>
+
             <h2 className="text-xl font-extrabold text-gray-900 dark:text-white mb-2">
               Permohonan {izinStatus} Berhasil Tercatat!
             </h2>

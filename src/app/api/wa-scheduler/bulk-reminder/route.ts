@@ -138,7 +138,7 @@ export async function POST(request: Request) {
     let currentDay = formatterDay.format(new Date());
     if (currentDay === 'Minggu') currentDay = 'Ahad';
 
-    const defaultGuruTemplate = `Assalamu'alaikum Warohmatullah, Ustadz/Ustadzah *{nama_guru}*.\n\nKami dari pengurus PPMA menginformasikan pengingat jadwal mengajar/tugas Anda:\n\n* Hari/Tanggal: {hari_tanggal}\n* Kategori: {kegiatan}\n* {label_mapel}: {mapel}\n* Tempat/Kelas: {kelas}\n* Jam: {jam}\n\nLink Absensi: {link_absen}\n\nMohon untuk mengisi absensi tepat waktu. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Warohmatullah.`;
+    const defaultGuruTemplate = `Assalamu'alaikum Warohmatullah, Ustadz/Ustadzah *{nama_guru}*.\n\nKami dari pengurus PPMA menginformasikan pengingat jadwal mengajar/tugas Anda:\n\n* Hari/Tanggal: {hari_tanggal}\n* Kategori: {kegiatan}\n* {label_mapel}: {mapel}\n* Tempat/Kelas: {kelas}\n* Jam: {jam}\n\nLink absensi serta izin / sakit (jika berhalangan):\n{link_absen}\n\nMohon untuk mengisi absensi tepat waktu. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Warohmatullah,`;
     const templateToUse = customTemplate || defaultGuruTemplate;
 
     let itemsToSchedule: {
@@ -355,13 +355,9 @@ export async function POST(request: Request) {
         .replace(/{link_absen}/g, quickUrl)
         .replace(/{link_izin}/g, quickIzinUrl);
 
-      // Jika templat belum memiliki link_izin, sisipkan otomatis di bawah Link Absensi
-      if (!messageText.includes(quickIzinUrl)) {
-        messageText = messageText.replace(
-          quickUrl,
-          `${quickUrl}\n\n*Link Izin / Sakit (Jika Berhalangan):*\n${quickIzinUrl}`
-        );
-      }
+      // Karena {link_absen} sudah mengarah ke halaman yang sama yang berisi tab absensi + izin/sakit,
+      // tidak perlu lagi menyisipkan link_izin terpisah.
+      // (Link izin hanya akan muncul jika template secara eksplisit menggunakan token {link_izin})
 
       // Jika templat lama belum memuat baris Mapel/Majlis/Kegiatan, sisipkan secara otomatis di bawah baris Kategori
       if (!messageText.includes(labelMapel) && !messageText.includes(valMapel) && valMapel !== '-') {
