@@ -7,7 +7,7 @@ import { downloadTemplate } from '@/lib/downloadTemplate';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface RowItem {
-  id: number;
+  id: string | number;
   nama: string;
   jenis_kelamin?: string;
   kelas: string;
@@ -19,6 +19,7 @@ interface RowItem {
   ditindak: boolean;
   murid_id?: number;
   deskripsi?: string;
+  sumber?: string;
 }
 
 interface MuridOption { murid_id: number; nama: string; nis: string; }
@@ -275,6 +276,7 @@ export default function KetertibanPage() {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState('');
   const [search, setSearch] = useState('');
+  const [apiError, setApiError] = useState<string>('');
 
   // Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -317,6 +319,7 @@ export default function KetertibanPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    setApiError('');
     try {
       const [resIzin, resAlpa, resPelanggaran] = await Promise.all([
         fetch('/api/ketertiban?tab=izin'),
@@ -330,14 +333,27 @@ export default function KetertibanPage() {
         resPelanggaran.json(),
       ]);
 
+      const errors: string[] = [];
       if (jsonIzin.success) {
         setDataIzin(jsonIzin.data || []);
         if (jsonIzin.summary) setSummary(jsonIzin.summary);
+      } else if (jsonIzin.error) {
+        errors.push('Izin: ' + jsonIzin.error);
       }
-      if (jsonAlpa.success) setDataAlpa(jsonAlpa.data || []);
-      if (jsonPelanggaran.success) setDataPelanggaran(jsonPelanggaran.data || []);
-    } catch (err) {
+      if (jsonAlpa.success) {
+        setDataAlpa(jsonAlpa.data || []);
+      } else if (jsonAlpa.error) {
+        errors.push('Alpa: ' + jsonAlpa.error);
+      }
+      if (jsonPelanggaran.success) {
+        setDataPelanggaran(jsonPelanggaran.data || []);
+      } else if (jsonPelanggaran.error) {
+        errors.push('Pelanggaran: ' + jsonPelanggaran.error);
+      }
+      if (errors.length > 0) setApiError(errors.join(' | '));
+    } catch (err: any) {
       console.error('Failed to fetch data:', err);
+      setApiError('Koneksi gagal: ' + (err?.message || ''));
     } finally {
       setLoading(false);
     }
@@ -541,6 +557,14 @@ export default function KetertibanPage() {
           </div>
         </div>
       </div>
+
+      {/* API Error Display */}
+      {apiError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-2xl p-4 text-sm text-red-700 dark:text-red-300 flex items-start gap-2">
+          <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
+          <div><span className="font-bold">Error API:</span> {apiError}</div>
+        </div>
+      )}
 
       {/* Ringkasan Statistik 3 Kartu Terintegrasi */}
       <div className="grid grid-cols-3 gap-4">

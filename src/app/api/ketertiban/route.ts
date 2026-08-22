@@ -58,162 +58,227 @@ export async function GET(request: Request) {
       }
     }
 
-    // Hitung ringkasan total (Izin, Alpa, Pelanggaran)
-    const [countIzinRows] = await pool.execute<RowDataPacket[]>(`
-      SELECT (
-        (SELECT COUNT(*) FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE LOWER(a.status) IN ('izin', 'sakit') AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE LOWER(aq.status) IN ('izin', 'sakit') AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE LOWER(ak.status) IN ('izin', 'sakit') AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%') AND ${muridFilter})
-      ) as total
-    `, [...queryParams, ...queryParams, ...queryParams, ...queryParams]);
+    // ─── Hitung ringkasan total (Izin, Alpa, Pelanggaran) secara aman & terisolasi ───
+    const [
+      madinIzinRes,
+      quranIzinRes,
+      kegiatanIzinRes,
+      pelanggaranIzinRes,
+      madinAlpaRes,
+      quranAlpaRes,
+      kegiatanAlpaRes,
+      pelanggaranAlpaRes,
+      pelanggaranLainRes,
+    ] = await Promise.all([
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE LOWER(a.status) IN ('izin', 'sakit') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE LOWER(aq.status) IN ('izin', 'sakit') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE LOWER(ak.status) IN ('izin', 'sakit') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE LOWER(a.status) IN ('alpha', 'alpa') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (LOWER(p.jenis) LIKE '%alpa%' OR LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%tidak hadir%') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE LOWER(p.jenis) NOT LIKE '%alpa%' AND LOWER(p.jenis) NOT LIKE '%alpha%' AND LOWER(p.jenis) NOT LIKE '%hadir%' AND LOWER(p.jenis) NOT LIKE '%izin%' AND LOWER(p.jenis) NOT LIKE '%sakit%' AND LOWER(p.jenis) NOT LIKE '%tidak hadir%' AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+    ]);
 
-    const [countAlpaRows] = await pool.execute<RowDataPacket[]>(`
-      SELECT (
-        (SELECT COUNT(*) FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE LOWER(a.status) IN ('alpha', 'alpa') AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (LOWER(p.jenis) LIKE '%alpa%' OR LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%tidak hadir%') AND ${muridFilter})
-      ) as total
-    `, [...queryParams, ...queryParams, ...queryParams, ...queryParams]);
-
-    const [countPelanggaranRows] = await pool.execute<RowDataPacket[]>(`
-      SELECT COUNT(*) as total 
-      FROM pelanggaran p 
-      JOIN murid m ON p.murid_id = m.murid_id 
-      WHERE LOWER(p.jenis) NOT LIKE '%alpa%' 
-        AND LOWER(p.jenis) NOT LIKE '%alpha%' 
-        AND LOWER(p.jenis) NOT LIKE '%hadir%' 
-        AND LOWER(p.jenis) NOT LIKE '%izin%' 
-        AND LOWER(p.jenis) NOT LIKE '%sakit%' 
-        AND LOWER(p.jenis) NOT LIKE '%tidak hadir%' 
-        AND ${muridFilter}
-    `, queryParams);
+    const totalIzin = (Number(madinIzinRes[0]?.[0]?.c) || 0) + (Number(quranIzinRes[0]?.[0]?.c) || 0) + (Number(kegiatanIzinRes[0]?.[0]?.c) || 0) + (Number(pelanggaranIzinRes[0]?.[0]?.c) || 0);
+    const totalAlpa = (Number(madinAlpaRes[0]?.[0]?.c) || 0) + (Number(quranAlpaRes[0]?.[0]?.c) || 0) + (Number(kegiatanAlpaRes[0]?.[0]?.c) || 0) + (Number(pelanggaranAlpaRes[0]?.[0]?.c) || 0);
+    const totalPelanggaran = Number(pelanggaranLainRes[0]?.[0]?.c) || 0;
 
     const summary = {
-      totalIzin: Number(countIzinRows[0]?.total || 0),
-      totalAlpa: Number(countAlpaRows[0]?.total || 0),
-      totalPelanggaran: Number(countPelanggaranRows[0]?.total || 0),
+      totalIzin,
+      totalAlpa,
+      totalPelanggaran,
     };
 
     if (tab === 'izin') {
-      const [rows] = await pool.execute<RowDataPacket[]>(
-        `SELECT CONCAT('madin_', a.murid_id, '_', a.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, a.tanggal, 
-                CONCAT('Madin: ', IFNULL(NULLIF(a.keterangan, ''), a.status)) as keterangan, 
-                a.status as status, 'absensi_madin' as sumber 
-         FROM absensi a 
-         JOIN murid m ON a.murid_id = m.murid_id 
-         WHERE LOWER(a.status) IN ('izin', 'sakit') AND ${muridFilter}
+      const [madinRows, quranRows, kegiatanRows, pelanggaranRows] = await Promise.all([
+        pool.execute<RowDataPacket[]>(
+          `SELECT a.murid_id, m.nama, m.jenis_kelamin, a.tanggal, a.keterangan, a.status 
+           FROM absensi a JOIN murid m ON a.murid_id = m.murid_id 
+           WHERE LOWER(a.status) IN ('izin', 'sakit') AND ${muridFilter} 
+           ORDER BY a.tanggal DESC LIMIT 50`,
+          queryParams
+        ).catch(() => [[] as RowDataPacket[]]),
 
-         UNION ALL
+        pool.execute<RowDataPacket[]>(
+          `SELECT aq.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, aq.keterangan, aq.status 
+           FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id 
+           WHERE LOWER(aq.status) IN ('izin', 'sakit') AND ${muridFilter} 
+           ORDER BY aq.tanggal DESC LIMIT 50`,
+          queryParams
+        ).catch(() => [[] as RowDataPacket[]]),
 
-         SELECT CONCAT('quran_', aq.murid_id, '_', aq.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, 
-                CONCAT('Qur\\'an: ', IFNULL(NULLIF(aq.keterangan, ''), aq.status)) as keterangan, 
-                aq.status as status, 'absensi_quran' as sumber 
-         FROM absensi_quran aq 
-         JOIN murid m ON aq.murid_id = m.murid_id 
-         WHERE LOWER(aq.status) IN ('izin', 'sakit') AND ${muridFilter}
+        pool.execute<RowDataPacket[]>(
+          `SELECT ak.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, ak.keterangan, ak.status 
+           FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id 
+           WHERE LOWER(ak.status) IN ('izin', 'sakit') AND ${muridFilter} 
+           ORDER BY ak.tanggal DESC LIMIT 50`,
+          queryParams
+        ).catch(() => [[] as RowDataPacket[]]),
 
-         UNION ALL
+        pool.execute<RowDataPacket[]>(
+          `SELECT p.pelanggaran_id, p.murid_id, m.nama, m.jenis_kelamin, p.tanggal, p.deskripsi as keterangan, p.jenis as status 
+           FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id 
+           WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%') AND ${muridFilter} 
+           ORDER BY p.tanggal DESC LIMIT 50`,
+          queryParams
+        ).catch(() => [[] as RowDataPacket[]]),
+      ]);
 
-         SELECT CONCAT('kegiatan_', ak.murid_id, '_', ak.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, 
-                CONCAT('Asrama: ', IFNULL(NULLIF(ak.keterangan, ''), ak.status)) as keterangan, 
-                ak.status as status, 'absensi_kegiatan' as sumber 
-         FROM absensi_kegiatan ak 
-         JOIN murid m ON ak.murid_id = m.murid_id 
-         WHERE LOWER(ak.status) IN ('izin', 'sakit') AND ${muridFilter}
+      const combinedIzin = [
+        ...((madinRows[0] || []) as any[]).map(r => ({
+          id: `madin_${r.murid_id}_${r.tanggal}`,
+          murid_id: r.murid_id,
+          nama: r.nama,
+          jenis_kelamin: r.jenis_kelamin || '-',
+          kelas: '-',
+          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          raw_tanggal: r.tanggal,
+          keterangan: r.keterangan ? `Madin: ${r.keterangan}` : `Madin (${r.status})`,
+          status: r.status,
+          sumber: 'absensi_madin',
+          ditindak: true,
+        })),
+        ...((quranRows[0] || []) as any[]).map(r => ({
+          id: `quran_${r.murid_id}_${r.tanggal}`,
+          murid_id: r.murid_id,
+          nama: r.nama,
+          jenis_kelamin: r.jenis_kelamin || '-',
+          kelas: '-',
+          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          raw_tanggal: r.tanggal,
+          keterangan: r.keterangan ? `Qur'an: ${r.keterangan}` : `Qur'an (${r.status})`,
+          status: r.status,
+          sumber: 'absensi_quran',
+          ditindak: true,
+        })),
+        ...((kegiatanRows[0] || []) as any[]).map(r => ({
+          id: `kegiatan_${r.murid_id}_${r.tanggal}`,
+          murid_id: r.murid_id,
+          nama: r.nama,
+          jenis_kelamin: r.jenis_kelamin || '-',
+          kelas: '-',
+          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          raw_tanggal: r.tanggal,
+          keterangan: r.keterangan ? `Asrama: ${r.keterangan}` : `Asrama (${r.status})`,
+          status: r.status,
+          sumber: 'absensi_kegiatan',
+          ditindak: true,
+        })),
+        ...((pelanggaranRows[0] || []) as any[]).map(r => ({
+          id: String(r.pelanggaran_id),
+          murid_id: r.murid_id,
+          nama: r.nama,
+          jenis_kelamin: r.jenis_kelamin || '-',
+          kelas: '-',
+          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          raw_tanggal: r.tanggal,
+          keterangan: r.keterangan || r.status,
+          status: r.status,
+          sumber: 'pelanggaran',
+          ditindak: true,
+        })),
+      ].sort((a, b) => new Date(b.raw_tanggal).getTime() - new Date(a.raw_tanggal).getTime());
 
-         UNION ALL
-
-         SELECT CAST(p.pelanggaran_id AS CHAR) as id, m.murid_id, m.nama, m.jenis_kelamin, p.tanggal, 
-                IFNULL(NULLIF(p.deskripsi, ''), p.jenis) as keterangan, 
-                p.jenis as status, 'pelanggaran' as sumber 
-         FROM pelanggaran p 
-         JOIN murid m ON p.murid_id = m.murid_id 
-         WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%') AND ${muridFilter}
-
-         ORDER BY tanggal DESC
-         LIMIT 100`,
-        [...queryParams, ...queryParams, ...queryParams, ...queryParams]
-      );
-
-      const dataIzin = rows.map(r => ({
-        id: r.id,
-        murid_id: r.murid_id,
-        nama: r.nama,
-        jenis_kelamin: r.jenis_kelamin || '-',
-        kelas: '-',
-        tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-        raw_tanggal: r.tanggal,
-        keterangan: r.keterangan || r.status,
-        status: r.status,
-        sumber: r.sumber,
-        ditindak: true
-      }));
-
-      return NextResponse.json({ success: true, data: dataIzin, summary });
+      return NextResponse.json({ success: true, data: combinedIzin, summary });
 
     } else if (tab === 'alpa') {
-      const [rows] = await pool.execute<RowDataPacket[]>(
-        `SELECT CONCAT('madin_', a.murid_id, '_', a.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, a.tanggal, 
-                CONCAT('Madin: ', IFNULL(NULLIF(a.keterangan, ''), 'Tidak hadir tanpa keterangan')) as keterangan, 
-                a.status as status, 'absensi_madin' as sumber 
-         FROM absensi a 
-         JOIN murid m ON a.murid_id = m.murid_id 
-         WHERE LOWER(a.status) IN ('alpha', 'alpa') AND ${muridFilter}
+      const [madinRows, quranRows, kegiatanRows, pelanggaranRows] = await Promise.all([
+        pool.execute<RowDataPacket[]>(
+          `SELECT a.murid_id, m.nama, m.jenis_kelamin, a.tanggal, a.keterangan, a.status 
+           FROM absensi a JOIN murid m ON a.murid_id = m.murid_id 
+           WHERE LOWER(a.status) IN ('alpha', 'alpa') AND ${muridFilter} 
+           ORDER BY a.tanggal DESC LIMIT 50`,
+          queryParams
+        ).catch(() => [[] as RowDataPacket[]]),
 
-         UNION ALL
+        pool.execute<RowDataPacket[]>(
+          `SELECT aq.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, aq.keterangan, aq.status 
+           FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id 
+           WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND ${muridFilter} 
+           ORDER BY aq.tanggal DESC LIMIT 50`,
+          queryParams
+        ).catch(() => [[] as RowDataPacket[]]),
 
-         SELECT CONCAT('quran_', aq.murid_id, '_', aq.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, 
-                CONCAT('Qur\\'an: ', IFNULL(NULLIF(aq.keterangan, ''), 'Tidak hadir tanpa keterangan')) as keterangan, 
-                aq.status as status, 'absensi_quran' as sumber 
-         FROM absensi_quran aq 
-         JOIN murid m ON aq.murid_id = m.murid_id 
-         WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND ${muridFilter}
+        pool.execute<RowDataPacket[]>(
+          `SELECT ak.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, ak.keterangan, ak.status 
+           FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id 
+           WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ${muridFilter} 
+           ORDER BY ak.tanggal DESC LIMIT 50`,
+          queryParams
+        ).catch(() => [[] as RowDataPacket[]]),
 
-         UNION ALL
+        pool.execute<RowDataPacket[]>(
+          `SELECT p.pelanggaran_id, p.murid_id, m.nama, m.jenis_kelamin, p.tanggal, p.deskripsi as keterangan, p.jenis as status 
+           FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id 
+           WHERE (LOWER(p.jenis) LIKE '%alpa%' OR LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%tidak hadir%') AND ${muridFilter} 
+           ORDER BY p.tanggal DESC LIMIT 50`,
+          queryParams
+        ).catch(() => [[] as RowDataPacket[]]),
+      ]);
 
-         SELECT CONCAT('kegiatan_', ak.murid_id, '_', ak.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, 
-                CONCAT('Asrama: ', IFNULL(NULLIF(ak.keterangan, ''), 'Tidak hadir tanpa keterangan')) as keterangan, 
-                ak.status as status, 'absensi_kegiatan' as sumber 
-         FROM absensi_kegiatan ak 
-         JOIN murid m ON ak.murid_id = m.murid_id 
-         WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ${muridFilter}
+      const combinedAlpa = [
+        ...((madinRows[0] || []) as any[]).map(r => ({
+          id: `madin_${r.murid_id}_${r.tanggal}`,
+          murid_id: r.murid_id,
+          nama: r.nama,
+          jenis_kelamin: r.jenis_kelamin || '-',
+          kelas: '-',
+          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          raw_tanggal: r.tanggal,
+          keterangan: r.keterangan ? `Madin: ${r.keterangan}` : 'Madin (Alpa / Tidak Hadir)',
+          status: r.status,
+          sumber: 'absensi_madin',
+          ditindak: true,
+        })),
+        ...((quranRows[0] || []) as any[]).map(r => ({
+          id: `quran_${r.murid_id}_${r.tanggal}`,
+          murid_id: r.murid_id,
+          nama: r.nama,
+          jenis_kelamin: r.jenis_kelamin || '-',
+          kelas: '-',
+          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          raw_tanggal: r.tanggal,
+          keterangan: r.keterangan ? `Qur'an: ${r.keterangan}` : `Qur'an (Alpa / Tidak Hadir)`,
+          status: r.status,
+          sumber: 'absensi_quran',
+          ditindak: true,
+        })),
+        ...((kegiatanRows[0] || []) as any[]).map(r => ({
+          id: `kegiatan_${r.murid_id}_${r.tanggal}`,
+          murid_id: r.murid_id,
+          nama: r.nama,
+          jenis_kelamin: r.jenis_kelamin || '-',
+          kelas: '-',
+          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          raw_tanggal: r.tanggal,
+          keterangan: r.keterangan ? `Asrama: ${r.keterangan}` : `Asrama (Alpa / Tidak Hadir)`,
+          status: r.status,
+          sumber: 'absensi_kegiatan',
+          ditindak: true,
+        })),
+        ...((pelanggaranRows[0] || []) as any[]).map(r => ({
+          id: String(r.pelanggaran_id),
+          murid_id: r.murid_id,
+          nama: r.nama,
+          jenis_kelamin: r.jenis_kelamin || '-',
+          kelas: '-',
+          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          raw_tanggal: r.tanggal,
+          keterangan: r.keterangan || r.status,
+          status: r.status,
+          sumber: 'pelanggaran',
+          ditindak: true,
+        })),
+      ].sort((a, b) => new Date(b.raw_tanggal).getTime() - new Date(a.raw_tanggal).getTime());
 
-         UNION ALL
-
-         SELECT CAST(p.pelanggaran_id AS CHAR) as id, m.murid_id, m.nama, m.jenis_kelamin, p.tanggal, 
-                IFNULL(NULLIF(p.deskripsi, ''), p.jenis) as keterangan, 
-                p.jenis as status, 'pelanggaran' as sumber 
-         FROM pelanggaran p 
-         JOIN murid m ON p.murid_id = m.murid_id 
-         WHERE (LOWER(p.jenis) LIKE '%alpa%' OR LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%tidak hadir%') AND ${muridFilter}
-
-         ORDER BY tanggal DESC
-         LIMIT 100`,
-        [...queryParams, ...queryParams, ...queryParams, ...queryParams]
-      );
-      
-      const dataAlpa = rows.map(r => ({
-        id: r.id,
-        murid_id: r.murid_id,
-        nama: r.nama,
-        jenis_kelamin: r.jenis_kelamin || '-',
-        kelas: '-',
-        tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-        raw_tanggal: r.tanggal,
-        keterangan: r.keterangan || r.status,
-        status: r.status,
-        sumber: r.sumber,
-        ditindak: true
-      }));
-
-      return NextResponse.json({ success: true, data: dataAlpa, summary });
+      return NextResponse.json({ success: true, data: combinedAlpa, summary });
 
     } else {
       // Tab 'pelanggaran' (Pelanggaran Tata Tertib Kedisiplinan Lainnya)
-      const [rows] = await pool.execute<RowDataPacket[]>(
-        `SELECT CAST(p.pelanggaran_id AS CHAR) as id, m.murid_id, m.nama as nama, m.jenis_kelamin as jenis_kelamin,
+      const [pelanggaranRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT p.pelanggaran_id, p.murid_id, m.nama as nama, m.jenis_kelamin as jenis_kelamin,
                 p.tanggal, p.jenis as jenis, p.deskripsi, 'pelanggaran' as sumber 
          FROM pelanggaran p
          JOIN murid m ON p.murid_id = m.murid_id
@@ -227,10 +292,10 @@ export async function GET(request: Request) {
          ORDER BY p.tanggal DESC
          LIMIT 100`,
         queryParams
-      );
+      ).catch(() => [[] as RowDataPacket[]]);
 
-      const dataPelanggaran = rows.map(r => ({
-        id: r.id,
+      const dataPelanggaran = ((pelanggaranRows || []) as any[]).map(r => ({
+        id: String(r.pelanggaran_id),
         murid_id: r.murid_id,
         nama: r.nama,
         jenis_kelamin: r.jenis_kelamin || '-',
@@ -240,7 +305,7 @@ export async function GET(request: Request) {
         jenis: r.jenis,
         keterangan: r.deskripsi || r.jenis,
         deskripsi: r.deskripsi,
-        sumber: r.sumber,
+        sumber: 'pelanggaran',
         poin: 0,
         ditindak: true
       }));
