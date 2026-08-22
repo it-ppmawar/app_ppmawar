@@ -260,11 +260,18 @@ function PelanggaranModal({
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
+// ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function KetertibanPage() {
-  const [activeTab, setActiveTab] = useState<'alpa' | 'pelanggaran'>('alpa');
+  const [activeTab, setActiveTab] = useState<'izin' | 'alpa' | 'pelanggaran'>('izin');
 
+  const [dataIzin, setDataIzin] = useState<RowItem[]>([]);
   const [dataAlpa, setDataAlpa] = useState<RowItem[]>([]);
   const [dataPelanggaran, setDataPelanggaran] = useState<RowItem[]>([]);
+  const [summary, setSummary] = useState<{ totalIzin: number; totalAlpa: number; totalPelanggaran: number }>({
+    totalIzin: 0,
+    totalAlpa: 0,
+    totalPelanggaran: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState('');
   const [search, setSearch] = useState('');
@@ -311,13 +318,24 @@ export default function KetertibanPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const resAlpa = await fetch('/api/ketertiban?tab=alpa');
-      const jsonAlpa = await resAlpa.json();
-      if (jsonAlpa.success) setDataAlpa(jsonAlpa.data);
+      const [resIzin, resAlpa, resPelanggaran] = await Promise.all([
+        fetch('/api/ketertiban?tab=izin'),
+        fetch('/api/ketertiban?tab=alpa'),
+        fetch('/api/ketertiban?tab=pelanggaran'),
+      ]);
 
-      const resPelanggaran = await fetch('/api/ketertiban?tab=pelanggaran');
-      const jsonPelanggaran = await resPelanggaran.json();
-      if (jsonPelanggaran.success) setDataPelanggaran(jsonPelanggaran.data);
+      const [jsonIzin, jsonAlpa, jsonPelanggaran] = await Promise.all([
+        resIzin.json(),
+        resAlpa.json(),
+        resPelanggaran.json(),
+      ]);
+
+      if (jsonIzin.success) {
+        setDataIzin(jsonIzin.data || []);
+        if (jsonIzin.summary) setSummary(jsonIzin.summary);
+      }
+      if (jsonAlpa.success) setDataAlpa(jsonAlpa.data || []);
+      if (jsonPelanggaran.success) setDataPelanggaran(jsonPelanggaran.data || []);
     } catch (err) {
       console.error('Failed to fetch data:', err);
     } finally {
@@ -346,6 +364,13 @@ export default function KetertibanPage() {
     return sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
   };
 
+  const filteredIzin = dataIzin.filter(item =>
+    item.nama?.toLowerCase().includes(search.toLowerCase()) ||
+    item.kelas?.toLowerCase().includes(search.toLowerCase()) ||
+    item.keterangan?.toLowerCase().includes(search.toLowerCase()) ||
+    item.jenis_kelamin?.toLowerCase().includes(search.toLowerCase())
+  );
+
   const filteredAlpa = dataAlpa.filter(item =>
     item.nama?.toLowerCase().includes(search.toLowerCase()) ||
     item.kelas?.toLowerCase().includes(search.toLowerCase()) ||
@@ -357,6 +382,7 @@ export default function KetertibanPage() {
     item.nama?.toLowerCase().includes(search.toLowerCase()) ||
     item.kelas?.toLowerCase().includes(search.toLowerCase()) ||
     item.jenis?.toLowerCase().includes(search.toLowerCase()) ||
+    item.keterangan?.toLowerCase().includes(search.toLowerCase()) ||
     item.jenis_kelamin?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -377,6 +403,7 @@ export default function KetertibanPage() {
     });
   };
 
+  const sortedIzin = sortData(filteredIzin);
   const sortedAlpa = sortData(filteredAlpa);
   const sortedPelanggaran = sortData(filteredPelanggaran);
 
@@ -385,23 +412,27 @@ export default function KetertibanPage() {
   const [pdfUrl, setPdfUrl] = useState('');
 
   const handleExport = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
-    const exportData = activeTab === 'alpa' ? sortedAlpa : sortedPelanggaran;
+    const exportData = activeTab === 'izin' ? sortedIzin : activeTab === 'alpa' ? sortedAlpa : sortedPelanggaran;
     if (exportData.length === 0) { alert('Tidak ada data untuk di-export.'); return; }
 
-    const title = activeTab === 'alpa' ? "DATA ALPA (TIDAK HADIR)" : 'DATA PELANGGARAN';
+    const title = activeTab === 'izin' ? "DATA IZIN & SAKIT SANTRI" : activeTab === 'alpa' ? "DATA ALPA (TIDAK HADIR)" : 'DATA PELANGGARAN TATA TERTIB';
     const subtitle = `Filter Pencarian: ${search || 'Semua Data'}`;
     const filename = `Data_Ketertiban_${activeTab}`;
 
-    const tableColumn = activeTab === 'alpa'
+    const tableColumn = activeTab === 'izin'
+      ? ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KETERANGAN IZIN / SAKIT"]
+      : activeTab === 'alpa'
       ? ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KETERANGAN ALPA"]
-      : ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "PELANGGARAN"];
+      : ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "JENIS PELANGGARAN", "CATATAN"];
 
     const tableRows: any[] = [];
     exportData.forEach((item, idx) => {
-      if (activeTab === 'alpa') {
+      if (activeTab === 'izin') {
+        tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.keterangan || '-']);
+      } else if (activeTab === 'alpa') {
         tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.keterangan || '-']);
       } else {
-        tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.jenis || '-']);
+        tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.jenis || '-', item.keterangan || '-']);
       }
     });
 
@@ -415,9 +446,9 @@ export default function KetertibanPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm('Apakah Anda yakin ingin menghapus catatan ini?')) {
-      const res = await fetch(`/api/ketertiban?id=${id}`, { method: 'DELETE' });
+  const handleDelete = async (item: RowItem) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus catatan untuk ${item.nama}?`)) {
+      const res = await fetch(`/api/ketertiban?id=${item.id}&sumber=${(item as any).sumber || 'pelanggaran'}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) fetchData();
       else alert(data.error || 'Gagal menghapus data');
@@ -451,7 +482,7 @@ export default function KetertibanPage() {
               <FileWarning size={28} /> Ketertiban Murid
             </h1>
             <p className="text-red-600 dark:text-red-300 text-sm mt-1 font-medium max-w-xs">
-              Sistem pencatatan otomatis siswa alpa dan riwayat pelanggaran tata tertib pesantren.
+              Sistem pencatatan otomatis siswa alpa, izin/sakit, dan riwayat pelanggaran tata tertib pesantren.
             </p>
           </div>
           <div className="flex flex-wrap w-full md:w-auto gap-2 self-start md:self-center">
@@ -508,34 +539,61 @@ export default function KetertibanPage() {
         </div>
       </div>
 
-      {/* Ringkasan Statistik */}
+      {/* Ringkasan Statistik 3 Kartu Terintegrasi */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center transition-colors">
+        <div 
+          onClick={() => setActiveTab('izin')} 
+          className={`p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
+            activeTab === 'izin'
+              ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-300 dark:border-orange-700 ring-2 ring-orange-400'
+              : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+          }`}
+        >
+          <div className="bg-orange-100 dark:bg-orange-900/50 p-2 rounded-full mb-2">
+            <Clock size={20} className="text-orange-600 dark:text-orange-400" />
+          </div>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Izin & Sakit</p>
+          <p className="text-2xl font-black text-orange-600 dark:text-orange-400">
+            {summary.totalIzin || dataIzin.length}
+          </p>
+        </div>
+
+        <div 
+          onClick={() => setActiveTab('alpa')} 
+          className={`p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
+            activeTab === 'alpa'
+              ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-700 ring-2 ring-red-400'
+              : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+          }`}
+        >
           <div className="bg-red-100 dark:bg-red-900/50 p-2 rounded-full mb-2">
             <UserX size={20} className="text-red-600 dark:text-red-400" />
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Alpa</p>
-          <p className="text-2xl font-black text-gray-800 dark:text-gray-100">{dataAlpa.length}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center transition-colors">
-          <div className="bg-orange-100 dark:bg-orange-900/50 p-2 rounded-full mb-2">
-            <Clock size={20} className="text-orange-600 dark:text-orange-400" />
-          </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Izin</p>
-          <p className="text-2xl font-black text-gray-800 dark:text-gray-100">
-            {dataAlpa.filter(a => a.keterangan?.toLowerCase().includes('izin')).length}
+          <p className="text-2xl font-black text-red-600 dark:text-red-400">
+            {summary.totalAlpa || dataAlpa.length}
           </p>
         </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center transition-colors">
+
+        <div 
+          onClick={() => setActiveTab('pelanggaran')} 
+          className={`p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
+            activeTab === 'pelanggaran'
+              ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700 ring-2 ring-purple-400'
+              : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+          }`}
+        >
           <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-full mb-2">
             <AlertTriangle size={20} className="text-purple-600 dark:text-purple-400" />
           </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Pelanggaran</p>
-          <p className="text-2xl font-black text-gray-800 dark:text-gray-100">{dataPelanggaran.length}</p>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Pelanggaran Lain</p>
+          <p className="text-2xl font-black text-purple-600 dark:text-purple-400">
+            {summary.totalPelanggaran || dataPelanggaran.length}
+          </p>
         </div>
       </div>
 
-      {/* Kontrol Pencarian & Filter & Export */}
+      {/* Kontrol Pencarian */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -543,7 +601,7 @@ export default function KetertibanPage() {
           </div>
           <input
             type="text"
-            placeholder="Cari nama murid..."
+            placeholder="Cari nama santri, keterangan, atau jenis pelanggaran..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-gray-200 transition-colors"
@@ -551,54 +609,68 @@ export default function KetertibanPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+      {/* Tabs (3 Tab: Izin, Alpa, Pelanggaran Lain) */}
+      <div className="grid grid-cols-3 gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl">
+        <button
+          onClick={() => setActiveTab('izin')}
+          className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'izin'
+              ? 'bg-white dark:bg-gray-700 shadow-sm text-orange-600 dark:text-orange-400'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+          }`}
+        >
+          <span>📋 Rekap Izin & Sakit</span>
+        </button>
         <button
           onClick={() => setActiveTab('alpa')}
-          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'alpa' ? 'bg-white dark:bg-gray-700 shadow-sm text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+          className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'alpa'
+              ? 'bg-white dark:bg-gray-700 shadow-sm text-red-600 dark:text-red-400'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+          }`}
         >
-          Rekap Alpa & Izin
+          <span>🚫 Rekap Alpa</span>
         </button>
         <button
           onClick={() => setActiveTab('pelanggaran')}
-          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'pelanggaran' ? 'bg-white dark:bg-gray-700 shadow-sm text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+          className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'pelanggaran'
+              ? 'bg-white dark:bg-gray-700 shadow-sm text-purple-600 dark:text-purple-400'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+          }`}
         >
-          Pelanggaran Lain
+          <span>⚠️ Pelanggaran Lain</span>
         </button>
       </div>
 
       {/* Daftar Konten Tabel */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
         {loading ? (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">Memuat data...</div>
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">Memuat data ketertiban santri...</div>
         ) : (
           <div className="overflow-x-auto">
-            {activeTab === 'alpa' ? (
+            {activeTab === 'izin' ? (
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
                   <tr>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. Kelamin{getSortIcon('jenis_kelamin')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Keterangan{getSortIcon('keterangan')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Keterangan / Sumber{getSortIcon('keterangan')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
                     <th className="px-4 py-4 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('ditindak')}>Status{getSortIcon('ditindak')}</th>
                     {canManage && <th className="px-4 py-4 text-center">Aksi</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {sortedAlpa.length === 0 ? (
-                    <tr><td colSpan={canManage ? 6 : 5} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada data Alpa/Izin.</td></tr>
-                  ) : sortedAlpa.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
+                  {sortedIzin.length === 0 ? (
+                    <tr><td colSpan={canManage ? 6 : 5} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada catatan data Izin / Sakit.</td></tr>
+                  ) : sortedIzin.map((item) => (
+                    <tr key={`${item.id}-${(item as any).sumber || 'p'}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
                       <td className="px-4 py-3 font-bold">{item.nama}</td>
                       <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold border ${
-                          String(item.keterangan || '').toLowerCase().includes('alpa')
-                            ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/50'
-                            : 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/50'
-                        }`}>
-                          {item.keterangan || 'Tanpa Keterangan'}
+                        <span className="text-[11px] px-2.5 py-1 rounded-full font-bold border bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/50">
+                          {item.keterangan || 'Izin'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -607,28 +679,84 @@ export default function KetertibanPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {item.ditindak ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-bold bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full border border-green-200 dark:border-green-800/30">
-                            <CheckCircle size={12} /> Selesai
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-orange-600 dark:text-orange-400 font-bold bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-full border border-orange-200 dark:border-orange-800/30">
-                            Menunggu
-                          </span>
-                        )}
+                        <span className="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-bold bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full border border-green-200 dark:border-green-800/30">
+                          <CheckCircle size={12} /> Tercatat
+                        </span>
                       </td>
                       {canManage && (
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-2">
+                            {(item as any).sumber === 'pelanggaran' && (
+                              <button
+                                onClick={() => handleEdit(item)}
+                                className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                                title="Edit"
+                              >
+                                <Edit size={14} />
+                              </button>
+                            )}
                             <button
-                              onClick={() => handleEdit(item)}
-                              className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                              title="Edit"
+                              onClick={() => handleDelete(item)}
+                              className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                              title="Hapus"
                             >
-                              <Edit size={14} />
+                              <Trash2 size={14} />
                             </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : activeTab === 'alpa' ? (
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
+                  <tr>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. Kelamin{getSortIcon('jenis_kelamin')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Keterangan / Sumber{getSortIcon('keterangan')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
+                    <th className="px-4 py-4 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('ditindak')}>Status{getSortIcon('ditindak')}</th>
+                    {canManage && <th className="px-4 py-4 text-center">Aksi</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {sortedAlpa.length === 0 ? (
+                    <tr><td colSpan={canManage ? 6 : 5} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada catatan data Alpa.</td></tr>
+                  ) : sortedAlpa.map((item) => (
+                    <tr key={`${item.id}-${(item as any).sumber || 'p'}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
+                      <td className="px-4 py-3 font-bold">{item.nama}</td>
+                      <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-[11px] px-2.5 py-1 rounded-full font-bold border bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/50">
+                          {item.keterangan || 'Tidak hadir tanpa keterangan'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 font-medium">
+                          <Calendar size={12} className="text-gray-400" /> {item.tanggal}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full border border-red-200 dark:border-red-800/30">
+                          Alpa
+                        </span>
+                      </td>
+                      {canManage && (
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {(item as any).sumber === 'pelanggaran' && (
+                              <button
+                                onClick={() => handleEdit(item)}
+                                className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                                title="Edit"
+                              >
+                                <Edit size={14} />
+                              </button>
+                            )}
                             <button
-                              onClick={() => handleDelete(item.id)}
+                              onClick={() => handleDelete(item)}
                               className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
                               title="Hapus"
                             >
@@ -648,6 +776,7 @@ export default function KetertibanPage() {
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. Kelamin{getSortIcon('jenis_kelamin')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis')}>Jenis Pelanggaran{getSortIcon('jenis')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Catatan / Deskripsi{getSortIcon('keterangan')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
                     <th className="px-4 py-4 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('ditindak')}>Status{getSortIcon('ditindak')}</th>
                     {canManage && <th className="px-4 py-4 text-center">Aksi</th>}
@@ -655,15 +784,18 @@ export default function KetertibanPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {sortedPelanggaran.length === 0 ? (
-                    <tr><td colSpan={canManage ? 6 : 5} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada data pelanggaran lain.</td></tr>
+                    <tr><td colSpan={canManage ? 7 : 6} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada data pelanggaran lain.</td></tr>
                   ) : sortedPelanggaran.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
                       <td className="px-4 py-3 font-bold">{item.nama}</td>
                       <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
                       <td className="px-4 py-3">
-                        <div className="bg-gray-50 dark:bg-gray-900/50 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700 inline-block">
-                          <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{item.jenis}</span>
+                        <div className="bg-purple-50 dark:bg-purple-950/40 px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800/50 inline-block">
+                          <span className="text-xs font-bold text-purple-700 dark:text-purple-300">{item.jenis}</span>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300 max-w-xs truncate">
+                        {item.keterangan || '-'}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 font-medium">
@@ -692,7 +824,7 @@ export default function KetertibanPage() {
                               <Edit size={14} />
                             </button>
                             <button
-                              onClick={() => handleDelete(item.id)}
+                              onClick={() => handleDelete(item)}
                               className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
                               title="Hapus"
                             >

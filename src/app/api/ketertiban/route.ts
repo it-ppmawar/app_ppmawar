@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const { role, guruId, muridId } = payload as any;
 
     const { searchParams } = new URL(request.url);
-    const tab = searchParams.get('tab') || 'alpa';
+    const tab = searchParams.get('tab') || 'izin';
     
     // Konfigurasi hak akses berbasis role
     let muridFilter = '1=1';
@@ -24,13 +24,13 @@ export async function GET(request: Request) {
 
     if (role === 'guru') {
       if (guruId) {
-        muridFilter = `
+        muridFilter = `(
           m.kelas_madin_id IN (SELECT kelas_id FROM kelas_madin WHERE guru_id = ?)
           OR m.kelas_quran_id IN (SELECT id FROM kelas_quran WHERE guru_id = ?)
           OR m.kamar_id IN (SELECT kamar_id FROM kamar WHERE guru_id = ?)
           OR m.kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?)
           OR m.kelas_quran_id IN (SELECT kelas_quran_id FROM jadwal_quran WHERE guru_id = ?)
-        `;
+        )`;
         queryParams = [guruId, guruId, guruId, guruId, guruId];
       } else {
         muridFilter = '0=1';
@@ -58,57 +58,184 @@ export async function GET(request: Request) {
       }
     }
 
-    if (tab === 'alpa') {
+    // Hitung ringkasan total (Izin, Alpa, Pelanggaran)
+    const [countIzinRows] = await pool.execute<RowDataPacket[]>(`
+      SELECT (
+        (SELECT COUNT(*) FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE a.status IN ('Izin', 'Sakit') AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE aq.status IN ('Izin', 'Sakit') AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE ak.status IN ('Izin', 'Sakit') AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (p.jenis LIKE '%Izin%' OR p.jenis LIKE '%Sakit%') AND ${muridFilter})
+      ) as total
+    `, [...queryParams, ...queryParams, ...queryParams, ...queryParams]);
+
+    const [countAlpaRows] = await pool.execute<RowDataPacket[]>(`
+      SELECT (
+        (SELECT COUNT(*) FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE a.status = 'Alpha' AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE aq.status = 'Alpha' AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE ak.status = 'Alpha' AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (p.jenis LIKE '%Alpa%' OR p.jenis LIKE '%Tidak Hadir%') AND ${muridFilter})
+      ) as total
+    `, [...queryParams, ...queryParams, ...queryParams, ...queryParams]);
+
+    const [countPelanggaranRows] = await pool.execute<RowDataPacket[]>(`
+      SELECT COUNT(*) as total 
+      FROM pelanggaran p 
+      JOIN murid m ON p.murid_id = m.murid_id 
+      WHERE p.jenis NOT LIKE '%Alpa%' AND p.jenis NOT LIKE '%Hadir%' AND p.jenis NOT LIKE '%Izin%' AND p.jenis NOT LIKE '%Sakit%' AND p.jenis NOT LIKE '%Tidak Hadir%' 
+        AND ${muridFilter}
+    `, queryParams);
+
+    const summary = {
+      totalIzin: Number(countIzinRows[0]?.total || 0),
+      totalAlpa: Number(countAlpaRows[0]?.total || 0),
+      totalPelanggaran: Number(countPelanggaranRows[0]?.total || 0),
+    };
+
+    if (tab === 'izin') {
       const [rows] = await pool.execute<RowDataPacket[]>(
-        `SELECT p.pelanggaran_id as id, m.nama as nama, m.jenis_kelamin as jenis_kelamin,
-                p.tanggal, p.deskripsi as keterangan, p.jenis as status 
-         FROM pelanggaran p
-         JOIN murid m ON p.murid_id = m.murid_id
-         WHERE (p.jenis LIKE '%Alpa%' OR p.jenis LIKE '%Hadir%' OR p.jenis LIKE '%Izin%' OR p.jenis LIKE '%Sakit%')
-           AND (${muridFilter})
-         ORDER BY p.tanggal DESC
-         LIMIT 50`,
-         queryParams
+        `SELECT a.absensi_id as id, m.murid_id, m.nama, m.jenis_kelamin, a.tanggal, 
+                CONCAT('Madin: ', IFNULL(NULLIF(a.keterangan, ''), a.status)) as keterangan, 
+                a.status as status, 'absensi_madin' as sumber 
+         FROM absensi a 
+         JOIN murid m ON a.murid_id = m.murid_id 
+         WHERE a.status IN ('Izin', 'Sakit') AND ${muridFilter}
+
+         UNION ALL
+
+         SELECT aq.id as id, m.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, 
+                CONCAT('Qur\\'an: ', IFNULL(NULLIF(aq.keterangan, ''), aq.status)) as keterangan, 
+                aq.status as status, 'absensi_quran' as sumber 
+         FROM absensi_quran aq 
+         JOIN murid m ON aq.murid_id = m.murid_id 
+         WHERE aq.status IN ('Izin', 'Sakit') AND ${muridFilter}
+
+         UNION ALL
+
+         SELECT ak.id as id, m.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, 
+                CONCAT('Asrama: ', IFNULL(NULLIF(ak.keterangan, ''), ak.status)) as keterangan, 
+                ak.status as status, 'absensi_kegiatan' as sumber 
+         FROM absensi_kegiatan ak 
+         JOIN murid m ON ak.murid_id = m.murid_id 
+         WHERE ak.status IN ('Izin', 'Sakit') AND ${muridFilter}
+
+         UNION ALL
+
+         SELECT p.pelanggaran_id as id, m.murid_id, m.nama, m.jenis_kelamin, p.tanggal, 
+                IFNULL(NULLIF(p.deskripsi, ''), p.jenis) as keterangan, 
+                p.jenis as status, 'pelanggaran' as sumber 
+         FROM pelanggaran p 
+         JOIN murid m ON p.murid_id = m.murid_id 
+         WHERE (p.jenis LIKE '%Izin%' OR p.jenis LIKE '%Sakit%') AND ${muridFilter}
+
+         ORDER BY tanggal DESC
+         LIMIT 100`,
+        [...queryParams, ...queryParams, ...queryParams, ...queryParams]
       );
-      
-      const dataAlpa = rows.map(r => ({
+
+      const dataIzin = rows.map(r => ({
         id: r.id,
+        murid_id: r.murid_id,
         nama: r.nama,
         jenis_kelamin: r.jenis_kelamin || '-',
         kelas: '-',
         tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
         raw_tanggal: r.tanggal,
         keterangan: r.keterangan || r.status,
+        status: r.status,
+        sumber: r.sumber,
         ditindak: true
       }));
 
-      return NextResponse.json({ success: true, data: dataAlpa });
-    } else {
+      return NextResponse.json({ success: true, data: dataIzin, summary });
+
+    } else if (tab === 'alpa') {
       const [rows] = await pool.execute<RowDataPacket[]>(
-        `SELECT p.pelanggaran_id as id, m.nama as nama, m.jenis_kelamin as jenis_kelamin,
-                p.tanggal, p.jenis as jenis, p.deskripsi
+        `SELECT a.absensi_id as id, m.murid_id, m.nama, m.jenis_kelamin, a.tanggal, 
+                CONCAT('Madin: ', IFNULL(NULLIF(a.keterangan, ''), 'Tidak hadir tanpa keterangan')) as keterangan, 
+                a.status as status, 'absensi_madin' as sumber 
+         FROM absensi a 
+         JOIN murid m ON a.murid_id = m.murid_id 
+         WHERE a.status = 'Alpha' AND ${muridFilter}
+
+         UNION ALL
+
+         SELECT aq.id as id, m.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, 
+                CONCAT('Qur\\'an: ', IFNULL(NULLIF(aq.keterangan, ''), 'Tidak hadir tanpa keterangan')) as keterangan, 
+                aq.status as status, 'absensi_quran' as sumber 
+         FROM absensi_quran aq 
+         JOIN murid m ON aq.murid_id = m.murid_id 
+         WHERE aq.status = 'Alpha' AND ${muridFilter}
+
+         UNION ALL
+
+         SELECT ak.id as id, m.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, 
+                CONCAT('Asrama: ', IFNULL(NULLIF(ak.keterangan, ''), 'Tidak hadir tanpa keterangan')) as keterangan, 
+                ak.status as status, 'absensi_kegiatan' as sumber 
+         FROM absensi_kegiatan ak 
+         JOIN murid m ON ak.murid_id = m.murid_id 
+         WHERE ak.status = 'Alpha' AND ${muridFilter}
+
+         UNION ALL
+
+         SELECT p.pelanggaran_id as id, m.murid_id, m.nama, m.jenis_kelamin, p.tanggal, 
+                IFNULL(NULLIF(p.deskripsi, ''), p.jenis) as keterangan, 
+                p.jenis as status, 'pelanggaran' as sumber 
+         FROM pelanggaran p 
+         JOIN murid m ON p.murid_id = m.murid_id 
+         WHERE (p.jenis LIKE '%Alpa%' OR p.jenis LIKE '%Tidak Hadir%') AND ${muridFilter}
+
+         ORDER BY tanggal DESC
+         LIMIT 100`,
+        [...queryParams, ...queryParams, ...queryParams, ...queryParams]
+      );
+      
+      const dataAlpa = rows.map(r => ({
+        id: r.id,
+        murid_id: r.murid_id,
+        nama: r.nama,
+        jenis_kelamin: r.jenis_kelamin || '-',
+        kelas: '-',
+        tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+        raw_tanggal: r.tanggal,
+        keterangan: r.keterangan || r.status,
+        status: r.status,
+        sumber: r.sumber,
+        ditindak: true
+      }));
+
+      return NextResponse.json({ success: true, data: dataAlpa, summary });
+
+    } else {
+      // Tab 'pelanggaran' (Pelanggaran Tata Tertib Kedisiplinan Lainnya)
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT p.pelanggaran_id as id, m.murid_id, m.nama as nama, m.jenis_kelamin as jenis_kelamin,
+                p.tanggal, p.jenis as jenis, p.deskripsi, 'pelanggaran' as sumber 
          FROM pelanggaran p
          JOIN murid m ON p.murid_id = m.murid_id
-         WHERE p.jenis NOT LIKE '%Alpa%' AND p.jenis NOT LIKE '%Hadir%' AND p.jenis NOT LIKE '%Izin%' AND p.jenis NOT LIKE '%Sakit%'
+         WHERE p.jenis NOT LIKE '%Alpa%' AND p.jenis NOT LIKE '%Hadir%' AND p.jenis NOT LIKE '%Izin%' AND p.jenis NOT LIKE '%Sakit%' AND p.jenis NOT LIKE '%Tidak Hadir%'
            AND (${muridFilter})
          ORDER BY p.tanggal DESC
-         LIMIT 50`,
-         queryParams
+         LIMIT 100`,
+        queryParams
       );
 
       const dataPelanggaran = rows.map(r => ({
         id: r.id,
+        murid_id: r.murid_id,
         nama: r.nama,
         jenis_kelamin: r.jenis_kelamin || '-',
         kelas: '-',
         tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
         raw_tanggal: r.tanggal,
         jenis: r.jenis,
+        keterangan: r.deskripsi || r.jenis,
+        deskripsi: r.deskripsi,
+        sumber: r.sumber,
         poin: 0,
         ditindak: true
       }));
 
-      return NextResponse.json({ success: true, data: dataPelanggaran });
+      return NextResponse.json({ success: true, data: dataPelanggaran, summary });
     }
   } catch (error: any) {
     console.error('Error API Ketertiban:', error.message);
@@ -120,10 +247,20 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const sumber = searchParams.get('sumber') || 'pelanggaran';
     
     if (!id) return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 });
 
-    await pool.execute('DELETE FROM pelanggaran WHERE pelanggaran_id = ?', [id]);
+    if (sumber === 'absensi_madin') {
+      await pool.execute('DELETE FROM absensi WHERE absensi_id = ?', [id]);
+    } else if (sumber === 'absensi_quran') {
+      await pool.execute('DELETE FROM absensi_quran WHERE id = ?', [id]);
+    } else if (sumber === 'absensi_kegiatan') {
+      await pool.execute('DELETE FROM absensi_kegiatan WHERE id = ?', [id]);
+    } else {
+      await pool.execute('DELETE FROM pelanggaran WHERE pelanggaran_id = ?', [id]);
+    }
+
     return NextResponse.json({ success: true, message: 'Data berhasil dihapus' });
   } catch (error: any) {
     return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
