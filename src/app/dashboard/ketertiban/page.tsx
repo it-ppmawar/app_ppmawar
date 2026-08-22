@@ -448,7 +448,10 @@ export default function KetertibanPage() {
 
   const handleDelete = async (item: RowItem) => {
     if (confirm(`Apakah Anda yakin ingin menghapus catatan untuk ${item.nama}?`)) {
-      const res = await fetch(`/api/ketertiban?id=${item.id}&sumber=${(item as any).sumber || 'pelanggaran'}`, { method: 'DELETE' });
+      const res = await fetch(
+        `/api/ketertiban?id=${encodeURIComponent(item.id)}&sumber=${(item as any).sumber || 'pelanggaran'}&murid_id=${item.murid_id || ''}&tanggal=${item.raw_tanggal || ''}`,
+        { method: 'DELETE' }
+      );
       const data = await res.json();
       if (data.success) fetchData();
       else alert(data.error || 'Gagal menghapus data');

@@ -61,19 +61,19 @@ export async function GET(request: Request) {
     // Hitung ringkasan total (Izin, Alpa, Pelanggaran)
     const [countIzinRows] = await pool.execute<RowDataPacket[]>(`
       SELECT (
-        (SELECT COUNT(*) FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE a.status IN ('Izin', 'Sakit') AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE aq.status IN ('Izin', 'Sakit') AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE ak.status IN ('Izin', 'Sakit') AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (p.jenis LIKE '%Izin%' OR p.jenis LIKE '%Sakit%') AND ${muridFilter})
+        (SELECT COUNT(*) FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE LOWER(a.status) IN ('izin', 'sakit') AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE LOWER(aq.status) IN ('izin', 'sakit') AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE LOWER(ak.status) IN ('izin', 'sakit') AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%') AND ${muridFilter})
       ) as total
     `, [...queryParams, ...queryParams, ...queryParams, ...queryParams]);
 
     const [countAlpaRows] = await pool.execute<RowDataPacket[]>(`
       SELECT (
-        (SELECT COUNT(*) FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE a.status = 'Alpha' AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE aq.status = 'Alpha' AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE ak.status = 'Alpha' AND ${muridFilter}) +
-        (SELECT COUNT(*) FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (p.jenis LIKE '%Alpa%' OR p.jenis LIKE '%Tidak Hadir%') AND ${muridFilter})
+        (SELECT COUNT(*) FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE LOWER(a.status) IN ('alpha', 'alpa') AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ${muridFilter}) +
+        (SELECT COUNT(*) FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (LOWER(p.jenis) LIKE '%alpa%' OR LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%tidak hadir%') AND ${muridFilter})
       ) as total
     `, [...queryParams, ...queryParams, ...queryParams, ...queryParams]);
 
@@ -81,7 +81,12 @@ export async function GET(request: Request) {
       SELECT COUNT(*) as total 
       FROM pelanggaran p 
       JOIN murid m ON p.murid_id = m.murid_id 
-      WHERE p.jenis NOT LIKE '%Alpa%' AND p.jenis NOT LIKE '%Hadir%' AND p.jenis NOT LIKE '%Izin%' AND p.jenis NOT LIKE '%Sakit%' AND p.jenis NOT LIKE '%Tidak Hadir%' 
+      WHERE LOWER(p.jenis) NOT LIKE '%alpa%' 
+        AND LOWER(p.jenis) NOT LIKE '%alpha%' 
+        AND LOWER(p.jenis) NOT LIKE '%hadir%' 
+        AND LOWER(p.jenis) NOT LIKE '%izin%' 
+        AND LOWER(p.jenis) NOT LIKE '%sakit%' 
+        AND LOWER(p.jenis) NOT LIKE '%tidak hadir%' 
         AND ${muridFilter}
     `, queryParams);
 
@@ -93,39 +98,39 @@ export async function GET(request: Request) {
 
     if (tab === 'izin') {
       const [rows] = await pool.execute<RowDataPacket[]>(
-        `SELECT a.absensi_id as id, m.murid_id, m.nama, m.jenis_kelamin, a.tanggal, 
+        `SELECT CONCAT('madin_', a.murid_id, '_', a.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, a.tanggal, 
                 CONCAT('Madin: ', IFNULL(NULLIF(a.keterangan, ''), a.status)) as keterangan, 
                 a.status as status, 'absensi_madin' as sumber 
          FROM absensi a 
          JOIN murid m ON a.murid_id = m.murid_id 
-         WHERE a.status IN ('Izin', 'Sakit') AND ${muridFilter}
+         WHERE LOWER(a.status) IN ('izin', 'sakit') AND ${muridFilter}
 
          UNION ALL
 
-         SELECT aq.id as id, m.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, 
+         SELECT CONCAT('quran_', aq.murid_id, '_', aq.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, 
                 CONCAT('Qur\\'an: ', IFNULL(NULLIF(aq.keterangan, ''), aq.status)) as keterangan, 
                 aq.status as status, 'absensi_quran' as sumber 
          FROM absensi_quran aq 
          JOIN murid m ON aq.murid_id = m.murid_id 
-         WHERE aq.status IN ('Izin', 'Sakit') AND ${muridFilter}
+         WHERE LOWER(aq.status) IN ('izin', 'sakit') AND ${muridFilter}
 
          UNION ALL
 
-         SELECT ak.id as id, m.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, 
+         SELECT CONCAT('kegiatan_', ak.murid_id, '_', ak.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, 
                 CONCAT('Asrama: ', IFNULL(NULLIF(ak.keterangan, ''), ak.status)) as keterangan, 
                 ak.status as status, 'absensi_kegiatan' as sumber 
          FROM absensi_kegiatan ak 
          JOIN murid m ON ak.murid_id = m.murid_id 
-         WHERE ak.status IN ('Izin', 'Sakit') AND ${muridFilter}
+         WHERE LOWER(ak.status) IN ('izin', 'sakit') AND ${muridFilter}
 
          UNION ALL
 
-         SELECT p.pelanggaran_id as id, m.murid_id, m.nama, m.jenis_kelamin, p.tanggal, 
+         SELECT CAST(p.pelanggaran_id AS CHAR) as id, m.murid_id, m.nama, m.jenis_kelamin, p.tanggal, 
                 IFNULL(NULLIF(p.deskripsi, ''), p.jenis) as keterangan, 
                 p.jenis as status, 'pelanggaran' as sumber 
          FROM pelanggaran p 
          JOIN murid m ON p.murid_id = m.murid_id 
-         WHERE (p.jenis LIKE '%Izin%' OR p.jenis LIKE '%Sakit%') AND ${muridFilter}
+         WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%') AND ${muridFilter}
 
          ORDER BY tanggal DESC
          LIMIT 100`,
@@ -150,39 +155,39 @@ export async function GET(request: Request) {
 
     } else if (tab === 'alpa') {
       const [rows] = await pool.execute<RowDataPacket[]>(
-        `SELECT a.absensi_id as id, m.murid_id, m.nama, m.jenis_kelamin, a.tanggal, 
+        `SELECT CONCAT('madin_', a.murid_id, '_', a.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, a.tanggal, 
                 CONCAT('Madin: ', IFNULL(NULLIF(a.keterangan, ''), 'Tidak hadir tanpa keterangan')) as keterangan, 
                 a.status as status, 'absensi_madin' as sumber 
          FROM absensi a 
          JOIN murid m ON a.murid_id = m.murid_id 
-         WHERE a.status = 'Alpha' AND ${muridFilter}
+         WHERE LOWER(a.status) IN ('alpha', 'alpa') AND ${muridFilter}
 
          UNION ALL
 
-         SELECT aq.id as id, m.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, 
+         SELECT CONCAT('quran_', aq.murid_id, '_', aq.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, 
                 CONCAT('Qur\\'an: ', IFNULL(NULLIF(aq.keterangan, ''), 'Tidak hadir tanpa keterangan')) as keterangan, 
                 aq.status as status, 'absensi_quran' as sumber 
          FROM absensi_quran aq 
          JOIN murid m ON aq.murid_id = m.murid_id 
-         WHERE aq.status = 'Alpha' AND ${muridFilter}
+         WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND ${muridFilter}
 
          UNION ALL
 
-         SELECT ak.id as id, m.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, 
+         SELECT CONCAT('kegiatan_', ak.murid_id, '_', ak.tanggal) as id, m.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, 
                 CONCAT('Asrama: ', IFNULL(NULLIF(ak.keterangan, ''), 'Tidak hadir tanpa keterangan')) as keterangan, 
                 ak.status as status, 'absensi_kegiatan' as sumber 
          FROM absensi_kegiatan ak 
          JOIN murid m ON ak.murid_id = m.murid_id 
-         WHERE ak.status = 'Alpha' AND ${muridFilter}
+         WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ${muridFilter}
 
          UNION ALL
 
-         SELECT p.pelanggaran_id as id, m.murid_id, m.nama, m.jenis_kelamin, p.tanggal, 
+         SELECT CAST(p.pelanggaran_id AS CHAR) as id, m.murid_id, m.nama, m.jenis_kelamin, p.tanggal, 
                 IFNULL(NULLIF(p.deskripsi, ''), p.jenis) as keterangan, 
                 p.jenis as status, 'pelanggaran' as sumber 
          FROM pelanggaran p 
          JOIN murid m ON p.murid_id = m.murid_id 
-         WHERE (p.jenis LIKE '%Alpa%' OR p.jenis LIKE '%Tidak Hadir%') AND ${muridFilter}
+         WHERE (LOWER(p.jenis) LIKE '%alpa%' OR LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%tidak hadir%') AND ${muridFilter}
 
          ORDER BY tanggal DESC
          LIMIT 100`,
@@ -208,11 +213,16 @@ export async function GET(request: Request) {
     } else {
       // Tab 'pelanggaran' (Pelanggaran Tata Tertib Kedisiplinan Lainnya)
       const [rows] = await pool.execute<RowDataPacket[]>(
-        `SELECT p.pelanggaran_id as id, m.murid_id, m.nama as nama, m.jenis_kelamin as jenis_kelamin,
+        `SELECT CAST(p.pelanggaran_id AS CHAR) as id, m.murid_id, m.nama as nama, m.jenis_kelamin as jenis_kelamin,
                 p.tanggal, p.jenis as jenis, p.deskripsi, 'pelanggaran' as sumber 
          FROM pelanggaran p
          JOIN murid m ON p.murid_id = m.murid_id
-         WHERE p.jenis NOT LIKE '%Alpa%' AND p.jenis NOT LIKE '%Hadir%' AND p.jenis NOT LIKE '%Izin%' AND p.jenis NOT LIKE '%Sakit%' AND p.jenis NOT LIKE '%Tidak Hadir%'
+         WHERE LOWER(p.jenis) NOT LIKE '%alpa%' 
+           AND LOWER(p.jenis) NOT LIKE '%alpha%' 
+           AND LOWER(p.jenis) NOT LIKE '%hadir%' 
+           AND LOWER(p.jenis) NOT LIKE '%izin%' 
+           AND LOWER(p.jenis) NOT LIKE '%sakit%' 
+           AND LOWER(p.jenis) NOT LIKE '%tidak hadir%'
            AND (${muridFilter})
          ORDER BY p.tanggal DESC
          LIMIT 100`,
@@ -248,15 +258,17 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const sumber = searchParams.get('sumber') || 'pelanggaran';
+    const murid_id = searchParams.get('murid_id');
+    const tanggal = searchParams.get('tanggal');
     
     if (!id) return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 });
 
-    if (sumber === 'absensi_madin') {
-      await pool.execute('DELETE FROM absensi WHERE absensi_id = ?', [id]);
-    } else if (sumber === 'absensi_quran') {
-      await pool.execute('DELETE FROM absensi_quran WHERE id = ?', [id]);
-    } else if (sumber === 'absensi_kegiatan') {
-      await pool.execute('DELETE FROM absensi_kegiatan WHERE id = ?', [id]);
+    if (sumber === 'absensi_madin' && murid_id && tanggal) {
+      await pool.execute('DELETE FROM absensi WHERE murid_id = ? AND tanggal = ?', [murid_id, tanggal]);
+    } else if (sumber === 'absensi_quran' && murid_id && tanggal) {
+      await pool.execute('DELETE FROM absensi_quran WHERE murid_id = ? AND tanggal = ?', [murid_id, tanggal]);
+    } else if (sumber === 'absensi_kegiatan' && murid_id && tanggal) {
+      await pool.execute('DELETE FROM absensi_kegiatan WHERE murid_id = ? AND tanggal = ?', [murid_id, tanggal]);
     } else {
       await pool.execute('DELETE FROM pelanggaran WHERE pelanggaran_id = ?', [id]);
     }
