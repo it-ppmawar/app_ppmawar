@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, X as XIcon, User, MapPin, QrCode, Brain, BookOpen, HeartPulse, Send, FileText, CheckCircle2 } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, X as XIcon, User, MapPin, QrCode, Brain, BookOpen, HeartPulse, Send, FileText, CheckCircle2, RefreshCw, HelpCircle, Loader2 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -63,6 +63,8 @@ function InputAbsenContent() {
   const [errorMsg, setErrorMsg] = useState('');
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState('');
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [showGpsModal, setShowGpsModal] = useState(false);
   const [namaTarget, setNamaTarget] = useState('Kelas/Kamar');
   const [photoUrl, setPhotoUrl] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -87,54 +89,71 @@ function InputAbsenContent() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  const fetchData = useCallback(async () => {
+    if (!tipe || !kelas_id || !jadwal_id) return;
+    try {
+      const res = await fetch(`/api/absen/input?tipe=${tipe}&kelas_id=${kelas_id}&jadwal_id=${jadwal_id}`);
+      const json = await res.json();
+      if (json.success) {
+        setMurid(json.data);
+        if (json.namaTarget) setNamaTarget(json.namaTarget);
+        if (json.sudah_absen !== undefined) setSudahAbsen(json.sudah_absen);
+        if (json.jadwalInfo) setJadwalInfo(json.jadwalInfo);
+        if (json.tanggal) setTanggalAbsen(json.tanggal);
+      } else {
+        setErrorMsg(json.error || 'Gagal memuat data santri');
+      }
+    } catch (err) {
+      setErrorMsg('Terjadi kesalahan jaringan');
+    } finally {
+      setLoading(false);
+    }
+  }, [tipe, kelas_id, jadwal_id]);
+
+  const requestGpsLocation = useCallback(() => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      setLocationError('Browser Anda tidak mendukung deteksi lokasi.');
+      setLoading(false);
+      return;
+    }
+    setDetectingLocation(true);
+    setLocationError('');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+        setLocationError('');
+        setDetectingLocation(false);
+        fetchData();
+      },
+      (err) => {
+        console.error(err);
+        setDetectingLocation(false);
+        if (err.code === 1) {
+          setLocationError('Izin akses lokasi ditolak oleh browser. Buka izin lokasi di setelan browser atau ikuti panduan di bawah.');
+        } else if (err.code === 2) {
+          setLocationError('Lokasi GPS tidak terdeteksi. Pastikan fitur Lokasi / GPS di HP Anda sudah dinyalakan.');
+        } else if (err.code === 3) {
+          setLocationError('Waktu deteksi lokasi habis. Silakan ketuk tombol "Cek Ulang GPS".');
+        } else {
+          setLocationError('Akses lokasi ditolak atau tidak tersedia. Anda wajib mengaktifkan GPS/Lokasi untuk melakukan absensi.');
+        }
+        setLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, [fetchData]);
+
   useEffect(() => {
     if (!tipe || !kelas_id || !jadwal_id) {
       setErrorMsg('Parameter tidak lengkap');
       setLoading(false);
       return;
     }
-
-    const fetchData = async () => {
-      try {
-        const res = await fetch(`/api/absen/input?tipe=${tipe}&kelas_id=${kelas_id}&jadwal_id=${jadwal_id}`);
-        const json = await res.json();
-        if (json.success) {
-          setMurid(json.data);
-          if (json.namaTarget) setNamaTarget(json.namaTarget);
-          if (json.sudah_absen !== undefined) setSudahAbsen(json.sudah_absen);
-          if (json.jadwalInfo) setJadwalInfo(json.jadwalInfo);
-          if (json.tanggal) setTanggalAbsen(json.tanggal);
-        } else {
-          setErrorMsg(json.error || 'Gagal memuat data santri');
-        }
-      } catch (err) {
-        setErrorMsg('Terjadi kesalahan jaringan');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-          fetchData();
-        },
-        (err) => {
-          console.error(err);
-          setLocationError('Akses lokasi ditolak atau tidak tersedia. Anda wajib mengaktifkan GPS/Lokasi untuk melakukan absensi.');
-          setLoading(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      setLocationError('Browser Anda tidak mendukung deteksi lokasi.');
-      setLoading(false);
-    }
-  }, [tipe, kelas_id, jadwal_id]);
+    requestGpsLocation();
+  }, [tipe, kelas_id, jadwal_id, requestGpsLocation]);
 
   const handleStatusChange = (murid_id: number, status: string) => {
     setMurid(prev => prev.map(m => m.murid_id === murid_id ? { ...m, status } : m));
@@ -664,14 +683,129 @@ function InputAbsenContent() {
   }
 
   if (locationError) return (
-    <div className="max-w-3xl mx-auto p-6 text-center bg-red-50 dark:bg-red-900/20 rounded-3xl mt-10">
-      <AlertTriangle size={48} className="mx-auto text-red-500 mb-4" />
-      <h2 className="text-xl font-bold text-red-700 dark:text-red-400 mb-2">Lokasi Tidak Terdeteksi</h2>
-      <p className="text-red-600 dark:text-red-300 mb-6">{locationError}</p>
-      <p className="text-sm text-red-500 mb-6 font-bold">
-        Deteksi lokasi diwajibkan untuk menjaga ketertiban absensi. Pastikan fitur Lokasi / GPS di HP Anda menyala dan Anda mengizinkan browser mengakses lokasi.
+    <div className="max-w-xl mx-auto p-6 text-center bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-3xl mt-8 shadow-xl space-y-4">
+      <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center mx-auto border border-red-200 dark:border-red-800">
+        <MapPin size={32} className="text-red-500" />
+      </div>
+      <h2 className="text-xl font-extrabold text-red-800 dark:text-red-300">Izin Lokasi (GPS) Diperlukan</h2>
+      <p className="text-xs text-red-600 dark:text-red-300 leading-relaxed max-w-md mx-auto">{locationError}</p>
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 bg-white/70 dark:bg-black/30 p-3 rounded-2xl border border-red-100 dark:border-red-900/30">
+        Deteksi lokasi diwajibkan untuk memastikan absensi dilakukan di area pesantren. Pastikan sakelar GPS di HP Anda sudah menyala dan izin lokasi di browser diberikan.
       </p>
-      <Link href="/dashboard/absen" className="bg-red-600 text-white px-6 py-2 rounded-xl font-bold">Kembali</Link>
+      
+      <div className="flex flex-col sm:flex-row gap-2 pt-2 justify-center">
+        <button
+          type="button"
+          onClick={requestGpsLocation}
+          disabled={detectingLocation}
+          className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm disabled:opacity-50"
+        >
+          {detectingLocation ? (
+            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Mendeteksi GPS...</>
+          ) : (
+            <><MapPin className="w-3.5 h-3.5" /> Cek Ulang GPS</>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowGpsModal(true)}
+          className="py-2.5 px-4 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm"
+        >
+          <HelpCircle className="w-3.5 h-3.5" /> Panduan Buka Izin GPS
+        </button>
+
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="py-2.5 px-4 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
+        >
+          <RefreshCw className="w-3.5 h-3.5" /> Muat Ulang
+        </button>
+
+        <Link
+          href="/dashboard/absen"
+          className="py-2.5 px-4 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
+        >
+          Kembali
+        </Link>
+      </div>
+
+      {/* Modal Panduan GPS */}
+      {showGpsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 text-left">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-base">
+                <MapPin className="w-5 h-5" />
+                <span>Panduan Mengaktifkan GPS &amp; Izin Lokasi</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGpsModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-full bg-slate-100 dark:bg-slate-800 transition"
+              >
+                <XIcon size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-amber-600 dark:text-amber-300">
+                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 flex items-center justify-center text-[11px] border border-amber-500/40">1</span>
+                  Nyalakan GPS di HP Anda
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 pl-7 text-[11px]">
+                  Tarik layar HP dari atas ke bawah (menu bar notifikasi). Pastikan ikon <strong>&quot;Lokasi&quot; / &quot;GPS&quot;</strong> dalam keadaan <strong>Menyala / Aktif (berwarna biru/hijau)</strong>.
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-emerald-600 dark:text-emerald-300">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 flex items-center justify-center text-[11px] border border-emerald-500/40">2</span>
+                  Pengguna Google Chrome (HP Android)
+                </div>
+                <ul className="list-disc pl-11 space-y-1 text-slate-600 dark:text-slate-300 text-[11px]">
+                  <li>Lihat bilah alamat web paling atas tempat halaman ini dibuka (<code>app.ppmawar.or.id</code>).</li>
+                  <li>Ketuk ikon <strong>Gembok 🔒 atau Setelan ⚙️ / Tombol Info</strong> di sebelah kiri alamat web.</li>
+                  <li>Pilih menu <strong>Izin / Permissions</strong> ➔ aktifkan <strong>Lokasi (Location)</strong> ke <strong>Izinkan / Allow</strong>.</li>
+                </ul>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-cyan-600 dark:text-cyan-300">
+                  <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 flex items-center justify-center text-[11px] border border-cyan-500/40">3</span>
+                  Pengguna iPhone (Safari)
+                </div>
+                <ul className="list-disc pl-11 space-y-1 text-slate-600 dark:text-slate-300 text-[11px]">
+                  <li>Buka <strong>Pengaturan HP (Settings)</strong> ➔ <strong>Privasi &amp; Keamanan</strong> ➔ <strong>Layanan Lokasi</strong> (pastikan Aktif).</li>
+                  <li>Di Safari, ketuk tombol <strong>&apos;aA&apos;</strong> di bilah alamat ➔ <strong>Pengaturan Situs Web</strong> ➔ <strong>Lokasi</strong> ➔ Pilih <strong>Izinkan</strong>.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  requestGpsLocation();
+                  setShowGpsModal(false);
+                }}
+                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md active:scale-95"
+              >
+                <MapPin size={15} /> Cek &amp; Izinkan Sekarang
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="py-2.5 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
+              >
+                <RefreshCw size={14} /> Muat Ulang Halaman
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

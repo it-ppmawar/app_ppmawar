@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen, HeartPulse, Check, AlertTriangle, FileText } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
 // Avatar & Photo helper
@@ -395,20 +395,41 @@ function QuickAbsenContent() {
   };
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [detectingGps, setDetectingGps] = useState(false);
+  const [showGpsModal, setShowGpsModal] = useState(false);
+
+  const requestGpsPermission = useCallback(() => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      setError('Browser atau perangkat Anda tidak mendukung fitur deteksi lokasi (GPS).');
+      return;
+    }
+    setDetectingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setDetectingGps(false);
+        setError((prev) => (prev && (prev.includes('GPS') || prev.includes('Lokasi') || prev.includes('lokasi')) ? null : prev));
+      },
+      (err) => {
+        console.log('GPS error:', err);
+        setDetectingGps(false);
+        if (err.code === 1) {
+          setError('Akses GPS ditolak oleh browser. Buka izin lokasi di browser atau ikuti panduan di bawah.');
+        } else if (err.code === 2) {
+          setError('Lokasi GPS tidak terdeteksi. Pastikan fitur Lokasi / GPS di HP Anda sudah dinyalakan.');
+        } else if (err.code === 3) {
+          setError('Waktu deteksi GPS habis. Silakan ketuk tombol "Cek Ulang GPS".');
+        } else {
+          setError('Gagal mendeteksi lokasi GPS: ' + err.message);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, []);
 
   useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        },
-        (err) => {
-          console.log('GPS error:', err);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    }
-  }, []);
+    requestGpsPermission();
+  }, [requestGpsPermission]);
 
   const handleSubmit = async () => {
     if (!data || submitting) return;
@@ -418,15 +439,17 @@ function QuickAbsenContent() {
     // Dapatkan lokasi GPS terbaru jika belum terdeteksi
     let currentLoc = userLocation;
     if (!currentLoc && 'geolocation' in navigator) {
+      setDetectingGps(true);
       try {
         const pos: any = await new Promise((resolve) => {
-          navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { enableHighAccuracy: true, timeout: 6000 });
+          navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { enableHighAccuracy: true, timeout: 7000 });
         });
         if (pos && pos.coords) {
           currentLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
           setUserLocation(currentLoc);
         }
       } catch (_) {}
+      setDetectingGps(false);
     }
 
     const listAbsensi = (murid || []).map((m: any) => ({
@@ -582,13 +605,90 @@ function QuickAbsenContent() {
           </button>
         </div>
 
-        {/* Error Alert */}
+        {/* Error Alert Interaktif (Dengan Bantuan GPS) */}
         {error && (
-          <div className="bg-rose-950/80 border border-rose-500/50 text-rose-200 p-3 rounded-xl flex items-center gap-2 text-xs">
-            <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
-            <p>{error}</p>
+          <div className="bg-rose-950/90 border border-rose-500/60 text-rose-200 p-4 rounded-2xl space-y-3 shadow-xl animate-in fade-in duration-200">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+              <div className="text-xs leading-relaxed flex-1">
+                <p className="font-bold text-rose-100 mb-0.5">
+                  {error.toLowerCase().includes('gps') || error.toLowerCase().includes('lokasi') ? 'Perhatian: Izin Lokasi (GPS) Diperlukan' : 'Terjadi Kesalahan'}
+                </p>
+                <p className="text-rose-200/90">{error}</p>
+              </div>
+            </div>
+
+            {(error.toLowerCase().includes('gps') || error.toLowerCase().includes('lokasi')) && (
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-rose-900/60">
+                <button
+                  type="button"
+                  onClick={requestGpsPermission}
+                  disabled={detectingGps}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-sm disabled:opacity-50"
+                >
+                  {detectingGps ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Mendeteksi GPS...</>
+                  ) : (
+                    <><MapPin className="w-3.5 h-3.5" /> Cek Ulang GPS</>
+                  )}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setShowGpsModal(true)}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 border border-amber-500/40 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" /> Panduan Buka Izin GPS
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="px-3 py-2 bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Muat Ulang
+                </button>
+              </div>
+            )}
           </div>
         )}
+
+        {/* GPS Status Bar (Kecil & Informatif) */}
+        <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs bg-slate-900/80 border border-slate-800">
+          <div className="flex items-center gap-2">
+            <MapPin size={14} className={userLocation ? "text-emerald-400" : "text-amber-400"} />
+            <span className="text-slate-300 text-[11px]">
+              Status GPS HP: {userLocation ? (
+                <strong className="text-emerald-400">Terdeteksi &amp; Siap</strong>
+              ) : detectingGps ? (
+                <strong className="text-cyan-400">Sedang Mendeteksi...</strong>
+              ) : (
+                <strong className="text-amber-400">Belum Terdeteksi</strong>
+              )}
+            </span>
+          </div>
+          {!userLocation && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={requestGpsPermission}
+                disabled={detectingGps}
+                className="px-2.5 py-1 bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-sm"
+              >
+                {detectingGps ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
+                Deteksi GPS
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowGpsModal(true)}
+                className="p-1 text-slate-400 hover:text-amber-300 transition"
+                title="Panduan Mengaktifkan GPS"
+              >
+                <HelpCircle size={15} />
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* TAMPILAN 1: FORMULIR IZIN / SAKIT GURU */}
         {activeTab === 'izin' ? (
@@ -1195,6 +1295,86 @@ function QuickAbsenContent() {
                   Kembali ke Jadwal
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Panduan Mengaktifkan GPS */}
+      {showGpsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 text-slate-100 w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-emerald-400 font-bold text-base">
+                <MapPin className="w-5 h-5" />
+                <span>Panduan Mengaktifkan GPS &amp; Izin Lokasi</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGpsModal(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-full bg-slate-800 transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs text-slate-300 leading-relaxed">
+              {/* Langkah 1 */}
+              <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-amber-300">
+                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-[11px] border border-amber-500/40">1</span>
+                  Nyalakan GPS di HP Anda
+                </div>
+                <p className="text-slate-300 pl-7 text-[11px]">
+                  Tarik layar HP dari atas ke bawah (menu bar notifikasi). Pastikan ikon <strong>&quot;Lokasi&quot; / &quot;GPS&quot;</strong> dalam keadaan <strong>Menyala / Aktif (berwarna biru/hijau)</strong>.
+                </p>
+              </div>
+
+              {/* Langkah 2: Chrome Android */}
+              <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-emerald-300">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-[11px] border border-emerald-500/40">2</span>
+                  Pengguna Google Chrome (HP Android)
+                </div>
+                <ul className="list-disc pl-11 space-y-1 text-slate-300 text-[11px]">
+                  <li>Lihat bilah alamat web paling atas tempat halaman ini dibuka (<code>app.ppmawar.or.id</code>).</li>
+                  <li>Ketuk ikon <strong>Gembok 🔒 atau Setelan ⚙️ / Tombol Info</strong> di sebelah kiri alamat web.</li>
+                  <li>Pilih menu <strong>Izin / Permissions</strong> ➔ aktifkan <strong>Lokasi (Location)</strong> ke <strong>Izinkan / Allow</strong>.</li>
+                </ul>
+              </div>
+
+              {/* Langkah 3: iPhone / Safari */}
+              <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-cyan-300">
+                  <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[11px] border border-cyan-500/40">3</span>
+                  Pengguna iPhone (Safari)
+                </div>
+                <ul className="list-disc pl-11 space-y-1 text-slate-300 text-[11px]">
+                  <li>Buka <strong>Pengaturan HP (Settings)</strong> ➔ <strong>Privasi &amp; Keamanan</strong> ➔ <strong>Layanan Lokasi</strong> (pastikan Aktif).</li>
+                  <li>Di Safari, ketuk tombol <strong>&apos;aA&apos;</strong> di bilah alamat ➔ <strong>Pengaturan Situs Web</strong> ➔ <strong>Lokasi</strong> ➔ Pilih <strong>Izinkan</strong>.</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  requestGpsPermission();
+                  setShowGpsModal(false);
+                }}
+                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md active:scale-95"
+              >
+                <MapPin size={15} /> Cek &amp; Izinkan Sekarang
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
+              >
+                <RefreshCw size={14} /> Muat Ulang Halaman
+              </button>
             </div>
           </div>
         </div>
