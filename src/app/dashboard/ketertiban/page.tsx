@@ -267,10 +267,7 @@ export default function KetertibanPage() {
   const [activeTab, setActiveTab] = useState<'izin' | 'sakit' | 'alpa' | 'pelanggaran'>('izin');
   const [kategoriFilter, setKategoriFilter] = useState<'semua' | 'quran' | 'madin' | 'kegiatan'>('semua');
 
-  const [dataIzin, setDataIzin] = useState<RowItem[]>([]);
-  const [dataSakit, setDataSakit] = useState<RowItem[]>([]);
-  const [dataAlpa, setDataAlpa] = useState<RowItem[]>([]);
-  const [dataPelanggaran, setDataPelanggaran] = useState<RowItem[]>([]);
+  const [dataList, setDataList] = useState<RowItem[]>([]);
   const [summary, setSummary] = useState<{ totalIzin: number; totalSakit: number; totalAlpa: number; totalPelanggaran: number }>({
     totalIzin: 0,
     totalSakit: 0,
@@ -321,36 +318,22 @@ export default function KetertibanPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [editItem, setEditItem] = useState<RowItem | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = async (tabToFetch: string = activeTab) => {
     setLoading(true);
     setApiError('');
     try {
       const now = Date.now();
-      // Panggil 4 tab secara paralel dengan parameter eksplisit
-      const [resIzin, resSakit, resAlpa, resPelanggaran, resSummary] = await Promise.all([
-        fetch(`/api/ketertiban?tab=izin&_t=${now}`, { cache: 'no-store' }),
-        fetch(`/api/ketertiban?tab=sakit&_t=${now}`, { cache: 'no-store' }),
-        fetch(`/api/ketertiban?tab=alpa&_t=${now}`, { cache: 'no-store' }),
-        fetch(`/api/ketertiban?tab=pelanggaran&_t=${now}`, { cache: 'no-store' }),
-        fetch(`/api/ketertiban?_t=${now}`, { cache: 'no-store' }),
-      ]);
+      const res = await fetch(`/api/ketertiban?tab=${tabToFetch}&_t=${now}`, { cache: 'no-store' });
+      const json = await res.json();
 
-      const [jsonIzin, jsonSakit, jsonAlpa, jsonPelanggaran, jsonAll] = await Promise.all([
-        resIzin.json(),
-        resSakit.json(),
-        resAlpa.json(),
-        resPelanggaran.json(),
-        resSummary.json(),
-      ]);
-
-      if (jsonIzin.success) setDataIzin(Array.isArray(jsonIzin.data) ? jsonIzin.data : []);
-      if (jsonSakit.success) setDataSakit(Array.isArray(jsonSakit.data) ? jsonSakit.data : []);
-      if (jsonAlpa.success) setDataAlpa(Array.isArray(jsonAlpa.data) ? jsonAlpa.data : []);
-      if (jsonPelanggaran.success) setDataPelanggaran(Array.isArray(jsonPelanggaran.data) ? jsonPelanggaran.data : []);
-      if (jsonAll.success && jsonAll.summary) setSummary(jsonAll.summary);
-
-      const firstError = [jsonIzin, jsonSakit, jsonAlpa, jsonPelanggaran].find(j => j.error);
-      if (firstError) setApiError(firstError.error);
+      if (json.success) {
+        setDataList(Array.isArray(json.data) ? json.data : []);
+        if (json.summary) {
+          setSummary(json.summary);
+        }
+      } else if (json.error) {
+        setApiError(json.error);
+      }
     } catch (err: any) {
       console.error('Failed to fetch data:', err);
       setApiError('Koneksi gagal: ' + (err?.message || ''));
@@ -360,7 +343,10 @@ export default function KetertibanPage() {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
     fetch('/api/auth/me', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => { if (data.success) setRole(data.user.role); })
@@ -380,11 +366,9 @@ export default function KetertibanPage() {
     return sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
   };
 
-  const currentTabRawList = activeTab === 'izin' ? dataIzin : activeTab === 'sakit' ? dataSakit : activeTab === 'alpa' ? dataAlpa : dataPelanggaran;
-  
   const countByKategori = (kat: string) => {
-    if (kat === 'semua') return currentTabRawList.length;
-    return currentTabRawList.filter(item => 
+    if (kat === 'semua') return dataList.length;
+    return dataList.filter(item => 
       item.kategori === kat || 
       (kat === 'quran' && item.sumber?.includes('quran')) ||
       (kat === 'madin' && item.sumber?.includes('madin')) ||
@@ -392,13 +376,8 @@ export default function KetertibanPage() {
     ).length;
   };
 
-  const filterData = (dataList: RowItem[], tabType?: 'izin' | 'sakit' | 'alpa' | 'pelanggaran') => {
-    return dataList.filter(item => {
-      // Pemisahan ketat berdasarkan status data
-      if (tabType === 'izin' && item.status !== 'Izin') return false;
-      if (tabType === 'sakit' && item.status !== 'Sakit') return false;
-      if (tabType === 'alpa' && item.status !== 'Alpa') return false;
-
+  const filterData = (list: RowItem[]) => {
+    return (list || []).filter(item => {
       // Filter kategori
       if (kategoriFilter !== 'semua') {
         const matchKategori = item.kategori === kategoriFilter ||
@@ -422,14 +401,11 @@ export default function KetertibanPage() {
     });
   };
 
-  const filteredIzin = filterData(dataIzin, 'izin');
-  const filteredSakit = filterData(dataSakit, 'sakit');
-  const filteredAlpa = filterData(dataAlpa, 'alpa');
-  const filteredPelanggaran = filterData(dataPelanggaran, 'pelanggaran');
+  const filteredData = filterData(dataList);
 
-  const sortData = (dataList: RowItem[]) => {
-    if (!sortConfig) return dataList;
-    return [...dataList].sort((a: any, b: any) => {
+  const sortData = (dataListToSort: RowItem[]) => {
+    if (!sortConfig) return dataListToSort;
+    return [...dataListToSort].sort((a: any, b: any) => {
       let valA = a[sortConfig.key];
       let valB = b[sortConfig.key];
       if (sortConfig.key === 'tanggal') {
@@ -444,17 +420,14 @@ export default function KetertibanPage() {
     });
   };
 
-  const sortedIzin = sortData(filteredIzin);
-  const sortedSakit = sortData(filteredSakit);
-  const sortedAlpa = sortData(filteredAlpa);
-  const sortedPelanggaran = sortData(filteredPelanggaran);
+  const sortedData = sortData(filteredData);
 
   // Export State
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
 
   const handleExport = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
-    const exportData = activeTab === 'izin' ? sortedIzin : activeTab === 'sakit' ? sortedSakit : activeTab === 'alpa' ? sortedAlpa : sortedPelanggaran;
+    const exportData = sortedData;
     if (exportData.length === 0) { alert('Tidak ada data untuk di-export.'); return; }
 
     const title = activeTab === 'izin' 
@@ -468,20 +441,16 @@ export default function KetertibanPage() {
     const subtitle = `Kategori: ${kategoriLabel} | Pencarian: ${search || 'Semua Data'}`;
     const filename = `Data_Ketertiban_${activeTab}_${kategoriFilter}`;
 
-    const tableColumn = activeTab === 'izin'
-      ? ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KELAS / KAMAR", "KETERANGAN IZIN"]
-      : activeTab === 'sakit'
-      ? ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KELAS / KAMAR", "KETERANGAN SAKIT"]
-      : activeTab === 'alpa'
-      ? ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KELAS / KAMAR", "KETERANGAN ALPA"]
-      : ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KELAS / KAMAR", "JENIS PELANGGARAN", "CATATAN"];
+    const tableColumn = activeTab === 'pelanggaran'
+      ? ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KELAS / KAMAR", "JENIS PELANGGARAN", "CATATAN"]
+      : ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KELAS / KAMAR", activeTab === 'izin' ? 'KETERANGAN IZIN' : activeTab === 'sakit' ? 'KETERANGAN SAKIT' : 'KETERANGAN ALPA'];
 
     const tableRows: any[] = [];
-    exportData.forEach((item, idx) => {
-      if (activeTab === 'izin' || activeTab === 'sakit' || activeTab === 'alpa') {
-        tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.kelas || '-', item.keterangan || '-']);
-      } else {
+    exportData.forEach((item: RowItem, idx: number) => {
+      if (activeTab === 'pelanggaran') {
         tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.kelas || '-', item.jenis || '-', item.keterangan || '-']);
+      } else {
+        tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.kelas || '-', item.keterangan || '-']);
       }
     });
 
@@ -614,7 +583,7 @@ export default function KetertibanPage() {
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Izin</p>
           <p className="text-2xl font-black text-amber-600 dark:text-amber-400">
-            {summary.totalIzin || dataIzin.length}
+            {summary.totalIzin}
           </p>
         </div>
 
@@ -631,7 +600,7 @@ export default function KetertibanPage() {
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Sakit</p>
           <p className="text-2xl font-black text-rose-600 dark:text-rose-400">
-            {summary.totalSakit || dataSakit.length}
+            {summary.totalSakit}
           </p>
         </div>
 
@@ -648,7 +617,7 @@ export default function KetertibanPage() {
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Alpa</p>
           <p className="text-2xl font-black text-red-600 dark:text-red-400">
-            {summary.totalAlpa || dataAlpa.length}
+            {summary.totalAlpa}
           </p>
         </div>
 
@@ -665,7 +634,7 @@ export default function KetertibanPage() {
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Pelanggaran Lain</p>
           <p className="text-2xl font-black text-purple-600 dark:text-purple-400">
-            {summary.totalPelanggaran || dataPelanggaran.length}
+            {summary.totalPelanggaran}
           </p>
         </div>
       </div>
@@ -798,196 +767,12 @@ export default function KetertibanPage() {
       {/* Daftar Konten Tabel */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors">
         {loading ? (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">Memuat data ketertiban santri...</div>
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm flex items-center justify-center gap-2">
+            <span className="text-base animate-pulse">⏳</span> Memuat data {activeTab === 'izin' ? 'izin' : activeTab === 'sakit' ? 'sakit' : activeTab === 'alpa' ? 'alpa' : 'pelanggaran'} santri...
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            {activeTab === 'izin' ? (
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
-                  <tr>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. Kelamin{getSortIcon('jenis_kelamin')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas')}>Kelas / Kamar{getSortIcon('kelas')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Keterangan / Sumber{getSortIcon('keterangan')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
-                    <th className="px-4 py-4 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('ditindak')}>Status{getSortIcon('ditindak')}</th>
-                    {canManage && <th className="px-4 py-4 text-center">Aksi</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {sortedIzin.length === 0 ? (
-                    <tr><td colSpan={canManage ? 7 : 6} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada catatan data Izin.</td></tr>
-                  ) : sortedIzin.map((item) => (
-                    <tr key={`${item.id}-${(item as any).sumber || 'p'}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
-                      <td className="px-4 py-3 font-bold">{item.nama}</td>
-                      <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
-                      <td className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">{item.kelas || '-'}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-[11px] px-2.5 py-1 rounded-full font-bold border bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/50">
-                          {item.keterangan || 'Izin'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 font-medium">
-                          <Calendar size={12} className="text-gray-400" /> {item.tanggal}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-bold bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full border border-green-200 dark:border-green-800/30">
-                          <CheckCircle size={12} /> Tercatat
-                        </span>
-                      </td>
-                      {canManage && (
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {(item as any).sumber === 'pelanggaran' && (
-                              <button
-                                onClick={() => handleEdit(item)}
-                                className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                                title="Edit"
-                              >
-                                <Edit size={14} />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDelete(item)}
-                              className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
-                              title="Hapus"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : activeTab === 'sakit' ? (
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
-                  <tr>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. Kelamin{getSortIcon('jenis_kelamin')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas')}>Kelas / Kamar{getSortIcon('kelas')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Keterangan / Sumber{getSortIcon('keterangan')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
-                    <th className="px-4 py-4 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('ditindak')}>Status{getSortIcon('ditindak')}</th>
-                    {canManage && <th className="px-4 py-4 text-center">Aksi</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {sortedSakit.length === 0 ? (
-                    <tr><td colSpan={canManage ? 7 : 6} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada catatan data Sakit.</td></tr>
-                  ) : sortedSakit.map((item) => (
-                    <tr key={`${item.id}-${(item as any).sumber || 'p'}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
-                      <td className="px-4 py-3 font-bold">{item.nama}</td>
-                      <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
-                      <td className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">{item.kelas || '-'}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-[11px] px-2.5 py-1 rounded-full font-bold border bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/50">
-                          {item.keterangan || 'Sakit'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 font-medium">
-                          <Calendar size={12} className="text-gray-400" /> {item.tanggal}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-bold bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full border border-green-200 dark:border-green-800/30">
-                          <CheckCircle size={12} /> Tercatat
-                        </span>
-                      </td>
-                      {canManage && (
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {(item as any).sumber === 'pelanggaran' && (
-                              <button
-                                onClick={() => handleEdit(item)}
-                                className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                                title="Edit"
-                              >
-                                <Edit size={14} />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDelete(item)}
-                              className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
-                              title="Hapus"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : activeTab === 'alpa' ? (
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
-                  <tr>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. Kelamin{getSortIcon('jenis_kelamin')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas')}>Kelas / Kamar{getSortIcon('kelas')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Keterangan / Sumber{getSortIcon('keterangan')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
-                    <th className="px-4 py-4 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('ditindak')}>Status{getSortIcon('ditindak')}</th>
-                    {canManage && <th className="px-4 py-4 text-center">Aksi</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {sortedAlpa.length === 0 ? (
-                    <tr><td colSpan={canManage ? 7 : 6} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada catatan data Alpa.</td></tr>
-                  ) : sortedAlpa.map((item) => (
-                    <tr key={`${item.id}-${(item as any).sumber || 'p'}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
-                      <td className="px-4 py-3 font-bold">{item.nama}</td>
-                      <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
-                      <td className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">{item.kelas || '-'}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-[11px] px-2.5 py-1 rounded-full font-bold border bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/50">
-                          {item.keterangan || 'Tidak hadir tanpa keterangan'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 font-medium">
-                          <Calendar size={12} className="text-gray-400" /> {item.tanggal}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-full border border-red-200 dark:border-red-800/30">
-                          Alpa
-                        </span>
-                      </td>
-                      {canManage && (
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {(item as any).sumber === 'pelanggaran' && (
-                              <button
-                                onClick={() => handleEdit(item)}
-                                className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                                title="Edit"
-                              >
-                                <Edit size={14} />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDelete(item)}
-                              className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
-                              title="Hapus"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
+            {activeTab === 'pelanggaran' ? (
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
                   <tr>
@@ -1002,9 +787,9 @@ export default function KetertibanPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {sortedPelanggaran.length === 0 ? (
+                  {sortedData.length === 0 ? (
                     <tr><td colSpan={canManage ? 8 : 7} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada data pelanggaran lain.</td></tr>
-                  ) : sortedPelanggaran.map((item) => (
+                  ) : sortedData.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
                       <td className="px-4 py-3 font-bold">{item.nama}</td>
                       <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
@@ -1043,6 +828,78 @@ export default function KetertibanPage() {
                             >
                               <Edit size={14} />
                             </button>
+                            <button
+                              onClick={() => handleDelete(item)}
+                              className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                              title="Hapus"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
+                  <tr>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. Kelamin{getSortIcon('jenis_kelamin')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas')}>Kelas / Kamar{getSortIcon('kelas')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Keterangan / Sumber{getSortIcon('keterangan')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
+                    <th className="px-4 py-4 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('ditindak')}>Status{getSortIcon('ditindak')}</th>
+                    {canManage && <th className="px-4 py-4 text-center">Aksi</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {sortedData.length === 0 ? (
+                    <tr>
+                      <td colSpan={canManage ? 7 : 6} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        Tidak ada catatan data {activeTab === 'izin' ? 'Izin' : activeTab === 'sakit' ? 'Sakit' : 'Alpa'}.
+                      </td>
+                    </tr>
+                  ) : sortedData.map((item) => (
+                    <tr key={`${item.id}-${(item as any).sumber || 'p'}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
+                      <td className="px-4 py-3 font-bold">{item.nama}</td>
+                      <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">{item.kelas || '-'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-[11px] px-2.5 py-1 rounded-full font-bold border ${
+                          activeTab === 'izin'
+                            ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/50'
+                            : activeTab === 'sakit'
+                            ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/50'
+                            : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/50'
+                        }`}>
+                          {item.keterangan || (activeTab === 'izin' ? 'Izin' : activeTab === 'sakit' ? 'Sakit' : 'Alpa')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 font-medium">
+                          <Calendar size={12} className="text-gray-400" /> {item.tanggal}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-bold bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full border border-green-200 dark:border-green-800/30">
+                          <CheckCircle size={12} /> Tercatat
+                        </span>
+                      </td>
+                      {canManage && (
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {(item as any).sumber === 'pelanggaran' && (
+                              <button
+                                onClick={() => handleEdit(item)}
+                                className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                                title="Edit"
+                              >
+                                <Edit size={14} />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDelete(item)}
                               className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
