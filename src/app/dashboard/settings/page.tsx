@@ -783,12 +783,12 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Opsi Daily Looping */}
+            {/* Opsi Weekly Looping Sesuai Hari Mengajar */}
             <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200">Ulangi Pengiriman Harian (Daily Looping)</h4>
+                <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200">Ulangi Pengiriman Mingguan (Weekly Looping Sesuai Hari Mengajar)</h4>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Aktifkan agar jadwal pengingat berulang otomatis setiap hari tanpa perlu dijadwalkan ulang.
+                  Aktifkan agar jadwal pengingat berulang otomatis setiap pekan tepat pada hari dan jam mengajar guru (misal jadwal Ahad berulang tiap Ahad, bukan tiap hari).
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -800,7 +800,7 @@ export default function SettingsPage() {
                 />
                 <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
                 <span className={`ml-3 text-xs font-bold ${settings.wa_scheduler_is_loop ? 'text-emerald-600' : 'text-gray-400'}`}>
-                  {settings.wa_scheduler_is_loop ? 'Looping Harian Aktif' : 'Sekali Saja'}
+                  {settings.wa_scheduler_is_loop ? 'Looping Mingguan Aktif' : 'Sekali Saja'}
                 </span>
               </label>
             </div>

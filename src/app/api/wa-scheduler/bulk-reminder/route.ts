@@ -104,6 +104,47 @@ async function clearPendingForPhones(phones: Set<string>, sessionCookie: string)
   }
 }
 
+const DAY_INDEX_MAP: Record<string, number> = {
+  'ahad': 0,
+  'minggu': 0,
+  'senin': 1,
+  'selasa': 2,
+  'rabu': 3,
+  'kamis': 4,
+  'jumat': 5,
+  "jum'at": 5,
+  'sabtu': 6,
+};
+
+function getNextDateForDay(dayName: string, jamMulai: string = '07:00', leadMinutes: number = 15): string {
+  const cleanDay = (dayName || '').toLowerCase().trim();
+  const targetDayIndex = DAY_INDEX_MAP[cleanDay] ?? 0;
+
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' });
+  const todayName = formatter.format(now).toLowerCase().replace('minggu', 'ahad');
+  const currentDayIndex = DAY_INDEX_MAP[todayName] ?? 0;
+
+  let diff = targetDayIndex - currentDayIndex;
+  if (diff < 0) {
+    diff += 7;
+  }
+
+  const targetDate = new Date(now.getTime() + diff * 24 * 60 * 60 * 1000);
+  const targetDateStr = targetDate.toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' }); // YYYY-MM-DD
+
+  if (diff === 0) {
+    const schedStr = calculateScheduledTimeWIB(jamMulai, leadMinutes, targetDateStr);
+    const schedTime = new Date(schedStr + ':00+07:00').getTime();
+    if (schedTime <= now.getTime()) {
+      const nextWeek = new Date(targetDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+      return nextWeek.toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+    }
+  }
+
+  return targetDateStr;
+}
+
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();
@@ -125,7 +166,7 @@ export async function POST(request: Request) {
       categories = ['madin', 'quran', 'kamar'],
       leadTimeMinutes: customLeadTime,
       isLoop: customIsLoop,
-      loopInterval = 'daily',
+      loopInterval = 'weekly',
       customTemplate
     } = body;
 
@@ -152,12 +193,13 @@ export async function POST(request: Request) {
       tipe: string;
       quick_url: string;
       quick_izin_url?: string;
+      target_date?: string;
     }[] = [];
 
     const activeCategories = Array.isArray(categories) && categories.length > 0 ? categories : ['madin', 'quran', 'kamar'];
 
     if (mode === 'active_today') {
-      // 1. Ambil pengingat aktif yang belum diabsen hari ini
+      // 1. Ambil pengingat aktif yang belum diabsen hari ini (hanya hari ini)
       const activeReminders = await getActivePendingReminders();
       const filteredReminders = activeReminders.filter(r => activeCategories.includes(r.tipe));
       itemsToSchedule = filteredReminders.map(r => ({
@@ -170,19 +212,22 @@ export async function POST(request: Request) {
         hari: r.hari,
         tipe: r.tipe,
         quick_url: r.quick_url || 'https://app.ppmawar.or.id/',
-        quick_izin_url: r.quick_izin_url
+        quick_izin_url: r.quick_izin_url,
+        target_date: todayDateStr
       }));
     } else if (mode === 'all_schedules') {
-      // 2. Ambil jadwal hari ini sesuai kategori terpilih, lalu buat 1 pesan ringkasan per guru
+      // 2. Ambil seluruh jadwal mingguan (semua hari) sesuai kategori terpilih untuk looping mingguan (weekly)
       const appendRows = (rows: any[], tipe: string) => {
         for (const row of rows) {
+          const itemDay = row.hari || currentDay;
+          const itemDateStr = getNextDateForDay(itemDay, row.jam_mulai || '07:00', effectiveLeadTime);
           const quickPayload = {
             type: 'quick_absen',
             guru_id: row.guru_id,
             guru_nama: row.guru_nama || 'Tanpa Nama',
             jadwal_id: Number(row.jadwal_id),
             tipe,
-            date: todayDateStr,
+            date: itemDateStr,
             waktu_tenggang: 3
           };
           const quick_token = signToken(quickPayload, '7d');
@@ -196,25 +241,26 @@ export async function POST(request: Request) {
             mata_pelajaran: row.mata_pelajaran,
             jam_mulai: row.jam_mulai,
             jam_selesai: row.jam_selesai,
-            hari: row.hari,
+            hari: itemDay,
             tipe,
             quick_url,
-            quick_izin_url
+            quick_izin_url,
+            target_date: itemDateStr
           });
         }
       };
 
       if (activeCategories.includes('madin')) {
-        // Filter hanya jadwal hari ini
+        // Ambil seluruh jadwal Madin sepekan penuh
         const queryMadin = `
           SELECT j.jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari,
                  m.nama_kelas as kelas_nama, j.guru_id, g.nama as guru_nama, g.no_hp as guru_whatsapp
           FROM jadwal_madin j
           JOIN kelas_madin m ON j.kelas_madin_id = m.kelas_id
           JOIN guru g ON j.guru_id = g.guru_id
-          WHERE j.hari = ? AND g.no_hp IS NOT NULL AND g.no_hp != ''
+          WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
         `;
-        const [madinRows] = await pool.execute<RowDataPacket[]>(queryMadin, [currentDay]);
+        const [madinRows] = await pool.execute<RowDataPacket[]>(queryMadin);
         appendRows(madinRows, 'madin');
       }
 
@@ -225,9 +271,9 @@ export async function POST(request: Request) {
           FROM jadwal_quran j
           JOIN kelas_quran q ON j.kelas_quran_id = q.id
           JOIN guru g ON j.guru_id = g.guru_id
-          WHERE j.hari = ? AND g.no_hp IS NOT NULL AND g.no_hp != ''
+          WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
         `;
-        const [quranRows] = await pool.execute<RowDataPacket[]>(queryQuran, [currentDay]);
+        const [quranRows] = await pool.execute<RowDataPacket[]>(queryQuran);
         appendRows(quranRows, 'quran');
       }
 
@@ -238,9 +284,9 @@ export async function POST(request: Request) {
           FROM jadwal_kegiatan jk
           JOIN kamar k ON jk.kamar_id = k.kamar_id
           JOIN guru g ON jk.guru_id = g.guru_id
-          WHERE jk.hari = ? AND g.no_hp IS NOT NULL AND g.no_hp != ''
+          WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
         `;
-        const [kegiatanRows] = await pool.execute<RowDataPacket[]>(queryKegiatan, [currentDay]);
+        const [kegiatanRows] = await pool.execute<RowDataPacket[]>(queryKegiatan);
         appendRows(kegiatanRows, 'kamar');
       }
     } else if (mode === 'custom_list' && Array.isArray(customItems)) {
@@ -248,13 +294,18 @@ export async function POST(request: Request) {
     }
 
     // DEDUPLIKASI KETAT & PENGGABUNGAN KELAS GABUNGAN UNTUK SEMUA MODE:
-    // 1 Guru (per nomor HP) = 1 Pesan Saja dengan rincian kelas gabungan & 1 link absensi
+    // Gabungkan kelas gabungan pada hari & jam yang sama untuk guru yang sama
     const mergedMap = new Map<string, typeof itemsToSchedule[0]>();
     for (const item of itemsToSchedule) {
       const phone = formatToWaPhone(item.guru_whatsapp);
       if (!phone) continue;
-      if (mergedMap.has(phone)) {
-        const existing = mergedMap.get(phone)!;
+      
+      const itemKey = mode === 'all_schedules'
+        ? `${phone}_${(item.hari || '').toLowerCase()}_${item.jam_mulai}`
+        : `${phone}_${(item.hari || '').toLowerCase()}`;
+
+      if (mergedMap.has(itemKey)) {
+        const existing = mergedMap.get(itemKey)!;
         // Gabungkan kelas jika berbeda
         if (item.kelas_nama && !existing.kelas_nama.toLowerCase().includes(item.kelas_nama.toLowerCase())) {
           existing.kelas_nama = `${existing.kelas_nama} & ${item.kelas_nama}`;
@@ -263,12 +314,12 @@ export async function POST(request: Request) {
         if (item.mata_pelajaran && !existing.mata_pelajaran.toLowerCase().includes(item.mata_pelajaran.toLowerCase())) {
           existing.mata_pelajaran = `${existing.mata_pelajaran} & ${item.mata_pelajaran}`;
         }
-        // Pertahankan jam mulai paling awal agar pengiriman tepat waktu
+        // Pertahankan jam mulai paling awal
         if (item.jam_mulai < existing.jam_mulai) {
           existing.jam_mulai = item.jam_mulai;
         }
       } else {
-        mergedMap.set(phone, { ...item });
+        mergedMap.set(itemKey, { ...item });
       }
     }
     itemsToSchedule = Array.from(mergedMap.values());
@@ -339,6 +390,11 @@ export async function POST(request: Request) {
         valMapel = item.mata_pelajaran || 'Pelajaran Diniyah';
       }
 
+      const itemTargetDate = item.target_date || getNextDateForDay(item.hari || currentDay, item.jam_mulai, effectiveLeadTime);
+      const isWeeklyMode = mode === 'all_schedules';
+      const itemIsLoop = isWeeklyMode ? (effectiveIsLoop as 0 | 1) : 0;
+      const itemLoopInterval = isWeeklyMode ? 'weekly' : (loopInterval as any);
+
       const jamLabel = `${item.jam_mulai ? item.jam_mulai.substring(0, 5) : '-'} - ${item.jam_selesai ? item.jam_selesai.substring(0, 5) : '-'}`;
       const quickUrl = item.quick_url || 'https://app.ppmawar.or.id/';
       const quickIzinUrl = item.quick_izin_url || (quickUrl.includes('?') ? `${quickUrl}&action=izin` : `${quickUrl}?action=izin`);
@@ -346,7 +402,7 @@ export async function POST(request: Request) {
       let messageText = templateToUse
         .replace(/{nama_guru}/g, item.guru_nama || 'Ustadz/Ustadzah')
         .replace(/{hari}/g, item.hari || currentDay)
-        .replace(/{hari_tanggal}/g, `${item.hari || currentDay}, ${todayDateStr}`)
+        .replace(/{hari_tanggal}/g, `${item.hari || currentDay}, ${itemTargetDate}`)
         .replace(/{kegiatan}/g, kegiatanLabel)
         .replace(/{label_mapel}/g, labelMapel)
         .replace(/{mapel}/g, valMapel)
@@ -354,10 +410,6 @@ export async function POST(request: Request) {
         .replace(/{jam}/g, jamLabel)
         .replace(/{link_absen}/g, quickUrl)
         .replace(/{link_izin}/g, quickIzinUrl);
-
-      // Karena {link_absen} sudah mengarah ke halaman yang sama yang berisi tab absensi + izin/sakit,
-      // tidak perlu lagi menyisipkan link_izin terpisah.
-      // (Link izin hanya akan muncul jika template secara eksplisit menggunakan token {link_izin})
 
       // Jika templat lama belum memuat baris Mapel/Majlis/Kegiatan, sisipkan secara otomatis di bawah baris Kategori
       if (!messageText.includes(labelMapel) && !messageText.includes(valMapel) && valMapel !== '-') {
@@ -369,10 +421,10 @@ export async function POST(request: Request) {
 
       // Tentukan waktu scheduled_time
       const rawJam = item.jam_mulai || '07:00';
-      let scheduleTimeStr = calculateScheduledTimeWIB(rawJam, effectiveLeadTime, todayDateStr);
+      let scheduleTimeStr = calculateScheduledTimeWIB(rawJam, effectiveLeadTime, itemTargetDate);
 
       // Pastikan scheduled_time tidak di masa lalu jika loop = 0
-      if (effectiveIsLoop === 0) {
+      if (itemIsLoop === 0) {
         const scheduleDate = new Date(scheduleTimeStr + ':00+07:00');
         const nowWIB = new Date();
         if (scheduleDate.getTime() <= nowWIB.getTime()) {
@@ -390,8 +442,8 @@ export async function POST(request: Request) {
         phone_number: formattedPhone,
         message: messageText,
         scheduled_time: scheduleTimeStr,
-        is_loop: effectiveIsLoop as 0 | 1,
-        loop_interval: loopInterval as any,
+        is_loop: itemIsLoop,
+        loop_interval: itemLoopInterval,
         apiKey: config.apiKey,
         endpoint: config.endpoint
       });
@@ -401,7 +453,9 @@ export async function POST(request: Request) {
         return {
           guru_nama: item.guru_nama,
           phone: formattedPhone,
+          hari: item.hari,
           scheduled_time: scheduleTimeStr,
+          loop_interval: itemLoopInterval,
           success: true,
           data: sendResult.data
         };
@@ -410,6 +464,7 @@ export async function POST(request: Request) {
         return {
           guru_nama: item.guru_nama,
           phone: formattedPhone,
+          hari: item.hari,
           scheduled_time: scheduleTimeStr,
           success: false,
           error: sendResult.message
