@@ -1975,54 +1975,54 @@ function NotifikasiContent() {
               ) : (
                 <>
                   {/* Banner Otomatisasi WA Scheduler */}
-                  <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-200/80 dark:border-emerald-800/50 shadow-sm space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="flex h-2.5 w-2.5 relative">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                          </span>
-                          <h4 className="font-extrabold text-sm text-emerald-950 dark:text-emerald-300 flex items-center gap-1.5">
-                            <Sparkles size={16} className="text-emerald-600 dark:text-emerald-400" />
-                            Otomatisasi WA Scheduler (wa.quizb.my.id)
-                          </h4>
-                        </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                          Kirim notifikasi pengingat ke WhatsApp guru secara otomatis tanpa perlu membuka tautan satu per satu.
-                        </p>
-                      </div>
+                  <div className="mb-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-200/80 dark:border-emerald-800/50 shadow-sm space-y-3">
+                    {/* Baris 1: Judul satu baris utuh */}
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-2.5 w-2.5 relative shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                      </span>
+                      <h4 className="font-extrabold text-sm sm:text-base text-emerald-950 dark:text-emerald-300 flex items-center gap-1.5">
+                        <Sparkles size={17} className="text-emerald-600 dark:text-emerald-400" />
+                        Otomatisasi WA Scheduler (wa.quizb.my.id)
+                      </h4>
+                    </div>
 
-                      <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setSchedulerModalOpen(true)}
-                          className="px-3 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 border border-gray-200 dark:border-gray-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
-                        >
-                          <Settings2 size={13} />
-                          Opsi & Looping
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isSchedulerSending || activeReminders.length === 0}
-                          onClick={() => handleBulkScheduleWA('active_today')}
-                          className="px-3 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md hover:shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none"
-                        >
-                          {isSchedulerSending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                          {isSchedulerSending ? 'Menjadwalkan...' : 'Kirim Semua Otomatis'}
-                        </button>
-                        {/* Tombol Batalkan / Hapus Semua Antrean (Libur Mendadak) */}
-                        <button
-                          type="button"
-                          disabled={isClearingPending}
-                          onClick={handleClearPending}
-                          title="Batalkan & Hapus semua antrean di WA Scheduler saat libur mendadak"
-                          className="col-span-2 sm:col-span-1 px-3 py-2.5 text-xs font-bold text-red-700 dark:text-red-300 bg-red-100/90 hover:bg-red-200 dark:bg-red-950/60 dark:hover:bg-red-900/80 border border-red-300 dark:border-red-800 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm active:scale-95"
-                        >
-                          {isClearingPending ? <Loader2 size={13} className="animate-spin" /> : <Power size={13} />}
-                          <span>{isClearingPending ? 'Membatalkan...' : '🛑 Batalkan Semua Antrean (Libur)'}</span>
-                        </button>
-                      </div>
+                    {/* Baris 2: Deskripsi satu baris utuh */}
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                      Kirim notifikasi pengingat ke WhatsApp guru secara otomatis tanpa perlu membuka tautan satu per satu.
+                    </p>
+
+                    {/* Baris 3: Tiga Tombol Aksi berjejer dalam satu baris */}
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setSchedulerModalOpen(true)}
+                        className="flex-1 sm:flex-initial px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 active:scale-95"
+                      >
+                        <Settings2 size={14} />
+                        <span>Opsi &amp; Looping</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSchedulerSending || activeReminders.length === 0}
+                        onClick={() => handleBulkScheduleWA('active_today')}
+                        className="flex-1 sm:flex-initial px-4 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md hover:shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+                      >
+                        {isSchedulerSending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                        <span>{isSchedulerSending ? 'Menjadwalkan...' : 'Kirim Semua Otomatis'}</span>
+                      </button>
+                      {/* Tombol Batalkan / Hapus Semua Antrean (Libur Mendadak) */}
+                      <button
+                        type="button"
+                        disabled={isClearingPending}
+                        onClick={handleClearPending}
+                        title="Batalkan & Hapus semua antrean di WA Scheduler saat libur mendadak"
+                        className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-red-700 dark:text-red-300 bg-red-100/90 hover:bg-red-200 dark:bg-red-950/60 dark:hover:bg-red-900/80 border border-red-300 dark:border-red-800 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm active:scale-95 sm:ml-auto"
+                      >
+                        {isClearingPending ? <Loader2 size={14} className="animate-spin" /> : <Power size={14} />}
+                        <span>{isClearingPending ? 'Membatalkan...' : '🛑 Batalkan Semua Antrean (Libur)'}</span>
+                      </button>
                     </div>
 
                     {/* Status Alert Notifikasi Scheduler */}
