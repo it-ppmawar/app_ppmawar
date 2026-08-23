@@ -282,7 +282,20 @@ export async function GET(request: Request) {
         const lowerKet = cleanKet.toLowerCase();
 
         // Normalisasi keterangan agar tidak salah label antara Izin vs Sakit vs Alpa
-        if (!cleanKet || lowerKet === 'izin' || lowerKet === 'sakit' || lowerKet === '(izin)' || lowerKet === '(sakit)' || lowerKet === 'alpa' || lowerKet === 'alpha' || lowerKet.includes('tidak hadir')) {
+        const isGenericKet = 
+          !cleanKet || 
+          lowerKet === 'izin' || 
+          lowerKet === 'sakit' || 
+          lowerKet === '(izin)' || 
+          lowerKet === '(sakit)' || 
+          lowerKet === 'alpa' || 
+          lowerKet === 'alpha' || 
+          lowerKet.includes('tidak hadir') ||
+          lowerKet.startsWith('madin (') ||
+          lowerKet.startsWith("qur'an (") ||
+          lowerKet.startsWith('asrama (');
+
+        if (isGenericKet) {
           cleanKet = `${prefix ? prefix + ' ' : ''}(${defaultStatus})`;
         } else if (prefix && !cleanKet.startsWith(prefix)) {
           cleanKet = `${prefix}: ${cleanKet}`;
@@ -337,6 +350,7 @@ export async function GET(request: Request) {
       jenis: r.jenis,
       keterangan: r.deskripsi || r.jenis,
       deskripsi: r.deskripsi,
+      status: 'Pelanggaran',
       sumber: 'pelanggaran',
       kategori: 'lainnya',
       poin: 0,
