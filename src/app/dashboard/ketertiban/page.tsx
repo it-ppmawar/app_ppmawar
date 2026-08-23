@@ -326,43 +326,26 @@ export default function KetertibanPage() {
     setApiError('');
     try {
       const now = Date.now();
-      const [resIzin, resSakit, resAlpa, resPelanggaran] = await Promise.all([
-        fetch(`/api/ketertiban?tab=izin&_t=${now}`, { cache: 'no-store' }),
-        fetch(`/api/ketertiban?tab=sakit&_t=${now}`, { cache: 'no-store' }),
-        fetch(`/api/ketertiban?tab=alpa&_t=${now}`, { cache: 'no-store' }),
-        fetch(`/api/ketertiban?tab=pelanggaran&_t=${now}`, { cache: 'no-store' }),
-      ]);
+      const res = await fetch(`/api/ketertiban?_t=${now}`, { cache: 'no-store' });
+      const json = await res.json();
 
-      const [jsonIzin, jsonSakit, jsonAlpa, jsonPelanggaran] = await Promise.all([
-        resIzin.json(),
-        resSakit.json(),
-        resAlpa.json(),
-        resPelanggaran.json(),
-      ]);
-
-      const errors: string[] = [];
-      if (jsonIzin.success) {
-        setDataIzin(jsonIzin.data || []);
-        if (jsonIzin.summary) setSummary(jsonIzin.summary);
-      } else if (jsonIzin.error) {
-        errors.push('Izin: ' + jsonIzin.error);
+      if (json.success) {
+        const cat = json.categories || json.data;
+        if (cat && typeof cat === 'object' && !Array.isArray(cat)) {
+          setDataIzin(cat.izin || []);
+          setDataSakit(cat.sakit || []);
+          setDataAlpa(cat.alpa || []);
+          setDataPelanggaran(cat.pelanggaran || []);
+        } else if (Array.isArray(json.data)) {
+          setDataIzin(json.data.filter((item: RowItem) => !(`${item.status || ''} ${item.keterangan || ''} ${item.jenis || ''}`.toLowerCase().includes('sakit'))));
+          setDataSakit(json.data.filter((item: RowItem) => `${item.status || ''} ${item.keterangan || ''} ${item.jenis || ''}`.toLowerCase().includes('sakit')));
+        }
+        if (json.summary) {
+          setSummary(json.summary);
+        }
+      } else if (json.error) {
+        setApiError(json.error);
       }
-      if (jsonSakit.success) {
-        setDataSakit(jsonSakit.data || []);
-      } else if (jsonSakit.error) {
-        errors.push('Sakit: ' + jsonSakit.error);
-      }
-      if (jsonAlpa.success) {
-        setDataAlpa(jsonAlpa.data || []);
-      } else if (jsonAlpa.error) {
-        errors.push('Alpa: ' + jsonAlpa.error);
-      }
-      if (jsonPelanggaran.success) {
-        setDataPelanggaran(jsonPelanggaran.data || []);
-      } else if (jsonPelanggaran.error) {
-        errors.push('Pelanggaran: ' + jsonPelanggaran.error);
-      }
-      if (errors.length > 0) setApiError(errors.join(' | '));
     } catch (err: any) {
       console.error('Failed to fetch data:', err);
       setApiError('Koneksi gagal: ' + (err?.message || ''));

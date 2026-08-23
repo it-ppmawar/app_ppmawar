@@ -104,234 +104,156 @@ export async function GET(request: Request) {
       totalPelanggaran,
     };
 
-    if (tab === 'izin' || tab === 'sakit') {
-      const statusFilter = tab === 'izin' ? "LOWER(a.status) = 'izin'" : "LOWER(a.status) = 'sakit'";
-      const statusFilterQ = tab === 'izin' ? "LOWER(aq.status) = 'izin'" : "LOWER(aq.status) = 'sakit'";
-      const statusFilterK = tab === 'izin' ? "LOWER(ak.status) = 'izin'" : "LOWER(ak.status) = 'sakit'";
-      const statusFilterP = tab === 'izin' ? "(LOWER(p.jenis) LIKE '%izin%' AND LOWER(p.jenis) NOT LIKE '%sakit%')" : "LOWER(p.jenis) LIKE '%sakit%'";
+    // Fetch all 4 categories in parallel
+    const [
+      madinIzinRows, quranIzinRows, kegiatanIzinRows, pelanggaranIzinRows,
+      madinSakitRows, quranSakitRows, kegiatanSakitRows, pelanggaranSakitRows,
+      madinAlpaRows, quranAlpaRows, kegiatanAlpaRows, pelanggaranAlpaRows,
+      pelanggaranLainRows,
+    ] = await Promise.all([
+      // 1. IZIN
+      pool.execute<RowDataPacket[]>(
+        `SELECT a.murid_id, m.nama, m.jenis_kelamin, a.tanggal, a.keterangan, a.status,
+                COALESCE(km.nama_kelas, '-') as kelas_nama
+         FROM absensi a 
+         JOIN murid m ON a.murid_id = m.murid_id 
+         LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+         WHERE LOWER(a.status) = 'izin' AND ${muridFilter} 
+         ORDER BY a.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-      const [madinRows, quranRows, kegiatanRows, pelanggaranRows] = await Promise.all([
-        pool.execute<RowDataPacket[]>(
-          `SELECT a.murid_id, m.nama, m.jenis_kelamin, a.tanggal, a.keterangan, a.status,
-                  COALESCE(km.nama_kelas, '-') as kelas_nama
-           FROM absensi a 
-           JOIN murid m ON a.murid_id = m.murid_id 
-           LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           WHERE ${statusFilter} AND ${muridFilter} 
-           ORDER BY a.tanggal DESC LIMIT 200`,
-          queryParams
-        ).catch(() => [[] as RowDataPacket[]]),
+      pool.execute<RowDataPacket[]>(
+        `SELECT aq.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, aq.keterangan, aq.status,
+                COALESCE(kq.nama_kelas, '-') as kelas_nama
+         FROM absensi_quran aq 
+         JOIN murid m ON aq.murid_id = m.murid_id 
+         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+         WHERE LOWER(aq.status) = 'izin' AND ${muridFilter} 
+         ORDER BY aq.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-        pool.execute<RowDataPacket[]>(
-          `SELECT aq.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, aq.keterangan, aq.status,
-                  COALESCE(kq.nama_kelas, '-') as kelas_nama
-           FROM absensi_quran aq 
-           JOIN murid m ON aq.murid_id = m.murid_id 
-           LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           WHERE ${statusFilterQ} AND ${muridFilter} 
-           ORDER BY aq.tanggal DESC LIMIT 200`,
-          queryParams
-        ).catch(() => [[] as RowDataPacket[]]),
+      pool.execute<RowDataPacket[]>(
+        `SELECT ak.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, ak.keterangan, ak.status,
+                COALESCE(ka.nama_kamar, '-') as kelas_nama
+         FROM absensi_kegiatan ak 
+         JOIN murid m ON ak.murid_id = m.murid_id 
+         LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
+         WHERE LOWER(ak.status) = 'izin' AND ${muridFilter} 
+         ORDER BY ak.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-        pool.execute<RowDataPacket[]>(
-          `SELECT ak.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, ak.keterangan, ak.status,
-                  COALESCE(ka.nama_kamar, '-') as kelas_nama
-           FROM absensi_kegiatan ak 
-           JOIN murid m ON ak.murid_id = m.murid_id 
-           LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE ${statusFilterK} AND ${muridFilter} 
-           ORDER BY ak.tanggal DESC LIMIT 200`,
-          queryParams
-        ).catch(() => [[] as RowDataPacket[]]),
+      pool.execute<RowDataPacket[]>(
+        `SELECT p.pelanggaran_id, p.murid_id, m.nama, m.jenis_kelamin, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
+                COALESCE(km.nama_kelas, kq.nama_kelas, ka.nama_kamar, '-') as kelas_nama
+         FROM pelanggaran p 
+         JOIN murid m ON p.murid_id = m.murid_id 
+         LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+         LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
+         WHERE (LOWER(p.jenis) LIKE '%izin%' AND LOWER(p.jenis) NOT LIKE '%sakit%') AND ${muridFilter} 
+         ORDER BY p.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-        pool.execute<RowDataPacket[]>(
-          `SELECT p.pelanggaran_id, p.murid_id, m.nama, m.jenis_kelamin, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
-                  COALESCE(km.nama_kelas, kq.nama_kelas, ka.nama_kamar, '-') as kelas_nama
-           FROM pelanggaran p 
-           JOIN murid m ON p.murid_id = m.murid_id 
-           LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE ${statusFilterP} AND ${muridFilter} 
-           ORDER BY p.tanggal DESC LIMIT 200`,
-          queryParams
-        ).catch(() => [[] as RowDataPacket[]]),
-      ]);
+      // 2. SAKIT
+      pool.execute<RowDataPacket[]>(
+        `SELECT a.murid_id, m.nama, m.jenis_kelamin, a.tanggal, a.keterangan, a.status,
+                COALESCE(km.nama_kelas, '-') as kelas_nama
+         FROM absensi a 
+         JOIN murid m ON a.murid_id = m.murid_id 
+         LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+         WHERE LOWER(a.status) = 'sakit' AND ${muridFilter} 
+         ORDER BY a.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-      const combinedData = [
-        ...((madinRows[0] || []) as any[]).map(r => ({
-          id: `madin_${r.murid_id}_${r.tanggal}`,
-          murid_id: r.murid_id,
-          nama: r.nama,
-          jenis_kelamin: r.jenis_kelamin || '-',
-          kelas: r.kelas_nama || 'Madin',
-          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-          raw_tanggal: r.tanggal,
-          keterangan: r.keterangan ? `Madin: ${r.keterangan}` : `Madin (${r.status})`,
-          status: r.status,
-          sumber: 'absensi_madin',
-          kategori: 'madin',
-          ditindak: true,
-        })),
-        ...((quranRows[0] || []) as any[]).map(r => ({
-          id: `quran_${r.murid_id}_${r.tanggal}`,
-          murid_id: r.murid_id,
-          nama: r.nama,
-          jenis_kelamin: r.jenis_kelamin || '-',
-          kelas: r.kelas_nama || 'Qur\'an',
-          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-          raw_tanggal: r.tanggal,
-          keterangan: r.keterangan ? `Qur'an: ${r.keterangan}` : `Qur'an (${r.status})`,
-          status: r.status,
-          sumber: 'absensi_quran',
-          kategori: 'quran',
-          ditindak: true,
-        })),
-        ...((kegiatanRows[0] || []) as any[]).map(r => ({
-          id: `kegiatan_${r.murid_id}_${r.tanggal}`,
-          murid_id: r.murid_id,
-          nama: r.nama,
-          jenis_kelamin: r.jenis_kelamin || '-',
-          kelas: r.kelas_nama || 'Asrama',
-          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-          raw_tanggal: r.tanggal,
-          keterangan: r.keterangan ? `Asrama: ${r.keterangan}` : `Asrama (${r.status})`,
-          status: r.status,
-          sumber: 'absensi_kegiatan',
-          kategori: 'kegiatan',
-          ditindak: true,
-        })),
-        ...((pelanggaranRows[0] || []) as any[]).map(r => ({
-          id: String(r.pelanggaran_id),
-          murid_id: r.murid_id,
-          nama: r.nama,
-          jenis_kelamin: r.jenis_kelamin || '-',
-          kelas: r.kelas_nama || '-',
-          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-          raw_tanggal: r.tanggal,
-          keterangan: r.keterangan || r.status,
-          status: r.status,
-          sumber: 'pelanggaran',
-          kategori: 'lainnya',
-          ditindak: true,
-        })),
-      ].sort((a, b) => new Date(b.raw_tanggal).getTime() - new Date(a.raw_tanggal).getTime());
+      pool.execute<RowDataPacket[]>(
+        `SELECT aq.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, aq.keterangan, aq.status,
+                COALESCE(kq.nama_kelas, '-') as kelas_nama
+         FROM absensi_quran aq 
+         JOIN murid m ON aq.murid_id = m.murid_id 
+         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+         WHERE LOWER(aq.status) = 'sakit' AND ${muridFilter} 
+         ORDER BY aq.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-      return NextResponse.json({ success: true, data: combinedData, summary });
+      pool.execute<RowDataPacket[]>(
+        `SELECT ak.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, ak.keterangan, ak.status,
+                COALESCE(ka.nama_kamar, '-') as kelas_nama
+         FROM absensi_kegiatan ak 
+         JOIN murid m ON ak.murid_id = m.murid_id 
+         LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
+         WHERE LOWER(ak.status) = 'sakit' AND ${muridFilter} 
+         ORDER BY ak.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-    } else if (tab === 'alpa') {
-      const [madinRows, quranRows, kegiatanRows, pelanggaranRows] = await Promise.all([
-        pool.execute<RowDataPacket[]>(
-          `SELECT a.murid_id, m.nama, m.jenis_kelamin, a.tanggal, a.keterangan, a.status,
-                  COALESCE(km.nama_kelas, '-') as kelas_nama
-           FROM absensi a 
-           JOIN murid m ON a.murid_id = m.murid_id 
-           LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           WHERE LOWER(a.status) IN ('alpha', 'alpa') AND ${muridFilter} 
-           ORDER BY a.tanggal DESC LIMIT 200`,
-          queryParams
-        ).catch(() => [[] as RowDataPacket[]]),
+      pool.execute<RowDataPacket[]>(
+        `SELECT p.pelanggaran_id, p.murid_id, m.nama, m.jenis_kelamin, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
+                COALESCE(km.nama_kelas, kq.nama_kelas, ka.nama_kamar, '-') as kelas_nama
+         FROM pelanggaran p 
+         JOIN murid m ON p.murid_id = m.murid_id 
+         LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+         LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
+         WHERE LOWER(p.jenis) LIKE '%sakit%' AND ${muridFilter} 
+         ORDER BY p.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-        pool.execute<RowDataPacket[]>(
-          `SELECT aq.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, aq.keterangan, aq.status,
-                  COALESCE(kq.nama_kelas, '-') as kelas_nama
-           FROM absensi_quran aq 
-           JOIN murid m ON aq.murid_id = m.murid_id 
-           LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND ${muridFilter} 
-           ORDER BY aq.tanggal DESC LIMIT 200`,
-          queryParams
-        ).catch(() => [[] as RowDataPacket[]]),
+      // 3. ALPA
+      pool.execute<RowDataPacket[]>(
+        `SELECT a.murid_id, m.nama, m.jenis_kelamin, a.tanggal, a.keterangan, a.status,
+                COALESCE(km.nama_kelas, '-') as kelas_nama
+         FROM absensi a 
+         JOIN murid m ON a.murid_id = m.murid_id 
+         LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+         WHERE LOWER(a.status) IN ('alpha', 'alpa') AND ${muridFilter} 
+         ORDER BY a.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-        pool.execute<RowDataPacket[]>(
-          `SELECT ak.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, ak.keterangan, ak.status,
-                  COALESCE(ka.nama_kamar, '-') as kelas_nama
-           FROM absensi_kegiatan ak 
-           JOIN murid m ON ak.murid_id = m.murid_id 
-           LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ${muridFilter} 
-           ORDER BY ak.tanggal DESC LIMIT 200`,
-          queryParams
-        ).catch(() => [[] as RowDataPacket[]]),
+      pool.execute<RowDataPacket[]>(
+        `SELECT aq.murid_id, m.nama, m.jenis_kelamin, aq.tanggal, aq.keterangan, aq.status,
+                COALESCE(kq.nama_kelas, '-') as kelas_nama
+         FROM absensi_quran aq 
+         JOIN murid m ON aq.murid_id = m.murid_id 
+         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+         WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND ${muridFilter} 
+         ORDER BY aq.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-        pool.execute<RowDataPacket[]>(
-          `SELECT p.pelanggaran_id, p.murid_id, m.nama, m.jenis_kelamin, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
-                  COALESCE(km.nama_kelas, kq.nama_kelas, ka.nama_kamar, '-') as kelas_nama
-           FROM pelanggaran p 
-           JOIN murid m ON p.murid_id = m.murid_id 
-           LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE (LOWER(p.jenis) LIKE '%alpa%' OR LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%tidak hadir%') AND ${muridFilter} 
-           ORDER BY p.tanggal DESC LIMIT 200`,
-          queryParams
-        ).catch(() => [[] as RowDataPacket[]]),
-      ]);
+      pool.execute<RowDataPacket[]>(
+        `SELECT ak.murid_id, m.nama, m.jenis_kelamin, ak.tanggal, ak.keterangan, ak.status,
+                COALESCE(ka.nama_kamar, '-') as kelas_nama
+         FROM absensi_kegiatan ak 
+         JOIN murid m ON ak.murid_id = m.murid_id 
+         LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
+         WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ${muridFilter} 
+         ORDER BY ak.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-      const combinedAlpa = [
-        ...((madinRows[0] || []) as any[]).map(r => ({
-          id: `madin_${r.murid_id}_${r.tanggal}`,
-          murid_id: r.murid_id,
-          nama: r.nama,
-          jenis_kelamin: r.jenis_kelamin || '-',
-          kelas: r.kelas_nama || 'Madin',
-          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-          raw_tanggal: r.tanggal,
-          keterangan: r.keterangan ? `Madin: ${r.keterangan}` : 'Madin (Alpa / Tidak Hadir)',
-          status: r.status,
-          sumber: 'absensi_madin',
-          kategori: 'madin',
-          ditindak: true,
-        })),
-        ...((quranRows[0] || []) as any[]).map(r => ({
-          id: `quran_${r.murid_id}_${r.tanggal}`,
-          murid_id: r.murid_id,
-          nama: r.nama,
-          jenis_kelamin: r.jenis_kelamin || '-',
-          kelas: r.kelas_nama || 'Qur\'an',
-          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-          raw_tanggal: r.tanggal,
-          keterangan: r.keterangan ? `Qur'an: ${r.keterangan}` : `Qur'an (Alpa / Tidak Hadir)`,
-          status: r.status,
-          sumber: 'absensi_quran',
-          kategori: 'quran',
-          ditindak: true,
-        })),
-        ...((kegiatanRows[0] || []) as any[]).map(r => ({
-          id: `kegiatan_${r.murid_id}_${r.tanggal}`,
-          murid_id: r.murid_id,
-          nama: r.nama,
-          jenis_kelamin: r.jenis_kelamin || '-',
-          kelas: r.kelas_nama || 'Asrama',
-          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-          raw_tanggal: r.tanggal,
-          keterangan: r.keterangan ? `Asrama: ${r.keterangan}` : `Asrama (Alpa / Tidak Hadir)`,
-          status: r.status,
-          sumber: 'absensi_kegiatan',
-          kategori: 'kegiatan',
-          ditindak: true,
-        })),
-        ...((pelanggaranRows[0] || []) as any[]).map(r => ({
-          id: String(r.pelanggaran_id),
-          murid_id: r.murid_id,
-          nama: r.nama,
-          jenis_kelamin: r.jenis_kelamin || '-',
-          kelas: r.kelas_nama || '-',
-          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-          raw_tanggal: r.tanggal,
-          keterangan: r.keterangan || r.status,
-          status: r.status,
-          sumber: 'pelanggaran',
-          kategori: 'lainnya',
-          ditindak: true,
-        })),
-      ].sort((a, b) => new Date(b.raw_tanggal).getTime() - new Date(a.raw_tanggal).getTime());
+      pool.execute<RowDataPacket[]>(
+        `SELECT p.pelanggaran_id, p.murid_id, m.nama, m.jenis_kelamin, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
+                COALESCE(km.nama_kelas, kq.nama_kelas, ka.nama_kamar, '-') as kelas_nama
+         FROM pelanggaran p 
+         JOIN murid m ON p.murid_id = m.murid_id 
+         LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+         LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
+         WHERE (LOWER(p.jenis) LIKE '%alpa%' OR LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%tidak hadir%') AND ${muridFilter} 
+         ORDER BY p.tanggal DESC LIMIT 200`,
+        queryParams
+      ).catch(() => [[] as RowDataPacket[]]),
 
-      return NextResponse.json({ success: true, data: combinedAlpa, summary });
-
-    } else {
-      // Tab 'pelanggaran' (Pelanggaran Tata Tertib Kedisiplinan Lainnya)
-      const [pelanggaranRows] = await pool.execute<RowDataPacket[]>(
+      // 4. PELANGGARAN LAIN
+      pool.execute<RowDataPacket[]>(
         `SELECT p.pelanggaran_id, p.murid_id, m.nama as nama, m.jenis_kelamin as jenis_kelamin,
                 p.tanggal, p.jenis as jenis, p.deskripsi, 'pelanggaran' as sumber,
                 COALESCE(km.nama_kelas, kq.nama_kelas, ka.nama_kamar, '-') as kelas_nama
@@ -350,26 +272,81 @@ export async function GET(request: Request) {
          ORDER BY p.tanggal DESC
          LIMIT 200`,
         queryParams
-      ).catch(() => [[] as RowDataPacket[]]);
+      ).catch(() => [[] as RowDataPacket[]]),
+    ]);
 
-      const dataPelanggaran = ((pelanggaranRows || []) as any[]).map(r => ({
-        id: String(r.pelanggaran_id),
+    const mapRows = (rows: any[], sumber: string, defaultStatus: string, kategori: string) => {
+      return ((rows || []) as any[]).map((r: any) => ({
+        id: r.pelanggaran_id ? String(r.pelanggaran_id) : `${sumber}_${r.murid_id}_${r.tanggal}`,
         murid_id: r.murid_id,
         nama: r.nama,
         jenis_kelamin: r.jenis_kelamin || '-',
-        kelas: r.kelas_nama || '-',
+        kelas: r.kelas_nama || (kategori === 'madin' ? 'Madin' : kategori === 'quran' ? "Qur'an" : kategori === 'kegiatan' ? 'Asrama' : '-'),
         tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
         raw_tanggal: r.tanggal,
-        jenis: r.jenis,
-        keterangan: r.deskripsi || r.jenis,
-        deskripsi: r.deskripsi,
-        sumber: 'pelanggaran',
-        kategori: 'lainnya',
-        poin: 0,
-        ditindak: true
+        keterangan: r.keterangan ? `${kategori === 'madin' ? 'Madin' : kategori === 'quran' ? "Qur'an" : kategori === 'kegiatan' ? 'Asrama' : ''}${kategori !== 'lainnya' ? ': ' : ''}${r.keterangan}` : `${kategori === 'madin' ? 'Madin' : kategori === 'quran' ? "Qur'an" : 'Asrama'} (${defaultStatus})`,
+        status: defaultStatus,
+        sumber,
+        kategori,
+        ditindak: true,
       }));
+    };
 
-      return NextResponse.json({ success: true, data: dataPelanggaran, summary });
+    const combinedIzin = [
+      ...mapRows(madinIzinRows[0], 'absensi_madin', 'Izin', 'madin'),
+      ...mapRows(quranIzinRows[0], 'absensi_quran', 'Izin', 'quran'),
+      ...mapRows(kegiatanIzinRows[0], 'absensi_kegiatan', 'Izin', 'kegiatan'),
+      ...mapRows(pelanggaranIzinRows[0], 'pelanggaran', 'Izin', 'lainnya'),
+    ].sort((a, b) => new Date(b.raw_tanggal).getTime() - new Date(a.raw_tanggal).getTime());
+
+    const combinedSakit = [
+      ...mapRows(madinSakitRows[0], 'absensi_madin', 'Sakit', 'madin'),
+      ...mapRows(quranSakitRows[0], 'absensi_quran', 'Sakit', 'quran'),
+      ...mapRows(kegiatanSakitRows[0], 'absensi_kegiatan', 'Sakit', 'kegiatan'),
+      ...mapRows(pelanggaranSakitRows[0], 'pelanggaran', 'Sakit', 'lainnya'),
+    ].sort((a, b) => new Date(b.raw_tanggal).getTime() - new Date(a.raw_tanggal).getTime());
+
+    const combinedAlpa = [
+      ...mapRows(madinAlpaRows[0], 'absensi_madin', 'Alpa', 'madin'),
+      ...mapRows(quranAlpaRows[0], 'absensi_quran', 'Alpa', 'quran'),
+      ...mapRows(kegiatanAlpaRows[0], 'absensi_kegiatan', 'Alpa', 'kegiatan'),
+      ...mapRows(pelanggaranAlpaRows[0], 'pelanggaran', 'Alpa', 'lainnya'),
+    ].sort((a, b) => new Date(b.raw_tanggal).getTime() - new Date(a.raw_tanggal).getTime());
+
+    const dataPelanggaran = ((pelanggaranLainRows[0] || []) as any[]).map(r => ({
+      id: String(r.pelanggaran_id),
+      murid_id: r.murid_id,
+      nama: r.nama,
+      jenis_kelamin: r.jenis_kelamin || '-',
+      kelas: r.kelas_nama || '-',
+      tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      raw_tanggal: r.tanggal,
+      jenis: r.jenis,
+      keterangan: r.deskripsi || r.jenis,
+      deskripsi: r.deskripsi,
+      sumber: 'pelanggaran',
+      kategori: 'lainnya',
+      poin: 0,
+      ditindak: true,
+    })).sort((a, b) => new Date(b.raw_tanggal).getTime() - new Date(a.raw_tanggal).getTime());
+
+    const allCategoriesData = {
+      izin: combinedIzin,
+      sakit: combinedSakit,
+      alpa: combinedAlpa,
+      pelanggaran: dataPelanggaran,
+    };
+
+    if (tab === 'izin') {
+      return NextResponse.json({ success: true, data: combinedIzin, categories: allCategoriesData, summary });
+    } else if (tab === 'sakit') {
+      return NextResponse.json({ success: true, data: combinedSakit, categories: allCategoriesData, summary });
+    } else if (tab === 'alpa') {
+      return NextResponse.json({ success: true, data: combinedAlpa, categories: allCategoriesData, summary });
+    } else if (tab === 'pelanggaran') {
+      return NextResponse.json({ success: true, data: dataPelanggaran, categories: allCategoriesData, summary });
+    } else {
+      return NextResponse.json({ success: true, data: allCategoriesData, categories: allCategoriesData, summary });
     }
   } catch (error: any) {
     console.error('Error API Ketertiban:', error.message);
