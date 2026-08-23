@@ -375,16 +375,7 @@ export default function KetertibanPage() {
     return sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
   };
 
-  const currentTabRawList = activeTab === 'izin' 
-    ? dataIzin.filter(item => !(`${item.status || ''} ${item.keterangan || ''} ${item.jenis || ''}`.toLowerCase().includes('sakit')))
-    : activeTab === 'sakit' 
-    ? dataSakit.filter(item => {
-        const text = `${item.status || ''} ${item.keterangan || ''} ${item.jenis || ''}`.toLowerCase();
-        return !text.includes('(izin)') && !(text.includes('izin') && !text.includes('sakit'));
-      })
-    : activeTab === 'alpa' 
-    ? dataAlpa 
-    : dataPelanggaran;
+  const currentTabRawList = activeTab === 'izin' ? dataIzin : activeTab === 'sakit' ? dataSakit : activeTab === 'alpa' ? dataAlpa : dataPelanggaran;
   
   const countByKategori = (kat: string) => {
     if (kat === 'semua') return currentTabRawList.length;
@@ -398,15 +389,11 @@ export default function KetertibanPage() {
 
   const filterData = (dataList: RowItem[], tabType?: 'izin' | 'sakit' | 'alpa' | 'pelanggaran') => {
     return dataList.filter(item => {
-      // Pemisahan ketat antara Izin dan Sakit
-      if (tabType === 'izin') {
-        const text = `${item.status || ''} ${item.keterangan || ''} ${item.jenis || ''}`.toLowerCase();
-        if (text.includes('sakit')) return false;
-      }
-      if (tabType === 'sakit') {
-        const text = `${item.status || ''} ${item.keterangan || ''} ${item.jenis || ''}`.toLowerCase();
-        if (text.includes('(izin)') || (text.includes('izin') && !text.includes('sakit'))) return false;
-      }
+      // Pemisahan ketat berdasarkan status data
+      if (tabType === 'izin' && item.status !== 'Izin') return false;
+      if (tabType === 'sakit' && item.status !== 'Sakit') return false;
+      if (tabType === 'alpa' && item.status !== 'Alpa') return false;
+
       // Filter kategori
       if (kategoriFilter !== 'semua') {
         const matchKategori = item.kategori === kategoriFilter ||

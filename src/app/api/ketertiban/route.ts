@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const { role, guruId, muridId } = payload as any;
 
     const { searchParams } = new URL(request.url);
-    const tab = searchParams.get('tab') || 'izin';
+    const tab = searchParams.get('tab');
     
     // Konfigurasi hak akses berbasis role
     let muridFilter = '1=1';
@@ -83,8 +83,8 @@ export async function GET(request: Request) {
       pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE LOWER(aq.status) = 'sakit' AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
       pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE LOWER(ak.status) = 'izin' AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
       pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE LOWER(ak.status) = 'sakit' AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
-      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE LOWER(p.jenis) LIKE '%izin%' AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
-      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE LOWER(p.jenis) LIKE '%sakit%' AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (LOWER(p.jenis) LIKE '%izin%' AND LOWER(p.jenis) NOT LIKE '%sakit%') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (LOWER(p.jenis) LIKE '%sakit%' AND LOWER(p.jenis) NOT LIKE '%izin%') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
       pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE LOWER(a.status) IN ('alpha', 'alpa') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
       pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
       pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
     const totalIzin = (Number(madinIzinRes[0]?.[0]?.c) || 0) + (Number(quranIzinRes[0]?.[0]?.c) || 0) + (Number(kegiatanIzinRes[0]?.[0]?.c) || 0) + (Number(pelanggaranIzinRes[0]?.[0]?.c) || 0);
     const totalSakit = (Number(madinSakitRes[0]?.[0]?.c) || 0) + (Number(quranSakitRes[0]?.[0]?.c) || 0) + (Number(kegiatanSakitRes[0]?.[0]?.c) || 0) + (Number(pelanggaranSakitRes[0]?.[0]?.c) || 0);
     const totalAlpa = (Number(madinAlpaRes[0]?.[0]?.c) || 0) + (Number(quranAlpaRes[0]?.[0]?.c) || 0) + (Number(kegiatanAlpaRes[0]?.[0]?.c) || 0) + (Number(pelanggaranAlpaRes[0]?.[0]?.c) || 0);
-    const totalPelanggaran = Number(pelanggaranLainRes[0]?.[0]?.c) || 0;
+    const totalPelanggaran = Number((pelanggaranLainRes as any)?.[0]?.[0]?.c) || 0;
 
     const summary = {
       totalIzin,
@@ -200,7 +200,7 @@ export async function GET(request: Request) {
          LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
          LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
          LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-         WHERE LOWER(p.jenis) LIKE '%sakit%' AND ${muridFilter} 
+         WHERE (LOWER(p.jenis) LIKE '%sakit%' AND LOWER(p.jenis) NOT LIKE '%izin%') AND ${muridFilter} 
          ORDER BY p.tanggal DESC LIMIT 200`,
         queryParams
       ).catch(() => [[] as RowDataPacket[]]),
@@ -276,20 +276,33 @@ export async function GET(request: Request) {
     ]);
 
     const mapRows = (rows: any[], sumber: string, defaultStatus: string, kategori: string) => {
-      return ((rows || []) as any[]).map((r: any) => ({
-        id: r.pelanggaran_id ? String(r.pelanggaran_id) : `${sumber}_${r.murid_id}_${r.tanggal}`,
-        murid_id: r.murid_id,
-        nama: r.nama,
-        jenis_kelamin: r.jenis_kelamin || '-',
-        kelas: r.kelas_nama || (kategori === 'madin' ? 'Madin' : kategori === 'quran' ? "Qur'an" : kategori === 'kegiatan' ? 'Asrama' : '-'),
-        tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-        raw_tanggal: r.tanggal,
-        keterangan: r.keterangan ? `${kategori === 'madin' ? 'Madin' : kategori === 'quran' ? "Qur'an" : kategori === 'kegiatan' ? 'Asrama' : ''}${kategori !== 'lainnya' ? ': ' : ''}${r.keterangan}` : `${kategori === 'madin' ? 'Madin' : kategori === 'quran' ? "Qur'an" : 'Asrama'} (${defaultStatus})`,
-        status: defaultStatus,
-        sumber,
-        kategori,
-        ditindak: true,
-      }));
+      return ((rows || []) as any[]).map((r: any) => {
+        const prefix = kategori === 'madin' ? 'Madin' : kategori === 'quran' ? "Qur'an" : kategori === 'kegiatan' ? 'Asrama' : '';
+        let cleanKet = (r.keterangan || '').trim();
+        const lowerKet = cleanKet.toLowerCase();
+
+        // Normalisasi keterangan agar tidak salah label antara Izin vs Sakit vs Alpa
+        if (!cleanKet || lowerKet === 'izin' || lowerKet === 'sakit' || lowerKet === '(izin)' || lowerKet === '(sakit)' || lowerKet === 'alpa' || lowerKet === 'alpha' || lowerKet.includes('tidak hadir')) {
+          cleanKet = `${prefix ? prefix + ' ' : ''}(${defaultStatus})`;
+        } else if (prefix && !cleanKet.startsWith(prefix)) {
+          cleanKet = `${prefix}: ${cleanKet}`;
+        }
+
+        return {
+          id: r.pelanggaran_id ? String(r.pelanggaran_id) : `${sumber}_${r.murid_id}_${r.tanggal}`,
+          murid_id: r.murid_id,
+          nama: r.nama,
+          jenis_kelamin: r.jenis_kelamin || '-',
+          kelas: r.kelas_nama || (kategori === 'madin' ? 'Madin' : kategori === 'quran' ? "Qur'an" : kategori === 'kegiatan' ? 'Asrama' : '-'),
+          tanggal: new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          raw_tanggal: r.tanggal,
+          keterangan: cleanKet,
+          status: defaultStatus,
+          sumber,
+          kategori,
+          ditindak: true,
+        };
+      });
     };
 
     const combinedIzin = [
