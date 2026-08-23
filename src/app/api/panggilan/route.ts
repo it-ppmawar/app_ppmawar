@@ -6,6 +6,19 @@ import { RowDataPacket } from 'mysql2';
 
 const ALLOWED_ROLES = ['admin', 'staff', 'pengasuh', 'pengurus_asrama', 'wali_murid', 'wali_alumni', 'petugas_panggilan', 'petugas_panggilan_umum', 'petugas'];
 
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3; // Earth radius in meters
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 function isAllowed(role: string): boolean {
   return ALLOWED_ROLES.some(r => role.toLowerCase().includes(r) || role === r);
 }
@@ -139,6 +152,57 @@ export async function POST(request: Request) {
     }
 
     const santri = santriRows[0];
+
+    // ── Location Radius Check: khusus wali murid & alumni jika radius_panggilan_wali aktif ──
+    const isWaliOrAlumni = payload.role === 'wali_murid' || payload.role === 'wali_alumni' || payload.role === 'alumni';
+    if (isWaliOrAlumni) {
+      try {
+        const [settingRows] = await pool.execute<RowDataPacket[]>(
+          'SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ("lat_pesantren", "lng_pesantren", "radius_absen", "radius_panggilan_wali")'
+        );
+        const settingsMap: Record<string, string> = {};
+        settingRows.forEach(r => { settingsMap[r.nama_pengaturan] = r.nilai; });
+
+        const isRadiusActive = settingsMap['radius_panggilan_wali'] !== '0'; // default aktif jika belum diset '0'
+        const targetLat = parseFloat((settingsMap['lat_pesantren'] || '').toString().replace(',', '.').trim());
+        const targetLng = parseFloat((settingsMap['lng_pesantren'] || '').toString().replace(',', '.').trim());
+        const maxRadius = parseFloat((settingsMap['radius_absen'] || '').toString().replace(',', '.').trim());
+
+        if (isRadiusActive && !isNaN(targetLat) && !isNaN(targetLng) && !isNaN(maxRadius) && maxRadius > 0) {
+          const rawUserLat = body.lokasi_lat ?? body.lat ?? '';
+          const rawUserLng = body.lokasi_lng ?? body.lng ?? '';
+
+          const userLat = parseFloat(rawUserLat.toString().replace(',', '.').trim());
+          const userLng = parseFloat(rawUserLng.toString().replace(',', '.').trim());
+
+          if (isNaN(userLat) || isNaN(userLng)) {
+            return NextResponse.json({
+              error: 'Panggilan Ditolak: Lokasi GPS HP/perangkat Anda belum diizinkan atau tidak terdeteksi. Aktifkan izin lokasi (GPS) untuk melakukan pemanggilan.',
+              need_gps: true
+            }, { status: 400 });
+          }
+
+          const distanceMeters = calculateDistanceMeters(userLat, userLng, targetLat, targetLng);
+          if (distanceMeters > maxRadius) {
+            const distText = distanceMeters >= 1000 
+              ? `${(distanceMeters / 1000).toFixed(2)} km` 
+              : `${Math.round(distanceMeters)} meter`;
+            const radiusText = maxRadius >= 1000 
+              ? `${(maxRadius / 1000).toFixed(2)} km` 
+              : `${Math.round(maxRadius)} meter`;
+
+            return NextResponse.json({
+              error: `Panggilan Ditolak: Jarak lokasi Anda (${distText}) berada di luar batas radius pesantren (maksimal ${radiusText}). Panggilan hanya dapat dilakukan saat sudah tiba di lokasi pesantren.`,
+              di_luar_radius: true,
+              jarak_meter: Math.round(distanceMeters),
+              radius_meter: Math.round(maxRadius)
+            }, { status: 403 });
+          }
+        }
+      } catch (locErr) {
+        console.warn('[API Panggilan Loc Check]', locErr);
+      }
+    }
 
     // ── Cooldown check: wali & pengurus tidak boleh kirim terlalu sering ──
     const isWali = payload.role === 'wali_murid' || payload.role === 'wali_alumni';

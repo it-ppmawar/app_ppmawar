@@ -23,9 +23,9 @@ export async function GET(request: Request) {
     }
 
     if (!isAdminOrStaff && publicOnly) {
-      // Hanya kembalikan setting jeda panggilan
+      // Kembalikan setting panggilan & lokasi publik
       const [rows] = await pool.execute<RowDataPacket[]>(
-        "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('jeda_panggilan_wali', 'jeda_panggilan_pengurus')"
+        "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('jeda_panggilan_wali', 'jeda_panggilan_pengurus', 'lat_pesantren', 'lng_pesantren', 'radius_absen', 'radius_panggilan_wali')"
       );
       const settings: Record<string, string> = {};
       rows.forEach((row: any) => { settings[row.nama_pengaturan] = row.nilai; });
@@ -75,7 +75,8 @@ export async function PUT(request: Request) {
       wa_scheduler_lead_time,
       wa_scheduler_is_loop,
       jeda_panggilan_wali,
-      jeda_panggilan_pengurus
+      jeda_panggilan_pengurus,
+      radius_panggilan_wali
     } = await request.json();
 
     if (wa_scheduler_api_key !== undefined) {
@@ -210,6 +211,14 @@ export async function PUT(request: Request) {
       await pool.execute(
         'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
         ['jeda_panggilan_pengurus', val, val]
+      );
+    }
+
+    if (radius_panggilan_wali !== undefined) {
+      const val = radius_panggilan_wali ? '1' : '0';
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['radius_panggilan_wali', val, val]
       );
     }
 

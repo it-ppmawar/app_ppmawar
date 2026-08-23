@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone, BookOpen, Users } from 'lucide-react';
+import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone, BookOpen, Users, MapPin } from 'lucide-react';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -29,7 +29,8 @@ export default function SettingsPage() {
     wa_scheduler_is_loop: true,
     wa_scheduler_endpoint: 'https://wa.quizb.my.id/api/send.php',
     jeda_panggilan_wali: 5,
-    jeda_panggilan_pengurus: 2
+    jeda_panggilan_pengurus: 2,
+    radius_panggilan_wali: true
   });
 
   const [testingWa, setTestingWa] = useState(false);
@@ -125,7 +126,8 @@ export default function SettingsPage() {
           wa_scheduler_is_loop: json.data.wa_scheduler_is_loop !== '0',
           wa_scheduler_endpoint: json.data.wa_scheduler_endpoint || 'https://wa.quizb.my.id/api/send.php',
           jeda_panggilan_wali: isNaN(parseInt(json.data.jeda_panggilan_wali)) ? 5 : parseInt(json.data.jeda_panggilan_wali),
-          jeda_panggilan_pengurus: isNaN(parseInt(json.data.jeda_panggilan_pengurus)) ? 2 : parseInt(json.data.jeda_panggilan_pengurus)
+          jeda_panggilan_pengurus: isNaN(parseInt(json.data.jeda_panggilan_pengurus)) ? 2 : parseInt(json.data.jeda_panggilan_pengurus),
+          radius_panggilan_wali: json.data.radius_panggilan_wali !== '0'
         });
       } else {
         setError(json.error || 'Gagal memuat pengaturan');
@@ -986,6 +988,35 @@ export default function SettingsPage() {
                     />
                     <span className="text-xs font-bold text-amber-800 dark:text-amber-300">Menit</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Batasan Radius Lokasi Pesantren untuk Wali Murid / Alumni */}
+              <div className="md:col-span-2 p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-xl border border-purple-200/60 dark:border-purple-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <MapPin size={16} className="text-purple-600 dark:text-purple-400" />
+                    <h4 className="text-xs font-bold text-purple-900 dark:text-purple-200 uppercase tracking-wider">
+                      Wajibkan Lokasi Radius Pesantren untuk Wali Murid & Alumni
+                    </h4>
+                  </div>
+                  <p className="text-xs text-purple-700 dark:text-purple-300 max-w-xl">
+                    Jika diaktifkan, panggilan santri hanya dapat dikirim jika perangkat Wali Murid / Alumni terdeteksi berada di dalam radius pesantren (<span className="font-bold">{settings.radius_absen >= 1000 ? `${(settings.radius_absen / 1000).toFixed(1)} km` : `${settings.radius_absen} meter`}</span>). Mencegah panggilan prematur saat wali masih di rumah / perjalanan.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                  <span className={`text-xs font-black ${settings.radius_panggilan_wali ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400'}`}>
+                    {settings.radius_panggilan_wali ? 'AKTIF' : 'NONAKTIF'}
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={settings.radius_panggilan_wali}
+                      onChange={(e) => setSettings({ ...settings, radius_panggilan_wali: e.target.checked })}
+                    />
+                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                  </label>
                 </div>
               </div>
             </div>

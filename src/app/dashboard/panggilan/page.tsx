@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Megaphone, Search, Send, Clock, CheckCircle2, Mic2, X, ChevronDown, RefreshCw, ExternalLink, BookOpen, User, Home, AlertCircle, Loader2, History, Trash2, Volume2, Filter, Wifi, Radio, Server, Wrench } from 'lucide-react';
+import { Megaphone, Search, Send, Clock, CheckCircle2, Mic2, X, ChevronDown, RefreshCw, ExternalLink, BookOpen, User, Home, AlertCircle, Loader2, History, Trash2, Volume2, Filter, Wifi, Radio, Server, Wrench, MapPin, Navigation } from 'lucide-react';
 
 interface Santri {
   murid_id: number;
@@ -42,6 +42,19 @@ interface Device {
   nama_asrama: string | null;
   status: 'online' | 'idle' | 'offline';
   last_seen: string;
+}
+
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3; // Earth radius in meters
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 function getEffectiveJenisSuara(jenis?: string, nama?: string): 'pria' | 'wanita' {
@@ -90,6 +103,13 @@ export default function PanggilanSantriPage() {
   const [jedaMenit, setJedaMenit] = useState(0);       // setting jeda dari admin
   const cooldownRef = useRef<NodeJS.Timeout | null>(null);
 
+  // GPS / Geofence state
+  const [pesantrenLoc, setPesantrenLoc] = useState<{ lat: number; lng: number; radius: number; wajib: boolean } | null>(null);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [jarakMeters, setJarakMeters] = useState<number | null>(null);
+  const [lokasiStatus, setLokasiStatus] = useState<'idle' | 'loading' | 'success' | 'denied' | 'unsupported' | 'outside'>('idle');
+  const [lokasiError, setLokasiError] = useState('');
+
   const searchRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -108,18 +128,71 @@ export default function PanggilanSantriPage() {
     return () => clearInterval(t);
   }, [fetchDevices]);
 
-  // Fetch setting jeda panggilan untuk role wali/pengurus
+  // requestLocation: ambil koordinat user (dipanggil manual atau otomatis)
+  const requestLocation = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLokasiStatus('unsupported');
+      setLokasiError('Browser tidak mendukung GPS');
+      return;
+    }
+    setLokasiStatus('loading');
+    setLokasiError('');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserCoords(coords);
+        setPesantrenLoc(prev => {
+          if (prev) {
+            const jarak = calculateDistanceMeters(coords.lat, coords.lng, prev.lat, prev.lng);
+            setJarakMeters(jarak);
+            setLokasiStatus(jarak <= prev.radius ? 'success' : 'outside');
+          }
+          return prev;
+        });
+      },
+      (err) => {
+        setLokasiStatus(err.code === 1 ? 'denied' : 'unsupported');
+        setLokasiError(err.code === 1 ? 'Izin GPS ditolak. Aktifkan lokasi di browser.' : 'Gagal mendapatkan lokasi: ' + err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  }, []);
+
+  // Fetch setting jeda panggilan untuk role wali/pengurus + koordinat pesantren
   useEffect(() => {
     fetch('/api/settings?public=1').then(r => r.json()).then(d => {
       if (d.success) {
         const role = (user?.role || '').toLowerCase();
-        const isWali = role === 'wali_murid' || role === 'wali_alumni';
+        const isWali = role === 'wali_murid' || role === 'wali_alumni' || role === 'alumni';
         const isPengurus = role.includes('pengurus_asrama');
         if (isWali) setJedaMenit(parseInt(d.data.jeda_panggilan_wali || '0') || 0);
         else if (isPengurus) setJedaMenit(parseInt(d.data.jeda_panggilan_pengurus || '0') || 0);
+
+        // Parse koordinat pesantren untuk geofence
+        const lat = parseFloat(d.data.lat_pesantren || '0');
+        const lng = parseFloat(d.data.lng_pesantren || '0');
+        const radius = parseFloat(d.data.radius_absen || '0');
+        const wajib = d.data.radius_panggilan_wali === '1';
+        if (lat !== 0 && lng !== 0 && radius > 0) {
+          const loc = { lat, lng, radius, wajib };
+          setPesantrenLoc(loc);
+          // Trigger GPS otomatis hanya untuk wali/alumni jika fitur aktif
+          if (isWali && wajib) {
+            requestLocation();
+          }
+        }
       }
     }).catch(() => {});
-  }, [user]);
+  }, [user, requestLocation]);
+
+  // Hitung jarak ulang saat pesantrenLoc atau userCoords berubah
+  useEffect(() => {
+    if (pesantrenLoc && userCoords) {
+      const jarak = calculateDistanceMeters(userCoords.lat, userCoords.lng, pesantrenLoc.lat, pesantrenLoc.lng);
+      setJarakMeters(jarak);
+      setLokasiStatus(jarak <= pesantrenLoc.radius ? 'success' : 'outside');
+    }
+  }, [pesantrenLoc, userCoords]);
 
   // Countdown timer for cooldown
   useEffect(() => {
@@ -136,6 +209,7 @@ export default function PanggilanSantriPage() {
     }, 1000);
     return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
   }, [cooldownSisa]);
+
 
   // Auth guard: SEMUA petugas_panggilan (per-asrama & umum) → redirect ke TOA
   useEffect(() => {
@@ -229,6 +303,26 @@ export default function PanggilanSantriPage() {
     if (!teksPanggilan.trim()) { setErrorMsg('Teks panggilan tidak boleh kosong'); return; }
     if (cooldownSisa > 0) return; // blokir jika masih cooldown
 
+    // Validasi geofence untuk wali/alumni
+    const role = (user?.role || '').toLowerCase();
+    const isWali = role === 'wali_murid' || role === 'wali_alumni' || role === 'alumni';
+    if (isWali && pesantrenLoc?.wajib) {
+      if (lokasiStatus === 'loading') {
+        setErrorMsg('Menunggu deteksi lokasi GPS, coba beberapa saat lagi...');
+        return;
+      }
+      if (lokasiStatus === 'denied' || lokasiStatus === 'unsupported') {
+        setErrorMsg('Aktifkan izin GPS di browser untuk mengirim panggilan.');
+        return;
+      }
+      if (lokasiStatus === 'outside' || lokasiStatus === 'idle') {
+        const jarakKm = jarakMeters ? (jarakMeters / 1000).toFixed(1) : '?';
+        const radiusKm = pesantrenLoc ? (pesantrenLoc.radius / 1000).toFixed(1) : '?';
+        setErrorMsg(`Anda berada di luar radius pesantren (${jarakKm} km dari titik pusat, maks ${radiusKm} km).`);
+        return;
+      }
+    }
+
     setSending(true);
     setErrorMsg('');
     setSuccessMsg('');
@@ -247,6 +341,8 @@ export default function PanggilanSantriPage() {
           jenis_suara: getEffectiveJenisSuara(selectedFormat?.jenis_suara, selectedFormat?.nama),
           volume,
           rate,
+          lat: userCoords?.lat ?? null,
+          lng: userCoords?.lng ?? null,
         }),
       });
       const d = await r.json();
@@ -254,6 +350,12 @@ export default function PanggilanSantriPage() {
         // Kena cooldown dari server
         setCooldownSisa(d.sisa_detik || jedaMenit * 60);
         setErrorMsg('');
+      } else if (r.status === 400 && d.need_gps) {
+        setErrorMsg('Data GPS tidak ditemukan. Aktifkan lokasi dan coba lagi.');
+      } else if (r.status === 403 && d.di_luar_radius) {
+        const jarakKm = d.jarak_meter ? (d.jarak_meter / 1000).toFixed(1) : '?';
+        const radiusKm = d.radius_meter ? (d.radius_meter / 1000).toFixed(1) : '?';
+        setErrorMsg(`Ditolak: Anda di luar radius pesantren (${jarakKm} km dari titik pusat, maks ${radiusKm} km).`);
       } else if (d.success) {
         setSuccessMsg(d.message || 'Panggilan berhasil dikirim!');
         // Mulai cooldown lokal setelah berhasil kirim
@@ -273,6 +375,7 @@ export default function PanggilanSantriPage() {
     }
     setSending(false);
   };
+
 
   const handlePreviewTTS = async () => {
     if (typeof window === 'undefined') return;
@@ -539,6 +642,92 @@ export default function PanggilanSantriPage() {
         </div>
       )}
 
+      {/* ── GPS / Geofence Banner ── hanya tampil untuk wali & alumni saat fitur aktif */}
+      {pesantrenLoc?.wajib && (() => {
+        const role = (user?.role || '').toLowerCase();
+        const isWali = role === 'wali_murid' || role === 'wali_alumni' || role === 'alumni';
+        if (!isWali) return null;
+        return (
+          <div>
+            {lokasiStatus === 'loading' && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700 rounded-2xl text-sky-700 dark:text-sky-300">
+                <Loader2 size={18} className="shrink-0 animate-spin" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">Mendeteksi Lokasi GPS...</p>
+                  <p className="text-xs mt-0.5 opacity-75">Pastikan GPS aktif di perangkat Anda</p>
+                </div>
+              </div>
+            )}
+            {lokasiStatus === 'success' && jarakMeters !== null && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-2xl text-green-700 dark:text-green-300">
+                <MapPin size={18} className="shrink-0 text-green-500" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">✅ Lokasi Terverifikasi</p>
+                  <p className="text-xs mt-0.5 opacity-75">
+                    Di dalam radius pesantren &mdash; berjarak <span className="font-bold">{jarakMeters < 1000 ? `${Math.round(jarakMeters)} m` : `${(jarakMeters / 1000).toFixed(1)} km`}</span> dari titik pusat
+                  </p>
+                </div>
+                <button
+                  onClick={requestLocation}
+                  title="Perbarui lokasi"
+                  className="shrink-0 p-1.5 rounded-lg bg-green-100 dark:bg-green-800/40 hover:bg-green-200 dark:hover:bg-green-700/50 transition-colors"
+                >
+                  <RefreshCw size={13} />
+                </button>
+              </div>
+            )}
+            {lokasiStatus === 'outside' && jarakMeters !== null && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-2xl text-red-700 dark:text-red-300">
+                <MapPin size={18} className="shrink-0 text-red-500" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">🔴 Di Luar Radius Pesantren</p>
+                  <p className="text-xs mt-0.5 opacity-75">
+                    Berjarak <span className="font-bold">{(jarakMeters / 1000).toFixed(1)} km</span> dari titik pusat &mdash; maks <span className="font-bold">{(pesantrenLoc.radius / 1000).toFixed(1)} km</span>. Harap datang ke area pesantren.
+                  </p>
+                </div>
+                <button
+                  onClick={requestLocation}
+                  title="Perbarui lokasi"
+                  className="shrink-0 p-1.5 rounded-lg bg-red-100 dark:bg-red-800/40 hover:bg-red-200 dark:hover:bg-red-700/50 transition-colors"
+                >
+                  <RefreshCw size={13} />
+                </button>
+              </div>
+            )}
+            {(lokasiStatus === 'denied' || lokasiStatus === 'unsupported') && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-2xl text-orange-700 dark:text-orange-300">
+                <AlertCircle size={18} className="shrink-0 text-orange-500" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">⚠️ GPS Tidak Dapat Diakses</p>
+                  <p className="text-xs mt-0.5 opacity-75">{lokasiError || 'Aktifkan izin lokasi di browser Anda lalu tekan Coba Lagi.'}</p>
+                </div>
+                <button
+                  onClick={requestLocation}
+                  className="shrink-0 px-3 py-1.5 text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+                >
+                  Coba Lagi
+                </button>
+              </div>
+            )}
+            {lokasiStatus === 'idle' && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-600 rounded-2xl text-gray-600 dark:text-gray-400">
+                <Navigation size={18} className="shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">Verifikasi Lokasi Diperlukan</p>
+                  <p className="text-xs mt-0.5 opacity-75">Panggilan hanya bisa dikirim dari area pesantren. Tekan tombol untuk mulai deteksi lokasi.</p>
+                </div>
+                <button
+                  onClick={requestLocation}
+                  className="shrink-0 px-3 py-1.5 text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
+                >
+                  Deteksi Lokasi
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Form Card */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
@@ -741,17 +930,32 @@ export default function PanggilanSantriPage() {
           </div>
           <button
             onClick={handleSend}
-            disabled={sending || !selectedSantri || !teksPanggilan.trim() || cooldownSisa > 0}
+            disabled={
+              sending ||
+              !selectedSantri ||
+              !teksPanggilan.trim() ||
+              cooldownSisa > 0 ||
+              (pesantrenLoc?.wajib && (['wali_murid','wali_alumni','alumni'].includes((user?.role||'').toLowerCase())) &&
+                lokasiStatus !== 'success')
+            }
             className={`w-full flex items-center justify-center gap-2.5 py-4 font-black text-sm rounded-2xl transition-all shadow-lg active:scale-95 ${
               cooldownSisa > 0
                 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 cursor-not-allowed shadow-none border border-amber-200 dark:border-amber-700'
-                : 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:from-red-600 hover:via-orange-600 hover:to-amber-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white shadow-orange-500/30 disabled:shadow-none'
+                : lokasiStatus === 'outside' || lokasiStatus === 'denied' || (pesantrenLoc?.wajib && lokasiStatus === 'idle' && ['wali_murid','wali_alumni','alumni'].includes((user?.role||'').toLowerCase()))
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 cursor-not-allowed shadow-none border border-red-200 dark:border-red-700'
+                  : 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:from-red-600 hover:via-orange-600 hover:to-amber-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white shadow-orange-500/30 disabled:shadow-none'
             }`}
           >
             {sending ? (
               <><Loader2 size={18} className="animate-spin" /> Mengirim...</>
             ) : cooldownSisa > 0 ? (
               <><Clock size={18} className="animate-pulse" /> Tunggu {cooldownSisa >= 60 ? `${Math.floor(cooldownSisa/60)}m ${cooldownSisa%60}s` : `${cooldownSisa}s`}</>
+            ) : lokasiStatus === 'loading' ? (
+              <><Loader2 size={18} className="animate-spin" /> Mendeteksi Lokasi...</>
+            ) : lokasiStatus === 'outside' ? (
+              <><MapPin size={18} /> Di Luar Radius Pesantren</>
+            ) : (lokasiStatus === 'denied' || lokasiStatus === 'unsupported') ? (
+              <><AlertCircle size={18} /> GPS Tidak Aktif</>
             ) : (
               <><Send size={18} /> Kirim Panggilan ke TOA</>
             )}
