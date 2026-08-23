@@ -4,6 +4,9 @@ import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
@@ -105,7 +108,7 @@ export async function GET(request: Request) {
       const statusFilter = tab === 'izin' ? "LOWER(a.status) = 'izin'" : "LOWER(a.status) = 'sakit'";
       const statusFilterQ = tab === 'izin' ? "LOWER(aq.status) = 'izin'" : "LOWER(aq.status) = 'sakit'";
       const statusFilterK = tab === 'izin' ? "LOWER(ak.status) = 'izin'" : "LOWER(ak.status) = 'sakit'";
-      const statusFilterP = tab === 'izin' ? "LOWER(p.jenis) LIKE '%izin%'" : "LOWER(p.jenis) LIKE '%sakit%'";
+      const statusFilterP = tab === 'izin' ? "(LOWER(p.jenis) LIKE '%izin%' AND LOWER(p.jenis) NOT LIKE '%sakit%')" : "LOWER(p.jenis) LIKE '%sakit%'";
 
       const [madinRows, quranRows, kegiatanRows, pelanggaranRows] = await Promise.all([
         pool.execute<RowDataPacket[]>(

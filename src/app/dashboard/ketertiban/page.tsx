@@ -325,11 +325,12 @@ export default function KetertibanPage() {
     setLoading(true);
     setApiError('');
     try {
+      const now = Date.now();
       const [resIzin, resSakit, resAlpa, resPelanggaran] = await Promise.all([
-        fetch('/api/ketertiban?tab=izin'),
-        fetch('/api/ketertiban?tab=sakit'),
-        fetch('/api/ketertiban?tab=alpa'),
-        fetch('/api/ketertiban?tab=pelanggaran'),
+        fetch(`/api/ketertiban?tab=izin&_t=${now}`, { cache: 'no-store' }),
+        fetch(`/api/ketertiban?tab=sakit&_t=${now}`, { cache: 'no-store' }),
+        fetch(`/api/ketertiban?tab=alpa&_t=${now}`, { cache: 'no-store' }),
+        fetch(`/api/ketertiban?tab=pelanggaran&_t=${now}`, { cache: 'no-store' }),
       ]);
 
       const [jsonIzin, jsonSakit, jsonAlpa, jsonPelanggaran] = await Promise.all([
@@ -372,7 +373,7 @@ export default function KetertibanPage() {
 
   useEffect(() => {
     fetchData();
-    fetch('/api/auth/me')
+    fetch('/api/auth/me', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => { if (data.success) setRole(data.user.role); })
       .catch(console.error);
@@ -391,7 +392,16 @@ export default function KetertibanPage() {
     return sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
   };
 
-  const currentTabRawList = activeTab === 'izin' ? dataIzin : activeTab === 'sakit' ? dataSakit : activeTab === 'alpa' ? dataAlpa : dataPelanggaran;
+  const currentTabRawList = activeTab === 'izin' 
+    ? dataIzin.filter(item => !(`${item.status || ''} ${item.keterangan || ''} ${item.jenis || ''}`.toLowerCase().includes('sakit')))
+    : activeTab === 'sakit' 
+    ? dataSakit.filter(item => {
+        const text = `${item.status || ''} ${item.keterangan || ''} ${item.jenis || ''}`.toLowerCase();
+        return !text.includes('(izin)') && !(text.includes('izin') && !text.includes('sakit'));
+      })
+    : activeTab === 'alpa' 
+    ? dataAlpa 
+    : dataPelanggaran;
   
   const countByKategori = (kat: string) => {
     if (kat === 'semua') return currentTabRawList.length;
@@ -403,8 +413,17 @@ export default function KetertibanPage() {
     ).length;
   };
 
-  const filterData = (dataList: RowItem[]) => {
+  const filterData = (dataList: RowItem[], tabType?: 'izin' | 'sakit' | 'alpa' | 'pelanggaran') => {
     return dataList.filter(item => {
+      // Pemisahan ketat antara Izin dan Sakit
+      if (tabType === 'izin') {
+        const text = `${item.status || ''} ${item.keterangan || ''} ${item.jenis || ''}`.toLowerCase();
+        if (text.includes('sakit')) return false;
+      }
+      if (tabType === 'sakit') {
+        const text = `${item.status || ''} ${item.keterangan || ''} ${item.jenis || ''}`.toLowerCase();
+        if (text.includes('(izin)') || (text.includes('izin') && !text.includes('sakit'))) return false;
+      }
       // Filter kategori
       if (kategoriFilter !== 'semua') {
         const matchKategori = item.kategori === kategoriFilter ||
@@ -428,10 +447,10 @@ export default function KetertibanPage() {
     });
   };
 
-  const filteredIzin = filterData(dataIzin);
-  const filteredSakit = filterData(dataSakit);
-  const filteredAlpa = filterData(dataAlpa);
-  const filteredPelanggaran = filterData(dataPelanggaran);
+  const filteredIzin = filterData(dataIzin, 'izin');
+  const filteredSakit = filterData(dataSakit, 'sakit');
+  const filteredAlpa = filterData(dataAlpa, 'alpa');
+  const filteredPelanggaran = filterData(dataPelanggaran, 'pelanggaran');
 
   const sortData = (dataList: RowItem[]) => {
     if (!sortConfig) return dataList;
