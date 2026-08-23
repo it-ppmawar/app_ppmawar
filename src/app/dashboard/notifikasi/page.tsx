@@ -492,6 +492,20 @@ function NotifikasiContent() {
   const [schedulerStatusMsg, setSchedulerStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string; details?: any[] } | null>(null);
   const [sendingSingleKey, setSendingSingleKey] = useState<string | null>(null);
 
+  // Sinkronisasi schedulerLeadTime & schedulerIsLoop dari pengaturan DB agar konsisten dengan halaman Pengaturan
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data) {
+          const lt = parseInt(json.data.wa_scheduler_lead_time);
+          if (!isNaN(lt)) setSchedulerLeadTime(lt);
+          setSchedulerIsLoop(json.data.wa_scheduler_is_loop !== '0');
+        }
+      })
+      .catch(() => {/* Gunakan default jika gagal */});
+  }, []);
+
   const toggleSchedulerCategory = (cat: string) => {
     setSchedulerCategories(prev => {
       if (prev.includes(cat)) {
@@ -2962,7 +2976,7 @@ function NotifikasiContent() {
                       {schedulerMode === 'all_schedules' && <Check size={14} className="text-emerald-600" />}
                     </div>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 font-normal">
-                      Seluruh jadwal Madin, Qur'an, & Asrama dengan perulangan otomatis.
+                      Seluruh jadwal Madin, Qur&apos;an, &amp; Asrama — dikirim <span className="font-bold text-emerald-700 dark:text-emerald-400">mingguan (weekly)</span> sesuai hari mengajar masing-masing guru.
                     </p>
                   </button>
                 </div>
@@ -2986,12 +3000,12 @@ function NotifikasiContent() {
                 </div>
               </div>
 
-              {/* Toggle Looping Harian (jika mode all_schedules) */}
+              {/* Toggle Looping Mingguan (jika mode all_schedules) */}
               {schedulerMode === 'all_schedules' && (
                 <div className="flex items-center justify-between p-3 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200/60">
                   <div>
-                    <span className="font-bold text-emerald-950 dark:text-emerald-200 block">Ulangi Pengiriman Setiap Hari</span>
-                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400">Pesan akan dikirim otomatis setiap hari pada jam tersebut</span>
+                    <span className="font-bold text-emerald-950 dark:text-emerald-200 block">Ulangi Pengiriman Setiap Pekan (Mingguan)</span>
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400">Pesan hanya dikirim pada hari mengajar guru — bukan setiap hari</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer shrink-0">
                     <input
