@@ -129,13 +129,39 @@ export async function GET(request: Request) {
       }
     }
 
-    // Fetch existing attendance if any
-    let existingQuery = '';
-    let existingParams = [jadwal_id, localISOTime];
+    // Fetch existing attendance across all sibling schedules in this class session (Team Teaching)
+    let siblingJadwalIds: any[] = [jadwal_id];
+    try {
+      if (tipe === 'madin') {
+        const [sibRows]: any = await pool.execute(
+          `SELECT jadwal_id FROM jadwal_madin WHERE (kelas_madin_id = ? OR kelas_madin_id = ?) AND hari = (SELECT hari FROM jadwal_madin WHERE jadwal_id = ? LIMIT 1)`,
+          [kelas_id, kelas_id, jadwal_id]
+        );
+        siblingJadwalIds = Array.from(new Set([...siblingJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
+      } else if (tipe === 'quran') {
+        const [sibRows]: any = await pool.execute(
+          `SELECT id as jadwal_id FROM jadwal_quran WHERE kelas_quran_id = ? AND hari = (SELECT hari FROM jadwal_quran WHERE id = ? LIMIT 1)`,
+          [kelas_id, jadwal_id]
+        );
+        siblingJadwalIds = Array.from(new Set([...siblingJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
+      } else if (tipe === 'kegiatan') {
+        const [sibRows]: any = await pool.execute(
+          `SELECT kegiatan_id as jadwal_id FROM jadwal_kegiatan WHERE kamar_id = ? AND hari = (SELECT hari FROM jadwal_kegiatan WHERE kegiatan_id = ? LIMIT 1)`,
+          [kelas_id, jadwal_id]
+        );
+        siblingJadwalIds = Array.from(new Set([...siblingJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
+      }
+    } catch (e) {
+      console.warn('Find sibling schedules notice in input GET:', e);
+    }
 
-    if (tipe === 'madin') existingQuery = 'SELECT murid_id, status, keterangan FROM absensi WHERE jadwal_madin_id = ? AND tanggal = ?';
-    else if (tipe === 'quran') existingQuery = 'SELECT murid_id, status, keterangan FROM absensi_quran WHERE jadwal_quran_id = ? AND tanggal = ?';
-    else if (tipe === 'kegiatan') existingQuery = 'SELECT murid_id, status, keterangan FROM absensi_kegiatan WHERE kegiatan_id = ? AND tanggal = ?';
+    const placeholdersJadwal = siblingJadwalIds.map(() => '?').join(',');
+    let existingQuery = '';
+    let existingParams = [...siblingJadwalIds, localISOTime];
+
+    if (tipe === 'madin') existingQuery = `SELECT murid_id, status, keterangan FROM absensi WHERE jadwal_madin_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    else if (tipe === 'quran') existingQuery = `SELECT murid_id, status, keterangan FROM absensi_quran WHERE jadwal_quran_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    else if (tipe === 'kegiatan') existingQuery = `SELECT murid_id, status, keterangan FROM absensi_kegiatan WHERE kegiatan_id IN (${placeholdersJadwal}) AND tanggal = ?`;
 
     const [existing] = await pool.execute<RowDataPacket[]>(existingQuery, existingParams);
     
@@ -413,12 +439,48 @@ export async function POST(request: Request) {
       insertQuery = 'INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)';
     }
 
-    // Loop semua jadwal_id jika gabungan kelas
-    for (const jId of targetJadwalIds) {
-      // 1. Delete existing for today
-      await connection.execute(deleteQuery, [jId, localISOTime]);
+    // Find all sibling schedule IDs in this class session (Team Teaching)
+    let allSessionJadwalIds = [...targetJadwalIds];
+    try {
+      if (tipe === 'madin') {
+        const [sibRows]: any = await connection.execute(
+          `SELECT j2.jadwal_id 
+           FROM jadwal_madin j1 
+           JOIN jadwal_madin j2 ON j1.kelas_madin_id = j2.kelas_madin_id AND j1.hari = j2.hari
+           WHERE j1.jadwal_id IN (${targetJadwalIds.map(() => '?').join(',')})`,
+          targetJadwalIds
+        );
+        allSessionJadwalIds = Array.from(new Set([...allSessionJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
+      } else if (tipe === 'quran') {
+        const [sibRows]: any = await connection.execute(
+          `SELECT j2.id as jadwal_id 
+           FROM jadwal_quran j1 
+           JOIN jadwal_quran j2 ON j1.kelas_quran_id = j2.kelas_quran_id AND j1.hari = j2.hari
+           WHERE j1.id IN (${targetJadwalIds.map(() => '?').join(',')})`,
+          targetJadwalIds
+        );
+        allSessionJadwalIds = Array.from(new Set([...allSessionJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
+      } else if (tipe === 'kegiatan') {
+        const [sibRows]: any = await connection.execute(
+          `SELECT j2.kegiatan_id as jadwal_id 
+           FROM jadwal_kegiatan j1 
+           JOIN jadwal_kegiatan j2 ON j1.kamar_id = j2.kamar_id AND j1.hari = j2.hari
+           WHERE j1.kegiatan_id IN (${targetJadwalIds.map(() => '?').join(',')})`,
+          targetJadwalIds
+        );
+        allSessionJadwalIds = Array.from(new Set([...allSessionJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
+      }
+    } catch (e) {
+      console.warn('Find allSessionJadwalIds notice in input POST:', e);
+    }
 
-      // 2. Insert new & update nickname
+    // 1. Delete existing for today on all sibling schedules in this session to prevent duplication
+    for (const sid of allSessionJadwalIds) {
+      await connection.execute(deleteQuery, [sid, localISOTime]);
+    }
+
+    // 2. Insert new attendance & update nickname for target schedules
+    for (const jId of targetJadwalIds) {
       for (const item of absensi) {
         await connection.execute(insertQuery, [
           jId,

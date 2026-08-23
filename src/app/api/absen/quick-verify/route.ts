@@ -194,10 +194,45 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Detail jadwal tidak ditemukan di DB' }, { status: 404 });
     }
 
-    // Ambil data absensi yang sudah pernah tersimpan untuk tanggal ini dari semua jadwal_ids
+    // Ambil data absensi yang sudah pernah tersimpan untuk tanggal ini dari semua jadwal_ids & jadwal kelompok (Team Teaching)
     let existingMap: { [murid_id: number]: string } = {};
     const jIds = jadwalDetail.jadwal_ids || [jadwal_id];
-    const placeholdersJadwal = jIds.map(() => '?').join(',');
+    let siblingJadwalIds: any[] = [...jIds];
+
+    try {
+      if (tipe === 'madin') {
+        const [sibRows]: any = await pool.execute(
+          `SELECT j2.jadwal_id 
+           FROM jadwal_madin j1 
+           JOIN jadwal_madin j2 ON j1.kelas_madin_id = j2.kelas_madin_id AND j1.hari = j2.hari
+           WHERE j1.jadwal_id IN (${jIds.map(() => '?').join(',')})`,
+          jIds
+        );
+        siblingJadwalIds = Array.from(new Set([...siblingJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
+      } else if (tipe === 'quran') {
+        const [sibRows]: any = await pool.execute(
+          `SELECT j2.id as jadwal_id 
+           FROM jadwal_quran j1 
+           JOIN jadwal_quran j2 ON j1.kelas_quran_id = j2.kelas_quran_id AND j1.hari = j2.hari
+           WHERE j1.id IN (${jIds.map(() => '?').join(',')})`,
+          jIds
+        );
+        siblingJadwalIds = Array.from(new Set([...siblingJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
+      } else if (tipe === 'kamar' || tipe === 'kegiatan') {
+        const [sibRows]: any = await pool.execute(
+          `SELECT j2.kegiatan_id as jadwal_id 
+           FROM jadwal_kegiatan j1 
+           JOIN jadwal_kegiatan j2 ON j1.kamar_id = j2.kamar_id AND j1.hari = j2.hari
+           WHERE j1.kegiatan_id IN (${jIds.map(() => '?').join(',')})`,
+          jIds
+        );
+        siblingJadwalIds = Array.from(new Set([...siblingJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
+      }
+    } catch (e) {
+      console.warn('Find sibling schedules notice in quick-verify:', e);
+    }
+
+    const placeholdersJadwal = siblingJadwalIds.map(() => '?').join(',');
 
     let existingQuery = '';
     if (tipe === 'madin') existingQuery = `SELECT murid_id, status FROM absensi WHERE jadwal_madin_id IN (${placeholdersJadwal}) AND tanggal = ?`;
@@ -205,7 +240,7 @@ export async function POST(request: Request) {
     else if (tipe === 'kamar' || tipe === 'kegiatan') existingQuery = `SELECT murid_id, status FROM absensi_kegiatan WHERE kegiatan_id IN (${placeholdersJadwal}) AND tanggal = ?`;
 
     if (existingQuery) {
-      const [existingRows] = await pool.execute<RowDataPacket[]>(existingQuery, [...jIds, targetDate]);
+      const [existingRows] = await pool.execute<RowDataPacket[]>(existingQuery, [...siblingJadwalIds, targetDate]);
       (existingRows || []).forEach(r => {
         existingMap[r.murid_id] = r.status.toLowerCase();
       });
