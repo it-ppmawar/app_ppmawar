@@ -16,7 +16,7 @@ const NAMA_BULAN = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
-export const DEFAULT_KEPALA_MADIN_TEMPLATE = 
+const DEFAULT_KEPALA_MADIN_TEMPLATE = 
 `Assalamu'alaikum Warohmatullah,
 
 Yth. *Kepala Madrasah Diniyah (Madin)*

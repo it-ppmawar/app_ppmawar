@@ -18,7 +18,7 @@ const NAMA_BULAN = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
-export const DEFAULT_REKAP_TEMPLATE = 
+const DEFAULT_REKAP_TEMPLATE = 
 `Assalamu'alaikum Warohmatullah,
 
 Yth. {nama_guru}
