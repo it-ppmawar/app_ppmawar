@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertTriangle, UserX, FileWarning, Search, Filter, Plus, Calendar, Clock, ChevronDown, CheckCircle, Trash2, Edit, FileText, Download, Upload, X, Save, User } from 'lucide-react';
+import { AlertTriangle, UserX, FileWarning, Search, Filter, Plus, Calendar, Clock, ChevronDown, CheckCircle, Trash2, Edit, FileText, Download, Upload, X, Save, User, HeartPulse } from 'lucide-react';
 import Link from 'next/link';
 import { downloadTemplate } from '@/lib/downloadTemplate';
 
@@ -20,6 +20,8 @@ interface RowItem {
   murid_id?: number;
   deskripsi?: string;
   sumber?: string;
+  kategori?: string;
+  status?: string;
 }
 
 interface MuridOption { murid_id: number; nama: string; nis: string; }
@@ -261,15 +263,17 @@ function PelanggaranModal({
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
-// ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function KetertibanPage() {
-  const [activeTab, setActiveTab] = useState<'izin' | 'alpa' | 'pelanggaran'>('izin');
+  const [activeTab, setActiveTab] = useState<'izin' | 'sakit' | 'alpa' | 'pelanggaran'>('izin');
+  const [kategoriFilter, setKategoriFilter] = useState<'semua' | 'quran' | 'madin' | 'kegiatan'>('semua');
 
   const [dataIzin, setDataIzin] = useState<RowItem[]>([]);
+  const [dataSakit, setDataSakit] = useState<RowItem[]>([]);
   const [dataAlpa, setDataAlpa] = useState<RowItem[]>([]);
   const [dataPelanggaran, setDataPelanggaran] = useState<RowItem[]>([]);
-  const [summary, setSummary] = useState<{ totalIzin: number; totalAlpa: number; totalPelanggaran: number }>({
+  const [summary, setSummary] = useState<{ totalIzin: number; totalSakit: number; totalAlpa: number; totalPelanggaran: number }>({
     totalIzin: 0,
+    totalSakit: 0,
     totalAlpa: 0,
     totalPelanggaran: 0,
   });
@@ -321,14 +325,16 @@ export default function KetertibanPage() {
     setLoading(true);
     setApiError('');
     try {
-      const [resIzin, resAlpa, resPelanggaran] = await Promise.all([
+      const [resIzin, resSakit, resAlpa, resPelanggaran] = await Promise.all([
         fetch('/api/ketertiban?tab=izin'),
+        fetch('/api/ketertiban?tab=sakit'),
         fetch('/api/ketertiban?tab=alpa'),
         fetch('/api/ketertiban?tab=pelanggaran'),
       ]);
 
-      const [jsonIzin, jsonAlpa, jsonPelanggaran] = await Promise.all([
+      const [jsonIzin, jsonSakit, jsonAlpa, jsonPelanggaran] = await Promise.all([
         resIzin.json(),
+        resSakit.json(),
         resAlpa.json(),
         resPelanggaran.json(),
       ]);
@@ -339,6 +345,11 @@ export default function KetertibanPage() {
         if (jsonIzin.summary) setSummary(jsonIzin.summary);
       } else if (jsonIzin.error) {
         errors.push('Izin: ' + jsonIzin.error);
+      }
+      if (jsonSakit.success) {
+        setDataSakit(jsonSakit.data || []);
+      } else if (jsonSakit.error) {
+        errors.push('Sakit: ' + jsonSakit.error);
       }
       if (jsonAlpa.success) {
         setDataAlpa(jsonAlpa.data || []);
@@ -380,27 +391,47 @@ export default function KetertibanPage() {
     return sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
   };
 
-  const filteredIzin = dataIzin.filter(item =>
-    item.nama?.toLowerCase().includes(search.toLowerCase()) ||
-    item.kelas?.toLowerCase().includes(search.toLowerCase()) ||
-    item.keterangan?.toLowerCase().includes(search.toLowerCase()) ||
-    item.jenis_kelamin?.toLowerCase().includes(search.toLowerCase())
-  );
+  const currentTabRawList = activeTab === 'izin' ? dataIzin : activeTab === 'sakit' ? dataSakit : activeTab === 'alpa' ? dataAlpa : dataPelanggaran;
+  
+  const countByKategori = (kat: string) => {
+    if (kat === 'semua') return currentTabRawList.length;
+    return currentTabRawList.filter(item => 
+      item.kategori === kat || 
+      (kat === 'quran' && item.sumber?.includes('quran')) ||
+      (kat === 'madin' && item.sumber?.includes('madin')) ||
+      (kat === 'kegiatan' && item.sumber?.includes('kegiatan'))
+    ).length;
+  };
 
-  const filteredAlpa = dataAlpa.filter(item =>
-    item.nama?.toLowerCase().includes(search.toLowerCase()) ||
-    item.kelas?.toLowerCase().includes(search.toLowerCase()) ||
-    item.keterangan?.toLowerCase().includes(search.toLowerCase()) ||
-    item.jenis_kelamin?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filterData = (dataList: RowItem[]) => {
+    return dataList.filter(item => {
+      // Filter kategori
+      if (kategoriFilter !== 'semua') {
+        const matchKategori = item.kategori === kategoriFilter ||
+          (kategoriFilter === 'quran' && item.sumber?.includes('quran')) ||
+          (kategoriFilter === 'madin' && item.sumber?.includes('madin')) ||
+          (kategoriFilter === 'kegiatan' && item.sumber?.includes('kegiatan'));
+        if (!matchKategori) return false;
+      }
+      // Filter search
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchSearch =
+          (item.nama || '').toLowerCase().includes(q) ||
+          (item.kelas || '').toLowerCase().includes(q) ||
+          (item.keterangan || '').toLowerCase().includes(q) ||
+          (item.jenis || '').toLowerCase().includes(q) ||
+          (item.jenis_kelamin || '').toLowerCase().includes(q);
+        if (!matchSearch) return false;
+      }
+      return true;
+    });
+  };
 
-  const filteredPelanggaran = dataPelanggaran.filter(item =>
-    item.nama?.toLowerCase().includes(search.toLowerCase()) ||
-    item.kelas?.toLowerCase().includes(search.toLowerCase()) ||
-    item.jenis?.toLowerCase().includes(search.toLowerCase()) ||
-    item.keterangan?.toLowerCase().includes(search.toLowerCase()) ||
-    item.jenis_kelamin?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredIzin = filterData(dataIzin);
+  const filteredSakit = filterData(dataSakit);
+  const filteredAlpa = filterData(dataAlpa);
+  const filteredPelanggaran = filterData(dataPelanggaran);
 
   const sortData = (dataList: RowItem[]) => {
     if (!sortConfig) return dataList;
@@ -420,6 +451,7 @@ export default function KetertibanPage() {
   };
 
   const sortedIzin = sortData(filteredIzin);
+  const sortedSakit = sortData(filteredSakit);
   const sortedAlpa = sortData(filteredAlpa);
   const sortedPelanggaran = sortData(filteredPelanggaran);
 
@@ -428,27 +460,34 @@ export default function KetertibanPage() {
   const [pdfUrl, setPdfUrl] = useState('');
 
   const handleExport = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
-    const exportData = activeTab === 'izin' ? sortedIzin : activeTab === 'alpa' ? sortedAlpa : sortedPelanggaran;
+    const exportData = activeTab === 'izin' ? sortedIzin : activeTab === 'sakit' ? sortedSakit : activeTab === 'alpa' ? sortedAlpa : sortedPelanggaran;
     if (exportData.length === 0) { alert('Tidak ada data untuk di-export.'); return; }
 
-    const title = activeTab === 'izin' ? "DATA IZIN & SAKIT SANTRI" : activeTab === 'alpa' ? "DATA ALPA (TIDAK HADIR)" : 'DATA PELANGGARAN TATA TERTIB';
-    const subtitle = `Filter Pencarian: ${search || 'Semua Data'}`;
-    const filename = `Data_Ketertiban_${activeTab}`;
+    const title = activeTab === 'izin' 
+      ? "DATA IZIN SANTRI" 
+      : activeTab === 'sakit'
+      ? "DATA SAKIT SANTRI"
+      : activeTab === 'alpa' 
+      ? "DATA ALPA (TIDAK HADIR)" 
+      : 'DATA PELANGGARAN TATA TERTIB';
+    const kategoriLabel = kategoriFilter === 'semua' ? 'Semua Kategori' : kategoriFilter === 'quran' ? "Kelas Qur'an" : kategoriFilter === 'madin' ? 'Kelas Madin' : 'Kegiatan Asrama';
+    const subtitle = `Kategori: ${kategoriLabel} | Pencarian: ${search || 'Semua Data'}`;
+    const filename = `Data_Ketertiban_${activeTab}_${kategoriFilter}`;
 
     const tableColumn = activeTab === 'izin'
-      ? ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KETERANGAN IZIN / SAKIT"]
+      ? ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KELAS / KAMAR", "KETERANGAN IZIN"]
+      : activeTab === 'sakit'
+      ? ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KELAS / KAMAR", "KETERANGAN SAKIT"]
       : activeTab === 'alpa'
-      ? ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KETERANGAN ALPA"]
-      : ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "JENIS PELANGGARAN", "CATATAN"];
+      ? ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KELAS / KAMAR", "KETERANGAN ALPA"]
+      : ["NO", "TANGGAL", "NAMA SANTRI", "J. KELAMIN", "KELAS / KAMAR", "JENIS PELANGGARAN", "CATATAN"];
 
     const tableRows: any[] = [];
     exportData.forEach((item, idx) => {
-      if (activeTab === 'izin') {
-        tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.keterangan || '-']);
-      } else if (activeTab === 'alpa') {
-        tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.keterangan || '-']);
+      if (activeTab === 'izin' || activeTab === 'sakit' || activeTab === 'alpa') {
+        tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.kelas || '-', item.keterangan || '-']);
       } else {
-        tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.jenis || '-', item.keterangan || '-']);
+        tableRows.push([idx + 1, item.tanggal || '-', item.nama || '-', item.jenis_kelamin || '-', item.kelas || '-', item.jenis || '-', item.keterangan || '-']);
       }
     });
 
@@ -566,22 +605,39 @@ export default function KetertibanPage() {
         </div>
       )}
 
-      {/* Ringkasan Statistik 3 Kartu Terintegrasi */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Ringkasan Statistik 4 Kartu Terintegrasi */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div 
           onClick={() => setActiveTab('izin')} 
           className={`p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
             activeTab === 'izin'
-              ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-300 dark:border-orange-700 ring-2 ring-orange-400'
+              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 ring-2 ring-amber-400'
               : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
           }`}
         >
-          <div className="bg-orange-100 dark:bg-orange-900/50 p-2 rounded-full mb-2">
-            <Clock size={20} className="text-orange-600 dark:text-orange-400" />
+          <div className="bg-amber-100 dark:bg-amber-900/50 p-2.5 rounded-full mb-2">
+            <Clock size={20} className="text-amber-600 dark:text-amber-400" />
           </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Izin & Sakit</p>
-          <p className="text-2xl font-black text-orange-600 dark:text-orange-400">
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Izin</p>
+          <p className="text-2xl font-black text-amber-600 dark:text-amber-400">
             {summary.totalIzin || dataIzin.length}
+          </p>
+        </div>
+
+        <div 
+          onClick={() => setActiveTab('sakit')} 
+          className={`p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
+            activeTab === 'sakit'
+              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700 ring-2 ring-rose-400'
+              : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+          }`}
+        >
+          <div className="bg-rose-100 dark:bg-rose-900/50 p-2.5 rounded-full mb-2">
+            <HeartPulse size={20} className="text-rose-600 dark:text-rose-400" />
+          </div>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Sakit</p>
+          <p className="text-2xl font-black text-rose-600 dark:text-rose-400">
+            {summary.totalSakit || dataSakit.length}
           </p>
         </div>
 
@@ -593,7 +649,7 @@ export default function KetertibanPage() {
               : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
           }`}
         >
-          <div className="bg-red-100 dark:bg-red-900/50 p-2 rounded-full mb-2">
+          <div className="bg-red-100 dark:bg-red-900/50 p-2.5 rounded-full mb-2">
             <UserX size={20} className="text-red-600 dark:text-red-400" />
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Alpa</p>
@@ -610,7 +666,7 @@ export default function KetertibanPage() {
               : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
           }`}
         >
-          <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-full mb-2">
+          <div className="bg-purple-100 dark:bg-purple-900/50 p-2.5 rounded-full mb-2">
             <AlertTriangle size={20} className="text-purple-600 dark:text-purple-400" />
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Pelanggaran Lain</p>
@@ -628,7 +684,7 @@ export default function KetertibanPage() {
           </div>
           <input
             type="text"
-            placeholder="Cari nama santri, keterangan, atau jenis pelanggaran..."
+            placeholder="Cari nama santri, kelas, keterangan, atau jenis pelanggaran..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-gray-200 transition-colors"
@@ -636,21 +692,96 @@ export default function KetertibanPage() {
         </div>
       </div>
 
-      {/* Tabs (3 Tab: Izin, Alpa, Pelanggaran Lain) */}
-      <div className="grid grid-cols-3 gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl">
+      {/* TAB KATEGORI KELAS / SUMBER (Meniru Layout Halaman Absen) */}
+      <div className="flex flex-col gap-2 w-full">
+        {/* Semua — Baris tersendiri di atas */}
+        <div className="bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full">
+          <button
+            onClick={() => setKategoriFilter('semua')}
+            className={`w-full flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+              kategoriFilter === 'semua'
+                ? 'bg-slate-600 dark:bg-slate-700 text-white shadow-md'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+            }`}
+          >
+            Semua
+            <span className={`text-[10px] px-3.5 py-0.5 rounded-full font-extrabold transition-colors ${
+              kategoriFilter === 'semua' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+            }`}>{countByKategori('semua')}</span>
+          </button>
+        </div>
+
+        {/* Tipe kelas berdampingan */}
+        <div className="flex bg-white dark:bg-gray-800 p-1.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto scrollbar-none gap-1.5 w-full">
+          <button
+            onClick={() => setKategoriFilter('quran')}
+            className={`flex-1 min-w-[135px] flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+              kategoriFilter === 'quran'
+                ? 'bg-emerald-500 text-white shadow-md'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+            }`}
+          >
+            Kelas Qur'an
+            <span className={`text-[10px] px-3.5 py-0.5 rounded-full font-extrabold transition-colors ${
+              kategoriFilter === 'quran' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+            }`}>{countByKategori('quran')}</span>
+          </button>
+
+          <button
+            onClick={() => setKategoriFilter('madin')}
+            className={`flex-1 min-w-[135px] flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+              kategoriFilter === 'madin'
+                ? 'bg-teal-500 text-white shadow-md'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+            }`}
+          >
+            Kelas Madin
+            <span className={`text-[10px] px-3.5 py-0.5 rounded-full font-extrabold transition-colors ${
+              kategoriFilter === 'madin' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+            }`}>{countByKategori('madin')}</span>
+          </button>
+
+          <button
+            onClick={() => setKategoriFilter('kegiatan')}
+            className={`flex-1 min-w-[170px] flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+              kategoriFilter === 'kegiatan'
+                ? 'bg-blue-500 text-white shadow-md'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+            }`}
+          >
+            Kegiatan Asrama
+            <span className={`text-[10px] px-3.5 py-0.5 rounded-full font-extrabold transition-colors ${
+              kategoriFilter === 'kegiatan' ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+            }`}>{countByKategori('kegiatan')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs Status Ketertiban (4 Tab: Izin, Sakit, Alpa, Pelanggaran Lain) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl">
         <button
           onClick={() => setActiveTab('izin')}
-          className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+          className={`py-2.5 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'izin'
-              ? 'bg-white dark:bg-gray-700 shadow-sm text-orange-600 dark:text-orange-400'
+              ? 'bg-white dark:bg-gray-700 shadow-sm text-amber-600 dark:text-amber-400'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
           }`}
         >
-          <span>📋 Rekap Izin & Sakit</span>
+          <span>📋 Rekap Izin</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('sakit')}
+          className={`py-2.5 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'sakit'
+              ? 'bg-white dark:bg-gray-700 shadow-sm text-rose-600 dark:text-rose-400'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+          }`}
+        >
+          <span>🩺 Rekap Sakit</span>
         </button>
         <button
           onClick={() => setActiveTab('alpa')}
-          className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+          className={`py-2.5 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'alpa'
               ? 'bg-white dark:bg-gray-700 shadow-sm text-red-600 dark:text-red-400'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
@@ -660,7 +791,7 @@ export default function KetertibanPage() {
         </button>
         <button
           onClick={() => setActiveTab('pelanggaran')}
-          className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+          className={`py-2.5 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
             activeTab === 'pelanggaran'
               ? 'bg-white dark:bg-gray-700 shadow-sm text-purple-600 dark:text-purple-400'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
@@ -682,6 +813,7 @@ export default function KetertibanPage() {
                   <tr>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. Kelamin{getSortIcon('jenis_kelamin')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas')}>Kelas / Kamar{getSortIcon('kelas')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Keterangan / Sumber{getSortIcon('keterangan')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
                     <th className="px-4 py-4 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('ditindak')}>Status{getSortIcon('ditindak')}</th>
@@ -690,14 +822,77 @@ export default function KetertibanPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {sortedIzin.length === 0 ? (
-                    <tr><td colSpan={canManage ? 6 : 5} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada catatan data Izin / Sakit.</td></tr>
+                    <tr><td colSpan={canManage ? 7 : 6} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada catatan data Izin.</td></tr>
                   ) : sortedIzin.map((item) => (
                     <tr key={`${item.id}-${(item as any).sumber || 'p'}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
                       <td className="px-4 py-3 font-bold">{item.nama}</td>
                       <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">{item.kelas || '-'}</td>
                       <td className="px-4 py-3">
-                        <span className="text-[11px] px-2.5 py-1 rounded-full font-bold border bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/50">
+                        <span className="text-[11px] px-2.5 py-1 rounded-full font-bold border bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/50">
                           {item.keterangan || 'Izin'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 font-medium">
+                          <Calendar size={12} className="text-gray-400" /> {item.tanggal}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-bold bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full border border-green-200 dark:border-green-800/30">
+                          <CheckCircle size={12} /> Tercatat
+                        </span>
+                      </td>
+                      {canManage && (
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {(item as any).sumber === 'pelanggaran' && (
+                              <button
+                                onClick={() => handleEdit(item)}
+                                className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                                title="Edit"
+                              >
+                                <Edit size={14} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDelete(item)}
+                              className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                              title="Hapus"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : activeTab === 'sakit' ? (
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
+                  <tr>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. Kelamin{getSortIcon('jenis_kelamin')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas')}>Kelas / Kamar{getSortIcon('kelas')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Keterangan / Sumber{getSortIcon('keterangan')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
+                    <th className="px-4 py-4 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('ditindak')}>Status{getSortIcon('ditindak')}</th>
+                    {canManage && <th className="px-4 py-4 text-center">Aksi</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {sortedSakit.length === 0 ? (
+                    <tr><td colSpan={canManage ? 7 : 6} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada catatan data Sakit.</td></tr>
+                  ) : sortedSakit.map((item) => (
+                    <tr key={`${item.id}-${(item as any).sumber || 'p'}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
+                      <td className="px-4 py-3 font-bold">{item.nama}</td>
+                      <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">{item.kelas || '-'}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-[11px] px-2.5 py-1 rounded-full font-bold border bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/50">
+                          {item.keterangan || 'Sakit'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -742,6 +937,7 @@ export default function KetertibanPage() {
                   <tr>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. Kelamin{getSortIcon('jenis_kelamin')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas')}>Kelas / Kamar{getSortIcon('kelas')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Keterangan / Sumber{getSortIcon('keterangan')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
                     <th className="px-4 py-4 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('ditindak')}>Status{getSortIcon('ditindak')}</th>
@@ -750,11 +946,12 @@ export default function KetertibanPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {sortedAlpa.length === 0 ? (
-                    <tr><td colSpan={canManage ? 6 : 5} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada catatan data Alpa.</td></tr>
+                    <tr><td colSpan={canManage ? 7 : 6} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada catatan data Alpa.</td></tr>
                   ) : sortedAlpa.map((item) => (
                     <tr key={`${item.id}-${(item as any).sumber || 'p'}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
                       <td className="px-4 py-3 font-bold">{item.nama}</td>
                       <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">{item.kelas || '-'}</td>
                       <td className="px-4 py-3">
                         <span className="text-[11px] px-2.5 py-1 rounded-full font-bold border bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/50">
                           {item.keterangan || 'Tidak hadir tanpa keterangan'}
@@ -802,6 +999,7 @@ export default function KetertibanPage() {
                   <tr>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. Kelamin{getSortIcon('jenis_kelamin')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas')}>Kelas / Kamar{getSortIcon('kelas')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis')}>Jenis Pelanggaran{getSortIcon('jenis')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Catatan / Deskripsi{getSortIcon('keterangan')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
@@ -811,11 +1009,12 @@ export default function KetertibanPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {sortedPelanggaran.length === 0 ? (
-                    <tr><td colSpan={canManage ? 7 : 6} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada data pelanggaran lain.</td></tr>
+                    <tr><td colSpan={canManage ? 8 : 7} className="text-center py-8 text-gray-500 dark:text-gray-400">Tidak ada data pelanggaran lain.</td></tr>
                   ) : sortedPelanggaran.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-200">
                       <td className="px-4 py-3 font-bold">{item.nama}</td>
                       <td className="px-4 py-3 text-xs font-medium uppercase text-gray-600 dark:text-gray-300">{item.jenis_kelamin || '-'}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300">{item.kelas || '-'}</td>
                       <td className="px-4 py-3">
                         <div className="bg-purple-50 dark:bg-purple-950/40 px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800/50 inline-block">
                           <span className="text-xs font-bold text-purple-700 dark:text-purple-300">{item.jenis}</span>
