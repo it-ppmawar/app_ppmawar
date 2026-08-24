@@ -292,12 +292,34 @@ export async function GET() {
         ).catch(() => [[] as RowDataPacket[]]),
       ]);
 
-      perizinanRows = [
+      // Helper sorting berjenjang: Status/Jenis -> Kelas -> Abjad Nama -> Tanggal
+      const sortSantriList = (list: any[]) => {
+        const statusOrder: Record<string, number> = { 'Izin': 1, 'Sakit': 2, 'Alpha': 3 };
+        return list.sort((a, b) => {
+          // 1. Status / Jenis (Izin -> Sakit -> Alpha)
+          const orderA = statusOrder[a.status] || 99;
+          const orderB = statusOrder[b.status] || 99;
+          if (orderA !== orderB) return orderA - orderB;
+
+          // 2. Kelas (Natural sort A-Z dan angka tingkat)
+          const kelasComp = (a.kelas || '').localeCompare(b.kelas || '', 'id', { numeric: true, sensitivity: 'base' });
+          if (kelasComp !== 0) return kelasComp;
+
+          // 3. Abjad Nama Santri (A-Z)
+          const namaComp = (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' });
+          if (namaComp !== 0) return namaComp;
+
+          // 4. Tanggal (Terbaru di atas)
+          return (b.tanggal || '').localeCompare(a.tanggal || '');
+        });
+      };
+
+      perizinanRows = sortSantriList([
         ...((madinRows[0] || []).map((r: any) => mapSantriRow(r, 'Madin', 'Izin'))),
         ...((quranRows[0] || []).map((r: any) => mapSantriRow(r, "Qur'an", 'Izin'))),
         ...((kegiatanRows[0] || []).map((r: any) => mapSantriRow(r, 'Kegiatan', 'Izin'))),
         ...((pelanggaranRows[0] || []).map((r: any) => mapSantriRow(r, 'Perizinan', 'Izin'))),
-      ].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '') || a.nama.localeCompare(b.nama));
+      ]);
     } catch (e) {
       console.warn('perizinan query error:', e);
     }
@@ -350,12 +372,27 @@ export async function GET() {
         ).catch(() => [[] as RowDataPacket[]]),
       ]);
 
-      pelanggaranRows = [
+      const sortAlpaList = (list: any[]) => {
+        return list.sort((a, b) => {
+          // 1. Kelas (Natural sort A-Z dan angka tingkat)
+          const kelasComp = (a.kelas || '').localeCompare(b.kelas || '', 'id', { numeric: true, sensitivity: 'base' });
+          if (kelasComp !== 0) return kelasComp;
+
+          // 2. Abjad Nama Santri (A-Z)
+          const namaComp = (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' });
+          if (namaComp !== 0) return namaComp;
+
+          // 3. Tanggal (Terbaru di atas)
+          return (b.tanggal || '').localeCompare(a.tanggal || '');
+        });
+      };
+
+      pelanggaranRows = sortAlpaList([
         ...((madinRows[0] || []).map((r: any) => mapSantriRow(r, 'Madin', 'Alpha'))),
         ...((quranRows[0] || []).map((r: any) => mapSantriRow(r, "Qur'an", 'Alpha'))),
         ...((kegiatanRows[0] || []).map((r: any) => mapSantriRow(r, 'Kegiatan', 'Alpha'))),
         ...((pelanggaranRowsDb[0] || []).map((r: any) => mapSantriRow(r, 'Alpa', 'Alpha'))),
-      ].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '') || a.nama.localeCompare(b.nama));
+      ]);
     } catch (e) {
       console.warn('pelanggaran query error:', e);
     }
