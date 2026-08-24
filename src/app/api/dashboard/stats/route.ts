@@ -13,21 +13,22 @@ export async function GET() {
     const payload = verifyToken(token) as any;
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
-    const d = new Date();
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    const nowLocal = new Date(Date.now() - tzOffset);
-    const todayStr = nowLocal.toISOString().slice(0, 10);
-    const currentTimeStr = nowLocal.toISOString().slice(11, 19);
+    // Waktu & Tanggal Akurat Asia/Jakarta (WIB)
+    const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
+    const currentTimeStr = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', hour12: false }).format(new Date());
+    const rawDay = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(new Date());
+    const currentDay = rawDay === 'Minggu' ? 'Ahad' : rawDay;
 
-    const days = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const currentDay = days[nowLocal.getDay()];
-
-    // 1. Ambil pengaturan absensi otomatis
-    const [settingRows] = await pool.execute<RowDataPacket[]>(
-      "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('absensi_otomatis', 'absensi_otomatis_guru', 'absensi_otomatis_madin', 'absensi_otomatis_quran', 'absensi_otomatis_kegiatan', 'waktu_tenggang', 'waktu_tenggang_absensi', 'mode_libur')"
-    );
-    const settings: Record<string, any> = {};
-    settingRows.forEach(r => { settings[r.nama_pengaturan] = r.nilai; });
+    // 1. Ambil pengaturan absensi otomatis (Safe try/catch)
+    let settings: Record<string, any> = {};
+    try {
+      const [settingRows] = await pool.execute<RowDataPacket[]>(
+        "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('absensi_otomatis', 'absensi_otomatis_guru', 'absensi_otomatis_madin', 'absensi_otomatis_quran', 'absensi_otomatis_kegiatan', 'waktu_tenggang', 'waktu_tenggang_absensi', 'mode_libur')"
+      );
+      settingRows.forEach(r => { settings[r.nama_pengaturan] = r.nilai; });
+    } catch (e) {
+      console.warn('Pengaturan absensi error:', e);
+    }
 
     const isAutoAbsenGlobal = settings['absensi_otomatis'] === '1' || settings['absensi_otomatis_guru'] === '1' || settings['absensi_otomatis'] === 'true' || settings['absensi_otomatis'] === 1;
     const isAutoAbsenMadin = isAutoAbsenGlobal && (settings['absensi_otomatis_madin'] !== '0');
@@ -45,23 +46,35 @@ export async function GET() {
     };
     const currentSecs = parseTimeToSec(currentTimeStr);
 
-    // 2. STATISTIK GURU HARI INI (Dipisah: Madin, Quran, Kegiatan & Total)
-    const [jadwalGuruRows] = await pool.execute<RowDataPacket[]>(`
-      SELECT j.jadwal_id, j.guru_id, j.jam_mulai, j.jam_selesai, 'madin' as tipe
-      FROM jadwal_madin j WHERE j.hari = ? AND j.guru_id IS NOT NULL AND j.guru_id > 0
-      UNION ALL
-      SELECT j.id as jadwal_id, j.guru_id, j.jam_mulai, j.jam_selesai, 'quran' as tipe
-      FROM jadwal_quran j WHERE j.hari = ? AND j.guru_id IS NOT NULL AND j.guru_id > 0
-      UNION ALL
-      SELECT j.kegiatan_id as jadwal_id, j.guru_id, j.jam_mulai, j.jam_selesai, 'kegiatan' as tipe
-      FROM jadwal_kegiatan j WHERE j.hari = ? AND j.guru_id IS NOT NULL AND j.guru_id > 0
-    `, [currentDay, currentDay, currentDay]);
+    // 2. STATISTIK GURU HARI INI (Safe try/catch)
+    let jadwalGuruRows: RowDataPacket[] = [];
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(`
+        SELECT j.jadwal_id, j.guru_id, j.jam_mulai, j.jam_selesai, 'madin' as tipe
+        FROM jadwal_madin j WHERE j.hari = ? AND j.guru_id IS NOT NULL AND j.guru_id > 0
+        UNION ALL
+        SELECT j.id as jadwal_id, j.guru_id, j.jam_mulai, j.jam_selesai, 'quran' as tipe
+        FROM jadwal_quran j WHERE j.hari = ? AND j.guru_id IS NOT NULL AND j.guru_id > 0
+        UNION ALL
+        SELECT j.kegiatan_id as jadwal_id, j.guru_id, j.jam_mulai, j.jam_selesai, 'kegiatan' as tipe
+        FROM jadwal_kegiatan j WHERE j.hari = ? AND j.guru_id IS NOT NULL AND j.guru_id > 0
+      `, [currentDay, currentDay, currentDay]);
+      jadwalGuruRows = rows;
+    } catch (e) {
+      console.warn('jadwalGuruRows error:', e);
+    }
 
-    const [absenGuruRows] = await pool.execute<RowDataPacket[]>(`
-      SELECT ag.guru_id, ag.status, ag.jadwal_madin_id, ag.jadwal_quran_id, ag.kegiatan_id
-      FROM absensi_guru ag
-      WHERE ag.tanggal = ?
-    `, [todayStr]);
+    let absenGuruRows: RowDataPacket[] = [];
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(`
+        SELECT ag.guru_id, ag.status, ag.jadwal_madin_id, ag.jadwal_quran_id, ag.kegiatan_id
+        FROM absensi_guru ag
+        WHERE ag.tanggal = ?
+      `, [todayStr]);
+      absenGuruRows = rows;
+    } catch (e) {
+      console.warn('absenGuruRows error:', e);
+    }
 
     // Helper kalkulasi statistik guru per kategori jadwal
     const calcCategoryGuruStats = (categoryRows: any[], categoryKey: 'madin' | 'quran' | 'kegiatan') => {
@@ -126,39 +139,57 @@ export async function GET() {
       alpha: guruMadin.alpha + guruQuran.alpha + guruKegiatan.alpha,
     };
 
-    // 3. STATISTIK ABSENSI SANTRI HARI INI (Madin, Quran, Kegiatan)
-    const [madinStats] = await pool.execute<RowDataPacket[]>(`
-      SELECT 
-        SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-        SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-        SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-        SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
-        COUNT(*) as total
-      FROM absensi
-      WHERE tanggal = ?
-    `, [todayStr]);
+    // 3. STATISTIK ABSENSI SANTRI HARI INI (Safe try/catch)
+    let madinStatsRow: any = {};
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(`
+        SELECT 
+          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total
+        FROM absensi
+        WHERE tanggal = ?
+      `, [todayStr]);
+      madinStatsRow = rows[0] || {};
+    } catch (e) {
+      console.warn('madinStats error:', e);
+    }
 
-    const [quranStats] = await pool.execute<RowDataPacket[]>(`
-      SELECT 
-        SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-        SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-        SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-        SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
-        COUNT(*) as total
-      FROM absensi_quran
-      WHERE tanggal = ?
-    `, [todayStr]);
+    let quranStatsRow: any = {};
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(`
+        SELECT 
+          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total
+        FROM absensi_quran
+        WHERE tanggal = ?
+      `, [todayStr]);
+      quranStatsRow = rows[0] || {};
+    } catch (e) {
+      console.warn('quranStats error:', e);
+    }
 
-    const [kegiatanStats] = await pool.execute<RowDataPacket[]>(`
-      SELECT 
-        SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-        SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-        SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-        SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
-        COUNT(*) as total
-      FROM absensi_kegiatan
-      WHERE tanggal = ?
-    `, [todayStr]);
+    let kegiatanStatsRow: any = {};
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(`
+        SELECT 
+          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total
+        FROM absensi_kegiatan
+        WHERE tanggal = ?
+      `, [todayStr]);
+      kegiatanStatsRow = rows[0] || {};
+    } catch (e) {
+      console.warn('kegiatanStats error:', e);
+    }
 
     const formatStatObj = (row: any) => {
       const hadir = Number(row?.hadir || 0);
@@ -182,51 +213,63 @@ export async function GET() {
       };
     };
 
-    // 4. PERIZINAN TERBARU HARI INI (Izin & Sakit dari semua tabel absensi)
-    const [perizinanRows] = await pool.execute<RowDataPacket[]>(`
-      SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'madin' as sumber
-      FROM absensi a
-      JOIN murid m ON a.murid_id = m.murid_id
-      LEFT JOIN kelas_madin k ON m.kelas_madin_id = k.kelas_id
-      WHERE a.tanggal = ? AND a.status IN ('Izin','Sakit')
-      UNION ALL
-      SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'quran' as sumber
-      FROM absensi_quran a
-      JOIN murid m ON a.murid_id = m.murid_id
-      LEFT JOIN kelas_quran k ON m.kelas_quran_id = k.id
-      WHERE a.tanggal = ? AND a.status IN ('Izin','Sakit')
-      UNION ALL
-      SELECT m.nama, m.nis, km.nama_kamar as kelas, a.status, a.keterangan, a.tanggal, 'kegiatan' as sumber
-      FROM absensi_kegiatan a
-      JOIN murid m ON a.murid_id = m.murid_id
-      LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
-      WHERE a.tanggal = ? AND a.status IN ('Izin','Sakit')
-      ORDER BY nama ASC
-      LIMIT 20
-    `, [todayStr, todayStr, todayStr]);
+    // 4. PERIZINAN TERBARU (Hari Ini atau 7 Hari Terakhir) (Safe try/catch)
+    let perizinanRows: any[] = [];
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(`
+        SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'madin' as sumber
+        FROM absensi a
+        JOIN murid m ON a.murid_id = m.murid_id
+        LEFT JOIN kelas_madin k ON m.kelas_madin_id = k.kelas_id
+        WHERE a.status IN ('Izin','Sakit') AND a.tanggal >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        UNION ALL
+        SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'quran' as sumber
+        FROM absensi_quran a
+        JOIN murid m ON a.murid_id = m.murid_id
+        LEFT JOIN kelas_quran k ON m.kelas_quran_id = k.id
+        WHERE a.status IN ('Izin','Sakit') AND a.tanggal >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        UNION ALL
+        SELECT m.nama, m.nis, km.nama_kamar as kelas, a.status, a.keterangan, a.tanggal, 'kegiatan' as sumber
+        FROM absensi_kegiatan a
+        JOIN murid m ON a.murid_id = m.murid_id
+        LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
+        WHERE a.status IN ('Izin','Sakit') AND a.tanggal >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        ORDER BY tanggal DESC, nama ASC
+        LIMIT 30
+      `);
+      perizinanRows = rows;
+    } catch (e) {
+      console.warn('perizinan query error:', e);
+    }
 
-    // 5. PELANGGARAN (ALPHA) TERBARU HARI INI
-    const [pelanggaranRows] = await pool.execute<RowDataPacket[]>(`
-      SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'madin' as sumber
-      FROM absensi a
-      JOIN murid m ON a.murid_id = m.murid_id
-      LEFT JOIN kelas_madin k ON m.kelas_madin_id = k.kelas_id
-      WHERE a.tanggal = ? AND a.status = 'Alpha'
-      UNION ALL
-      SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'quran' as sumber
-      FROM absensi_quran a
-      JOIN murid m ON a.murid_id = m.murid_id
-      LEFT JOIN kelas_quran k ON m.kelas_quran_id = k.id
-      WHERE a.tanggal = ? AND a.status = 'Alpha'
-      UNION ALL
-      SELECT m.nama, m.nis, km.nama_kamar as kelas, a.status, a.keterangan, a.tanggal, 'kegiatan' as sumber
-      FROM absensi_kegiatan a
-      JOIN murid m ON a.murid_id = m.murid_id
-      LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
-      WHERE a.tanggal = ? AND a.status = 'Alpha'
-      ORDER BY nama ASC
-      LIMIT 20
-    `, [todayStr, todayStr, todayStr]);
+    // 5. PELANGGARAN / ALPA TERBARU (Hari Ini atau 7 Hari Terakhir) (Safe try/catch)
+    let pelanggaranRows: any[] = [];
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(`
+        SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'madin' as sumber
+        FROM absensi a
+        JOIN murid m ON a.murid_id = m.murid_id
+        LEFT JOIN kelas_madin k ON m.kelas_madin_id = k.kelas_id
+        WHERE a.status IN ('Alpha', 'Alpa') AND a.tanggal >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        UNION ALL
+        SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'quran' as sumber
+        FROM absensi_quran a
+        JOIN murid m ON a.murid_id = m.murid_id
+        LEFT JOIN kelas_quran k ON m.kelas_quran_id = k.id
+        WHERE a.status IN ('Alpha', 'Alpa') AND a.tanggal >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        UNION ALL
+        SELECT m.nama, m.nis, km.nama_kamar as kelas, a.status, a.keterangan, a.tanggal, 'kegiatan' as sumber
+        FROM absensi_kegiatan a
+        JOIN murid m ON a.murid_id = m.murid_id
+        LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
+        WHERE a.status IN ('Alpha', 'Alpa') AND a.tanggal >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        ORDER BY tanggal DESC, nama ASC
+        LIMIT 30
+      `);
+      pelanggaranRows = rows;
+    } catch (e) {
+      console.warn('pelanggaran query error:', e);
+    }
 
     return NextResponse.json({
       success: true,
@@ -239,16 +282,32 @@ export async function GET() {
         kegiatan: guruKegiatan,
       },
       santri: {
-        madin: formatStatObj(madinStats[0]),
-        quran: formatStatObj(quranStats[0]),
-        kegiatan: formatStatObj(kegiatanStats[0]),
+        madin: formatStatObj(madinStatsRow),
+        quran: formatStatObj(quranStatsRow),
+        kegiatan: formatStatObj(kegiatanStatsRow),
       },
       perizinanTerbaru: perizinanRows,
       pelanggaranTerbaru: pelanggaranRows,
     });
 
   } catch (error: any) {
-    console.error('[dashboard/stats] Error:', error.message);
-    return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
+    console.error('[dashboard/stats] Fatal Error:', error.message);
+    return NextResponse.json({
+      success: false,
+      error: 'Server error: ' + error.message,
+      guru: {
+        total: { total: 0, hadir: 0, izin: 0, sakit: 0, alpha: 0 },
+        madin: { total: 0, hadir: 0, izin: 0, sakit: 0, alpha: 0 },
+        quran: { total: 0, hadir: 0, izin: 0, sakit: 0, alpha: 0 },
+        kegiatan: { total: 0, hadir: 0, izin: 0, sakit: 0, alpha: 0 },
+      },
+      santri: {
+        madin: { total: 0, hadir: 0, izin: 0, sakit: 0, alpha: 0, hadirPct: 0, izinPct: 0, sakitPct: 0, alphaPct: 0 },
+        quran: { total: 0, hadir: 0, izin: 0, sakit: 0, alpha: 0, hadirPct: 0, izinPct: 0, sakitPct: 0, alphaPct: 0 },
+        kegiatan: { total: 0, hadir: 0, izin: 0, sakit: 0, alpha: 0, hadirPct: 0, izinPct: 0, sakitPct: 0, alphaPct: 0 },
+      },
+      perizinanTerbaru: [],
+      pelanggaranTerbaru: []
+    }, { status: 200 });
   }
 }

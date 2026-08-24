@@ -28,14 +28,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Guru ID tidak ditemukan' }, { status: 400 });
     }
 
-    const d = new Date();
-    // In database, 'hari' enum might be 'Ahad' instead of 'Minggu'
-    const days = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const currentDay = days[d.getDay()];
-
-    const hours = d.getHours().toString().padStart(2, '0');
-    const minutes = d.getMinutes().toString().padStart(2, '0');
-    const currentTime = `${hours}:${minutes}:00`;
+    const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
+    const currentTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', hour12: false }).format(new Date());
+    const rawDay = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(new Date());
+    const currentDay = rawDay === 'Minggu' ? 'Ahad' : rawDay;
 
     let queryMadin = `
       SELECT j.jadwal_id, j.hari, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, 
@@ -126,11 +122,6 @@ export async function GET() {
     };
 
     const currentSecs = parseTime(currentTime);
-
-    // Get today's date in YYYY-MM-DD (local timezone)
-    const nowLocal = new Date(Date.now() - d.getTimezoneOffset() * 60000);
-    const todayStr = nowLocal.toISOString().slice(0, 10);
-
     // Cek absensi yang sudah diisi hari ini untuk setiap jadwal
     const schedulesWithStatus = await Promise.all(allSchedules.map(async (sched) => {
       const mulaiSecs = parseTime(sched.jam_mulai);
