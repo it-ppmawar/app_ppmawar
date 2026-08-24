@@ -634,7 +634,7 @@ export default function DashboardPage() {
             <ul className="divide-y divide-gray-100 dark:divide-gray-700 max-h-56 overflow-y-auto">
               {dashboardStats.perizinanTerbaru.map((item: any, idx: number) => {
                 const isToday = item.tanggal ? item.tanggal.slice(0, 10) === (dashboardStats.tanggal || '') : false;
-                const formattedDate = item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '';
+                const formattedDate = item.tanggal ? new Date(item.tanggal.slice(0, 10) + 'T00:00:00+07:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '';
                 return (
                   <li key={idx} className="flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-gray-50/50 dark:hover:bg-gray-750 transition">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -648,7 +648,7 @@ export default function DashboardPage() {
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-gray-800 dark:text-gray-100 truncate">{item.nama}</p>
                         <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">
-                          {item.kelas || item.nis || '-'}{item.keterangan ? ` · ${item.keterangan}` : ''}
+                          {item.kelas || '-'}{item.keterangan ? ` · ${item.keterangan}` : ''}
                         </p>
                       </div>
                     </div>
@@ -678,7 +678,7 @@ export default function DashboardPage() {
             <ul className="divide-y divide-gray-100 dark:divide-gray-700 max-h-56 overflow-y-auto">
               {dashboardStats.pelanggaranTerbaru.map((item: any, idx: number) => {
                 const isToday = item.tanggal ? item.tanggal.slice(0, 10) === (dashboardStats.tanggal || '') : false;
-                const formattedDate = item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '';
+                const formattedDate = item.tanggal ? new Date(item.tanggal.slice(0, 10) + 'T00:00:00+07:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '';
                 return (
                   <li key={idx} className="flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-gray-50/50 dark:hover:bg-gray-750 transition">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -688,7 +688,7 @@ export default function DashboardPage() {
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-gray-800 dark:text-gray-100 truncate">{item.nama}</p>
                         <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">
-                          {item.kelas || item.nis || '-'}{item.keterangan ? ` · ${item.keterangan}` : ''}
+                          {item.kelas || '-'}{item.keterangan ? ` · ${item.keterangan}` : ''}
                         </p>
                       </div>
                     </div>
