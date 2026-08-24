@@ -629,7 +629,7 @@ export default function DashboardPage() {
             )}
           </div>
           {(!dashboardStats?.perizinanTerbaru || dashboardStats.perizinanTerbaru.length === 0) ? (
-            <div className="p-5 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada perizinan dalam 7 hari terakhir</div>
+            <div className="p-5 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada perizinan 1 hari terakhir</div>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-700 max-h-56 overflow-y-auto">
               {dashboardStats.perizinanTerbaru.map((item: any, idx: number) => {
@@ -673,7 +673,7 @@ export default function DashboardPage() {
             )}
           </div>
           {(!dashboardStats?.pelanggaranTerbaru || dashboardStats.pelanggaranTerbaru.length === 0) ? (
-            <div className="p-5 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada santri alpa dalam 7 hari terakhir</div>
+            <div className="p-5 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada santri alpa 1 hari terakhir</div>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-700 max-h-56 overflow-y-auto">
               {dashboardStats.pelanggaranTerbaru.map((item: any, idx: number) => {

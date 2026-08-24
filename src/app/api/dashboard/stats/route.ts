@@ -240,7 +240,11 @@ export async function GET() {
       };
     };
 
-    // 4. PERIZINAN TERBARU (Izin & Sakit - Diambil dari data terbaru absensi)
+    // 4. PERIZINAN TERBARU (Hari ini & 1 hari sebelumnya saja, tanpa limit baris)
+    const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(yesterdayDate);
+    const targetDates = [todayStr, yesterdayStr];
+
     let perizinanRows: any[] = [];
     try {
       const [madinRows, quranRows, kegiatanRows, pelanggaranRows] = await Promise.all([
@@ -250,8 +254,9 @@ export async function GET() {
            FROM absensi a 
            JOIN murid m ON a.murid_id = m.murid_id 
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           WHERE LOWER(a.status) IN ('izin', 'sakit')
-           ORDER BY a.tanggal DESC LIMIT 20`
+           WHERE LOWER(a.status) IN ('izin', 'sakit') AND a.tanggal IN (?, ?)
+           ORDER BY a.tanggal DESC, m.nama ASC`,
+          targetDates
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT aq.murid_id, m.nama, aq.tanggal, aq.keterangan, aq.status,
@@ -259,8 +264,9 @@ export async function GET() {
            FROM absensi_quran aq 
            JOIN murid m ON aq.murid_id = m.murid_id 
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           WHERE LOWER(aq.status) IN ('izin', 'sakit')
-           ORDER BY aq.tanggal DESC LIMIT 20`
+           WHERE LOWER(aq.status) IN ('izin', 'sakit') AND aq.tanggal IN (?, ?)
+           ORDER BY aq.tanggal DESC, m.nama ASC`,
+          targetDates
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT ak.murid_id, m.nama, ak.tanggal, ak.keterangan, ak.status,
@@ -268,8 +274,9 @@ export async function GET() {
            FROM absensi_kegiatan ak 
            JOIN murid m ON ak.murid_id = m.murid_id 
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE LOWER(ak.status) IN ('izin', 'sakit')
-           ORDER BY ak.tanggal DESC LIMIT 20`
+           WHERE LOWER(ak.status) IN ('izin', 'sakit') AND ak.tanggal IN (?, ?)
+           ORDER BY ak.tanggal DESC, m.nama ASC`,
+          targetDates
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT p.pelanggaran_id, p.murid_id, m.nama, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
@@ -279,28 +286,23 @@ export async function GET() {
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%')
-           ORDER BY p.tanggal DESC LIMIT 20`
+           WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%') AND p.tanggal IN (?, ?)
+           ORDER BY p.tanggal DESC, m.nama ASC`,
+          targetDates
         ).catch(() => [[] as RowDataPacket[]]),
       ]);
 
-      const allPerizinan = [
+      perizinanRows = [
         ...((madinRows[0] || []).map((r: any) => mapSantriRow(r, 'Madin', 'Izin'))),
         ...((quranRows[0] || []).map((r: any) => mapSantriRow(r, "Qur'an", 'Izin'))),
         ...((kegiatanRows[0] || []).map((r: any) => mapSantriRow(r, 'Kegiatan', 'Izin'))),
         ...((pelanggaranRows[0] || []).map((r: any) => mapSantriRow(r, 'Perizinan', 'Izin'))),
-      ].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
-
-      // Filter ke tanggal terbaru agar ringkas (cukup 1 hari terakhir yang ada data)
-      if (allPerizinan.length > 0) {
-        const latestTgl = allPerizinan[0].tanggal;
-        perizinanRows = allPerizinan.filter(p => p.tanggal === latestTgl).slice(0, 15);
-      }
+      ].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '') || a.nama.localeCompare(b.nama));
     } catch (e) {
       console.warn('perizinan query error:', e);
     }
 
-    // 5. ALPA TERBARU (Diambil dari data terbaru absensi)
+    // 5. ALPA TERBARU (Hari ini & 1 hari sebelumnya saja, tanpa limit baris)
     let pelanggaranRows: any[] = [];
     try {
       const [madinRows, quranRows, kegiatanRows, pelanggaranRowsDb] = await Promise.all([
@@ -310,8 +312,9 @@ export async function GET() {
            FROM absensi a 
            JOIN murid m ON a.murid_id = m.murid_id 
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           WHERE LOWER(a.status) IN ('alpha', 'alpa')
-           ORDER BY a.tanggal DESC LIMIT 20`
+           WHERE LOWER(a.status) IN ('alpha', 'alpa') AND a.tanggal IN (?, ?)
+           ORDER BY a.tanggal DESC, m.nama ASC`,
+          targetDates
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT aq.murid_id, m.nama, aq.tanggal, aq.keterangan, aq.status,
@@ -319,8 +322,9 @@ export async function GET() {
            FROM absensi_quran aq 
            JOIN murid m ON aq.murid_id = m.murid_id 
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           WHERE LOWER(aq.status) IN ('alpha', 'alpa')
-           ORDER BY aq.tanggal DESC LIMIT 20`
+           WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND aq.tanggal IN (?, ?)
+           ORDER BY aq.tanggal DESC, m.nama ASC`,
+          targetDates
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT ak.murid_id, m.nama, ak.tanggal, ak.keterangan, ak.status,
@@ -328,8 +332,9 @@ export async function GET() {
            FROM absensi_kegiatan ak 
            JOIN murid m ON ak.murid_id = m.murid_id 
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE LOWER(ak.status) IN ('alpha', 'alpa')
-           ORDER BY ak.tanggal DESC LIMIT 20`
+           WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ak.tanggal IN (?, ?)
+           ORDER BY ak.tanggal DESC, m.nama ASC`,
+          targetDates
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT p.pelanggaran_id, p.murid_id, m.nama, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
@@ -339,23 +344,18 @@ export async function GET() {
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE (LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%alpa%')
-           ORDER BY p.tanggal DESC LIMIT 20`
+           WHERE (LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%alpa%') AND p.tanggal IN (?, ?)
+           ORDER BY p.tanggal DESC, m.nama ASC`,
+          targetDates
         ).catch(() => [[] as RowDataPacket[]]),
       ]);
 
-      const allAlpa = [
+      pelanggaranRows = [
         ...((madinRows[0] || []).map((r: any) => mapSantriRow(r, 'Madin', 'Alpha'))),
         ...((quranRows[0] || []).map((r: any) => mapSantriRow(r, "Qur'an", 'Alpha'))),
         ...((kegiatanRows[0] || []).map((r: any) => mapSantriRow(r, 'Kegiatan', 'Alpha'))),
         ...((pelanggaranRowsDb[0] || []).map((r: any) => mapSantriRow(r, 'Alpa', 'Alpha'))),
-      ].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
-
-      // Filter ke tanggal terbaru agar ringkas (cukup 1 hari terakhir yang ada data)
-      if (allAlpa.length > 0) {
-        const latestTgl = allAlpa[0].tanggal;
-        pelanggaranRows = allAlpa.filter(p => p.tanggal === latestTgl).slice(0, 15);
-      }
+      ].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '') || a.nama.localeCompare(b.nama));
     } catch (e) {
       console.warn('pelanggaran query error:', e);
     }
