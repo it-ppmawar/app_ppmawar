@@ -182,6 +182,52 @@ export async function GET() {
       };
     };
 
+    // 4. PERIZINAN TERBARU HARI INI (Izin & Sakit dari semua tabel absensi)
+    const [perizinanRows] = await pool.execute<RowDataPacket[]>(`
+      SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'madin' as sumber
+      FROM absensi a
+      JOIN murid m ON a.murid_id = m.murid_id
+      LEFT JOIN kelas_madin k ON m.kelas_madin_id = k.kelas_id
+      WHERE a.tanggal = ? AND a.status IN ('Izin','Sakit')
+      UNION ALL
+      SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'quran' as sumber
+      FROM absensi_quran a
+      JOIN murid m ON a.murid_id = m.murid_id
+      LEFT JOIN kelas_quran k ON m.kelas_quran_id = k.id
+      WHERE a.tanggal = ? AND a.status IN ('Izin','Sakit')
+      UNION ALL
+      SELECT m.nama, m.nis, km.nama_kamar as kelas, a.status, a.keterangan, a.tanggal, 'kegiatan' as sumber
+      FROM absensi_kegiatan a
+      JOIN murid m ON a.murid_id = m.murid_id
+      LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
+      WHERE a.tanggal = ? AND a.status IN ('Izin','Sakit')
+      ORDER BY nama ASC
+      LIMIT 20
+    `, [todayStr, todayStr, todayStr]);
+
+    // 5. PELANGGARAN (ALPHA) TERBARU HARI INI
+    const [pelanggaranRows] = await pool.execute<RowDataPacket[]>(`
+      SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'madin' as sumber
+      FROM absensi a
+      JOIN murid m ON a.murid_id = m.murid_id
+      LEFT JOIN kelas_madin k ON m.kelas_madin_id = k.kelas_id
+      WHERE a.tanggal = ? AND a.status = 'Alpha'
+      UNION ALL
+      SELECT m.nama, m.nis, k.nama_kelas as kelas, a.status, a.keterangan, a.tanggal, 'quran' as sumber
+      FROM absensi_quran a
+      JOIN murid m ON a.murid_id = m.murid_id
+      LEFT JOIN kelas_quran k ON m.kelas_quran_id = k.id
+      WHERE a.tanggal = ? AND a.status = 'Alpha'
+      UNION ALL
+      SELECT m.nama, m.nis, km.nama_kamar as kelas, a.status, a.keterangan, a.tanggal, 'kegiatan' as sumber
+      FROM absensi_kegiatan a
+      JOIN murid m ON a.murid_id = m.murid_id
+      LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
+      WHERE a.tanggal = ? AND a.status = 'Alpha'
+      ORDER BY nama ASC
+      LIMIT 20
+    `, [todayStr, todayStr, todayStr]);
+
     return NextResponse.json({
       success: true,
       tanggal: todayStr,
@@ -196,7 +242,9 @@ export async function GET() {
         madin: formatStatObj(madinStats[0]),
         quran: formatStatObj(quranStats[0]),
         kegiatan: formatStatObj(kegiatanStats[0]),
-      }
+      },
+      perizinanTerbaru: perizinanRows,
+      pelanggaranTerbaru: pelanggaranRows,
     });
 
   } catch (error: any) {

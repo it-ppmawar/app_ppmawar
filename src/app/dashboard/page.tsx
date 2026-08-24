@@ -618,13 +618,66 @@ export default function DashboardPage() {
       {/* Info Tambahan */}
       {!(role || '').toLowerCase().includes('petugas') && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-8 max-w-4xl mx-auto w-full">
+        {/* Perizinan Terbaru */}
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
-          <div className="bg-green-800 dark:bg-green-900 px-4 py-2 text-white text-xs font-semibold">Perizinan Terbaru</div>
-          <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada perizinan 1 hari terakhir</div>
+          <div className="bg-green-800 dark:bg-green-900 px-4 py-2 text-white text-xs font-semibold flex items-center justify-between">
+            <span>🟡 Perizinan Terbaru Hari Ini</span>
+            {dashboardStats?.perizinanTerbaru?.length > 0 && (
+              <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                {dashboardStats.perizinanTerbaru.length}
+              </span>
+            )}
+          </div>
+          {(!dashboardStats?.perizinanTerbaru || dashboardStats.perizinanTerbaru.length === 0) ? (
+            <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada perizinan hari ini</div>
+          ) : (
+            <ul className="divide-y divide-gray-100 dark:divide-gray-700 max-h-52 overflow-y-auto">
+              {dashboardStats.perizinanTerbaru.map((item: any, idx: number) => (
+                <li key={idx} className="flex items-center gap-3 px-4 py-2.5">
+                  <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    item.status === 'Sakit'
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
+                  }`}>
+                    {item.status}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 truncate">{item.nama}</p>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{item.kelas || item.nis || '-'}{item.keterangan ? ` · ${item.keterangan}` : ''}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
+
+        {/* Pelanggaran Terbaru */}
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
-          <div className="bg-green-800 dark:bg-green-900 px-4 py-2 text-white text-xs font-semibold">Pelanggaran Terbaru</div>
-          <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada pelanggaran 1 hari terakhir</div>
+          <div className="bg-green-800 dark:bg-green-900 px-4 py-2 text-white text-xs font-semibold flex items-center justify-between">
+            <span>🔴 Alpa Terbaru Hari Ini</span>
+            {dashboardStats?.pelanggaranTerbaru?.length > 0 && (
+              <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                {dashboardStats.pelanggaranTerbaru.length}
+              </span>
+            )}
+          </div>
+          {(!dashboardStats?.pelanggaranTerbaru || dashboardStats.pelanggaranTerbaru.length === 0) ? (
+            <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada santri alpa hari ini</div>
+          ) : (
+            <ul className="divide-y divide-gray-100 dark:divide-gray-700 max-h-52 overflow-y-auto">
+              {dashboardStats.pelanggaranTerbaru.map((item: any, idx: number) => (
+                <li key={idx} className="flex items-center gap-3 px-4 py-2.5">
+                  <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">
+                    Alpha
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 truncate">{item.nama}</p>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{item.kelas || item.nis || '-'}{item.keterangan ? ` · ${item.keterangan}` : ''}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
       )}
