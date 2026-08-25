@@ -758,8 +758,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <div className="p-1.5 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 group-hover:scale-105 transition-transform">
                     {userRoleLower === 'admin' ? <Shield size={16} /> : <MessageSquare size={16} />}
                   </div>
-                  <span className="text-xs font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-wider">
-                    {userRoleLower === 'admin' ? 'Manajemen Sistem' : 'Pusat Pesan & Broadcast'}
+                  <span className="text-xs font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-wider whitespace-nowrap">
+                    {userRoleLower === 'admin' ? 'Manajemen Sistem' : 'Pusat Pesan & WA'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

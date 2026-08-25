@@ -282,7 +282,7 @@ export default function DashboardPage() {
 
           const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(lowerRole) || isPengasuhAny || isPengurusAny || isPetugasKeb;
           const showInventaris = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(lowerRole) || isPengasuhAny || isPengurusAny || isPetugasInv;
-          const showTagihan = ['admin', 'staff', 'wali_murid', 'pengasuh'].includes(lowerRole) || isPengasuhAny;
+          const showTagihan = ['admin', 'wali_murid', 'pengasuh'].includes(lowerRole) || isPengasuhAny;
           const visibleCount = [showKebersihan, showInventaris, showTagihan].filter(Boolean).length;
           if (visibleCount === 0) return null;
           return (
