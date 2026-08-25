@@ -600,7 +600,7 @@ export default function UsersManagementPage() {
                           u.role === 'petugas_umum' ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' :
                           'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                         }`}>
-                          {u.role === 'staff' ? (u.asrama === 'Putra' ? 'Staff Putra' : u.asrama === 'Putri' ? 'Staff Putri' : 'Staff Umum') :
+                          {u.role === 'staff' ? (u.asrama === 'Putra' ? '👳‍♂️ Staff Putra' : u.asrama === 'Putri' ? '🧕 Staff Putri' : '🌐 Staff Umum') :
                            u.role === 'pengasuh' ? `Pengasuh ${u.asrama ? `(${u.asrama})` : ''}` :
                            u.role === 'wali_alumni' ? 'Wali Alumni / Alumni' :
                            u.role === 'petugas' ? 'Petugas' :
@@ -827,8 +827,8 @@ export default function UsersManagementPage() {
                     onChange={e => setFormData({ ...formData, asrama: e.target.value })}
                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-gray-800 dark:text-gray-200"
                   >
-                    <option value="Putra">👦 Staff Putra (Akses Data Santri & Asrama Putra Saja)</option>
-                    <option value="Putri">👧 Staff Putri (Akses Data Santri & Asrama Putri Saja)</option>
+                    <option value="Putra">👳‍♂️ Staff Putra (Akses Data Santri & Asrama Putra Saja)</option>
+                    <option value="Putri">🧕 Staff Putri (Akses Data Santri & Asrama Putri Saja)</option>
                     <option value="Semua">🌐 Staff Umum (Akses Data Putra & Putri)</option>
                   </select>
                 </div>

@@ -363,7 +363,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <p className="text-[10px] text-green-200 uppercase">
                     {[
                       user?.role === 'staff'
-                        ? (user?.asrama === 'Putra' ? 'Staff Putra' : user?.asrama === 'Putri' ? 'Staff Putri' : 'Staff Umum')
+                        ? (user?.asrama === 'Putra' ? '👳‍♂️ Staff Putra' : user?.asrama === 'Putri' ? '🧕 Staff Putri' : '🌐 Staff Umum')
                         : user?.role,
                       (user?.is_pengasuh || user?.isPengasuh) && user?.role !== 'pengasuh' ? 'Pengasuh' : null,
                       (user?.is_pengurus_asrama || user?.isPengurusAsrama) && user?.role !== 'pengurus_asrama' ? 'Pengurus Asrama' : null
