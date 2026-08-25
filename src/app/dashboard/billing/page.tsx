@@ -499,6 +499,23 @@ export default function BillingPage() {
     );
   }
 
+  if (userRole === 'staff' || userRole === 'pengurus_asrama') {
+    return (
+      <div className="p-8 max-w-xl mx-auto text-center space-y-4 mt-12">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto">
+          <AlertCircle size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Akses Dibatasi</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Informasi tagihan dan pembayaran hanya dapat diakses oleh Admin Keuangan, Pengasuh, atau Wali Murid terkait.
+        </p>
+        <Link href="/dashboard" className="inline-block px-5 py-2.5 bg-emerald-600 text-white font-bold rounded-xl text-sm hover:bg-emerald-700 transition-colors">
+          Kembali ke Dashboard
+        </Link>
+      </div>
+    );
+  }
+
   const activeTabLabel = filterKategori === 'Semua' 
     ? 'Semua Kategori' 
     : `${filterKategori === 'pesantren' ? 'Pesantren' : 'Madrasah'}${selectedSubTab !== 'Semua' ? ` • ${selectedSubTab}` : ''}`;
@@ -547,7 +564,7 @@ export default function BillingPage() {
                 <Download size={14} /> Excel
               </button>
             </div>
-            {userRole && ['admin', 'staff', 'pengasuh', 'pengurus_asrama'].includes(userRole) && (
+            {userRole && (userRole === 'admin' || userRole === 'pengasuh' || isPengasuhUser) && (
               <button
                 onClick={handleSyncBilling}
                 disabled={syncing}

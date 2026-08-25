@@ -1154,28 +1154,30 @@ function NotifikasiContent() {
             >
               Info Akun Wali Murid
             </button>
-            <button
-              onClick={() => {
-                setManualMode('pembayaran');
-                if (billingList.length === 0) {
-                  setLoadingBilling(true);
-                  fetch('/api/billing')
-                    .then(r => r.json())
-                    .then(d => {
-                      if (d.success) setBillingList(d.data.filter((b: any) => b.status === 'Belum'));
-                    })
-                    .catch(console.error)
-                    .finally(() => setLoadingBilling(false));
-                }
-              }}
-              className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
-                manualMode === 'pembayaran'
-                  ? 'bg-orange-500 text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
-              }`}
-            >
-              💳 Tagihan
-            </button>
+            {role === 'admin' && (
+              <button
+                onClick={() => {
+                  setManualMode('pembayaran');
+                  if (billingList.length === 0) {
+                    setLoadingBilling(true);
+                    fetch('/api/billing')
+                      .then(r => r.json())
+                      .then(d => {
+                        if (d.success) setBillingList(d.data.filter((b: any) => b.status === 'Belum'));
+                      })
+                      .catch(console.error)
+                      .finally(() => setLoadingBilling(false));
+                  }
+                }}
+                className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
+                  manualMode === 'pembayaran'
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
+                }`}
+              >
+                💳 Tagihan
+              </button>
+            )}
           </div>
         )}
 

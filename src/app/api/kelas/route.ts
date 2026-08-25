@@ -105,6 +105,17 @@ export async function GET(request: Request) {
       }
     }
 
+    if (role === 'staff') {
+      const asr = (namaAsrama || payload.asrama || '').toLowerCase();
+      if (actualType === 'kamar') {
+        if (asr.includes('putra') || asr.includes('asrama a') || asr === 'a') {
+          whereClause = "WHERE k.nama_asrama = 'Asrama A'";
+        } else if (asr.includes('putri') || asr.includes('asrama b') || asr.includes('asrama c') || asr.includes('asrama d') || asr.includes('asrama e') || asr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f'].includes(asr.trim())) {
+          whereClause = "WHERE (k.nama_asrama != 'Asrama A' AND k.nama_asrama IS NOT NULL AND k.nama_asrama != '')";
+        }
+      }
+    }
+
     // Auto-merge & Standarisasi duplikasi nama kamar (misal: A1 [id 1] vs A-1 [id 74])
     if (actualType === 'kamar') {
       try {

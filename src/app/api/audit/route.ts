@@ -13,8 +13,8 @@ export async function GET(request: Request) {
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = verifyToken(token) as any;
-    if (!payload || !['admin', 'staff'].includes(payload.role)) {
-      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    if (!payload || payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Akses ditolak: Hanya Admin Utama yang dapat melihat audit log' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

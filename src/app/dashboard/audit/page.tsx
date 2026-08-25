@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, Search, RefreshCw, Calendar, User, Activity, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import Link from 'next/link';
+import { Shield, Search, RefreshCw, Calendar, User, Activity, ChevronLeft, ChevronRight, Info, ShieldAlert } from 'lucide-react';
 
 interface AuditLog {
   id: number;
@@ -37,6 +38,7 @@ const AKSI_COLOR: Record<string, string> = {
 export default function AuditLogPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [myRole, setMyRole] = useState('');
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const limit = 30;
@@ -49,6 +51,15 @@ export default function AuditLogPage() {
 
   // Detail modal
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setMyRole(data.user.role);
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -89,6 +100,23 @@ export default function AuditLogPage() {
       });
     } catch { return dt; }
   };
+
+  if (myRole && myRole !== 'admin') {
+    return (
+      <div className="p-8 max-w-xl mx-auto text-center space-y-4 mt-12">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto">
+          <ShieldAlert size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Akses Dibatasi</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Hanya Admin Utama yang memiliki hak akses untuk melihat rekam jejak Audit Log sistem.
+        </p>
+        <Link href="/dashboard" className="inline-block px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-sm hover:bg-indigo-700 transition-colors">
+          Kembali ke Dashboard
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-6">

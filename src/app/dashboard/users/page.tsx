@@ -343,6 +343,23 @@ export default function UsersManagementPage() {
     { id: 'petugas', label: 'Akun Petugas', icon: User }
   ];
 
+  if (myRole && myRole !== 'admin') {
+    return (
+      <div className="p-8 max-w-xl mx-auto text-center space-y-4 mt-12">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto">
+          <ShieldAlert size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Akses Dibatasi</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Hanya Admin Utama yang memiliki hak akses untuk mengelola akun dan pengguna sistem.
+        </p>
+        <Link href="/dashboard" className="inline-block px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-sm hover:bg-indigo-700 transition-colors">
+          Kembali ke Dashboard
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20">
       <div className="bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-indigo-900/40 dark:to-blue-900/40 rounded-3xl p-6 shadow-sm border border-indigo-200 dark:border-indigo-800/50 relative overflow-hidden transition-colors">
@@ -573,7 +590,7 @@ export default function UsersManagementPage() {
                       <td className="px-5 py-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
                           u.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                          u.role === 'staff' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                          u.role === 'staff' ? (u.asrama === 'Putra' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' : u.asrama === 'Putri' ? 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400') :
                           u.role === 'guru' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                           u.role === 'wali_alumni' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800' :
                           u.role === 'pengasuh' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
@@ -583,7 +600,8 @@ export default function UsersManagementPage() {
                           u.role === 'petugas_umum' ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' :
                           'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                         }`}>
-                          {u.role === 'pengasuh' ? `Pengasuh ${u.asrama ? `(${u.asrama})` : ''}` :
+                          {u.role === 'staff' ? (u.asrama === 'Putra' ? 'Staff Putra' : u.asrama === 'Putri' ? 'Staff Putri' : 'Staff Umum') :
+                           u.role === 'pengasuh' ? `Pengasuh ${u.asrama ? `(${u.asrama})` : ''}` :
                            u.role === 'wali_alumni' ? 'Wali Alumni / Alumni' :
                            u.role === 'petugas' ? 'Petugas' :
                            u.role === 'petugas_umum' ? 'Petugas Umum' :
@@ -795,6 +813,24 @@ export default function UsersManagementPage() {
                       Guru ini juga bertindak sebagai <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">Pengurus Asrama</span>
                     </label>
                   </div>
+                </div>
+              )}
+
+              {/* Selection Wilayah / Scope untuk Staff */}
+              {formData.role === 'staff' && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">
+                    Cakupan / Wilayah Tugas Staff
+                  </label>
+                  <select
+                    value={formData.asrama || 'Semua'}
+                    onChange={e => setFormData({ ...formData, asrama: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-gray-800 dark:text-gray-200"
+                  >
+                    <option value="Putra">👦 Staff Putra (Akses Data Santri & Asrama Putra Saja)</option>
+                    <option value="Putri">👧 Staff Putri (Akses Data Santri & Asrama Putri Saja)</option>
+                    <option value="Semua">🌐 Staff Umum (Akses Data Putra & Putri)</option>
+                  </select>
                 </div>
               )}
 

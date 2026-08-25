@@ -34,9 +34,9 @@ export async function GET(request: Request) {
       } catch (_) {}
     }
 
-    // pengurus_asrama TIDAK mendapat akses billing
+    // pengurus_asrama & staff TIDAK mendapat akses billing
     // Otorisasi peran
-    const allowedRoles = ['admin', 'staff', 'wali_murid', 'wali_alumni', 'pengasuh'];
+    const allowedRoles = ['admin', 'wali_murid', 'wali_alumni', 'pengasuh'];
     if (!allowedRoles.includes(role) && !isPengasuhUser) {
       return NextResponse.json({ error: 'Akses ditolak: Peran Anda tidak memiliki izin mengakses info tagihan.' }, { status: 403 });
     }

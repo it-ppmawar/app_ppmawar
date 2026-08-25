@@ -103,6 +103,15 @@ export async function GET(request: Request) {
       }
     }
 
+    if (role === 'staff') {
+      const asr = (namaAsrama || payload.asrama || '').toLowerCase();
+      if (asr.includes('putra') || asr.includes('asrama a') || asr === 'a') {
+        whereClause += " AND m.jenis_kelamin = 'Laki-laki'";
+      } else if (asr.includes('putri') || asr.includes('asrama b') || asr.includes('asrama c') || asr.includes('asrama d') || asr.includes('asrama e') || asr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f'].includes(asr.trim())) {
+        whereClause += " AND m.jenis_kelamin = 'Perempuan'";
+      }
+    }
+
     if (filterMadin) {
       whereClause += ` AND (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?)`;
       queryParams.push(filterMadin, filterMadin);

@@ -13,16 +13,16 @@ export async function GET(request: Request) {
     const payload = verifyToken(token) as any;
     if (!payload) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const isAdminOrStaff = payload.role === 'admin' || payload.role === 'staff';
+    const isAdmin = payload.role === 'admin';
     const { searchParams } = new URL(request.url);
     const publicOnly = searchParams.get('public') === '1';
 
     // Non-admin hanya boleh baca setting jeda panggilan (untuk keperluan UI)
-    if (!isAdminOrStaff && !publicOnly) {
+    if (!isAdmin && !publicOnly) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (!isAdminOrStaff && publicOnly) {
+    if (!isAdmin && publicOnly) {
       // Kembalikan setting panggilan & lokasi publik
       const [rows] = await pool.execute<RowDataPacket[]>(
         "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('jeda_panggilan_wali', 'jeda_panggilan_pengurus', 'lat_pesantren', 'lng_pesantren', 'radius_absen', 'radius_panggilan_wali')"
@@ -53,8 +53,8 @@ export async function PUT(request: Request) {
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = verifyToken(token);
-    if (!payload || ((payload as any).role !== 'admin' && (payload as any).role !== 'staff')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!payload || (payload as any).role !== 'admin') {
+      return NextResponse.json({ error: 'Hanya Admin Utama yang dapat mengubah pengaturan sistem' }, { status: 403 });
     }
 
     const { 

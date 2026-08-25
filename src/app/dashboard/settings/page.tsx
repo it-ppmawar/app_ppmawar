@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone, BookOpen, Users, MapPin } from 'lucide-react';
+import Link from 'next/link';
+import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone, BookOpen, Users, MapPin, ShieldAlert } from 'lucide-react';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
+  const [myRole, setMyRole] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -98,6 +100,12 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setMyRole(data.user.role);
+      })
+      .catch(() => {});
     fetchSettings();
     fetchGSheetStatus();
   }, []);
@@ -412,6 +420,23 @@ export default function SettingsPage() {
   };
 
   if (loading) return <div className="p-10 text-center animate-pulse text-gray-400 font-bold">Memuat Pengaturan...</div>;
+
+  if (myRole && myRole !== 'admin') {
+    return (
+      <div className="p-8 max-w-xl mx-auto text-center space-y-4 mt-12">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mx-auto">
+          <ShieldAlert size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Akses Dibatasi</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Hanya Admin Utama yang memiliki hak akses untuk mengubah konfigurasi dan pengaturan sistem.
+        </p>
+        <Link href="/dashboard" className="inline-block px-5 py-2.5 bg-slate-800 text-white font-bold rounded-xl text-sm hover:bg-slate-700 transition-colors">
+          Kembali ke Dashboard
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto pb-20 space-y-6">

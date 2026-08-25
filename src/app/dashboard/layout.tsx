@@ -219,7 +219,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const isPengasuhRole = userRoleLower.includes('pengasuh') || userRoleLower.includes('pengurus') || !!user?.is_pengasuh || !!user?.isPengasuh || !!user?.is_pengurus_asrama || !!user?.isPengurusAsrama;
   // canAccessBilling: wali_alumni HANYA bisa akses billing jika masih punya tunggakan
-  const canAccessBilling = ['admin', 'staff', 'wali_murid'].includes(userRoleLower)
+  const canAccessBilling = ['admin', 'wali_murid'].includes(userRoleLower)
     || (userRoleLower === 'wali_alumni' && hasAlumniTunggakan)
     || userRoleLower.includes('pengasuh') || !!user?.is_pengasuh || !!user?.isPengasuh;
 
@@ -279,23 +279,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       <div className="bg-green-600 dark:bg-green-700 p-3 text-white">
                         <h4 className="font-bold text-sm flex items-center gap-2"><CalendarDays size={16} /> Jadwal Aktif Saat Ini</h4>
                       </div>
-                      <div className="p-4 text-center">
-                        <span className="inline-block bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400 text-[10px] px-3 py-1 rounded-full font-bold mb-2 border border-orange-200 dark:border-orange-800/50">
-                          {activeSchedule.status}
-                        </span>
-                        <h5 className="font-bold text-gray-800 dark:text-gray-100 text-sm mb-1">{activeSchedule.title}</h5>
-                        <p className="text-gray-500 dark:text-gray-400 text-xs mb-4 flex items-center justify-center gap-1.5">
-                          <Clock size={12} /> {activeSchedule.time}
-                        </p>
-                        <Link href="/dashboard/absen" onClick={() => setShowNotif(false)} className="block w-full text-center bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2.5 rounded-xl transition-colors shadow-sm">
-                          Input Absensi Sekarang
+                      <div className="p-4 space-y-3">
+                        <div>
+                          <span className="text-[10px] bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 font-bold px-2 py-0.5 rounded-full uppercase">
+                            {activeSchedule.tipe}
+                          </span>
+                          <p className="font-bold text-gray-800 dark:text-gray-100 text-sm mt-1">{activeSchedule.nama_kegiatan || activeSchedule.nama_kelas}</p>
+                          <p className="text-gray-500 dark:text-gray-400 text-xs">Pukul {activeSchedule.jam_mulai} - {activeSchedule.jam_selesai}</p>
+                        </div>
+                        <Link href="/dashboard/absen" onClick={() => setShowNotif(false)} className="block w-full text-center bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 rounded-xl transition-colors">
+                          Mulai Absensi
                         </Link>
                       </div>
                     </>
                   ) : (
                     <>
                       <div className="bg-amber-600 dark:bg-amber-700 p-3 text-white">
-                        <h4 className="font-bold text-sm flex items-center gap-2"><AlertTriangle size={16} /> Pengingat Absensi</h4>
+                        <h4 className="font-bold text-sm flex items-center gap-2"><AlertTriangle size={16} /> Pengingat Guru Belum Absen</h4>
                       </div>
                       <div className="p-4 text-center">
                         <h5 className="font-bold text-gray-800 dark:text-gray-100 text-sm mb-2">Ada {pendingRemindersCount} jadwal aktif belum absen!</h5>
@@ -362,7 +362,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <p className="font-bold leading-tight capitalize">{user?.real_name || user?.username || 'Memuat...'}</p>
                   <p className="text-[10px] text-green-200 uppercase">
                     {[
-                      user?.role,
+                      user?.role === 'staff'
+                        ? (user?.asrama === 'Putra' ? 'Staff Putra' : user?.asrama === 'Putri' ? 'Staff Putri' : 'Staff Umum')
+                        : user?.role,
                       (user?.is_pengasuh || user?.isPengasuh) && user?.role !== 'pengasuh' ? 'Pengasuh' : null,
                       (user?.is_pengurus_asrama || user?.isPengurusAsrama) && user?.role !== 'pengurus_asrama' ? 'Pengurus Asrama' : null
                     ].filter(Boolean).join(' + ')}
@@ -743,7 +745,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 
           {/* ========================================================================= */}
-          {/* 3. GRUP MANAJEMEN SISTEM (Collapsible Accordion — Default Tertutup)       */}
+          {/* 3. GRUP MANAJEMEN SISTEM / NOTIFIKASI                                    */}
           {/* ========================================================================= */}
           {['admin', 'staff'].includes(userRoleLower) && (
             <div className="px-3 mb-3">
@@ -754,10 +756,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 <div className="flex items-center gap-2.5">
                   <div className="p-1.5 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 group-hover:scale-105 transition-transform">
-                    <Shield size={16} />
+                    {userRoleLower === 'admin' ? <Shield size={16} /> : <MessageSquare size={16} />}
                   </div>
                   <span className="text-xs font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-wider">
-                    Manajemen Sistem
+                    {userRoleLower === 'admin' ? 'Manajemen Sistem' : 'Pusat Pesan & Broadcast'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -772,26 +774,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               {openSections.manajemenSistem && (
                 <ul className="space-y-1 mt-2 pl-1 pr-1 animate-[fadeIn_0.2s_ease-out]">
-                  <li>
-                    <Link href="/dashboard/users" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/users' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
-                      <Users size={18} /> <span className="text-sm">Manajemen Pengguna</span>
-                    </Link>
-                  </li>
+                  {userRoleLower === 'admin' && (
+                    <li>
+                      <Link href="/dashboard/users" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/users' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
+                        <Users size={18} /> <span className="text-sm">Manajemen Pengguna</span>
+                      </Link>
+                    </li>
+                  )}
                   <li>
                     <Link href="/dashboard/notifikasi" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/notifikasi' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
                       <MessageSquare size={18} /> <span className="text-sm">Notifikasi & WhatsApp</span>
                     </Link>
                   </li>
-                  <li>
-                    <Link href="/dashboard/audit" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/audit' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
-                      <Shield size={18} /> <span className="text-sm">Audit Log</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/dashboard/settings" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/settings' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
-                      <Settings size={18} /> <span className="text-sm">Pengaturan</span>
-                    </Link>
-                  </li>
+                  {userRoleLower === 'admin' && (
+                    <>
+                      <li>
+                        <Link href="/dashboard/audit" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/audit' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
+                          <Shield size={18} /> <span className="text-sm">Audit Log</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/settings" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/settings' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
+                          <Settings size={18} /> <span className="text-sm">Pengaturan</span>
+                        </Link>
+                      </li>
+                    </>
+                  )}
                 </ul>
               )}
             </div>

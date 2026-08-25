@@ -18,11 +18,10 @@ export async function GET(request: Request) {
 
     const payload = verifyToken(token) as any;
     const userRole = payload?.role || '';
-    const isStaffOrAdmin = userRole === 'admin' || userRole === 'staff';
-    const isAllowedRole = isStaffOrAdmin || userRole.includes('petugas_panggilan') || userRole.includes('pengurus') || userRole.includes('pengasuh');
+    const isAdmin = userRole === 'admin';
 
-    if (!payload || (!isStaffOrAdmin && roleFilter !== 'petugas_panggilan') || !isAllowedRole) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!payload || (!isAdmin && roleFilter !== 'petugas_panggilan')) {
+      return NextResponse.json({ error: 'Hanya Admin Utama yang dapat mengakses manajemen pengguna' }, { status: 403 });
     }
 
     // Auto-migrate missing columns if needed

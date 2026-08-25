@@ -61,6 +61,19 @@ export async function GET(request: Request) {
       }
     }
 
+    if (role === 'staff') {
+      const { userId, username } = payload as any;
+      const tokenAsrama = (payload as any).namaAsrama || (payload as any).asrama || null;
+      const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
+      const namaAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
+      const asr = (namaAsrama || (payload as any).asrama || '').toLowerCase();
+      if (asr.includes('putra') || asr.includes('asrama a') || asr === 'a') {
+        muridFilter = "m.jenis_kelamin = 'Laki-laki'";
+      } else if (asr.includes('putri') || asr.includes('asrama b') || asr.includes('asrama c') || asr.includes('asrama d') || asr.includes('asrama e') || asr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f'].includes(asr.trim())) {
+        muridFilter = "m.jenis_kelamin = 'Perempuan'";
+      }
+    }
+
     // ─── Hitung ringkasan total (Izin, Sakit, Alpa, Pelanggaran) ───
     const [
       madinIzinRes, madinSakitRes, quranIzinRes, quranSakitRes,
