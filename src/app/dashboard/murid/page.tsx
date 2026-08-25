@@ -525,10 +525,24 @@ export default function DataMuridPage() {
   }, [filteredMurid, sortConfig]);
 
   const totalPages = Math.ceil(sortedMurid.length / pageSize) || 1;
+
+  // Reset currentPage ke 1 jika filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, filterMadin, filterQuran, filterKamar, filterOnlySelected, pageSize]);
+
+  // Pastikan currentPage tidak melebihi totalPages
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const paginatedMurid = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
+    const safePage = Math.min(Math.max(1, currentPage), totalPages);
+    const start = (safePage - 1) * pageSize;
     return sortedMurid.slice(start, start + pageSize);
-  }, [sortedMurid, currentPage, pageSize]);
+  }, [sortedMurid, currentPage, totalPages, pageSize]);
 
   const getSortIcon = (key: string) => {
     if (!sortConfig || sortConfig.key !== key) return ' ⇅';
@@ -827,13 +841,9 @@ export default function DataMuridPage() {
             <button
               type="button"
               onClick={() => {
-                if (filterOnlySelected) {
-                  setFilterOnlySelected(false);
-                  setShowAll(true);
-                } else {
-                  setFilterOnlySelected(true);
-                  setShowAll(true);
-                }
+                setCurrentPage(1);
+                setShowAll(true);
+                setFilterOnlySelected(prev => !prev);
               }}
               className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-sm flex items-center justify-center gap-2 active:scale-95 ${
                 filterOnlySelected

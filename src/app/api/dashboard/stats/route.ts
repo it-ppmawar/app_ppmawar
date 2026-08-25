@@ -343,11 +343,62 @@ export async function GET() {
         ...((kegiatanRows[0] || []).map((r: any) => mapSantriRow(r, 'Kegiatan', 'Izin'))),
         ...((pelanggaranRows[0] || []).map((r: any) => mapSantriRow(r, 'Perizinan', 'Izin'))),
       ]);
+
+      // Fallback: Jika tidak ada perizinan 1 hari terakhir, ambil perizinan riwayat terbaru
+      if (perizinanRows.length === 0) {
+        const fallbackParams = genderFilter ? [genderFilter] : [];
+        const [mFb, qFb, kFb, pFb] = await Promise.all([
+          pool.execute<RowDataPacket[]>(
+            `SELECT a.murid_id, m.nama, a.tanggal, a.keterangan, a.status,
+                    COALESCE(km.nama_kelas, '-') as kelas_nama
+             FROM absensi a JOIN murid m ON a.murid_id = m.murid_id 
+             LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+             WHERE LOWER(a.status) IN ('izin', 'sakit')${genderCondition}
+             ORDER BY a.tanggal DESC, m.nama ASC LIMIT 20`,
+            fallbackParams
+          ).catch(() => [[] as RowDataPacket[]]),
+          pool.execute<RowDataPacket[]>(
+            `SELECT aq.murid_id, m.nama, aq.tanggal, aq.keterangan, aq.status,
+                    COALESCE(kq.nama_kelas, '-') as kelas_nama
+             FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id 
+             LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+             WHERE LOWER(aq.status) IN ('izin', 'sakit')${genderCondition}
+             ORDER BY aq.tanggal DESC, m.nama ASC LIMIT 20`,
+            fallbackParams
+          ).catch(() => [[] as RowDataPacket[]]),
+          pool.execute<RowDataPacket[]>(
+            `SELECT ak.murid_id, m.nama, ak.tanggal, ak.keterangan, ak.status,
+                    COALESCE(ka.nama_kamar, '-') as kelas_nama
+             FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id 
+             LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
+             WHERE LOWER(ak.status) IN ('izin', 'sakit')${genderCondition}
+             ORDER BY ak.tanggal DESC, m.nama ASC LIMIT 20`,
+            fallbackParams
+          ).catch(() => [[] as RowDataPacket[]]),
+          pool.execute<RowDataPacket[]>(
+            `SELECT p.pelanggaran_id, p.murid_id, m.nama, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
+                    COALESCE(km.nama_kelas, kq.nama_kelas, ka.nama_kamar, '-') as kelas_nama
+             FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id 
+             LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+             LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+             LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
+             WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%')${genderCondition}
+             ORDER BY p.tanggal DESC, m.nama ASC LIMIT 20`,
+            fallbackParams
+          ).catch(() => [[] as RowDataPacket[]]),
+        ]);
+        perizinanRows = sortSantriList([
+          ...((mFb[0] || []).map((r: any) => mapSantriRow(r, 'Madin', 'Izin'))),
+          ...((qFb[0] || []).map((r: any) => mapSantriRow(r, "Qur'an", 'Izin'))),
+          ...((kFb[0] || []).map((r: any) => mapSantriRow(r, 'Kegiatan', 'Izin'))),
+          ...((pFb[0] || []).map((r: any) => mapSantriRow(r, 'Perizinan', 'Izin'))),
+        ]);
+      }
     } catch (e) {
       console.warn('perizinan query error:', e);
     }
 
-    // 5. PELANGGARAN TERBARU (Rekapitulasi Absensi Alpa + Pelanggaran Ketertiban Lainnya, 1 hari terakhir)
+    // 5. PELANGGARAN TERBARU (Rekapitulasi Absensi Alpa + Pelanggaran Ketertiban Lainnya)
     let pelanggaranRows: any[] = [];
     try {
       const [madinRows, quranRows, kegiatanRows, pelanggaranRowsDb] = await Promise.all([
@@ -416,6 +467,62 @@ export async function GET() {
         ...((kegiatanRows[0] || []).map((r: any) => mapSantriRow(r, 'Kegiatan', 'Alpha'))),
         ...((pelanggaranRowsDb[0] || []).map((r: any) => mapSantriRow(r, 'Pelanggaran', r.status || 'Pelanggaran'))),
       ]);
+
+      // Fallback: Jika tidak ada pelanggaran/alpa 1 hari terakhir, ambil data alpa & pelanggaran riwayat terbaru
+      if (pelanggaranRows.length === 0) {
+        const fallbackParams = genderFilter ? [genderFilter] : [];
+        const [mFb, qFb, kFb, pFb] = await Promise.all([
+          pool.execute<RowDataPacket[]>(
+            `SELECT a.murid_id, m.nama, a.tanggal, a.keterangan, a.status,
+                    COALESCE(km.nama_kelas, '-') as kelas_nama
+             FROM absensi a 
+             JOIN murid m ON a.murid_id = m.murid_id 
+             LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+             WHERE LOWER(a.status) IN ('alpha', 'alpa')${genderCondition}
+             ORDER BY a.tanggal DESC, m.nama ASC LIMIT 20`,
+            fallbackParams
+          ).catch(() => [[] as RowDataPacket[]]),
+          pool.execute<RowDataPacket[]>(
+            `SELECT aq.murid_id, m.nama, aq.tanggal, aq.keterangan, aq.status,
+                    COALESCE(kq.nama_kelas, '-') as kelas_nama
+             FROM absensi_quran aq 
+             JOIN murid m ON aq.murid_id = m.murid_id 
+             LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+             WHERE LOWER(aq.status) IN ('alpha', 'alpa')${genderCondition}
+             ORDER BY aq.tanggal DESC, m.nama ASC LIMIT 20`,
+            fallbackParams
+          ).catch(() => [[] as RowDataPacket[]]),
+          pool.execute<RowDataPacket[]>(
+            `SELECT ak.murid_id, m.nama, ak.tanggal, ak.keterangan, ak.status,
+                    COALESCE(ka.nama_kamar, '-') as kelas_nama
+             FROM absensi_kegiatan ak 
+             JOIN murid m ON ak.murid_id = m.murid_id 
+             LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
+             WHERE LOWER(ak.status) IN ('alpha', 'alpa')${genderCondition}
+             ORDER BY ak.tanggal DESC, m.nama ASC LIMIT 20`,
+            fallbackParams
+          ).catch(() => [[] as RowDataPacket[]]),
+          pool.execute<RowDataPacket[]>(
+            `SELECT p.pelanggaran_id, p.murid_id, m.nama, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
+                    COALESCE(km.nama_kelas, kq.nama_kelas, ka.nama_kamar, '-') as kelas_nama
+             FROM pelanggaran p 
+             JOIN murid m ON p.murid_id = m.murid_id 
+             LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
+             LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+             LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
+             WHERE (LOWER(p.jenis) NOT LIKE '%izin%' AND LOWER(p.jenis) NOT LIKE '%sakit%')${genderCondition}
+             ORDER BY p.tanggal DESC, m.nama ASC LIMIT 20`,
+            fallbackParams
+          ).catch(() => [[] as RowDataPacket[]]),
+        ]);
+
+        pelanggaranRows = sortPelanggaranList([
+          ...((mFb[0] || []).map((r: any) => mapSantriRow(r, 'Madin', 'Alpha'))),
+          ...((qFb[0] || []).map((r: any) => mapSantriRow(r, "Qur'an", 'Alpha'))),
+          ...((kFb[0] || []).map((r: any) => mapSantriRow(r, 'Kegiatan', 'Alpha'))),
+          ...((pFb[0] || []).map((r: any) => mapSantriRow(r, 'Pelanggaran', r.status || 'Pelanggaran'))),
+        ]);
+      }
     } catch (e) {
       console.warn('pelanggaran query error:', e);
     }
