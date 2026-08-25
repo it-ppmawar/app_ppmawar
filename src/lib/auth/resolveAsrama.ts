@@ -68,5 +68,15 @@ export async function resolveAsrama(
     return `Asrama ${usernameMatch[1].toUpperCase()}`;
   }
 
+  // Tebak dari username pola staff_putra / staff_putri
+  // Misal: staff_putra, staff_putri, staff_putra_2, staff_madin_putra, dll.
+  const usernameLower = username.toLowerCase();
+  if (/putra/.test(usernameLower) && !/putri/.test(usernameLower)) {
+    return 'putra';
+  }
+  if (/putri/.test(usernameLower)) {
+    return 'putri';
+  }
+
   return null;
 }

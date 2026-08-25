@@ -107,11 +107,24 @@ export async function GET(request: Request) {
 
     if (role === 'staff') {
       const asr = (namaAsrama || payload.asrama || '').toLowerCase();
-      if (actualType === 'kamar') {
-        if (asr.includes('putra') || asr.includes('asrama a') || asr === 'a') {
+      const isPutra = asr === 'putra' || asr.includes('putra') || asr.includes('asrama a') || asr === 'a';
+      const isPutri = asr === 'putri' || asr.includes('putri') || asr.includes('asrama b') || asr.includes('asrama c') || asr.includes('asrama d') || asr.includes('asrama e') || asr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f'].includes(asr.trim());
+
+      if (isPutra) {
+        if (actualType === 'kamar') {
           whereClause = "WHERE k.nama_asrama = 'Asrama A'";
-        } else if (asr.includes('putri') || asr.includes('asrama b') || asr.includes('asrama c') || asr.includes('asrama d') || asr.includes('asrama e') || asr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f'].includes(asr.trim())) {
+        } else if (actualType === 'madin') {
+          whereClause = "WHERE LOWER(k.nama_kelas) LIKE '%putra%'";
+        } else if (actualType === 'quran') {
+          whereClause = "WHERE LOWER(k.nama_kelas) LIKE '%putra%'";
+        }
+      } else if (isPutri) {
+        if (actualType === 'kamar') {
           whereClause = "WHERE (k.nama_asrama != 'Asrama A' AND k.nama_asrama IS NOT NULL AND k.nama_asrama != '')";
+        } else if (actualType === 'madin') {
+          whereClause = "WHERE LOWER(k.nama_kelas) LIKE '%putri%'";
+        } else if (actualType === 'quran') {
+          whereClause = "WHERE LOWER(k.nama_kelas) LIKE '%putri%'";
         }
       }
     }

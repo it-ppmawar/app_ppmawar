@@ -13,11 +13,30 @@ export async function GET() {
     const payload = verifyToken(token) as any;
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
-    // Waktu & Tanggal Akurat Asia/Jakarta (WIB)
+    // Resolve namaAsrama untuk filter gender staff putra/putri
+    const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
+    const resolvedAsrama = await resolveAsrama(payload.userId, payload.role, payload.username || '', payload.namaAsrama || null);
+
+    // Tentukan filter gender untuk staff putra/putri
+    let genderFilter: string | null = null;
+    if (payload.role === 'staff' && resolvedAsrama) {
+      const asr = resolvedAsrama.toLowerCase();
+      if (asr === 'putra' || asr.includes('putra') || asr.includes('asrama a') || asr === 'a') {
+        genderFilter = 'Laki-laki';
+      } else if (asr === 'putri' || asr.includes('putri') || asr.includes('asrama b') || asr.includes('asrama c') || asr.includes('asrama d') || asr.includes('asrama e') || asr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f'].includes(asr.trim())) {
+        genderFilter = 'Perempuan';
+      }
+    }
+    // Klausa gender filter untuk WHERE atau AND
+    const genderWhereJoin = genderFilter ? ` JOIN murid mgf ON mgf.murid_id = a.murid_id AND mgf.jenis_kelamin = '${genderFilter}'` : '';
+    const genderWhereJoinAq = genderFilter ? ` JOIN murid mgf ON mgf.murid_id = aq.murid_id AND mgf.jenis_kelamin = '${genderFilter}'` : '';
+    const genderWhereJoinAk = genderFilter ? ` JOIN murid mgf ON mgf.murid_id = ak.murid_id AND mgf.jenis_kelamin = '${genderFilter}'` : '';
+
     const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
     const currentTimeStr = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', hour12: false }).format(new Date());
     const rawDay = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(new Date());
     const currentDay = rawDay === 'Minggu' ? 'Ahad' : rawDay;
+
 
     // 1. Ambil pengaturan absensi otomatis (Safe try/catch)
     let settings: Record<string, any> = {};
@@ -144,13 +163,13 @@ export async function GET() {
     try {
       const [rows] = await pool.execute<RowDataPacket[]>(`
         SELECT 
-          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha,
           COUNT(*) as total
-        FROM absensi
-        WHERE tanggal = ?
+        FROM absensi a${genderWhereJoin}
+        WHERE a.tanggal = ?
       `, [todayStr]);
       madinStatsRow = rows[0] || {};
     } catch (e) {
@@ -161,13 +180,13 @@ export async function GET() {
     try {
       const [rows] = await pool.execute<RowDataPacket[]>(`
         SELECT 
-          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          SUM(CASE WHEN LOWER(aq.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN LOWER(aq.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN LOWER(aq.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN LOWER(aq.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha,
           COUNT(*) as total
-        FROM absensi_quran
-        WHERE tanggal = ?
+        FROM absensi_quran aq${genderWhereJoinAq}
+        WHERE aq.tanggal = ?
       `, [todayStr]);
       quranStatsRow = rows[0] || {};
     } catch (e) {
@@ -178,18 +197,19 @@ export async function GET() {
     try {
       const [rows] = await pool.execute<RowDataPacket[]>(`
         SELECT 
-          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          SUM(CASE WHEN LOWER(ak.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN LOWER(ak.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN LOWER(ak.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN LOWER(ak.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha,
           COUNT(*) as total
-        FROM absensi_kegiatan
-        WHERE tanggal = ?
+        FROM absensi_kegiatan ak${genderWhereJoinAk}
+        WHERE ak.tanggal = ?
       `, [todayStr]);
       kegiatanStatsRow = rows[0] || {};
     } catch (e) {
       console.warn('kegiatanStats error:', e);
     }
+
 
     const formatStatObj = (row: any) => {
       const hadir = Number(row?.hadir || 0);
@@ -244,6 +264,9 @@ export async function GET() {
     const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const yesterdayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(yesterdayDate);
     const targetDates = [todayStr, yesterdayStr];
+    const datePlaceholders = targetDates.map(() => '?').join(', ');
+    const genderCondition = genderFilter ? ` AND m.jenis_kelamin = ?` : '';
+    const queryTargetParams = genderFilter ? [...targetDates, genderFilter] : targetDates;
 
     let perizinanRows: any[] = [];
     try {
@@ -254,9 +277,9 @@ export async function GET() {
            FROM absensi a 
            JOIN murid m ON a.murid_id = m.murid_id 
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           WHERE LOWER(a.status) IN ('izin', 'sakit') AND a.tanggal IN (?, ?)
+           WHERE LOWER(a.status) IN ('izin', 'sakit') AND a.tanggal IN (${datePlaceholders})${genderCondition}
            ORDER BY a.tanggal DESC, m.nama ASC`,
-          targetDates
+          queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT aq.murid_id, m.nama, aq.tanggal, aq.keterangan, aq.status,
@@ -264,9 +287,9 @@ export async function GET() {
            FROM absensi_quran aq 
            JOIN murid m ON aq.murid_id = m.murid_id 
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           WHERE LOWER(aq.status) IN ('izin', 'sakit') AND aq.tanggal IN (?, ?)
+           WHERE LOWER(aq.status) IN ('izin', 'sakit') AND aq.tanggal IN (${datePlaceholders})${genderCondition}
            ORDER BY aq.tanggal DESC, m.nama ASC`,
-          targetDates
+          queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT ak.murid_id, m.nama, ak.tanggal, ak.keterangan, ak.status,
@@ -274,9 +297,9 @@ export async function GET() {
            FROM absensi_kegiatan ak 
            JOIN murid m ON ak.murid_id = m.murid_id 
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE LOWER(ak.status) IN ('izin', 'sakit') AND ak.tanggal IN (?, ?)
+           WHERE LOWER(ak.status) IN ('izin', 'sakit') AND ak.tanggal IN (${datePlaceholders})${genderCondition}
            ORDER BY ak.tanggal DESC, m.nama ASC`,
-          targetDates
+          queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT p.pelanggaran_id, p.murid_id, m.nama, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
@@ -286,9 +309,9 @@ export async function GET() {
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%') AND p.tanggal IN (?, ?)
+           WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%') AND p.tanggal IN (${datePlaceholders})${genderCondition}
            ORDER BY p.tanggal DESC, m.nama ASC`,
-          targetDates
+          queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
       ]);
 
@@ -324,7 +347,7 @@ export async function GET() {
       console.warn('perizinan query error:', e);
     }
 
-    // 5. ALPA TERBARU (Hari ini & 1 hari sebelumnya saja, tanpa limit baris)
+    // 5. PELANGGARAN TERBARU (Rekapitulasi Absensi Alpa + Pelanggaran Ketertiban Lainnya, 1 hari terakhir)
     let pelanggaranRows: any[] = [];
     try {
       const [madinRows, quranRows, kegiatanRows, pelanggaranRowsDb] = await Promise.all([
@@ -334,9 +357,9 @@ export async function GET() {
            FROM absensi a 
            JOIN murid m ON a.murid_id = m.murid_id 
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           WHERE LOWER(a.status) IN ('alpha', 'alpa') AND a.tanggal IN (?, ?)
+           WHERE LOWER(a.status) IN ('alpha', 'alpa') AND a.tanggal IN (${datePlaceholders})${genderCondition}
            ORDER BY a.tanggal DESC, m.nama ASC`,
-          targetDates
+          queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT aq.murid_id, m.nama, aq.tanggal, aq.keterangan, aq.status,
@@ -344,9 +367,9 @@ export async function GET() {
            FROM absensi_quran aq 
            JOIN murid m ON aq.murid_id = m.murid_id 
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND aq.tanggal IN (?, ?)
+           WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND aq.tanggal IN (${datePlaceholders})${genderCondition}
            ORDER BY aq.tanggal DESC, m.nama ASC`,
-          targetDates
+          queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT ak.murid_id, m.nama, ak.tanggal, ak.keterangan, ak.status,
@@ -354,9 +377,9 @@ export async function GET() {
            FROM absensi_kegiatan ak 
            JOIN murid m ON ak.murid_id = m.murid_id 
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ak.tanggal IN (?, ?)
+           WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ak.tanggal IN (${datePlaceholders})${genderCondition}
            ORDER BY ak.tanggal DESC, m.nama ASC`,
-          targetDates
+          queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
           `SELECT p.pelanggaran_id, p.murid_id, m.nama, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
@@ -366,32 +389,32 @@ export async function GET() {
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE (LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%alpa%') AND p.tanggal IN (?, ?)
+           WHERE (LOWER(p.jenis) NOT LIKE '%izin%' AND LOWER(p.jenis) NOT LIKE '%sakit%') AND p.tanggal IN (${datePlaceholders})${genderCondition}
            ORDER BY p.tanggal DESC, m.nama ASC`,
-          targetDates
+          queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
       ]);
 
-      const sortAlpaList = (list: any[]) => {
+      const sortPelanggaranList = (list: any[]) => {
         return list.sort((a, b) => {
-          // 1. Kelas (Natural sort A-Z dan angka tingkat)
+          // 1. Tanggal (Terbaru di atas)
+          const dateComp = (b.tanggal || '').localeCompare(a.tanggal || '');
+          if (dateComp !== 0) return dateComp;
+
+          // 2. Kelas (Natural sort A-Z dan angka tingkat)
           const kelasComp = (a.kelas || '').localeCompare(b.kelas || '', 'id', { numeric: true, sensitivity: 'base' });
           if (kelasComp !== 0) return kelasComp;
 
-          // 2. Abjad Nama Santri (A-Z)
-          const namaComp = (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' });
-          if (namaComp !== 0) return namaComp;
-
-          // 3. Tanggal (Terbaru di atas)
-          return (b.tanggal || '').localeCompare(a.tanggal || '');
+          // 3. Abjad Nama Santri (A-Z)
+          return (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' });
         });
       };
 
-      pelanggaranRows = sortAlpaList([
+      pelanggaranRows = sortPelanggaranList([
         ...((madinRows[0] || []).map((r: any) => mapSantriRow(r, 'Madin', 'Alpha'))),
         ...((quranRows[0] || []).map((r: any) => mapSantriRow(r, "Qur'an", 'Alpha'))),
         ...((kegiatanRows[0] || []).map((r: any) => mapSantriRow(r, 'Kegiatan', 'Alpha'))),
-        ...((pelanggaranRowsDb[0] || []).map((r: any) => mapSantriRow(r, 'Alpa', 'Alpha'))),
+        ...((pelanggaranRowsDb[0] || []).map((r: any) => mapSantriRow(r, 'Pelanggaran', r.status || 'Pelanggaran'))),
       ]);
     } catch (e) {
       console.warn('pelanggaran query error:', e);

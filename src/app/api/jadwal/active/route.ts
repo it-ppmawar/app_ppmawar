@@ -24,8 +24,26 @@ export async function GET() {
     const { role, guruId, kamarId } = payload as any;
 
     if (role === 'admin' || role === 'staff') {
+      const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
+      const resolvedAsrama = await resolveAsrama(payload.userId, role, payload.username || '', payload.namaAsrama || null);
       const { getActivePendingReminders } = await import('@/lib/jadwal/activeReminders');
-      const pendingReminders = await getActivePendingReminders();
+      let pendingReminders = await getActivePendingReminders();
+
+      if (role === 'staff' && resolvedAsrama) {
+        const asr = resolvedAsrama.toLowerCase();
+        if (asr === 'putra' || asr.includes('putra') || asr.includes('asrama a') || asr === 'a') {
+          pendingReminders = pendingReminders.filter(r => {
+            const k = (r.kelas_nama || '').toLowerCase();
+            return k.includes('putra') || k.startsWith('a-') || k.startsWith('a ') || k === 'asrama a' || /^[a][0-9]/i.test(k);
+          });
+        } else if (asr === 'putri' || asr.includes('putri') || asr.includes('asrama b') || asr.includes('asrama c') || asr.includes('asrama d') || asr.includes('asrama e') || asr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f'].includes(asr.trim())) {
+          pendingReminders = pendingReminders.filter(r => {
+            const k = (r.kelas_nama || '').toLowerCase();
+            return k.includes('putri') || (!k.includes('putra') && !k.startsWith('a-') && !k.startsWith('a ') && k !== 'asrama a');
+          });
+        }
+      }
+
       return NextResponse.json({
         success: true,
         activeSchedule: null,

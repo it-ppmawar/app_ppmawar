@@ -13,14 +13,30 @@ export async function GET() {
     const payload = verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
-    const { role, guruId, muridId, namaAsrama } = payload as any;
+    const { role, guruId, muridId, userId, username } = payload as any;
+    const tokenAsrama = (payload as any).namaAsrama || null;
+
+    const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
+    const namaAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
 
     let sql = 'SELECT m.murid_id, m.nama, m.no_wali, m.nama_wali, m.kelas_quran_id, m.kelas_madin_id, m.kamar_id FROM murid m';
     let params: any[] = [];
 
     if (role === 'admin' || role === 'staff') {
-      // Admin & staff: akses semua santri
-      sql += ' ORDER BY m.nama ASC';
+      // Admin: akses semua santri
+      // Staff: filter berdasarkan gender sesuai asrama/username
+      if (role === 'staff') {
+        const asr = (namaAsrama || '').toLowerCase();
+        if (asr === 'putra' || asr.includes('putra') || asr.includes('asrama a') || asr === 'a') {
+          sql += " WHERE m.jenis_kelamin = 'Laki-laki' ORDER BY m.nama ASC";
+        } else if (asr === 'putri' || asr.includes('putri') || asr.includes('asrama b') || asr.includes('asrama c') || asr.includes('asrama d') || asr.includes('asrama e') || asr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f'].includes(asr.trim())) {
+          sql += " WHERE m.jenis_kelamin = 'Perempuan' ORDER BY m.nama ASC";
+        } else {
+          sql += ' ORDER BY m.nama ASC';
+        }
+      } else {
+        sql += ' ORDER BY m.nama ASC';
+      }
     } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       // Pengurus asrama: hanya santri di asrama mereka
       if (namaAsrama) {
