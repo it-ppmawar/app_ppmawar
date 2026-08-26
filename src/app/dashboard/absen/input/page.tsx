@@ -693,39 +693,44 @@ function InputAbsenContent() {
         Deteksi lokasi diwajibkan untuk memastikan absensi dilakukan di area pesantren. Pastikan sakelar GPS di HP Anda sudah menyala dan izin lokasi di browser diberikan.
       </p>
       
-      <div className="flex flex-col sm:flex-row gap-2 pt-2 justify-center">
-        <button
-          type="button"
-          onClick={requestGpsLocation}
-          disabled={detectingLocation}
-          className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm disabled:opacity-50"
-        >
-          {detectingLocation ? (
-            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Mendeteksi GPS...</>
-          ) : (
-            <><MapPin className="w-3.5 h-3.5" /> Cek Ulang GPS</>
-          )}
-        </button>
-
+      <div className="flex flex-col gap-2 pt-2 justify-center">
+        {/* Baris 1: Panduan Buka Izin GPS — full width */}
         <button
           type="button"
           onClick={() => setShowGpsModal(true)}
-          className="py-2.5 px-4 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm"
+          className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm"
         >
           <HelpCircle className="w-3.5 h-3.5" /> Panduan Buka Izin GPS
         </button>
 
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="py-2.5 px-4 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Muat Ulang
-        </button>
+        {/* Baris 2: Cek Ulang GPS + Muat Ulang — berdampingan sama lebar */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={requestGpsLocation}
+            disabled={detectingLocation}
+            className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm disabled:opacity-50"
+          >
+            {detectingLocation ? (
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Mendeteksi...</>
+            ) : (
+              <><MapPin className="w-3.5 h-3.5" /> Cek Ulang GPS</>
+            )}
+          </button>
 
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="flex-1 py-2.5 px-4 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Muat Ulang
+          </button>
+        </div>
+
+        {/* Baris 3: Kembali — full width */}
         <Link
           href="/dashboard/absen"
-          className="py-2.5 px-4 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
+          className="w-full py-2.5 px-4 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
         >
           Kembali
         </Link>

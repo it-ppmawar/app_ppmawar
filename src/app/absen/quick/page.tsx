@@ -619,35 +619,37 @@ function QuickAbsenContent() {
             </div>
 
             {(error.toLowerCase().includes('gps') || error.toLowerCase().includes('lokasi')) && (
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-rose-900/60">
-                <button
-                  type="button"
-                  onClick={requestGpsPermission}
-                  disabled={detectingGps}
-                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-sm disabled:opacity-50"
-                >
-                  {detectingGps ? (
-                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Mendeteksi GPS...</>
-                  ) : (
-                    <><MapPin className="w-3.5 h-3.5" /> Cek Ulang GPS</>
-                  )}
-                </button>
-                
+              <div className="flex flex-col gap-2 pt-2 border-t border-rose-900/60">
+                {/* Baris 1: Panduan Buka Izin GPS — full width */}
                 <button
                   type="button"
                   onClick={() => setShowGpsModal(true)}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 border border-amber-500/40 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-sm"
+                  className="w-full px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 border border-amber-500/40 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm"
                 >
                   <HelpCircle className="w-3.5 h-3.5" /> Panduan Buka Izin GPS
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="px-3 py-2 bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Muat Ulang
-                </button>
+                {/* Baris 2: Cek Ulang GPS + Muat Ulang — berdampingan sama lebar */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={requestGpsPermission}
+                    disabled={detectingGps}
+                    className="flex-1 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm disabled:opacity-50"
+                  >
+                    {detectingGps ? (
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Mendeteksi...</>
+                    ) : (
+                      <><MapPin className="w-3.5 h-3.5" /> Cek Ulang GPS</>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="flex-1 px-3 py-2 bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Muat Ulang
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -658,7 +660,8 @@ function QuickAbsenContent() {
           <div className="flex items-center gap-2">
             <MapPin size={14} className={userLocation ? "text-emerald-400" : "text-amber-400"} />
             <span className="text-slate-300 text-[11px]">
-              Status GPS HP: {userLocation ? (
+              Status GPS HP:<br />
+              {userLocation ? (
                 <strong className="text-emerald-400">Terdeteksi &amp; Siap</strong>
               ) : detectingGps ? (
                 <strong className="text-cyan-400">Sedang Mendeteksi...</strong>
