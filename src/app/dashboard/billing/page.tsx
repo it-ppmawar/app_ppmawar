@@ -579,10 +579,15 @@ export default function BillingPage() {
       </div>
 
       {/* Info Notice */}
-      <div className="bg-amber-400 dark:bg-amber-500 border border-amber-500 dark:border-amber-400 rounded-2xl p-4 flex gap-3 text-sm shadow-md">
-        <AlertCircle className="text-amber-900 dark:text-amber-950 shrink-0 mt-0.5" size={20} />
-        <p className="text-amber-950 dark:text-amber-950 font-medium leading-relaxed">
-          <strong>⚠️ Perhatian:</strong> Data tagihan ini disinkronisasikan langsung dari sistem pusat Koperasi Mawar. Jika terdapat ketidaksesuaian data, silakan hubungi pihak pembayaran (Kasir) Kopma.
+      <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-3.5 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-8 h-8 bg-amber-200 dark:bg-amber-800/50 rounded-bl-full flex items-start justify-end p-1.5">
+          <span className="w-2 h-2 bg-amber-500 rounded-full mr-0.5 mt-0.5"></span>
+        </div>
+        <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 mb-1.5 flex items-center gap-1 uppercase tracking-wide">
+          <AlertCircle size={12} /> INFORMASI SINKRONISASI DATA
+        </p>
+        <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+          Data tagihan ini disinkronisasikan langsung dari sistem pusat <strong>Koperasi Mawar</strong>. Jika terdapat ketidaksesuaian data, silakan hubungi pihak pembayaran <strong>(Kasir) Kopma</strong>.
         </p>
       </div>
 

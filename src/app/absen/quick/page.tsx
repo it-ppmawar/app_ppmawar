@@ -888,7 +888,7 @@ function QuickAbsenContent() {
                   ) : (
                     <>
                       <Send size={15} />
-                      <span>Kirim Permohonan {izinStatus}</span>
+                      <span>Kirim Status {izinStatus}</span>
                     </>
                   )}
                 </button>

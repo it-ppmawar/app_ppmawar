@@ -1096,7 +1096,7 @@ function InputAbsenContent() {
               ) : (
                 <>
                   <Send size={16} />
-                  <span>Kirim Permohonan {izinStatus}</span>
+                  <span>Kirim Status {izinStatus}</span>
                 </>
               )}
             </button>
