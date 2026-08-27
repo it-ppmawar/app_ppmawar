@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight, ArrowUpDown, ArrowUp, ArrowDown, MapPin } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -56,28 +56,46 @@ function FormattedDateInput({
   min?: string;
   max?: string;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const formatDisplay = (valStr: string) => {
     if (!valStr || !/^\d{4}-\d{2}-\d{2}$/.test(valStr)) return 'Pilih Tanggal';
     const [y, m, d] = valStr.split('-');
-    return `${d}/${m}/${y}`; // Tanggal/Bulan/Tahun
+    return `${d}/${m}/${y}`; // Tanggal/Bulan/Tahun (DD/MM/YYYY)
+  };
+
+  const handleOpenPicker = () => {
+    if (inputRef.current) {
+      if ('showPicker' in HTMLInputElement.prototype && typeof inputRef.current.showPicker === 'function') {
+        try {
+          inputRef.current.showPicker();
+          return;
+        } catch (_) {}
+      }
+      inputRef.current.focus();
+      inputRef.current.click();
+    }
   };
 
   return (
     <div>
       <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">{label}</label>
-      <div className="relative flex items-center">
+      <div
+        onClick={handleOpenPicker}
+        className="relative flex items-center bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 justify-between cursor-pointer transition-all shadow-sm group select-none"
+      >
+        <span className="font-mono text-xs sm:text-sm">{formatDisplay(value)}</span>
+        <Calendar size={15} className="text-purple-500 group-hover:scale-110 shrink-0 ml-1.5 transition-transform" />
         <input
+          ref={inputRef}
           type="date"
           value={value}
           min={min}
           max={max}
           onChange={(e) => onChange(e.target.value)}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+          className="absolute inset-0 w-full h-full opacity-0 pointer-events-none -z-10"
+          tabIndex={-1}
         />
-        <div className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center justify-between pointer-events-none transition-all shadow-sm">
-          <span>{formatDisplay(value)}</span>
-          <Calendar size={14} className="text-purple-500 shrink-0 ml-1" />
-        </div>
       </div>
     </div>
   );
