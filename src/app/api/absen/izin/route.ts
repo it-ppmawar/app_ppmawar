@@ -82,11 +82,8 @@ export async function POST(request: Request) {
     const reasonText = (keterangan || '').trim() || (validStatus === 'Sakit' ? 'Sakit (Melalui Dashboard)' : 'Izin (Melalui Dashboard)');
 
     // Waktu & Tanggal saat ini (Asia/Jakarta / WIB)
-    const d = new Date();
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    const nowLocal = new Date(Date.now() - tzOffset);
-    const todayStr = nowLocal.toISOString().slice(0, 10);
-    const currentTimeStr = nowLocal.toISOString().slice(11, 19);
+    const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
+    const currentTimeStr = new Date().toLocaleTimeString('sv-SE', { timeZone: 'Asia/Jakarta', hour12: false });
 
     // Handle foto bukti jika format base64
     let savedFotoPath: string | null = null;

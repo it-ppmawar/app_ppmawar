@@ -440,11 +440,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // Get today's date in YYYY-MM-DD
-    const d = new Date();
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
-    const currentTime = (new Date(Date.now() - tzOffset)).toISOString().slice(11, 19);
+    // Get today's date and time in Asia/Jakarta (WIB)
+    const localISOTime = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
+    const currentTime = new Date().toLocaleTimeString('sv-SE', { timeZone: 'Asia/Jakarta', hour12: false });
 
     await connection.beginTransaction();
 

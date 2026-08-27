@@ -21,13 +21,7 @@ export async function POST(request: NextRequest) {
 
     const nowObj = new Date();
     const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(nowObj);
-    const now = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Jakarta',
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    }).format(nowObj);
+    const now = new Date().toLocaleTimeString('sv-SE', { timeZone: 'Asia/Jakarta', hour12: false });
 
     const hariIni = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(nowObj);
     const hariMap: Record<string, string> = {

@@ -29,7 +29,7 @@ export async function GET() {
     }
 
     const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
-    const currentTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', hour12: false }).format(new Date());
+    const currentTime = new Date().toLocaleTimeString('sv-SE', { timeZone: 'Asia/Jakarta', hour12: false }); // HH:mm:ss WIB
     const rawDay = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(new Date());
     const currentDay = rawDay === 'Minggu' ? 'Ahad' : rawDay;
 

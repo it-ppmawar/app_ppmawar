@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     const nowObj = new Date();
     const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(nowObj);
-    const now = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', hour12: false }).format(nowObj);
+    const now = new Date().toLocaleTimeString('sv-SE', { timeZone: 'Asia/Jakarta', hour12: false }); // HH:mm:ss WIB
 
     // Pembersihan String QR / Barcode
     const rawCode = String(barcodeData).trim();
