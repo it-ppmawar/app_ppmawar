@@ -42,6 +42,47 @@ const getFotoUrl = (fotoName: string | null) => {
   return `${baseUrl}${cleanFotoName}`;
 };
 
+// Komponen Input Tanggal dengan Format Tampilan Presisi: Tanggal/Bulan/Tahun (DD/MM/YYYY)
+function FormattedDateInput({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+}: {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  min?: string;
+  max?: string;
+}) {
+  const formatDisplay = (valStr: string) => {
+    if (!valStr || !/^\d{4}-\d{2}-\d{2}$/.test(valStr)) return 'Pilih Tanggal';
+    const [y, m, d] = valStr.split('-');
+    return `${d}/${m}/${y}`; // Tanggal/Bulan/Tahun
+  };
+
+  return (
+    <div>
+      <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">{label}</label>
+      <div className="relative flex items-center">
+        <input
+          type="date"
+          value={value}
+          min={min}
+          max={max}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+        />
+        <div className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center justify-between pointer-events-none transition-all shadow-sm">
+          <span>{formatDisplay(value)}</span>
+          <Calendar size={14} className="text-purple-500 shrink-0 ml-1" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RekapitulasiPage() {
   const [role, setRole] = useState('guru');
   const [loading, setLoading] = useState(true);
@@ -493,26 +534,18 @@ export default function RekapitulasiPage() {
             {modeRentang ? (
               /* Mode rentang tanggal */
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">Dari</label>
-                  <input
-                    type="date"
-                    value={filter.tanggal_dari}
-                    max={filter.tanggal_sampai}
-                    onChange={e => setFilter({ ...filter, tanggal_dari: e.target.value })}
-                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">Sampai</label>
-                  <input
-                    type="date"
-                    value={filter.tanggal_sampai}
-                    min={filter.tanggal_dari}
-                    onChange={e => setFilter({ ...filter, tanggal_sampai: e.target.value })}
-                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all"
-                  />
-                </div>
+                <FormattedDateInput
+                  label="Dari (Tgl/Bln/Thn)"
+                  value={filter.tanggal_dari}
+                  max={filter.tanggal_sampai}
+                  onChange={val => setFilter({ ...filter, tanggal_dari: val })}
+                />
+                <FormattedDateInput
+                  label="Sampai (Tgl/Bln/Thn)"
+                  value={filter.tanggal_sampai}
+                  min={filter.tanggal_dari}
+                  onChange={val => setFilter({ ...filter, tanggal_sampai: val })}
+                />
               </div>
             ) : (
               /* Mode bulan/tahun */
