@@ -7,14 +7,20 @@ import { verifyToken } from '@/lib/auth/jwt';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+const noCacheHeaders = {
+  'Cache-Control': 'no-store, max-age=0, must-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+};
+
 export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: noCacheHeaders });
 
     const payload = verifyToken(token);
-    if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
+    if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401, headers: noCacheHeaders });
 
     const { role, guruId, muridId } = payload as any;
 
@@ -351,10 +357,10 @@ export async function GET(request: Request) {
       ].sort((a, b) => new Date(b.raw_tanggal).getTime() - new Date(a.raw_tanggal).getTime());
     }
 
-    return NextResponse.json({ success: true, data: dataResult, summary });
+    return NextResponse.json({ success: true, data: dataResult, summary }, { headers: noCacheHeaders });
   } catch (error: any) {
     console.error('Error API Ketertiban:', error.message);
-    return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500, headers: noCacheHeaders });
   }
 }
 

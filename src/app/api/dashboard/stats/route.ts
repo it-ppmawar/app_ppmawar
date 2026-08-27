@@ -4,14 +4,23 @@ import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const noCacheHeaders = {
+  'Cache-Control': 'no-store, max-age=0, must-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+};
+
 export async function GET() {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: noCacheHeaders });
 
     const payload = verifyToken(token) as any;
-    if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
+    if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401, headers: noCacheHeaders });
 
     // Resolve namaAsrama untuk filter gender staff putra/putri
     const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
@@ -437,7 +446,7 @@ export async function GET() {
       },
       perizinanTerbaru: perizinanRows,
       pelanggaranTerbaru: pelanggaranRows,
-    });
+    }, { headers: noCacheHeaders });
 
   } catch (error: any) {
     console.error('[dashboard/stats] Fatal Error:', error.message);
@@ -457,6 +466,6 @@ export async function GET() {
       },
       perizinanTerbaru: [],
       pelanggaranTerbaru: []
-    }, { status: 200 });
+    }, { status: 200, headers: noCacheHeaders });
   }
 }
