@@ -194,6 +194,69 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Detail jadwal tidak ditemukan di DB' }, { status: 404 });
     }
 
+    // ====== VALIDASI WAKTU KETAT: cek window akses berdasarkan jadwal ======
+    try {
+      const nowWIB = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const todayWIB = nowWIB.toISOString().slice(0, 10); // YYYY-MM-DD
+
+      // Validasi tanggal: token harus untuk hari ini
+      if (targetDate !== todayWIB) {
+        return NextResponse.json({
+          error: `Link absensi ini untuk tanggal ${targetDate}, bukan hari ini (${todayWIB}). Silakan gunakan link terbaru.`
+        }, { status: 401 });
+      }
+
+      // Parse jam_mulai dan jam_selesai jadwal
+      const parseTimeSecs = (t: string): number => {
+        if (!t) return 0;
+        const parts = t.split(':').map(Number);
+        return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+      };
+
+      const nowSecs = nowWIB.getHours() * 3600 + nowWIB.getMinutes() * 60 + nowWIB.getSeconds();
+      const mulaiSecs = parseTimeSecs(jadwalDetail.jam_mulai);
+      const selesaiSecs = parseTimeSecs(jadwalDetail.jam_selesai);
+
+      // Window valid: waktu_mulai_absensi menit sebelum mulai s.d. selesai + waktu_tenggang_absensi jam
+      let waktuTenggangWindow = 3;
+      let waktuMulaiMinutes = 30;
+      try {
+        const [stgRows2] = await pool.execute<RowDataPacket[]>(
+          'SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ("waktu_tenggang_absensi", "waktu_mulai_absensi")'
+        );
+        stgRows2.forEach((row: any) => {
+          if (row.nama_pengaturan === 'waktu_tenggang_absensi') {
+            const p = parseInt(row.nilai);
+            if (!isNaN(p) && p > 0) waktuTenggangWindow = p;
+          } else if (row.nama_pengaturan === 'waktu_mulai_absensi') {
+            const p = parseInt(row.nilai);
+            if (!isNaN(p) && p >= 0) waktuMulaiMinutes = p;
+          }
+        });
+      } catch (_) {}
+
+      const windowStart = mulaiSecs - waktuMulaiMinutes * 60;
+      const windowEnd = selesaiSecs + waktuTenggangWindow * 3600;
+
+      if (nowSecs < windowStart) {
+        const selisihMenit = Math.ceil((windowStart - nowSecs) / 60);
+        return NextResponse.json({
+          error: `Absensi belum bisa diisi. Jadwal dimulai pukul ${jadwalDetail.jam_mulai}. Tautan ini dapat diakses ${waktuMulaiMinutes} menit sebelum jadwal dimulai (silakan coba ${selisihMenit} menit lagi).`
+        }, { status: 401 });
+      }
+
+      if (nowSecs > windowEnd) {
+        return NextResponse.json({
+          error: `Waktu absensi telah berakhir. Jadwal ${jadwalDetail.jam_mulai}–${jadwalDetail.jam_selesai} hanya dapat diakses maksimal hingga ${waktuTenggangWindow} jam setelah jam selesai.`
+        }, { status: 401 });
+      }
+    } catch (timeCheckErr) {
+      // Jika validasi waktu error, tetap lanjutkan (jangan block user)
+      console.warn('[quick-verify] Gagal validasi waktu:', timeCheckErr);
+    }
+    // ====== END VALIDASI WAKTU ======
+
+
     // Ambil data absensi yang sudah pernah tersimpan untuk tanggal ini dari semua jadwal_ids & jadwal kelompok (Team Teaching)
     let existingMap: { [murid_id: number]: string } = {};
     const jIds = jadwalDetail.jadwal_ids || [jadwal_id];

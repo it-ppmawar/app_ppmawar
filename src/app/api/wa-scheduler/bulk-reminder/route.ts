@@ -217,6 +217,17 @@ export async function POST(request: Request) {
       }));
     } else if (mode === 'all_schedules') {
       // 2. Ambil seluruh jadwal mingguan (semua hari) sesuai kategori terpilih untuk looping mingguan (weekly)
+      let dynamicWaktuTenggang = 3;
+      try {
+        const [stgRows] = await pool.execute<RowDataPacket[]>(
+          'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "waktu_tenggang_absensi" LIMIT 1'
+        );
+        if (stgRows.length > 0 && stgRows[0].nilai) {
+          const parsed = parseInt(stgRows[0].nilai);
+          if (!isNaN(parsed) && parsed > 0) dynamicWaktuTenggang = parsed;
+        }
+      } catch (_) {}
+
       const appendRows = (rows: any[], tipe: string) => {
         for (const row of rows) {
           const itemDay = row.hari || currentDay;
@@ -228,7 +239,7 @@ export async function POST(request: Request) {
             jadwal_id: Number(row.jadwal_id),
             tipe,
             date: itemDateStr,
-            waktu_tenggang: 3
+            waktu_tenggang: dynamicWaktuTenggang
           };
           const quick_token = signToken(quickPayload, '7d');
           const quick_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}`;

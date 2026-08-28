@@ -31,6 +31,11 @@ export async function POST(request: Request) {
     const currentTimeStr = new Date().toLocaleTimeString('sv-SE', { timeZone: 'Asia/Jakarta', hour12: false });
 
     const targetDate = date || todayStr;
+    if (targetDate !== todayStr) {
+      return NextResponse.json({
+        error: `Tautan izin ini untuk tanggal ${targetDate}, bukan hari ini (${todayStr}).`
+      }, { status: 401 });
+    }
 
     // Handle foto bukti jika dalam format base64
     let savedFotoPath: string | null = null;

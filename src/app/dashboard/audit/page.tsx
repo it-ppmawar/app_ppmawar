@@ -35,6 +35,64 @@ const AKSI_COLOR: Record<string, string> = {
   logout: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
 };
 
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Admin',
+  guru: 'Guru',
+  staff: 'Staff',
+  pengurus_asrama: 'Pengurus',
+  pengasuh: 'Pengasuh',
+  murid: 'Santri',
+  tamu: 'Tamu',
+};
+
+/**
+ * Ekstrak info kelas/kamar dari data_baru atau data_lama log
+ * Mengembalikan string ringkas seperti "Kelas: 1 MAK PUTRA | Kamar: Asrama A"
+ */
+function getDetailKelasKamar(log: AuditLog): string | null {
+  const data = log.data_baru || log.data_lama;
+  if (!data) return null;
+
+  let obj: any = null;
+  try {
+    obj = typeof data === 'string' ? JSON.parse(data) : data;
+  } catch {
+    return null;
+  }
+
+  if (!obj || typeof obj !== 'object') return null;
+
+  const parts: string[] = [];
+
+  // Kelas Madin
+  if (obj.kelas_madin || obj.nama_kelas) {
+    parts.push(`Kelas: ${obj.kelas_madin || obj.nama_kelas}`);
+  }
+  // Kelas Quran
+  if (obj.kelas_quran) {
+    parts.push(`Qur'an: ${obj.kelas_quran}`);
+  }
+  // Kamar / Asrama
+  if (obj.nama_kamar || obj.kamar) {
+    parts.push(`Kamar: ${obj.nama_kamar || obj.kamar}`);
+  }
+  // Line/tipe (madin/quran/kegiatan)
+  if (obj.line && !parts.length) {
+    parts.push(`Tipe: ${obj.line}`);
+  }
+  // Tanggal absen jika ada
+  if (obj.tanggal) {
+    parts.push(`Tgl: ${obj.tanggal}`);
+  }
+  // Jumlah santri (untuk simpan_absen bulk)
+  if (obj.jumlah !== undefined) {
+    parts.push(`${obj.jumlah} santri`);
+  }
+
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+
 export default function AuditLogPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,6 +312,14 @@ export default function AuditLogPage() {
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       <p className="text-xs text-gray-600 dark:text-gray-400 max-w-xs truncate">{log.keterangan || '—'}</p>
+                      {(() => {
+                        const detail = getDetailKelasKamar(log);
+                        return detail ? (
+                          <p className="text-[10px] text-indigo-500 dark:text-indigo-400 mt-0.5 max-w-xs truncate" title={detail}>
+                            📋 {detail}
+                          </p>
+                        ) : null;
+                      })()}
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       <code className="text-[11px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
@@ -320,7 +386,7 @@ export default function AuditLogPage() {
             <div className="p-5 space-y-3">
               {[
                 ['Waktu', formatDate(selectedLog.created_at)],
-                ['User', `${selectedLog.user_nama} (${selectedLog.user_role})`],
+                ['User', `${selectedLog.user_nama} (${ROLE_LABEL[selectedLog.user_role] || selectedLog.user_role})`],
                 ['Aksi', AKSI_LABEL[selectedLog.aksi] || selectedLog.aksi],
                 ['Tabel', selectedLog.tabel],
                 ['Record ID', selectedLog.record_id?.toString() || '—'],
@@ -332,6 +398,18 @@ export default function AuditLogPage() {
                   <span className="text-xs text-gray-800 dark:text-gray-200">{value}</span>
                 </div>
               ))}
+
+              {/* Info Kelas / Kamar (jika ada di data) */}
+              {(() => {
+                const detail = getDetailKelasKamar(selectedLog);
+                return detail ? (
+                  <div className="flex gap-3">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 w-24 shrink-0">Kelas/Kamar</span>
+                    <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">{detail}</span>
+                  </div>
+                ) : null;
+              })()}
+
               {selectedLog.data_baru && (
                 <div>
                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Data Baru</p>

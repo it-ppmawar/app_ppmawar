@@ -3,6 +3,7 @@ import pool from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { signToken } from '@/lib/auth/jwt';
 import { RowDataPacket } from 'mysql2';
+import { logAudit } from '@/lib/audit';
 
 export async function POST(request: Request) {
   try {
@@ -154,7 +155,23 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 // 1 hari
     });
 
+    // Catat aksi login ke audit log
+    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || '';
+    logAudit({
+      userId: payload.userId,
+      userNama: user.nama || payload.username,
+      userRole: userRole,
+      aksi: 'login',
+      tabel: 'users',
+      recordId: payload.userId,
+      keterangan: `Login berhasil sebagai ${userRole} (username: ${payload.username})`,
+      ipAddress,
+    }).catch(() => {});
+
     return response;
+
   } catch (error: any) {
     console.error('Login Error:', error);
     return NextResponse.json({ error: 'Terjadi kesalahan internal server: ' + (error?.message || String(error)) }, { status: 500 });

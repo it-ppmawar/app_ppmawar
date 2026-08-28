@@ -843,6 +843,9 @@ export default function DataMuridPage() {
               onClick={() => {
                 setCurrentPage(1);
                 setShowAll(true);
+                // Hapus isian pencarian agar semua santri terpilih bisa tampil tanpa diblokir filter search
+                setSearch('');
+                setDebouncedSearch('');
                 setFilterOnlySelected(prev => !prev);
               }}
               className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-sm flex items-center justify-center gap-2 active:scale-95 ${

@@ -72,16 +72,22 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
 
     const allActiveSchedules: ActivePendingReminder[] = [];
 
-    // Fetch pengaturan waktu tenggang
+    // Fetch pengaturan waktu tenggang & waktu mulai
     let waktuTenggang = 3;
+    let waktuMulai = 30;
     try {
       const [stgRows] = await pool.execute<RowDataPacket[]>(
-        'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "waktu_tenggang_absensi" LIMIT 1'
+        'SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ("waktu_tenggang_absensi", "waktu_mulai_absensi")'
       );
-      if (stgRows.length > 0 && stgRows[0].nilai) {
-        const parsed = parseInt(stgRows[0].nilai);
-        if (!isNaN(parsed) && parsed > 0) waktuTenggang = parsed;
-      }
+      stgRows.forEach((row: any) => {
+        if (row.nama_pengaturan === 'waktu_tenggang_absensi') {
+          const p = parseInt(row.nilai);
+          if (!isNaN(p) && p > 0) waktuTenggang = p;
+        } else if (row.nama_pengaturan === 'waktu_mulai_absensi') {
+          const p = parseInt(row.nilai);
+          if (!isNaN(p) && p >= 0) waktuMulai = p;
+        }
+      });
     } catch (_) {}
 
     const processRows = (rows: any[], tipe: 'madin' | 'quran' | 'kamar') => {
@@ -89,8 +95,8 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
         const mulaiSecs = parseTime(row.jam_mulai);
         const selesaiSecs = parseTime(row.jam_selesai);
 
-        // Window: 30 minutes before to waktuTenggang hours after
-        const windowStart = mulaiSecs - 30 * 60;
+        // Window: waktuMulai menit sebelum mulai sampai waktuTenggang jam setelah selesai
+        const windowStart = mulaiSecs - waktuMulai * 60;
         const windowEnd = selesaiSecs + waktuTenggang * 3600;
 
         if (currentSecs >= windowStart && currentSecs <= windowEnd) {
