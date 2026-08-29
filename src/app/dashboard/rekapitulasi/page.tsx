@@ -1159,14 +1159,14 @@ export default function RekapitulasiPage() {
             </div>
 
             {/* Modal Body / Content */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 space-y-3 min-h-[300px]">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 space-y-3 min-h-[320px] w-full">
               {detailModal.loading ? (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+                <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3 w-full">
                   <Loader2 className="animate-spin text-purple-600 dark:text-purple-400" size={32} />
                   <p className="text-sm font-semibold text-gray-500">Memuat rincian absensi...</p>
                 </div>
               ) : detailModal.error ? (
-                <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-center">
+                <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-center w-full">
                   <AlertCircle size={28} className="mx-auto text-red-500 mb-2" />
                   <p className="text-sm font-bold text-red-700 dark:text-red-300">{detailModal.error}</p>
                 </div>
@@ -1177,7 +1177,7 @@ export default function RekapitulasiPage() {
 
                 if (list.length === 0) {
                   return (
-                    <div className="flex flex-col items-center justify-center py-20 text-gray-400 text-center">
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-400 text-center w-full">
                       <CalendarDays size={38} className="mx-auto mb-2.5 text-gray-300 dark:text-gray-600" />
                       <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Tidak ada catatan absensi</p>
                       <p className="text-xs text-gray-400 mt-1 max-w-sm">
@@ -1189,16 +1189,16 @@ export default function RekapitulasiPage() {
 
                 return (
                   <div className="overflow-x-auto w-full border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm bg-white dark:bg-gray-800">
-                    <table className="w-full min-w-[680px] text-left text-xs sm:text-sm">
+                    <table className="w-full min-w-[860px] text-left text-xs sm:text-sm">
                       <thead className="bg-gray-50 dark:bg-gray-900/70 text-gray-500 dark:text-gray-400 font-bold uppercase text-[11px] border-b border-gray-100 dark:border-gray-700">
                         <tr>
-                          <th className="py-3 px-4 text-center w-12">No</th>
-                          <th className="py-3 px-4">Hari, Tanggal</th>
-                          <th className="py-3 px-4">Waktu</th>
-                          <th className="py-3 px-4">Jadwal / Mapel / Kegiatan</th>
-                          <th className="py-3 px-4 text-center">Status</th>
-                          <th className="py-3 px-4">Keterangan</th>
-                          <th className="py-3 px-4">Diinput Oleh</th>
+                          <th className="py-3 px-4 text-center w-12 min-w-[48px]">No</th>
+                          <th className="py-3 px-4 w-[160px] min-w-[160px]">Hari, Tanggal</th>
+                          <th className="py-3 px-4 w-[130px] min-w-[130px]">Waktu</th>
+                          <th className="py-3 px-4 w-[260px] min-w-[260px]">Jadwal / Mapel / Kegiatan</th>
+                          <th className="py-3 px-4 text-center w-[100px] min-w-[100px]">Status</th>
+                          <th className="py-3 px-4 w-[140px] min-w-[140px]">Keterangan</th>
+                          <th className="py-3 px-4 w-[150px] min-w-[150px]">Diinput Oleh</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -1225,9 +1225,9 @@ export default function RekapitulasiPage() {
                                 </div>
                               </td>
                               <td className="py-3 px-4">
-                                <div className="font-bold text-gray-900 dark:text-white">{row.mata_pelajaran}</div>
+                                <div className="font-bold text-gray-900 dark:text-white leading-snug">{row.mata_pelajaran}</div>
                                 {row.kelas_nama && row.kelas_nama !== '-' && (
-                                  <div className="text-[11px] text-gray-400">{row.kelas_nama}</div>
+                                  <div className="text-[11px] text-gray-400 mt-0.5">{row.kelas_nama}</div>
                                 )}
                               </td>
                               <td className="py-3 px-4 text-center whitespace-nowrap">
