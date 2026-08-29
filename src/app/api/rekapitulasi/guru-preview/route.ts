@@ -46,10 +46,10 @@ export async function GET(request: Request) {
     // 2. Ambil ringkasan kehadiran mengajar guru di bulan & tahun ini
     const [absensiGuruRows] = await pool.execute<RowDataPacket[]>(
       `SELECT 
-        SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-        SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-        SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-        SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+        SUM(CASE WHEN LOWER(status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+        SUM(CASE WHEN LOWER(status) = 'izin' THEN 1 ELSE 0 END) as izin,
+        SUM(CASE WHEN LOWER(status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+        SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') OR status = '' OR status IS NULL THEN 1 ELSE 0 END) as alpha,
         COUNT(*) as total_sesi
        FROM absensi_guru 
        WHERE guru_id = ? AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?`,
@@ -95,10 +95,10 @@ export async function GET(request: Request) {
       for (const item of Array.from(madinMap.values())) {
         const [students] = await pool.execute<RowDataPacket[]>(
           `SELECT m.murid_id as id, m.nis, m.nama, m.foto, m.jenis_kelamin,
-            COUNT(DISTINCT CASE WHEN att.status = 'Hadir' THEN att.tanggal END) as hadir,
-            SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
-            SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-            SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
+            COUNT(DISTINCT CASE WHEN LOWER(att.status) = 'hadir' THEN att.tanggal END) as hadir,
+            SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+            SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
            FROM murid m
            LEFT JOIN (
              SELECT murid_id, tanggal, status FROM absensi 
@@ -147,10 +147,10 @@ export async function GET(request: Request) {
       for (const item of Array.from(quranMap.values())) {
         const [students] = await pool.execute<RowDataPacket[]>(
           `SELECT m.murid_id as id, m.nis, m.nama, m.foto, m.jenis_kelamin,
-            COUNT(DISTINCT CASE WHEN att.status = 'Hadir' THEN att.tanggal END) as hadir,
-            SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
-            SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-            SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
+            COUNT(DISTINCT CASE WHEN LOWER(att.status) = 'hadir' THEN att.tanggal END) as hadir,
+            SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+            SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
            FROM murid m
            LEFT JOIN (
              SELECT murid_id, tanggal, status FROM absensi_quran 
@@ -199,10 +199,10 @@ export async function GET(request: Request) {
       for (const item of Array.from(kamarMap.values())) {
         const [students] = await pool.execute<RowDataPacket[]>(
           `SELECT m.murid_id as id, m.nis, m.nama, m.foto, m.jenis_kelamin,
-            COUNT(DISTINCT CASE WHEN att.status = 'Hadir' THEN att.tanggal END) as hadir,
-            SUM(CASE WHEN a.status = 'Izin' THEN 1 ELSE 0 END) as izin,
-            SUM(CASE WHEN a.status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-            SUM(CASE WHEN a.status = 'Alpha' THEN 1 ELSE 0 END) as alpha
+            COUNT(DISTINCT CASE WHEN LOWER(att.status) = 'hadir' THEN att.tanggal END) as hadir,
+            SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+            SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
            FROM murid m
            LEFT JOIN (
              SELECT murid_id, tanggal, status FROM absensi_kegiatan 

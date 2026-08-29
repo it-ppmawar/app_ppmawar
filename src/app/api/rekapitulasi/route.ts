@@ -60,7 +60,7 @@ export async function GET(request: Request) {
           SUM(CASE WHEN LOWER(status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
           SUM(CASE WHEN LOWER(status) = 'izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN LOWER(status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha
+          SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') OR status = '' OR status IS NULL THEN 1 ELSE 0 END) as alpha
          FROM absensi WHERE murid_id = ? AND ${dateCondMadin}`,
         dateParamsMadin
       );
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
           SUM(CASE WHEN LOWER(status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
           SUM(CASE WHEN LOWER(status) = 'izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN LOWER(status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha
+          SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') OR status = '' OR status IS NULL THEN 1 ELSE 0 END) as alpha
          FROM absensi_quran WHERE murid_id = ? AND ${dateCondQuran}`,
         dateParamsQuran
       );
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
           SUM(CASE WHEN LOWER(status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
           SUM(CASE WHEN LOWER(status) = 'izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN LOWER(status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha
+          SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') OR status = '' OR status IS NULL THEN 1 ELSE 0 END) as alpha
          FROM absensi_kegiatan WHERE murid_id = ? AND ${dateCondKegiatan}`,
         dateParamsKegiatan
       );
@@ -141,7 +141,7 @@ export async function GET(request: Request) {
           COUNT(DISTINCT att.tanggal) as hadir,
           SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha
+          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
         FROM murid m
         LEFT JOIN kelas_madin km ON (m.kelas_madin_id = km.kelas_id OR m.kelas_madin_2_id = km.kelas_id)
         LEFT JOIN (
@@ -186,7 +186,7 @@ export async function GET(request: Request) {
           COUNT(DISTINCT att.tanggal) as hadir,
           SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha
+          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
         FROM murid m
         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
         LEFT JOIN (
@@ -249,7 +249,7 @@ export async function GET(request: Request) {
           COUNT(DISTINCT att.tanggal) as hadir,
           SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha
+          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
         FROM murid m
         LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
         LEFT JOIN (
@@ -275,7 +275,7 @@ export async function GET(request: Request) {
             SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
             SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
             SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha
+            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
           FROM guru g
           LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${joinDateCond}
           WHERE g.guru_id = ?
@@ -289,7 +289,7 @@ export async function GET(request: Request) {
             SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
             SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
             SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha
+            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
           FROM guru g
           LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${joinDateCond}
           GROUP BY g.guru_id, g.nip, g.nama, g.foto, g.alamat, g.no_hp

@@ -189,7 +189,14 @@ export async function GET(request: Request) {
     const [existing] = await pool.execute<RowDataPacket[]>(existingQuery, existingParams);
     
     const existingMap = existing.reduce((acc: any, curr: any) => {
-      acc[curr.murid_id] = { status: curr.status, keterangan: curr.keterangan || '' };
+      let st = (curr.status || '').toString().trim();
+      const stLower = st.toLowerCase();
+      if (stLower === 'izin') st = 'Izin';
+      else if (stLower === 'sakit') st = 'Sakit';
+      else if (stLower === 'alpha' || stLower === 'alpa' || st === '') st = 'Alpha';
+      else st = 'Hadir';
+
+      acc[curr.murid_id] = { status: st, keterangan: curr.keterangan || '' };
       return acc;
     }, {});
 
@@ -505,11 +512,17 @@ export async function POST(request: Request) {
     // 2. Insert new attendance & update nickname for target schedules
     for (const jId of targetJadwalIds) {
       for (const item of absensi) {
+        let cleanStatus = 'Hadir';
+        const stLower = (item.status || '').toString().trim().toLowerCase();
+        if (stLower === 'izin') cleanStatus = 'Izin';
+        else if (stLower === 'sakit') cleanStatus = 'Sakit';
+        else if (stLower === 'alpha' || stLower === 'alpa' || stLower === '') cleanStatus = 'Alpha';
+
         await connection.execute(insertQuery, [
           jId,
           item.murid_id,
           localISOTime,
-          item.status,
+          cleanStatus,
           item.keterangan || ''
         ]);
 

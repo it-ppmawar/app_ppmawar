@@ -175,7 +175,7 @@ export async function GET() {
           SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
           SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha,
+          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
           COUNT(*) as total
         FROM absensi a${genderWhereJoin}
         WHERE a.tanggal = ?
@@ -192,7 +192,7 @@ export async function GET() {
           SUM(CASE WHEN LOWER(aq.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
           SUM(CASE WHEN LOWER(aq.status) = 'izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN LOWER(aq.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(aq.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha,
+          SUM(CASE WHEN LOWER(aq.status) IN ('alpha', 'alpa') OR aq.status = '' OR aq.status IS NULL THEN 1 ELSE 0 END) as alpha,
           COUNT(*) as total
         FROM absensi_quran aq${genderWhereJoinAq}
         WHERE aq.tanggal = ?
@@ -209,7 +209,7 @@ export async function GET() {
           SUM(CASE WHEN LOWER(ak.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
           SUM(CASE WHEN LOWER(ak.status) = 'izin' THEN 1 ELSE 0 END) as izin,
           SUM(CASE WHEN LOWER(ak.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(ak.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha,
+          SUM(CASE WHEN LOWER(ak.status) IN ('alpha', 'alpa') OR ak.status = '' OR ak.status IS NULL THEN 1 ELSE 0 END) as alpha,
           COUNT(*) as total
         FROM absensi_kegiatan ak${genderWhereJoinAk}
         WHERE ak.tanggal = ?
@@ -366,7 +366,7 @@ export async function GET() {
            FROM absensi a 
            JOIN murid m ON a.murid_id = m.murid_id 
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           WHERE LOWER(a.status) IN ('alpha', 'alpa') AND a.tanggal IN (${datePlaceholders})${genderCondition}
+           WHERE (LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL) AND a.tanggal IN (${datePlaceholders})${genderCondition}
            ORDER BY a.tanggal DESC, m.nama ASC`,
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
@@ -376,7 +376,7 @@ export async function GET() {
            FROM absensi_quran aq 
            JOIN murid m ON aq.murid_id = m.murid_id 
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND aq.tanggal IN (${datePlaceholders})${genderCondition}
+           WHERE (LOWER(aq.status) IN ('alpha', 'alpa') OR aq.status = '' OR aq.status IS NULL) AND aq.tanggal IN (${datePlaceholders})${genderCondition}
            ORDER BY aq.tanggal DESC, m.nama ASC`,
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
@@ -386,7 +386,7 @@ export async function GET() {
            FROM absensi_kegiatan ak 
            JOIN murid m ON ak.murid_id = m.murid_id 
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ak.tanggal IN (${datePlaceholders})${genderCondition}
+           WHERE (LOWER(ak.status) IN ('alpha', 'alpa') OR ak.status = '' OR ak.status IS NULL) AND ak.tanggal IN (${datePlaceholders})${genderCondition}
            ORDER BY ak.tanggal DESC, m.nama ASC`,
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),

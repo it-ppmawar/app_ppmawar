@@ -80,6 +80,11 @@ export async function GET(request: Request) {
       }
     }
 
+    // Self-healing: jika terdapat data absensi berstatus kosong/blank, otomatis perbaiki ke 'Alpha'
+    pool.execute("UPDATE absensi SET status = 'Alpha' WHERE status = '' OR status IS NULL OR TRIM(status) = ''").catch(() => {});
+    pool.execute("UPDATE absensi_quran SET status = 'Alpha' WHERE status = '' OR status IS NULL OR TRIM(status) = ''").catch(() => {});
+    pool.execute("UPDATE absensi_kegiatan SET status = 'Alpha' WHERE status = '' OR status IS NULL OR TRIM(status) = ''").catch(() => {});
+
     // ─── Hitung ringkasan total (Izin, Sakit, Alpa, Pelanggaran) ───
     const [
       madinIzinRes, madinSakitRes, quranIzinRes, quranSakitRes,
@@ -95,9 +100,9 @@ export async function GET(request: Request) {
       pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE LOWER(ak.status) = 'sakit' AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
       pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (LOWER(p.jenis) LIKE '%izin%' AND LOWER(p.jenis) NOT LIKE '%sakit%') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
       pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (LOWER(p.jenis) LIKE '%sakit%' AND LOWER(p.jenis) NOT LIKE '%izin%') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
-      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE LOWER(a.status) IN ('alpha', 'alpa') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
-      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
-      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi a JOIN murid m ON a.murid_id = m.murid_id WHERE (LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL) AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_quran aq JOIN murid m ON aq.murid_id = m.murid_id WHERE (LOWER(aq.status) IN ('alpha', 'alpa') OR aq.status = '' OR aq.status IS NULL) AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
+      pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM absensi_kegiatan ak JOIN murid m ON ak.murid_id = m.murid_id WHERE (LOWER(ak.status) IN ('alpha', 'alpa') OR ak.status = '' OR ak.status IS NULL) AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
       pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE (LOWER(p.jenis) LIKE '%alpa%' OR LOWER(p.jenis) LIKE '%alpha%' OR LOWER(p.jenis) LIKE '%tidak hadir%') AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
       pool.execute<RowDataPacket[]>(`SELECT COUNT(*) as c FROM pelanggaran p JOIN murid m ON p.murid_id = m.murid_id WHERE LOWER(p.jenis) NOT LIKE '%alpa%' AND LOWER(p.jenis) NOT LIKE '%alpha%' AND LOWER(p.jenis) NOT LIKE '%hadir%' AND LOWER(p.jenis) NOT LIKE '%izin%' AND LOWER(p.jenis) NOT LIKE '%sakit%' AND LOWER(p.jenis) NOT LIKE '%tidak hadir%' AND ${muridFilter}`, queryParams).catch(() => [[{ c: 0 }]] as any),
     ]);
@@ -219,7 +224,7 @@ export async function GET(request: Request) {
            FROM absensi a 
            JOIN murid m ON a.murid_id = m.murid_id 
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           WHERE LOWER(a.status) IN ('alpha', 'alpa') AND ${muridFilter} 
+           WHERE (LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL) AND ${muridFilter} 
            ORDER BY a.tanggal DESC LIMIT 200`,
           queryParams
         ).catch(() => [[] as RowDataPacket[]]),
@@ -229,7 +234,7 @@ export async function GET(request: Request) {
            FROM absensi_quran aq 
            JOIN murid m ON aq.murid_id = m.murid_id 
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           WHERE LOWER(aq.status) IN ('alpha', 'alpa') AND ${muridFilter} 
+           WHERE (LOWER(aq.status) IN ('alpha', 'alpa') OR aq.status = '' OR aq.status IS NULL) AND ${muridFilter} 
            ORDER BY aq.tanggal DESC LIMIT 200`,
           queryParams
         ).catch(() => [[] as RowDataPacket[]]),
@@ -239,7 +244,7 @@ export async function GET(request: Request) {
            FROM absensi_kegiatan ak 
            JOIN murid m ON ak.murid_id = m.murid_id 
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE LOWER(ak.status) IN ('alpha', 'alpa') AND ${muridFilter} 
+           WHERE (LOWER(ak.status) IN ('alpha', 'alpa') OR ak.status = '' OR ak.status IS NULL) AND ${muridFilter} 
            ORDER BY ak.tanggal DESC LIMIT 200`,
           queryParams
         ).catch(() => [[] as RowDataPacket[]]),

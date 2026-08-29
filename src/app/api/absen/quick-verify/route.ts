@@ -305,7 +305,11 @@ export async function POST(request: Request) {
     if (existingQuery) {
       const [existingRows] = await pool.execute<RowDataPacket[]>(existingQuery, [...siblingJadwalIds, targetDate]);
       (existingRows || []).forEach(r => {
-        existingMap[r.murid_id] = r.status.toLowerCase();
+        const rawSt = (r.status || '').toString().trim().toLowerCase();
+        if (rawSt === 'izin') existingMap[r.murid_id] = 'izin';
+        else if (rawSt === 'sakit') existingMap[r.murid_id] = 'sakit';
+        else if (rawSt === 'alpha' || rawSt === 'alpa' || rawSt === '') existingMap[r.murid_id] = 'alpha';
+        else existingMap[r.murid_id] = 'hadir';
       });
     }
 

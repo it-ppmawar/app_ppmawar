@@ -181,7 +181,18 @@ export async function GET() {
       "ALTER TABLE webauthn_credentials CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
 
       // 24. Konversi database level ke utf8mb4
-      "ALTER DATABASE ppmawaro_app_ppma CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+      "ALTER DATABASE ppmawaro_app_ppma CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+
+      // 25. Self-Healing: Normalisasi kolom status absensi yang blank/null ke 'Alpha'
+      //     Terjadi karena MySQL ENUM non-strict mode menyimpan '' (empty) untuk nilai tidak valid
+      "UPDATE absensi SET status = 'Alpha' WHERE status = '' OR status IS NULL OR TRIM(status) = '';",
+      "UPDATE absensi_quran SET status = 'Alpha' WHERE status = '' OR status IS NULL OR TRIM(status) = '';",
+      "UPDATE absensi_kegiatan SET status = 'Alpha' WHERE status = '' OR status IS NULL OR TRIM(status) = '';",
+
+      // 26. Normalisasi huruf: 'alpha' / 'alpa' (lowercase) → 'Alpha' (titlecase)
+      "UPDATE absensi SET status = 'Alpha' WHERE LOWER(status) IN ('alpha', 'alpa') AND status != 'Alpha';",
+      "UPDATE absensi_quran SET status = 'Alpha' WHERE LOWER(status) IN ('alpha', 'alpa') AND status != 'Alpha';",
+      "UPDATE absensi_kegiatan SET status = 'Alpha' WHERE LOWER(status) IN ('alpha', 'alpa') AND status != 'Alpha';"
     ];
 
     let results = [];
