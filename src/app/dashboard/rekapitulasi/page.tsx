@@ -103,7 +103,7 @@ function FormattedDateInput({
 
 export default function RekapitulasiPage() {
   const [role, setRole] = useState('guru');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   
@@ -421,6 +421,57 @@ export default function RekapitulasiPage() {
       exportToExcel({ title, subtitle, period, columns: tableColumn, rows: tableRows, filename });
     } else {
       const result = exportToPDF({ title, subtitle, period, columns: tableColumn, rows: tableRows, filename, previewOnly });
+      if (previewOnly && result) {
+        setPdfUrl(result);
+        setShowPdfPreview(true);
+      }
+    }
+  };
+
+  const handleExportDetail = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
+    if (!detailModal || detailModal.data.length === 0) {
+      alert('Tidak ada data absensi untuk diexport.');
+      return;
+    }
+
+    const list = detailModal.activeStatus === 'semua'
+      ? detailModal.data
+      : detailModal.data.filter((d: any) => d.status === detailModal.activeStatus);
+
+    if (list.length === 0) {
+      alert(`Tidak ada data untuk status ${detailModal.activeStatus}.`);
+      return;
+    }
+
+    const item = detailModal.item;
+    const isGuru = filter.tipe === 'guru';
+    const tipeLabel = filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan Asrama' : 'Guru / Pengajar';
+
+    const title = 'RINCIAN KEHADIRAN INDIVIDUAL';
+    const subtitle = `Nama: ${item.nama}\n${isGuru ? 'NIP' : 'NIS'}: ${item.identifier || '-'}\nKategori: ${tipeLabel}${detailModal.activeStatus !== 'semua' ? `\nFilter Status: ${detailModal.activeStatus}` : ''}`;
+    const period = getPeriodText();
+    const safeNama = (item.nama || 'Individu').replace(/[^a-zA-Z0-9]/g, '_');
+    const safePeriod = modeRentang
+      ? `${filter.tanggal_dari}_sd_${filter.tanggal_sampai}`
+      : `${months[parseInt(filter.bulan) - 1]}_${filter.tahun}`;
+    const filename = `Rincian_Absensi_${safeNama}_${safePeriod}`;
+
+    const columns = ['No', 'Hari, Tanggal', 'Waktu', 'Jadwal / Mapel / Kegiatan', 'Kelas / Kamar', 'Status', 'Keterangan', 'Diinput Oleh'];
+    const rows = list.map((r: any, idx: number) => [
+      idx + 1,
+      `${r.hari}, ${r.tanggal}`,
+      r.jam_mulai ? `${r.jam_mulai}${r.jam_selesai ? ` - ${r.jam_selesai}` : ''}` : '-',
+      r.mata_pelajaran || '-',
+      r.kelas_nama || '-',
+      r.status || '-',
+      r.keterangan || '-',
+      r.penginput || '-',
+    ]);
+
+    if (format === 'excel') {
+      exportToExcel({ title, subtitle, period, columns, rows, filename });
+    } else {
+      const result = exportToPDF({ title, subtitle, period, columns, rows, filename, previewOnly });
       if (previewOnly && result) {
         setPdfUrl(result);
         setShowPdfPreview(true);
@@ -1030,14 +1081,40 @@ export default function RekapitulasiPage() {
                 </div>
               </div>
 
-              {/* Close Button */}
-              <button
-                onClick={() => setDetailModal(null)}
-                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors shrink-0"
-                title="Tutup (Esc)"
-              >
-                <X size={18} />
-              </button>
+              {/* Action Buttons: Preview, PDF, Excel & Close */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <button
+                  onClick={() => handleExportDetail('pdf', true)}
+                  className="bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-bold py-1.5 px-2.5 sm:px-3 rounded-xl text-xs transition-colors flex items-center gap-1.5 border border-purple-200 dark:border-purple-800/60 cursor-pointer shadow-sm"
+                  title="Preview PDF Rincian Kehadiran"
+                >
+                  <Eye size={14} />
+                  <span className="hidden sm:inline">Preview</span>
+                </button>
+                <button
+                  onClick={() => handleExportDetail('pdf', false)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-2.5 sm:px-3 rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-purple-500/20"
+                  title="Unduh PDF Rincian Kehadiran"
+                >
+                  <Download size={14} />
+                  <span className="hidden sm:inline">PDF</span>
+                </button>
+                <button
+                  onClick={() => handleExportDetail('excel', false)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-2.5 sm:px-3 rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20"
+                  title="Unduh Excel Rincian Kehadiran"
+                >
+                  <Download size={14} />
+                  <span className="hidden sm:inline">Excel</span>
+                </button>
+                <button
+                  onClick={() => setDetailModal(null)}
+                  className="p-1.5 sm:p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors ml-1 cursor-pointer shrink-0"
+                  title="Tutup (Esc)"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Filter Tabs Status */}
