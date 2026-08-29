@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight, ArrowUpDown, ArrowUp, ArrowDown, MapPin } from 'lucide-react';
+import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight, ArrowUpDown, ArrowUp, ArrowDown, MapPin, List, ChevronRight, CheckCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
@@ -113,6 +113,15 @@ export default function RekapitulasiPage() {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+
+  // Modal Detail Absensi
+  const [detailModal, setDetailModal] = useState<{
+    item: any;
+    data: any[];
+    loading: boolean;
+    error: string;
+    activeStatus: string; // 'semua' | 'Hadir' | 'Izin' | 'Sakit' | 'Alpha'
+  } | null>(null);
 
   // Filter pencarian nama / nis / wali / alamat (client-side)
   const [searchNama, setSearchNama] = useState('');
@@ -254,6 +263,55 @@ export default function RekapitulasiPage() {
       setErrorMsg('Terjadi kesalahan jaringan');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openDetail = async (item: any, initialStatus: string = 'semua') => {
+    setDetailModal({
+      item,
+      data: [],
+      loading: true,
+      error: '',
+      activeStatus: initialStatus,
+    });
+
+    try {
+      let qs: string;
+      if (modeRentang) {
+        const p = new URLSearchParams({
+          tipe: filter.tipe,
+          tanggal_dari: filter.tanggal_dari,
+          tanggal_sampai: filter.tanggal_sampai,
+        });
+        if (filter.tipe === 'guru') {
+          p.set('guru_id', item.id.toString());
+        } else {
+          p.set('murid_id', item.id.toString());
+        }
+        qs = p.toString();
+      } else {
+        const p = new URLSearchParams({
+          tipe: filter.tipe,
+          bulan: filter.bulan,
+          tahun: filter.tahun,
+        });
+        if (filter.tipe === 'guru') {
+          p.set('guru_id', item.id.toString());
+        } else {
+          p.set('murid_id', item.id.toString());
+        }
+        qs = p.toString();
+      }
+
+      const res = await fetch(`/api/rekapitulasi/detail?${qs}`);
+      const json = await res.json();
+      if (json.success) {
+        setDetailModal(prev => prev ? { ...prev, data: json.data || [], loading: false } : null);
+      } else {
+        setDetailModal(prev => prev ? { ...prev, error: json.error || 'Gagal memuat detail', loading: false } : null);
+      }
+    } catch (err: any) {
+      setDetailModal(prev => prev ? { ...prev, error: 'Terjadi kesalahan jaringan', loading: false } : null);
     }
   };
 
@@ -779,7 +837,14 @@ export default function RekapitulasiPage() {
                           </div>
                         </td>
                         <td className="px-5 py-4">
-                          <div className="font-bold text-gray-900 dark:text-white">{item.nama}</div>
+                          <div 
+                            onClick={() => openDetail(item, 'semua')}
+                            className="font-bold text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer transition-colors flex items-center gap-1.5 group/name"
+                            title="Klik untuk melihat seluruh riwayat absensi individu ini"
+                          >
+                            <span>{item.nama}</span>
+                            <Eye size={13} className="text-gray-400 opacity-0 group-hover/name:opacity-100 transition-opacity" />
+                          </div>
                           <div className="text-[11px] text-gray-400 font-mono mt-0.5">{filter.tipe === 'guru' ? 'NIP' : 'NIS'}: {item.identifier || '-'}</div>
                           {totalPertemuan > 0 && (
                             <div className="mt-2 w-full max-w-[150px] bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 flex overflow-hidden">
@@ -800,10 +865,42 @@ export default function RekapitulasiPage() {
                             <span className="truncate">{item.alamat || '-'}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-center"><span className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-3 py-1 rounded-lg font-bold">{item.hadir || 0}</span></td>
-                        <td className="px-5 py-4 text-center"><span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-3 py-1 rounded-lg font-bold">{item.izin || 0}</span></td>
-                        <td className="px-5 py-4 text-center"><span className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-3 py-1 rounded-lg font-bold">{item.sakit || 0}</span></td>
-                        <td className="px-5 py-4 text-center"><span className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-3 py-1 rounded-lg font-bold">{item.alpha || 0}</span></td>
+                        <td className="px-5 py-4 text-center">
+                          <button
+                            onClick={() => openDetail(item, 'Hadir')}
+                            className="bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/30 dark:hover:bg-green-900/50 dark:text-green-400 px-3 py-1 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
+                            title="Klik untuk melihat tanggal & detail Hadir"
+                          >
+                            {item.hadir || 0}
+                          </button>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <button
+                            onClick={() => openDetail(item, 'Izin')}
+                            className="bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 px-3 py-1 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
+                            title="Klik untuk melihat tanggal & detail Izin"
+                          >
+                            {item.izin || 0}
+                          </button>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <button
+                            onClick={() => openDetail(item, 'Sakit')}
+                            className="bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-400 px-3 py-1 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
+                            title="Klik untuk melihat tanggal & detail Sakit"
+                          >
+                            {item.sakit || 0}
+                          </button>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <button
+                            onClick={() => openDetail(item, 'Alpha')}
+                            className="bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 px-3 py-1 rounded-lg font-bold transition-all transform hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
+                            title="Klik untuk melihat tanggal & detail Alpha"
+                          >
+                            {item.alpha || 0}
+                          </button>
+                        </td>
                       </tr>
                     );
                   })
@@ -873,6 +970,205 @@ export default function RekapitulasiPage() {
                   <Download size={18} /> Unduh PDF
                 </a>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Absensi Individual Modal */}
+      {detailModal && (
+        <div 
+          className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]"
+          onClick={() => setDetailModal(null)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out] border border-gray-100 dark:border-gray-700"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header Modal */}
+            <div className="p-5 sm:p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                {/* Foto / Avatar */}
+                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-md shrink-0 border border-purple-200 dark:border-purple-800/50">
+                  {detailModal.item.foto && getFotoUrl(detailModal.item.foto) ? (
+                    <img 
+                      src={getFotoUrl(detailModal.item.foto)} 
+                      alt={detailModal.item.nama} 
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : (
+                    <div 
+                      className="w-full h-full flex items-center justify-center text-white font-extrabold text-sm"
+                      style={{ backgroundColor: getAvatarColor(detailModal.item.nama) }}
+                    >
+                      {getInitials(detailModal.item.nama)}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">
+                      {detailModal.item.nama}
+                    </h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                      {filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan' : 'Guru'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2">
+                    <span>{filter.tipe === 'guru' ? 'NIP' : 'NIS'}: <strong className="font-mono text-gray-700 dark:text-gray-300">{detailModal.item.identifier || '-'}</strong></span>
+                    <span>•</span>
+                    <span>Periode: <strong className="text-purple-600 dark:text-purple-400">{getPeriodText()}</strong></span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setDetailModal(null)}
+                className="self-end sm:self-center p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
+                title="Tutup (Esc)"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Filter Tabs Status */}
+            <div className="px-5 sm:px-6 pt-3 pb-3 bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2 overflow-x-auto no-scrollbar">
+              {[
+                { id: 'semua', label: 'Semua Status', count: detailModal.data.length, color: 'purple' },
+                { id: 'Hadir', label: 'Hadir', count: detailModal.data.filter((d: any) => d.status === 'Hadir').length, color: 'green' },
+                { id: 'Izin', label: 'Izin', count: detailModal.data.filter((d: any) => d.status === 'Izin').length, color: 'blue' },
+                { id: 'Sakit', label: 'Sakit', count: detailModal.data.filter((d: any) => d.status === 'Sakit').length, color: 'orange' },
+                { id: 'Alpha', label: 'Alpha', count: detailModal.data.filter((d: any) => d.status === 'Alpha').length, color: 'red' },
+              ].map(tab => {
+                const isActive = detailModal.activeStatus === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setDetailModal(prev => prev ? { ...prev, activeStatus: tab.id } : null)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+                      isActive
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                      isActive
+                        ? 'bg-white/20 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Modal Body / Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 min-h-[250px]">
+              {detailModal.loading ? (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+                  <Loader2 className="animate-spin text-purple-600 dark:text-purple-400" size={32} />
+                  <p className="text-sm font-semibold text-gray-500">Memuat rincian absensi...</p>
+                </div>
+              ) : detailModal.error ? (
+                <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-center">
+                  <AlertCircle size={28} className="mx-auto text-red-500 mb-2" />
+                  <p className="text-sm font-bold text-red-700 dark:text-red-300">{detailModal.error}</p>
+                </div>
+              ) : (() => {
+                const list = detailModal.activeStatus === 'semua'
+                  ? detailModal.data
+                  : detailModal.data.filter((d: any) => d.status === detailModal.activeStatus);
+
+                if (list.length === 0) {
+                  return (
+                    <div className="text-center py-16 text-gray-400">
+                      <CalendarDays size={36} className="mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                      <p className="text-sm font-bold text-gray-600 dark:text-gray-300">Tidak ada catatan absensi</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {detailModal.activeStatus !== 'semua' ? `Tidak ada jadwal dengan status ${detailModal.activeStatus}.` : 'Belum ada data kehadiran pada periode ini.'}
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="overflow-hidden border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm">
+                    <table className="w-full text-left text-xs sm:text-sm">
+                      <thead className="bg-gray-50 dark:bg-gray-900/70 text-gray-500 dark:text-gray-400 font-bold uppercase text-[11px] border-b border-gray-100 dark:border-gray-700">
+                        <tr>
+                          <th className="py-3 px-4 text-center w-12">No</th>
+                          <th className="py-3 px-4">Hari, Tanggal</th>
+                          <th className="py-3 px-4">Waktu</th>
+                          <th className="py-3 px-4">Jadwal / Mapel / Kegiatan</th>
+                          <th className="py-3 px-4 text-center">Status</th>
+                          <th className="py-3 px-4">Keterangan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {list.map((row: any, i: number) => {
+                          const statusColor = 
+                            row.status === 'Hadir' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800' :
+                            row.status === 'Izin' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800' :
+                            row.status === 'Sakit' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800' :
+                            'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800';
+
+                          return (
+                            <tr key={i} className="hover:bg-purple-50/30 dark:hover:bg-gray-700/30 transition-colors">
+                              <td className="py-3 px-4 text-center text-gray-400 font-medium">{i + 1}</td>
+                              <td className="py-3 px-4 font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar size={13} className="text-purple-500 shrink-0" />
+                                  <span>{row.hari}, {row.tanggal}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-gray-600 dark:text-gray-300 font-mono text-xs whitespace-nowrap">
+                                <div className="flex items-center gap-1">
+                                  <Clock size={12} className="text-gray-400 shrink-0" />
+                                  <span>{row.jam_mulai ? `${row.jam_mulai}${row.jam_selesai ? ` - ${row.jam_selesai}` : ''}` : '-'}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="font-bold text-gray-900 dark:text-white">{row.mata_pelajaran}</div>
+                                {row.kelas_nama && row.kelas_nama !== '-' && (
+                                  <div className="text-[11px] text-gray-400">{row.kelas_nama}</div>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block border ${statusColor}`}>
+                                  {row.status}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-gray-600 dark:text-gray-300 text-xs">
+                                {row.keterangan ? (
+                                  <span className="italic font-medium">{row.keterangan}</span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Footer Modal */}
+            <div className="p-4 sm:p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Total data: <strong>{detailModal.data.length}</strong> sesi kehadiran
+              </div>
+              <button
+                onClick={() => setDetailModal(null)}
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-md shadow-purple-500/20 transition-all cursor-pointer"
+              >
+                Selesai
+              </button>
             </div>
           </div>
         </div>

@@ -405,17 +405,23 @@ export async function GET() {
       ]);
 
       const sortPelanggaranList = (list: any[]) => {
+        const statusOrder: Record<string, number> = { 'Alpha': 1, 'Alpa': 1, '': 1 };
         return list.sort((a, b) => {
-          // 1. Tanggal (Terbaru di atas)
-          const dateComp = (b.tanggal || '').localeCompare(a.tanggal || '');
-          if (dateComp !== 0) return dateComp;
+          // 1. Status (Alpha di atas, lainnya / Pelanggaran di bawah)
+          const orderA = statusOrder[a.status] ?? 99;
+          const orderB = statusOrder[b.status] ?? 99;
+          if (orderA !== orderB) return orderA - orderB;
 
           // 2. Kelas (Natural sort A-Z dan angka tingkat)
           const kelasComp = (a.kelas || '').localeCompare(b.kelas || '', 'id', { numeric: true, sensitivity: 'base' });
           if (kelasComp !== 0) return kelasComp;
 
           // 3. Abjad Nama Santri (A-Z)
-          return (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' });
+          const namaComp = (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' });
+          if (namaComp !== 0) return namaComp;
+
+          // 4. Tanggal (Terbaru di atas)
+          return (b.tanggal || '').localeCompare(a.tanggal || '');
         });
       };
 
