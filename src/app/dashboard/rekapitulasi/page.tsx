@@ -1066,7 +1066,7 @@ export default function RekapitulasiPage() {
                   )}
                 </div>
 
-                {/* Info: nama + badge + NIS + Periode — semua rata kiri sejajar avatar */}
+                {/* Info: nama + badge + NIS — di dalam flex row sejajar avatar */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start gap-2 flex-wrap">
                     <h3 className="font-extrabold text-sm sm:text-base text-gray-900 dark:text-white leading-tight">
@@ -1076,10 +1076,8 @@ export default function RekapitulasiPage() {
                       {filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan' : 'Guru'}
                     </span>
                   </div>
-                  <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                  <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
                     <span>{filter.tipe === 'guru' ? 'NIP' : 'NIS'}: <strong className="font-mono text-gray-700 dark:text-gray-300">{detailModal.item.identifier || '-'}</strong></span>
-                    <span>•</span>
-                    <span>Periode: <strong className="text-purple-600 dark:text-purple-400">{getPeriodText()}</strong></span>
                   </p>
                 </div>
 
@@ -1093,8 +1091,13 @@ export default function RekapitulasiPage() {
                 </button>
               </div>
 
+              {/* Periode — full width, rata kiri sejajar tepi foto dan tombol */}
+              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Periode: <strong className="text-purple-600 dark:text-purple-400">{getPeriodText()}</strong>
+              </p>
+
               {/* Row bawah: 3 tombol ekspor full width */}
-              <div className="grid grid-cols-3 gap-2 mt-3.5">
+              <div className="grid grid-cols-3 gap-2 mt-2.5">
                 <button
                   onClick={() => handleExportDetail('pdf', true)}
                   className="bg-white hover:bg-purple-50 dark:bg-gray-700 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 border border-purple-200 dark:border-purple-700 cursor-pointer shadow-sm"
