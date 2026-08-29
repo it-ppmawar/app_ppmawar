@@ -1100,7 +1100,7 @@ export default function RekapitulasiPage() {
                   className="bg-white hover:bg-purple-50 dark:bg-gray-700 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 border border-purple-200 dark:border-purple-700 cursor-pointer shadow-sm"
                   title="Preview PDF Rincian Kehadiran"
                 >
-                  <Eye size={13} />
+                  <FileText size={13} />
                   Preview
                 </button>
                 <button
