@@ -190,9 +190,46 @@ function QuickAbsenContent() {
 
   useEffect(() => { return () => stopCameraStream(); }, [stopCameraStream]);
 
+  const formatHariTanggalPesantren = (rawDate?: string, rawTime?: string) => {
+    try {
+      const d = rawDate ? new Date(rawDate.includes('T') ? rawDate : `${rawDate}T12:00:00+07:00`) : new Date();
+      const hariArr = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const nextHariArr = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
+      const bulanArr = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+
+      const dayIdx = d.getDay();
+      const hariIni = hariArr[dayIdx];
+      const hariBesok = nextHariArr[dayIdx];
+      const tglNum = d.getDate();
+      const blnName = bulanArr[d.getMonth()];
+      const thnNum = d.getFullYear();
+
+      let isMalam = false;
+      if (rawTime) {
+        const hour = parseInt(rawTime.split(':')[0], 10);
+        if (!isNaN(hour) && (hour >= 18 || hour < 4)) {
+          isMalam = true;
+        }
+      } else {
+        const nowHour = new Date().getHours();
+        if (nowHour >= 18 || nowHour < 4) {
+          isMalam = true;
+        }
+      }
+
+      const hariLabel = isMalam ? `${hariIni} malam ${hariBesok}` : hariIni;
+      return `${hariLabel}, ${tglNum} ${blnName} ${thnNum}`;
+    } catch {
+      return rawDate || new Date().toLocaleDateString('id-ID');
+    }
+  };
+
   const generateWaGroupMessage = (uploadedPhotoUrl?: string) => {
     if (!data) return '';
-    const dateStr = data.date || new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const dateStr = formatHariTanggalPesantren(data.date, data.jadwal?.jam_mulai);
     const listMurid: any[] = data.murid || [];
     const total = listMurid.length;
 
@@ -900,14 +937,14 @@ function QuickAbsenContent() {
           <>
             {/* Banner Notifikasi Mode Edit Absensi */}
             {isAlreadyFilled && (
-              <div className="bg-blue-950/80 border border-blue-500/50 text-blue-200 p-3.5 rounded-xl flex items-center gap-3 text-xs shadow-md">
-                <CheckCircle2 className="w-5 h-5 text-blue-400 shrink-0" />
-                <div>
+              <div className="bg-blue-950/80 border border-blue-500/50 text-blue-200 p-3.5 rounded-xl text-xs shadow-md space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
                   <p className="font-bold text-blue-300">Mode Edit / Perbarui Absensi</p>
-                  <p className="text-[11px] text-blue-200/90 leading-relaxed mt-0.5">
-                    Absensi kelas ini sudah pernah diisi sebelumnya. Status yang tersimpan telah dimuat otomatis dan dapat Anda sesuaikan kembali, lalu klik <strong>"Perbarui Absensi Kelas"</strong>.
-                  </p>
                 </div>
+                <p className="text-[11px] text-blue-200/90 leading-relaxed">
+                  Absensi kelas ini sudah pernah diisi sebelumnya. Status yang tersimpan telah dimuat otomatis dan dapat Anda sesuaikan kembali, lalu klik <strong>"Perbarui Absensi Kelas"</strong>.
+                </p>
               </div>
             )}
 

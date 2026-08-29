@@ -646,9 +646,18 @@ export default function RekapitulasiPage() {
           <div className="md:w-32 flex items-end">
             <button
               onClick={() => fetchRekap()}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-purple-600/30 transition-all flex justify-center items-center gap-2"
+              disabled={loading}
+              className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-75 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-purple-600/30 transition-all flex justify-center items-center gap-2 cursor-pointer"
             >
-              <Search size={16} /> Tampilkan
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Memuat...
+                </>
+              ) : (
+                <>
+                  <Search size={16} /> Tampilkan
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -839,11 +848,10 @@ export default function RekapitulasiPage() {
                         <td className="px-5 py-4">
                           <div 
                             onClick={() => openDetail(item, 'semua')}
-                            className="font-bold text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer transition-colors flex items-center gap-1.5 group/name"
+                            className="font-bold text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer transition-colors"
                             title="Klik untuk melihat seluruh riwayat absensi individu ini"
                           >
-                            <span>{item.nama}</span>
-                            <Eye size={13} className="text-gray-400 opacity-0 group-hover/name:opacity-100 transition-opacity" />
+                            {item.nama}
                           </div>
                           <div className="text-[11px] text-gray-400 font-mono mt-0.5">{filter.tipe === 'guru' ? 'NIP' : 'NIS'}: {item.identifier || '-'}</div>
                           {totalPertemuan > 0 && (
@@ -978,18 +986,18 @@ export default function RekapitulasiPage() {
       {/* Detail Absensi Individual Modal */}
       {detailModal && (
         <div 
-          className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]"
+          className="fixed inset-0 z-[110] flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]"
           onClick={() => setDetailModal(null)}
         >
           <div 
-            className="bg-white dark:bg-gray-800 w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out] border border-gray-100 dark:border-gray-700"
+            className="bg-white dark:bg-gray-800 w-[96vw] sm:w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out] border border-gray-100 dark:border-gray-700 mx-auto"
             onClick={e => e.stopPropagation()}
           >
             {/* Header Modal */}
-            <div className="p-5 sm:p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
+            <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900/50 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 {/* Foto / Avatar */}
-                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-md shrink-0 border border-purple-200 dark:border-purple-800/50">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl overflow-hidden shadow-md shrink-0 border border-purple-200 dark:border-purple-800/50">
                   {detailModal.item.foto && getFotoUrl(detailModal.item.foto) ? (
                     <img 
                       src={getFotoUrl(detailModal.item.foto)} 
@@ -1005,16 +1013,16 @@ export default function RekapitulasiPage() {
                     </div>
                   )}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-base sm:text-lg text-gray-900 dark:text-white leading-tight">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-extrabold text-sm sm:text-lg text-gray-900 dark:text-white leading-tight truncate">
                       {detailModal.item.nama}
                     </h3>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 shrink-0">
                       {filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan' : 'Guru'}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2">
+                  <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                     <span>{filter.tipe === 'guru' ? 'NIP' : 'NIS'}: <strong className="font-mono text-gray-700 dark:text-gray-300">{detailModal.item.identifier || '-'}</strong></span>
                     <span>•</span>
                     <span>Periode: <strong className="text-purple-600 dark:text-purple-400">{getPeriodText()}</strong></span>
@@ -1025,7 +1033,7 @@ export default function RekapitulasiPage() {
               {/* Close Button */}
               <button
                 onClick={() => setDetailModal(null)}
-                className="self-end sm:self-center p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors"
+                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors shrink-0"
                 title="Tutup (Esc)"
               >
                 <X size={18} />
@@ -1033,20 +1041,20 @@ export default function RekapitulasiPage() {
             </div>
 
             {/* Filter Tabs Status */}
-            <div className="px-5 sm:px-6 pt-3 pb-3 bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <div className="px-4 sm:px-6 py-2.5 bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2 overflow-x-auto no-scrollbar w-full">
               {[
-                { id: 'semua', label: 'Semua Status', count: detailModal.data.length, color: 'purple' },
-                { id: 'Hadir', label: 'Hadir', count: detailModal.data.filter((d: any) => d.status === 'Hadir').length, color: 'green' },
-                { id: 'Izin', label: 'Izin', count: detailModal.data.filter((d: any) => d.status === 'Izin').length, color: 'blue' },
-                { id: 'Sakit', label: 'Sakit', count: detailModal.data.filter((d: any) => d.status === 'Sakit').length, color: 'orange' },
-                { id: 'Alpha', label: 'Alpha', count: detailModal.data.filter((d: any) => d.status === 'Alpha').length, color: 'red' },
+                { id: 'semua', label: 'Semua Status', count: detailModal.data.length },
+                { id: 'Hadir', label: 'Hadir', count: detailModal.data.filter((d: any) => d.status === 'Hadir').length },
+                { id: 'Izin', label: 'Izin', count: detailModal.data.filter((d: any) => d.status === 'Izin').length },
+                { id: 'Sakit', label: 'Sakit', count: detailModal.data.filter((d: any) => d.status === 'Sakit').length },
+                { id: 'Alpha', label: 'Alpha', count: detailModal.data.filter((d: any) => d.status === 'Alpha').length },
               ].map(tab => {
                 const isActive = detailModal.activeStatus === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setDetailModal(prev => prev ? { ...prev, activeStatus: tab.id } : null)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                       isActive
                         ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
                         : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-purple-300'
@@ -1066,9 +1074,9 @@ export default function RekapitulasiPage() {
             </div>
 
             {/* Modal Body / Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 min-h-[250px]">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 space-y-3 min-h-[300px]">
               {detailModal.loading ? (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+                <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
                   <Loader2 className="animate-spin text-purple-600 dark:text-purple-400" size={32} />
                   <p className="text-sm font-semibold text-gray-500">Memuat rincian absensi...</p>
                 </div>
@@ -1084,19 +1092,19 @@ export default function RekapitulasiPage() {
 
                 if (list.length === 0) {
                   return (
-                    <div className="text-center py-16 text-gray-400">
-                      <CalendarDays size={36} className="mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                      <p className="text-sm font-bold text-gray-600 dark:text-gray-300">Tidak ada catatan absensi</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {detailModal.activeStatus !== 'semua' ? `Tidak ada jadwal dengan status ${detailModal.activeStatus}.` : 'Belum ada data kehadiran pada periode ini.'}
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-400 text-center">
+                      <CalendarDays size={38} className="mx-auto mb-2.5 text-gray-300 dark:text-gray-600" />
+                      <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Tidak ada catatan absensi</p>
+                      <p className="text-xs text-gray-400 mt-1 max-w-sm">
+                        {detailModal.activeStatus !== 'semua' ? `Tidak ada jadwal kehadiran dengan status ${detailModal.activeStatus}.` : 'Belum ada data kehadiran pada periode ini.'}
                       </p>
                     </div>
                   );
                 }
 
                 return (
-                  <div className="overflow-hidden border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm">
-                    <table className="w-full text-left text-xs sm:text-sm">
+                  <div className="overflow-x-auto w-full border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm bg-white dark:bg-gray-800">
+                    <table className="w-full min-w-[680px] text-left text-xs sm:text-sm">
                       <thead className="bg-gray-50 dark:bg-gray-900/70 text-gray-500 dark:text-gray-400 font-bold uppercase text-[11px] border-b border-gray-100 dark:border-gray-700">
                         <tr>
                           <th className="py-3 px-4 text-center w-12">No</th>
@@ -1105,6 +1113,7 @@ export default function RekapitulasiPage() {
                           <th className="py-3 px-4">Jadwal / Mapel / Kegiatan</th>
                           <th className="py-3 px-4 text-center">Status</th>
                           <th className="py-3 px-4">Keterangan</th>
+                          <th className="py-3 px-4">Diinput Oleh</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -1136,7 +1145,7 @@ export default function RekapitulasiPage() {
                                   <div className="text-[11px] text-gray-400">{row.kelas_nama}</div>
                                 )}
                               </td>
-                              <td className="py-3 px-4 text-center">
+                              <td className="py-3 px-4 text-center whitespace-nowrap">
                                 <span className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block border ${statusColor}`}>
                                   {row.status}
                                 </span>
@@ -1146,6 +1155,17 @@ export default function RekapitulasiPage() {
                                   <span className="italic font-medium">{row.keterangan}</span>
                                 ) : (
                                   <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-xs whitespace-nowrap">
+                                {row.penginput === 'Sistem Otomatis' ? (
+                                  <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-md font-medium text-[11px] border border-slate-200 dark:border-slate-700">
+                                    🤖 {row.penginput}
+                                  </span>
+                                ) : (
+                                  <span className="bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md font-medium text-[11px] border border-purple-200 dark:border-purple-800">
+                                    👤 {row.penginput || 'Pengajar'}
+                                  </span>
                                 )}
                               </td>
                             </tr>
@@ -1159,7 +1179,7 @@ export default function RekapitulasiPage() {
             </div>
 
             {/* Footer Modal */}
-            <div className="p-4 sm:p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between">
+            <div className="p-3.5 sm:p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between">
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 Total data: <strong>{detailModal.data.length}</strong> sesi kehadiran
               </div>
