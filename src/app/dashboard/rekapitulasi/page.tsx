@@ -1045,10 +1045,11 @@ export default function RekapitulasiPage() {
             onClick={e => e.stopPropagation()}
           >
             {/* Header Modal */}
-            <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900/50 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                {/* Foto / Avatar */}
-                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl overflow-hidden shadow-md shrink-0 border border-purple-200 dark:border-purple-800/50">
+            <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900/50">
+              {/* Row atas: avatar + info + tombol tutup */}
+              <div className="flex items-start gap-3">
+                {/* Foto / Avatar — rapat ke atas sejajar nama */}
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl overflow-hidden shadow-md shrink-0 border border-purple-200 dark:border-purple-800/50 mt-0.5">
                   {detailModal.item.foto && getFotoUrl(detailModal.item.foto) ? (
                     <img 
                       src={getFotoUrl(detailModal.item.foto)} 
@@ -1064,55 +1065,59 @@ export default function RekapitulasiPage() {
                     </div>
                   )}
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-extrabold text-sm sm:text-lg text-gray-900 dark:text-white leading-tight truncate">
+
+                {/* Info: nama + badge + NIS + Periode — semua rata kiri sejajar avatar */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start gap-2 flex-wrap">
+                    <h3 className="font-extrabold text-sm sm:text-base text-gray-900 dark:text-white leading-tight">
                       {detailModal.item.nama}
                     </h3>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 shrink-0">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 shrink-0 mt-0.5">
                       {filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan' : 'Guru'}
                     </span>
                   </div>
-                  <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 flex-wrap">
                     <span>{filter.tipe === 'guru' ? 'NIP' : 'NIS'}: <strong className="font-mono text-gray-700 dark:text-gray-300">{detailModal.item.identifier || '-'}</strong></span>
                     <span>•</span>
                     <span>Periode: <strong className="text-purple-600 dark:text-purple-400">{getPeriodText()}</strong></span>
                   </p>
                 </div>
+
+                {/* Tombol Tutup — pojok kanan atas */}
+                <button
+                  onClick={() => setDetailModal(null)}
+                  className="p-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors cursor-pointer shrink-0 mt-0"
+                  title="Tutup (Esc)"
+                >
+                  <X size={16} />
+                </button>
               </div>
 
-              {/* Action Buttons: Preview, PDF, Excel & Close */}
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* Row bawah: 3 tombol ekspor full width */}
+              <div className="grid grid-cols-3 gap-2 mt-3.5">
                 <button
                   onClick={() => handleExportDetail('pdf', true)}
-                  className="bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-bold py-1.5 px-2.5 sm:px-3 rounded-xl text-xs transition-colors flex items-center gap-1.5 border border-purple-200 dark:border-purple-800/60 cursor-pointer shadow-sm"
+                  className="bg-white hover:bg-purple-50 dark:bg-gray-700 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 border border-purple-200 dark:border-purple-700 cursor-pointer shadow-sm"
                   title="Preview PDF Rincian Kehadiran"
                 >
-                  <Eye size={14} />
-                  <span className="hidden sm:inline">Preview</span>
+                  <Eye size={13} />
+                  Preview
                 </button>
                 <button
                   onClick={() => handleExportDetail('pdf', false)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-2.5 sm:px-3 rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-purple-500/20"
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-purple-500/20"
                   title="Unduh PDF Rincian Kehadiran"
                 >
-                  <Download size={14} />
-                  <span className="hidden sm:inline">PDF</span>
+                  <Download size={13} />
+                  PDF
                 </button>
                 <button
                   onClick={() => handleExportDetail('excel', false)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-2.5 sm:px-3 rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/20"
                   title="Unduh Excel Rincian Kehadiran"
                 >
-                  <Download size={14} />
-                  <span className="hidden sm:inline">Excel</span>
-                </button>
-                <button
-                  onClick={() => setDetailModal(null)}
-                  className="p-1.5 sm:p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors ml-1 cursor-pointer shrink-0"
-                  title="Tutup (Esc)"
-                >
-                  <X size={18} />
+                  <Download size={13} />
+                  Excel
                 </button>
               </div>
             </div>
