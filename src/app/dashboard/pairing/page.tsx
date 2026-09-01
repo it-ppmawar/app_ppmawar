@@ -949,71 +949,75 @@ function PairingAndFacePageInner() {
                   filteredPairingList.map((m) => (
                     <div
                       key={m.murid_id}
-                      className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${
+                      className={`p-3 rounded-2xl border transition-all ${
                         m.paired
                           ? 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/40 dark:bg-emerald-950/20'
                           : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50'
                       }`}
                     >
-                      {/* Avatar / Foto */}
-                      <div className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 ${m.paired ? 'ring-emerald-400' : 'ring-gray-300 dark:ring-gray-600'}`}>
-                        {m.foto ? (
-                          <img src={m.foto} alt={m.nama} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400">
-                            {m.jenis_kelamin === 'Perempuan' ? (
-                              <SantriPutriIcon size={20} className="text-rose-400" />
-                            ) : (
-                              <SantriPutraIcon size={20} className="text-teal-500" />
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      {/* Baris Atas: Foto merapat ke atas sejajar nama & NIS, action button di kanan */}
+                      <div className="flex items-start gap-3">
+                        {/* Avatar / Foto */}
+                        <div className={`w-11 h-11 rounded-full overflow-hidden flex-shrink-0 ring-2 ${m.paired ? 'ring-emerald-400' : 'ring-gray-300 dark:ring-gray-600'}`}>
+                          {m.foto ? (
+                            <img src={m.foto} alt={m.nama} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400">
+                              {m.jenis_kelamin === 'Perempuan' ? (
+                                <SantriPutriIcon size={20} className="text-rose-400" />
+                              ) : (
+                                <SantriPutraIcon size={20} className="text-teal-500" />
+                              )}
+                            </div>
+                          )}
+                        </div>
 
-                      {/* Info Santri */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-gray-900 dark:text-white leading-snug">
-                          {m.nama}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                          NIS: <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{m.nis}</span>
-                          {m.kelas_madin && ` · ${m.kelas_madin}`}
-                        </p>
-                        {/* Baris Bawah: Badge Gender & Badge QR */}
-                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                          <GenderBadge gender={m.jenis_kelamin} size="xs" />
-                          {m.barcode_id && (
-                            <span className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded font-bold border border-indigo-200/50 dark:border-indigo-800/40">
-                              QR: {m.barcode_id}
-                            </span>
+                        {/* Info Santri */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-gray-900 dark:text-white leading-snug">
+                            {m.nama}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            NIS: <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{m.nis}</span>
+                            {m.kelas_madin && ` · ${m.kelas_madin}`}
+                          </p>
+                        </div>
+
+                        {/* Actions & Status Badge di Kanan Atas */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
+                          {m.paired ? (
+                            <>
+                              <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2.5 py-1 rounded-full">
+                                <CheckCircle2 size={12} />
+                                <span className="hidden sm:inline">Terpasang</span>
+                              </div>
+                              <button
+                                onClick={() => handleResetPairing(m.murid_id, m.nama)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                                title="Lepas / Reset Kartu"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => handleQuickPairFromList(m.nis)}
+                              className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition active:scale-95"
+                            >
+                              <Camera size={12} />
+                              <span>Pairing</span>
+                            </button>
                           )}
                         </div>
                       </div>
 
-                      {/* Actions & Status Badge */}
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {m.paired ? (
-                          <>
-                            <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2.5 py-1 rounded-full">
-                              <CheckCircle2 size={12} />
-                              <span className="hidden sm:inline">Terpasang</span>
-                            </div>
-                            <button
-                              onClick={() => handleResetPairing(m.murid_id, m.nama)}
-                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-                              title="Lepas / Reset Kartu"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => handleQuickPairFromList(m.nis)}
-                            className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition active:scale-95"
-                          >
-                            <Camera size={12} />
-                            <span>Pairing</span>
-                          </button>
+                      {/* Baris Bawah: Merapat ke kiri sejajar dengan ujung kiri foto */}
+                      <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-gray-100 dark:border-gray-800/60 flex-wrap">
+                        <GenderBadge gender={m.jenis_kelamin} size="xs" />
+                        {m.barcode_id && (
+                          <span className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded font-bold border border-indigo-200/50 dark:border-indigo-800/40 truncate max-w-[210px] sm:max-w-md" title={m.barcode_id}>
+                            QR: {m.barcode_id.length > 20 ? `${m.barcode_id.slice(0, 20)}...` : m.barcode_id}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -1062,15 +1066,15 @@ function PairingAndFacePageInner() {
                     style={{ width: `${faceStats.percent}%` }}
                   />
                 </div>
-                {/* 3 Badges Presisi & Rata Tengah */}
-                <div className="grid grid-cols-3 gap-2 mt-3 text-xs text-violet-100 font-bold text-center">
-                  <div className="bg-white/10 backdrop-blur-sm px-2 py-2 rounded-xl flex items-center justify-center gap-1.5">
+                {/* 3 Badges: Maksimal 2 di baris 1, sisanya rata tengah di baris 2 pada HP */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 text-xs text-violet-100 font-bold text-center">
+                  <div className="bg-white/10 backdrop-blur-sm px-2.5 py-2 rounded-xl flex items-center justify-center gap-1.5">
                     <span>✅</span> <span>{faceStats.enrolled} Enrolled</span>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-sm px-2 py-2 rounded-xl flex items-center justify-center gap-1.5">
+                  <div className="bg-white/10 backdrop-blur-sm px-2.5 py-2 rounded-xl flex items-center justify-center gap-1.5">
                     <span>⏳</span> <span>{faceStats.unenrolled} Belum</span>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-sm px-2 py-2 rounded-xl flex items-center justify-center gap-1.5">
+                  <div className="col-span-2 sm:col-span-1 bg-white/10 backdrop-blur-sm px-2.5 py-2 rounded-xl flex items-center justify-center gap-1.5">
                     <span>📷</span> <span>{faceList.filter(m => !m.foto).length} Tanpa Foto</span>
                   </div>
                 </div>
@@ -1251,54 +1255,74 @@ function PairingAndFacePageInner() {
                   filteredFaceList.map((m) => (
                     <div
                       key={m.murid_id}
-                      className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${
+                      className={`p-3 rounded-2xl border transition-all ${
                         m.enrolled
                           ? 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-950/20'
                           : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 ring-2 ${m.enrolled ? 'ring-emerald-400' : 'ring-gray-300 dark:ring-gray-600'}`}>
-                        {m.foto ? (
-                          <img src={m.foto} alt={m.nama} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                            {m.jenis_kelamin === 'Perempuan' ? (
-                              <SantriPutriIcon size={18} className="text-rose-400" />
-                            ) : (
-                              <SantriPutraIcon size={18} className="text-teal-500" />
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-gray-900 dark:text-white leading-snug">
-                          {m.nama}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                          NIS: <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{m.nis}</span>
-                          {m.kelas_madin && ` · ${m.kelas_madin}`}
-                        </p>
-                        {/* Baris Bawah: Gender & Status Biometrik */}
-                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                          <GenderBadge gender={m.jenis_kelamin} size="xs" />
-                          {m.enrolled ? (
-                            <div className="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                              <CheckCircle2 size={11} />
-                              <span>Enrolled</span>
-                            </div>
-                          ) : m.foto ? (
-                            <div className="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                              <AlertCircle size={11} />
-                              <span>Belum Enrolled</span>
-                            </div>
+                      {/* Baris Atas: Foto merapat ke atas sejajar nama & NIS, status badge di kanan atas */}
+                      <div className="flex items-start gap-3">
+                        <div className={`w-11 h-11 rounded-full overflow-hidden flex-shrink-0 ring-2 ${m.enrolled ? 'ring-emerald-400' : 'ring-gray-300 dark:ring-gray-600'}`}>
+                          {m.foto ? (
+                            <img src={m.foto} alt={m.nama} className="w-full h-full object-cover" />
                           ) : (
-                            <div className="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                              <Camera size={11} />
-                              <span>Tanpa Foto</span>
+                            <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                              {m.jenis_kelamin === 'Perempuan' ? (
+                                <SantriPutriIcon size={18} className="text-rose-400" />
+                              ) : (
+                                <SantriPutraIcon size={18} className="text-teal-500" />
+                              )}
                             </div>
                           )}
                         </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-gray-900 dark:text-white leading-snug">
+                            {m.nama}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            NIS: <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{m.nis}</span>
+                            {m.kelas_madin && ` · ${m.kelas_madin}`}
+                          </p>
+                        </div>
+
+                        <div className="flex-shrink-0 pt-0.5">
+                          {m.enrolled ? (
+                            <div className="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2.5 py-1 rounded-full">
+                              <CheckCircle2 size={12} />
+                              <span className="hidden sm:inline">Enrolled</span>
+                            </div>
+                          ) : m.foto ? (
+                            <div className="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-bold px-2.5 py-1 rounded-full">
+                              <AlertCircle size={12} />
+                              <span className="hidden sm:inline">Belum</span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold px-2.5 py-1 rounded-full">
+                              <Camera size={12} />
+                              <span className="hidden sm:inline">Tanpa Foto</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Baris Bawah: Merapat ke kiri sejajar dengan ujung kiri foto */}
+                      <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-gray-100 dark:border-gray-800/60 flex-wrap">
+                        <GenderBadge gender={m.jenis_kelamin} size="xs" />
+                        {m.enrolled ? (
+                          <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-200/50 dark:border-emerald-800/40">
+                            Biometrik Wajah Aktif
+                          </span>
+                        ) : m.foto ? (
+                          <span className="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-200/50 dark:border-amber-800/40">
+                            Foto Siap Di-enroll
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-bold px-2 py-0.5 rounded border border-gray-200/50 dark:border-gray-700/40">
+                            Foto Belum Tersedia
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))

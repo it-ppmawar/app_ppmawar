@@ -978,6 +978,51 @@ function NotifikasiContent() {
         <p className="text-green-100 text-sm mt-1">Daftar pemberitahuan dan informasi jadwal.</p>
       </div>
 
+      {/* ===== CARD NOTIFIKASI TELEGRAM RESMI ===== */}
+      <div className="bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 rounded-2xl p-5 text-white shadow-md relative overflow-hidden mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="p-3 bg-white/20 backdrop-blur-sm text-white rounded-2xl shrink-0 shadow-inner">
+              <Send size={24} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-extrabold text-base sm:text-lg text-white">
+                  Notifikasi Telegram Bot Resmi
+                </h3>
+                <span className="text-[10px] font-extrabold bg-emerald-400 text-emerald-950 px-2 py-0.5 rounded-full">
+                  100% Anti-Banned & Gratis
+                </span>
+              </div>
+              <p className="text-sky-100 text-xs mt-1 leading-relaxed max-w-xl">
+                Pengingat jadwal guru, tombol Absen Cepat & Izin, dan rekap bulanan kini otomatis terkirim via bot <strong>@ppma_notif_bot</strong> tanpa risiko nomor terblokir.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <a
+              href="https://t.me/ppma_notif_bot?start=start"
+              target="_blank"
+              rel="noreferrer"
+              className="px-4 py-2.5 bg-white text-sky-700 hover:bg-sky-50 font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 active:scale-95"
+            >
+              <Send size={13} />
+              <span>Buka @ppma_notif_bot 📲</span>
+            </a>
+            {(role === 'admin' || role === 'staff') && (
+              <a
+                href="/dashboard/settings"
+                className="px-3.5 py-2.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs rounded-xl transition-all border border-white/20 flex items-center gap-1.5"
+              >
+                <Settings2 size={13} />
+                <span>Pengaturan Bot</span>
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 text-center mb-6">
         <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
           <Bell className="text-gray-400 dark:text-gray-500" size={32} />

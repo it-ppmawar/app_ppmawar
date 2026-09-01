@@ -199,36 +199,6 @@ export default function ProfilPage() {
                 </div>
               </div>
             )}
-
-            {/* Notifikasi Telegram Resmi (@ppma_notif_bot) */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Notifikasi Telegram</label>
-              <div className="w-full bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/40 dark:to-blue-950/30 border border-sky-200 dark:border-sky-800/60 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-sky-500 text-white rounded-xl shrink-0 shadow-sm">
-                    <Send size={18} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-xs text-sky-950 dark:text-sky-200">@ppma_notif_bot</span>
-                      <span className="text-[9px] bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 font-extrabold px-1.5 py-0.5 rounded">Resmi</span>
-                    </div>
-                    <p className="text-[11px] text-sky-800/80 dark:text-sky-400 leading-tight mt-0.5">
-                      Pengingat jadwal mengajar, izin sakit &amp; rekap otomatis
-                    </p>
-                  </div>
-                </div>
-                <a
-                  href={`https://t.me/ppma_notif_bot?start=${user?.guruId ? `guru_${user.guruId}` : user?.muridId ? `santri_${user.muridId}` : 'start'}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full sm:w-auto text-center bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 shrink-0 active:scale-95"
-                >
-                  <Send size={13} />
-                  <span>Hubungkan ke Telegram 📲</span>
-                </a>
-              </div>
-            </div>
           </div>
         ) : (
           <form onSubmit={handleUpdateProfile} className="space-y-4 animate-[fadeIn_0.3s_ease-out]">
