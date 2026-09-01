@@ -76,7 +76,16 @@ export async function PUT(request: Request) {
       wa_scheduler_is_loop,
       jeda_panggilan_wali,
       jeda_panggilan_pengurus,
-      radius_panggilan_wali
+      radius_panggilan_wali,
+      // Telegram Bot settings
+      telegram_bot_token,
+      telegram_notification_mode,
+      telegram_kepala_madin_putra_chat_id,
+      telegram_kepala_madin_putri_chat_id,
+      telegram_kepala_madin_chat_id,
+      telegram_auto_reminder_guru,
+      telegram_auto_rekap_kepala_madin,
+      telegram_auto_notif_wali,
     } = await request.json();
 
     if (wa_scheduler_api_key !== undefined) {
@@ -222,8 +231,68 @@ export async function PUT(request: Request) {
       );
     }
 
+    // ── Telegram Bot Settings ───────────────────────────────────────────────
+    if (telegram_bot_token !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['telegram_bot_token', telegram_bot_token.toString().trim(), telegram_bot_token.toString().trim()]
+      );
+    }
+
+    if (telegram_notification_mode !== undefined) {
+      const allowed = ['telegram_only', 'wa_only', 'both'];
+      const val = allowed.includes(telegram_notification_mode) ? telegram_notification_mode : 'both';
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['telegram_notification_mode', val, val]
+      );
+    }
+
+    if (telegram_kepala_madin_putra_chat_id !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['telegram_kepala_madin_putra_chat_id', telegram_kepala_madin_putra_chat_id.toString().trim(), telegram_kepala_madin_putra_chat_id.toString().trim()]
+      );
+    }
+
+    if (telegram_kepala_madin_putri_chat_id !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['telegram_kepala_madin_putri_chat_id', telegram_kepala_madin_putri_chat_id.toString().trim(), telegram_kepala_madin_putri_chat_id.toString().trim()]
+      );
+    }
+
+    if (telegram_kepala_madin_chat_id !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['telegram_kepala_madin_chat_id', telegram_kepala_madin_chat_id.toString().trim(), telegram_kepala_madin_chat_id.toString().trim()]
+      );
+    }
+
+    if (telegram_auto_reminder_guru !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['telegram_auto_reminder_guru', telegram_auto_reminder_guru ? '1' : '0', telegram_auto_reminder_guru ? '1' : '0']
+      );
+    }
+
+    if (telegram_auto_rekap_kepala_madin !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['telegram_auto_rekap_kepala_madin', telegram_auto_rekap_kepala_madin ? '1' : '0', telegram_auto_rekap_kepala_madin ? '1' : '0']
+      );
+    }
+
+    if (telegram_auto_notif_wali !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+        ['telegram_auto_notif_wali', telegram_auto_notif_wali ? '1' : '0', telegram_auto_notif_wali ? '1' : '0']
+      );
+    }
+
     return NextResponse.json({ success: true, message: 'Pengaturan berhasil disimpan' });
   } catch (error: any) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+

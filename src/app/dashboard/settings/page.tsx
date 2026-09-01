@@ -32,12 +32,32 @@ export default function SettingsPage() {
     wa_scheduler_endpoint: 'https://wa.quizb.my.id/api/send.php',
     jeda_panggilan_wali: 5,
     jeda_panggilan_pengurus: 2,
-    radius_panggilan_wali: true
+    radius_panggilan_wali: true,
+    // Telegram Bot settings
+    telegram_bot_token: '8260588054:AAEB_71eA2XnRLHiYQV6jsZaiapsYcMd6yE',
+    telegram_bot_username: 'ppma_notif_bot',
+    telegram_notification_mode: 'both',
+    telegram_kepala_madin_putra_chat_id: '',
+    telegram_kepala_madin_putri_chat_id: '',
+    telegram_kepala_madin_chat_id: '',
+    telegram_auto_reminder_guru: true,
+    telegram_auto_rekap_kepala_madin: true,
+    telegram_auto_notif_wali: true,
   });
 
   const [testingWa, setTestingWa] = useState(false);
   const [testWaPhone, setTestWaPhone] = useState('');
   const [testWaResult, setTestWaResult] = useState<{ success?: boolean; message?: string } | null>(null);
+
+  // State untuk Telegram Bot Testing & Webhook
+  const [testingTg, setTestingTg] = useState(false);
+  const [testTgChatId, setTestTgChatId] = useState('');
+  const [testTgResult, setTestTgResult] = useState<{ success?: boolean; message?: string } | null>(null);
+
+  const [settingWebhook, setSettingWebhook] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState<{ is_active?: boolean; webhook_url?: string; last_error?: string } | null>(null);
+  const [webhookMsg, setWebhookMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [botInfo, setBotInfo] = useState<{ username?: string; first_name?: string; id?: number } | null>(null);
 
   // State untuk Kontrol Darurat WA Scheduler
   const [cancelingWa, setCancelingWa] = useState(false);
@@ -135,7 +155,17 @@ export default function SettingsPage() {
           wa_scheduler_endpoint: json.data.wa_scheduler_endpoint || 'https://wa.quizb.my.id/api/send.php',
           jeda_panggilan_wali: isNaN(parseInt(json.data.jeda_panggilan_wali)) ? 5 : parseInt(json.data.jeda_panggilan_wali),
           jeda_panggilan_pengurus: isNaN(parseInt(json.data.jeda_panggilan_pengurus)) ? 2 : parseInt(json.data.jeda_panggilan_pengurus),
-          radius_panggilan_wali: json.data.radius_panggilan_wali !== '0'
+          radius_panggilan_wali: json.data.radius_panggilan_wali !== '0',
+          // Telegram Bot settings
+          telegram_bot_token: json.data.telegram_bot_token || '8260588054:AAEB_71eA2XnRLHiYQV6jsZaiapsYcMd6yE',
+          telegram_bot_username: json.data.telegram_bot_username || 'ppma_notif_bot',
+          telegram_notification_mode: json.data.telegram_notification_mode || 'both',
+          telegram_kepala_madin_putra_chat_id: json.data.telegram_kepala_madin_putra_chat_id || '',
+          telegram_kepala_madin_putri_chat_id: json.data.telegram_kepala_madin_putri_chat_id || '',
+          telegram_kepala_madin_chat_id: json.data.telegram_kepala_madin_chat_id || '',
+          telegram_auto_reminder_guru: json.data.telegram_auto_reminder_guru !== '0',
+          telegram_auto_rekap_kepala_madin: json.data.telegram_auto_rekap_kepala_madin !== '0',
+          telegram_auto_notif_wali: json.data.telegram_auto_notif_wali !== '0',
         });
       } else {
         setError(json.error || 'Gagal memuat pengaturan');
@@ -144,6 +174,87 @@ export default function SettingsPage() {
       setError('Kesalahan jaringan');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch info bot Telegram & status webhook
+  const fetchTelegramInfo = async () => {
+    try {
+      const res = await fetch('/api/telegram/test');
+      const data = await res.json();
+      if (data.success && data.bot_info) {
+        setBotInfo(data.bot_info);
+      }
+    } catch (_) {}
+
+    try {
+      const resWb = await fetch('/api/telegram/set-webhook');
+      const dataWb = await resWb.json();
+      if (dataWb.success) {
+        setWebhookStatus({
+          is_active: dataWb.is_active,
+          webhook_url: dataWb.webhook_url,
+          last_error: dataWb.last_error
+        });
+      }
+    } catch (_) {}
+  };
+
+  useEffect(() => {
+    fetchTelegramInfo();
+  }, []);
+
+  const handleTestTelegram = async () => {
+    if (!testTgChatId.trim()) {
+      alert('Masukkan Chat ID Telegram tujuan uji coba (contoh: 123456789 atau username/chat ID Anda)');
+      return;
+    }
+    setTestingTg(true);
+    setTestTgResult(null);
+    try {
+      const res = await fetch('/api/telegram/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: testTgChatId.trim(),
+          bot_token: settings.telegram_bot_token
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setTestTgResult({ success: true, message: json.message });
+      } else {
+        setTestTgResult({ success: false, message: json.error || 'Gagal mengirim pesan uji coba Telegram' });
+      }
+    } catch (err: any) {
+      setTestTgResult({ success: false, message: 'Kesalahan jaringan: ' + err.message });
+    } finally {
+      setTestingTg(false);
+    }
+  };
+
+  const handleSetWebhook = async () => {
+    setSettingWebhook(true);
+    setWebhookMsg(null);
+    try {
+      const res = await fetch('/api/telegram/set-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bot_token: settings.telegram_bot_token
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setWebhookMsg({ type: 'success', text: json.message });
+        setWebhookStatus({ is_active: true, webhook_url: 'https://app.ppmawar.or.id/api/telegram/webhook' });
+      } else {
+        setWebhookMsg({ type: 'error', text: json.error || 'Gagal memasang webhook' });
+      }
+    } catch (err: any) {
+      setWebhookMsg({ type: 'error', text: 'Kesalahan jaringan: ' + err.message });
+    } finally {
+      setSettingWebhook(false);
     }
   };
 
@@ -755,6 +866,225 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {/* Pengaturan Integrasi Telegram Bot Resmi (@ppma_notif_bot) */}
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-sky-500 text-white rounded-xl shadow-sm">
+                    <Send size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                      Integrasi Telegram Bot Resmi
+                      <span className="text-xs font-extrabold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2.5 py-0.5 rounded-full">
+                        100% Anti-Banned & Gratis
+                      </span>
+                    </h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Kirim pengingat jadwal guru, rekap Kepala Madin, dan notifikasi santri secara otomatis tanpa risiko nomor diblokir.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={`https://t.me/${settings.telegram_bot_username || 'ppma_notif_bot'}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 border border-sky-300 dark:border-sky-800 text-sky-700 dark:text-sky-300 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all"
+                >
+                  <ExternalLink size={13} />
+                  Buka @{settings.telegram_bot_username || 'ppma_notif_bot'}
+                </a>
+              </div>
+            </div>
+
+            {/* Status Bot & Webhook Banner */}
+            <div className="p-4 bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50 dark:from-sky-950/30 dark:via-blue-950/20 dark:to-indigo-950/30 rounded-2xl border border-sky-200/80 dark:border-sky-800/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-sky-950 dark:text-sky-200">
+                    🤖 Bot: <strong>{botInfo?.first_name || 'PPMA Notifikasi Bot'}</strong> (@{botInfo?.username || settings.telegram_bot_username})
+                  </span>
+                  <span className="text-[11px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle size={11} /> Token Terverifikasi
+                  </span>
+                </div>
+                <p className="text-xs text-sky-800/80 dark:text-sky-400">
+                  Webhook URL: <code className="font-mono bg-white/70 dark:bg-black/30 px-1.5 py-0.5 rounded text-[11px]">https://app.ppmawar.or.id/api/telegram/webhook</code>
+                  {webhookStatus?.is_active && (
+                    <span className="ml-2 font-bold text-emerald-600 dark:text-emerald-400">● Webhook Aktif</span>
+                  )}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSetWebhook}
+                disabled={settingWebhook}
+                className="bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
+              >
+                {settingWebhook ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                {settingWebhook ? 'Mendaftarkan...' : 'Pasang / Perbarui Webhook'}
+              </button>
+            </div>
+
+            {webhookMsg && (
+              <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                webhookMsg.type === 'success'
+                  ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-300'
+                  : 'bg-red-100 text-red-900 dark:bg-red-950/60 dark:text-red-200 border border-red-300'
+              }`}>
+                {webhookMsg.type === 'success' ? <CheckCircle size={15} className="text-emerald-600 shrink-0" /> : <AlertTriangle size={15} className="text-red-600 shrink-0" />}
+                <span>{webhookMsg.text}</span>
+              </div>
+            )}
+
+            {/* Grid Konfigurasi Bot */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Bot Token */}
+              <div className="p-4 bg-sky-50/50 dark:bg-sky-950/20 rounded-xl border border-sky-200/60 dark:border-sky-800/40">
+                <label className="block text-xs font-bold text-sky-900 dark:text-sky-300 uppercase tracking-wider mb-2">
+                  HTTP API Bot Token
+                </label>
+                <input 
+                  type="text" 
+                  value={settings.telegram_bot_token}
+                  onChange={(e) => setSettings({ ...settings, telegram_bot_token: e.target.value })}
+                  placeholder="8260588054:AAEB..."
+                  className="w-full bg-white dark:bg-gray-800 border border-sky-300 dark:border-sky-700 px-4 py-2.5 rounded-xl text-sm font-mono font-bold text-sky-950 dark:text-sky-200 focus:ring-2 focus:ring-sky-500 transition-all"
+                />
+                <p className="text-[11px] text-sky-700 dark:text-sky-400 mt-1.5">
+                  Token resmi dari @BotFather untuk bot @{settings.telegram_bot_username}
+                </p>
+              </div>
+
+              {/* Mode Penyiaran Notifikasi */}
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
+                  Pilihan Jalur Pengiriman Otomatis
+                </label>
+                <select
+                  value={settings.telegram_notification_mode}
+                  onChange={(e) => setSettings({ ...settings, telegram_notification_mode: e.target.value as any })}
+                  className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-sky-500"
+                >
+                  <option value="both">🔄 Dual-Channel: Telegram & WhatsApp Sekaligus</option>
+                  <option value="telegram_only">⚡ Hanya Telegram (Rekomendasi - Instan & Bebas Blokir)</option>
+                  <option value="wa_only">💬 Hanya WhatsApp (Gateway wa.quizb.my.id)</option>
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1.5">
+                  Fitur manual WhatsApp di halaman notifikasi tetap dapat digunakan kapan saja.
+                </p>
+              </div>
+            </div>
+
+            {/* Konfigurasi Chat ID Kepala Madin */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4">
+              <div>
+                <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200">
+                  Pairing Telegram Kepala Madrasah Diniyah (Madin)
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Kepala Madin cukup klik link di bawah dari HP beliau untuk menghubungkan akun Telegram secara otomatis.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Kepala Madin Putra */}
+                <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">
+                      Kepala Madin Putra
+                    </label>
+                    <a
+                      href={`https://t.me/${settings.telegram_bot_username || 'ppma_notif_bot'}?start=kepala_madin_putra`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink size={11} /> Link Pairing Putra
+                    </a>
+                  </div>
+                  <input 
+                    type="text"
+                    value={settings.telegram_kepala_madin_putra_chat_id}
+                    onChange={(e) => setSettings({ ...settings, telegram_kepala_madin_putra_chat_id: e.target.value })}
+                    placeholder="Chat ID Telegram (contoh: 123456789)"
+                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 px-3 py-2 rounded-lg text-xs font-mono font-bold text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+
+                {/* Kepala Madin Putri */}
+                <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">
+                      Kepala Madin Putri
+                    </label>
+                    <a
+                      href={`https://t.me/${settings.telegram_bot_username || 'ppma_notif_bot'}?start=kepala_madin_putri`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink size={11} /> Link Pairing Putri
+                    </a>
+                  </div>
+                  <input 
+                    type="text"
+                    value={settings.telegram_kepala_madin_putri_chat_id}
+                    onChange={(e) => setSettings({ ...settings, telegram_kepala_madin_putri_chat_id: e.target.value })}
+                    placeholder="Chat ID Telegram (contoh: 123456789)"
+                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 px-3 py-2 rounded-lg text-xs font-mono font-bold text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Kotak Uji Coba Kirim Pesan Telegram */}
+            <div className="p-4 bg-sky-50/60 dark:bg-sky-950/20 rounded-xl border border-sky-200/80 dark:border-sky-800/40">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-sky-900 dark:text-sky-300 mb-1 flex items-center gap-1.5">
+                <Send size={14} className={testingTg ? 'animate-spin' : ''} />
+                Uji Coba Kirim Pesan ke Telegram
+              </h4>
+              <p className="text-xs text-sky-700 dark:text-sky-400 mb-3">
+                Kirim pesan pengujian untuk memverifikasi apakah bot dapat mengirimkan pesan ke Chat ID tujuan secara instan.
+              </p>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <input 
+                  type="text" 
+                  value={testTgChatId}
+                  onChange={(e) => setTestTgChatId(e.target.value)}
+                  placeholder="Chat ID Telegram Tujuan (contoh: 123456789)"
+                  className="bg-white dark:bg-gray-800 border border-sky-300 dark:border-sky-700 px-3 py-2 rounded-xl text-sm font-medium text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-sky-500 flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={handleTestTelegram}
+                  disabled={testingTg}
+                  className="bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
+                >
+                  {testingTg ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  {testingTg ? 'Mengirim...' : 'Kirim Pesan Tes Telegram'}
+                </button>
+              </div>
+              {testTgResult && (
+                <div className={`mt-2.5 p-2.5 rounded-lg text-xs font-bold flex items-center gap-2 ${
+                  testTgResult.success 
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300' 
+                    : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300 border border-red-300'
+                }`}>
+                  {testTgResult.success ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
+                  <span>{testTgResult.message}</span>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Pengaturan Integrasi WhatsApp Scheduler */}
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600 space-y-6">

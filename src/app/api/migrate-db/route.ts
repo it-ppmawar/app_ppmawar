@@ -502,8 +502,76 @@ export async function GET() {
       results.push('❌ Failed bulk eMaal pairing: ' + e.message);
     }
 
+    // ── Telegram Bot Migration ──────────────────────────────────────────────
+    // Tambah kolom telegram_chat_id & telegram_username ke tabel guru
+    try {
+      const [guruCols] = await pool.execute<any[]>("SHOW COLUMNS FROM guru LIKE 'telegram_chat_id'");
+      if (guruCols.length === 0) {
+        await pool.execute(`ALTER TABLE guru ADD COLUMN telegram_chat_id VARCHAR(64) DEFAULT NULL AFTER no_hp, ADD COLUMN telegram_username VARCHAR(64) DEFAULT NULL AFTER telegram_chat_id`);
+        results.push('✅ Added telegram_chat_id & telegram_username to guru');
+      } else {
+        results.push('ℹ️ guru.telegram_chat_id already exists');
+      }
+    } catch (e: any) {
+      results.push('❌ guru telegram columns: ' + e.message);
+    }
+
+    // Tambah kolom telegram_chat_id & telegram_username ke tabel murid
+    try {
+      const [muridCols] = await pool.execute<any[]>("SHOW COLUMNS FROM murid LIKE 'telegram_chat_id'");
+      if (muridCols.length === 0) {
+        await pool.execute(`ALTER TABLE murid ADD COLUMN telegram_chat_id VARCHAR(64) DEFAULT NULL, ADD COLUMN telegram_username VARCHAR(64) DEFAULT NULL`);
+        results.push('✅ Added telegram_chat_id & telegram_username to murid');
+      } else {
+        results.push('ℹ️ murid.telegram_chat_id already exists');
+      }
+    } catch (e: any) {
+      results.push('❌ murid telegram columns: ' + e.message);
+    }
+
+    // Tambah kolom telegram_chat_id & telegram_username ke tabel users
+    try {
+      const [usersCols] = await pool.execute<any[]>("SHOW COLUMNS FROM users LIKE 'telegram_chat_id'");
+      if (usersCols.length === 0) {
+        await pool.execute(`ALTER TABLE users ADD COLUMN telegram_chat_id VARCHAR(64) DEFAULT NULL, ADD COLUMN telegram_username VARCHAR(64) DEFAULT NULL`);
+        results.push('✅ Added telegram_chat_id & telegram_username to users');
+      } else {
+        results.push('ℹ️ users.telegram_chat_id already exists');
+      }
+    } catch (e: any) {
+      results.push('❌ users telegram columns: ' + e.message);
+    }
+
+    // Inisialisasi default pengaturan Telegram
+    const telegramDefaults: [string, string][] = [
+      ['telegram_bot_token', '8260588054:AAEB_71eA2XnRLHiYQV6jsZaiapsYcMd6yE'],
+      ['telegram_bot_username', 'ppma_notif_bot'],
+      ['telegram_notification_mode', 'both'],
+      ['telegram_kepala_madin_putra_chat_id', ''],
+      ['telegram_kepala_madin_putri_chat_id', ''],
+      ['telegram_kepala_madin_chat_id', ''],
+      ['telegram_auto_reminder_guru', '1'],
+      ['telegram_auto_rekap_kepala_madin', '1'],
+      ['telegram_auto_notif_wali', '1'],
+    ];
+
+    let telegramSettingsOk = 0;
+    for (const [key, val] of telegramDefaults) {
+      try {
+        await pool.execute(
+          `INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = IF(nilai IS NULL OR nilai = '', VALUES(nilai), nilai)`,
+          [key, val]
+        );
+        telegramSettingsOk++;
+      } catch (e: any) {
+        results.push(`❌ telegram setting ${key}: ` + e.message);
+      }
+    }
+    results.push(`✅ Telegram default settings: ${telegramSettingsOk}/${telegramDefaults.length} berhasil`);
+
     return NextResponse.json({ success: true, results });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

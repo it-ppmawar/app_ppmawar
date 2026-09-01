@@ -8,6 +8,10 @@ import {
   formatToWaPhone,
   sanitizeTextForWaScheduler 
 } from '@/lib/services/waScheduler';
+import { 
+  getTelegramConfig, 
+  sendKepalaMadinReportTelegram 
+} from '@/lib/services/telegramBot';
 
 export const dynamic = 'force-dynamic';
 
@@ -168,23 +172,74 @@ export async function POST(request: Request) {
       scheduledTimeStr = `${year}-${month}-${day}T${hours}:${minutes}`;
     }
 
-    const sendRes = await sendWaSchedule({
-      phone_number: phone,
-      message: msg,
-      scheduled_time: scheduledTimeStr,
-      is_loop: isLoop,
-      loop_interval: loopInterval,
-    });
+    const tgConfig = await getTelegramConfig();
+    let tgChatId = body.telegram_chat_id || '';
+    if (!tgChatId) {
+      if (targetWilayah === 'putra') {
+        tgChatId = tgConfig.kepalaMainPutraChatId || tgConfig.kepalaMainChatId;
+      } else if (targetWilayah === 'putri') {
+        tgChatId = tgConfig.kepalaMainPutriChatId || tgConfig.kepalaMainChatId;
+      } else {
+        tgChatId = tgConfig.kepalaMainChatId || tgConfig.kepalaMainPutraChatId || tgConfig.kepalaMainPutriChatId;
+      }
+    }
 
-    if (!sendRes.success) {
-      return NextResponse.json({ error: sendRes.message || 'Gagal mengirim pesan ke gateway WA' }, { status: 502 });
+    // 6. Kirim ke Telegram jika mode mendukung dan chat ID tersedia
+    let tgResult: { success: boolean; message: string } | null = null;
+    if (tgConfig.notificationMode !== 'wa_only' && tgChatId) {
+      tgResult = await sendKepalaMadinReportTelegram({
+        chat_id: tgChatId,
+        kepala_nama: kepalaNama,
+        bulan_tahun: bulanTahunStr,
+        total_guru: totalGuru,
+        avg_kehadiran: avgPct,
+        total_sesi: totalSesi,
+        total_hadir: totalHadir,
+        total_izin_sakit: totalIzin + totalSakit,
+        total_alpha: totalAlpha,
+        report_url: reportUrl,
+        wilayah_label: wilayahSub ? wilayahSub.replace(/[()]/g, '').trim() : undefined,
+        botToken: tgConfig.botToken,
+      });
+    }
+
+    // 7. Kirim ke WhatsApp jika mode mendukung
+    let sendRes: { success: boolean; message?: string } = { success: false, message: 'Dilewati (Telegram Only)' };
+    if (tgConfig.notificationMode !== 'telegram_only') {
+      sendRes = await sendWaSchedule({
+        phone_number: phone,
+        message: msg,
+        scheduled_time: scheduledTimeStr,
+        is_loop: isLoop,
+        loop_interval: loopInterval,
+      });
+    } else {
+      sendRes = { success: !!(tgResult?.success), message: tgResult?.success ? 'Laporan berhasil dikirim ke Telegram Kepala Madin' : tgResult?.message };
+    }
+
+    const overallSuccess = sendRes.success || tgResult?.success === true;
+
+    if (!overallSuccess) {
+      return NextResponse.json({ error: sendRes.message || tgResult?.message || 'Gagal mengirim pesan ke WhatsApp maupun Telegram' }, { status: 502 });
+    }
+
+    let successMessage = `Laporan rekapitulasi kehadiran dewan guru berhasil dikirimkan ke Kepala Madin`;
+    if (tgResult?.success && sendRes.success) {
+      successMessage += ` melalui WhatsApp (${phone}) dan Telegram (@ppma_notif_bot).`;
+    } else if (tgResult?.success) {
+      successMessage += ` melalui Telegram (@ppma_notif_bot).`;
+    } else {
+      successMessage += ` melalui WhatsApp (${phone}).`;
     }
 
     return NextResponse.json({
       success: true,
-      message: `Laporan rekapitulasi kehadiran dewan guru berhasil dijadwalkan untuk Kepala Madin (${phone}).`,
+      message: successMessage,
       data: {
         phone,
+        telegram_chat_id: tgChatId || null,
+        telegram_sent: tgResult?.success || false,
+        wa_scheduled: sendRes.success,
         scheduled_time: scheduledTimeStr,
         mode,
       }

@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2, Megaphone, Shield, ChevronDown, Database, Layers, Sparkles } from 'lucide-react';
+import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2, Megaphone, Shield, ChevronDown, Database, Layers, Sparkles, Send } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -424,6 +424,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Banner Hubungkan ke Telegram Bot (@ppma_notif_bot) */}
+            {user && (
+              <div className="px-4 mb-4">
+                <a
+                  href={`https://t.me/ppma_notif_bot?start=${user.guruId ? `guru_${user.guruId}` : user.muridId ? `santri_${user.muridId}` : 'start'}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/40 dark:to-blue-950/30 border border-sky-200 dark:border-sky-800/60 rounded-2xl p-3 shadow-sm relative overflow-hidden flex items-center gap-3 group hover:border-sky-400 transition-all block"
+                >
+                  <div className="bg-sky-500 text-white p-2.5 rounded-xl flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                    <Send size={18} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <h5 className="font-bold text-xs text-sky-950 dark:text-sky-200">Notifikasi Telegram</h5>
+                      <span className="text-[9px] bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 font-extrabold px-1.5 py-0.5 rounded">Resmi</span>
+                    </div>
+                    <p className="text-[10px] text-sky-800/80 dark:text-sky-400 leading-tight mt-0.5">
+                      Klik untuk hubungkan akun &amp; terima notifikasi jadwal instan.
+                    </p>
+                  </div>
+                </a>
               </div>
             )}
 

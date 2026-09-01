@@ -662,8 +662,7 @@ function PairingAndFacePageInner() {
               {/* Progress Bar Monitoring Status Pairing */}
               <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-bold flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-emerald-300" />
+                  <span className="text-sm font-bold">
                     {pairingStats.paired} / {pairingStats.total} santri terpasang kartu
                   </span>
                   <span className="text-indigo-200 text-sm font-extrabold">
@@ -678,34 +677,34 @@ function PairingAndFacePageInner() {
                   />
                 </div>
 
-                {/* Pill Stats Detail dengan Ikon Santri Islami */}
+                {/* Pill Stats Detail dengan Ikon Santri Islami (2 Baris Rapi) */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs">
-                  <div className="bg-white/10 rounded-xl px-2.5 py-1.5 flex items-center justify-between font-bold">
-                    <span className="flex items-center gap-1 text-emerald-200">
-                      <Check size={14} /> Terpasang:
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-2.5 flex flex-col justify-center font-bold">
+                    <span className="flex items-center gap-1 text-emerald-200 text-[11px]">
+                      <Check size={13} /> Terpasang
                     </span>
-                    <span className="text-white">{pairingStats.paired}</span>
+                    <span className="text-white text-sm font-extrabold mt-0.5">{pairingStats.paired}</span>
                   </div>
-                  <div className="bg-white/10 rounded-xl px-2.5 py-1.5 flex items-center justify-between font-bold">
-                    <span className="flex items-center gap-1 text-amber-200">
-                      <AlertCircle size={14} /> Belum:
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-2.5 flex flex-col justify-center font-bold">
+                    <span className="flex items-center gap-1 text-amber-200 text-[11px]">
+                      <AlertCircle size={13} /> Belum
                     </span>
-                    <span className="text-white">{pairingStats.unpaired}</span>
+                    <span className="text-white text-sm font-extrabold mt-0.5">{pairingStats.unpaired}</span>
                   </div>
-                  <div className="bg-white/10 rounded-xl px-2.5 py-1.5 flex items-center justify-between font-bold">
-                    <span className="flex items-center gap-1 text-cyan-200">
-                      <SantriPutraIcon size={14} /> Putra:
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-2.5 flex flex-col justify-center font-bold">
+                    <span className="flex items-center gap-1 text-cyan-200 text-[11px]">
+                      <SantriPutraIcon size={13} /> Putra
                     </span>
-                    <span className="text-white">
-                      {pairingStats.putra.paired}/{pairingStats.putra.total} ({pairingStats.putra.percent}%)
+                    <span className="text-white text-xs font-extrabold mt-0.5">
+                      {pairingStats.putra.paired}/{pairingStats.putra.total} <span className="text-cyan-200 text-[10px]">({pairingStats.putra.percent}%)</span>
                     </span>
                   </div>
-                  <div className="bg-white/10 rounded-xl px-2.5 py-1.5 flex items-center justify-between font-bold">
-                    <span className="flex items-center gap-1 text-pink-200">
-                      <SantriPutriIcon size={14} /> Putri:
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-2.5 flex flex-col justify-center font-bold">
+                    <span className="flex items-center gap-1 text-pink-200 text-[11px]">
+                      <SantriPutriIcon size={13} /> Putri
                     </span>
-                    <span className="text-white">
-                      {pairingStats.putri.paired}/{pairingStats.putri.total} ({pairingStats.putri.percent}%)
+                    <span className="text-white text-xs font-extrabold mt-0.5">
+                      {pairingStats.putri.paired}/{pairingStats.putri.total} <span className="text-pink-200 text-[10px]">({pairingStats.putri.percent}%)</span>
                     </span>
                   </div>
                 </div>
@@ -715,32 +714,32 @@ function PairingAndFacePageInner() {
 
           {/* Alat Pairing: Scan Kamera / Upload Gambar */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-extrabold text-gray-800 dark:text-white flex items-center gap-2">
+            <div className="space-y-3">
+              <h2 className="font-extrabold text-base text-gray-800 dark:text-white flex items-center gap-2">
                 <Sparkles size={18} className="text-indigo-600" />
                 Alat Pairing Kartu
               </h2>
-              {/* Sub-tab Selector */}
-              <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-2xl gap-1">
+              {/* Sub-tab Selector - 1 Baris Penuh Tersendiri */}
+              <div className="grid grid-cols-2 bg-gray-100 dark:bg-gray-700 p-1 rounded-2xl gap-1">
                 <button
                   onClick={() => setPairingToolTab('scan')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition ${
+                  className={`flex items-center justify-center gap-2 py-2 rounded-xl font-bold text-xs transition ${
                     pairingToolTab === 'scan'
                       ? 'bg-indigo-600 text-white shadow-sm'
                       : 'text-gray-600 dark:text-gray-300 hover:text-indigo-600'
                   }`}
                 >
-                  <Camera size={14} /> Scan Kamera
+                  <Camera size={15} /> Scan Kamera
                 </button>
                 <button
                   onClick={() => setPairingToolTab('upload')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition ${
+                  className={`flex items-center justify-center gap-2 py-2 rounded-xl font-bold text-xs transition ${
                     pairingToolTab === 'upload'
                       ? 'bg-indigo-600 text-white shadow-sm'
                       : 'text-gray-600 dark:text-gray-300 hover:text-indigo-600'
                   }`}
                 >
-                  <Upload size={14} /> Upload Gambar
+                  <Upload size={15} /> Upload Gambar
                 </button>
               </div>
             </div>
@@ -973,21 +972,22 @@ function PairingAndFacePageInner() {
 
                       {/* Info Santri */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-sm text-gray-800 dark:text-white truncate">
-                            {m.nama}
-                          </p>
-                          <GenderBadge gender={m.jenis_kelamin} size="xs" />
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                        <p className="font-bold text-sm text-gray-900 dark:text-white leading-snug">
+                          {m.nama}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                           NIS: <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{m.nis}</span>
                           {m.kelas_madin && ` · ${m.kelas_madin}`}
+                        </p>
+                        {/* Baris Bawah: Badge Gender & Badge QR */}
+                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                          <GenderBadge gender={m.jenis_kelamin} size="xs" />
                           {m.barcode_id && (
-                            <span className="ml-2 font-mono text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded">
+                            <span className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded font-bold border border-indigo-200/50 dark:border-indigo-800/40">
                               QR: {m.barcode_id}
                             </span>
                           )}
-                        </p>
+                        </div>
                       </div>
 
                       {/* Actions & Status Badge */}
@@ -1041,7 +1041,7 @@ function PairingAndFacePageInner() {
                   <ScanFace size={24} />
                 </div>
                 <div>
-                  <h1 className="text-xl sm:text-2xl font-extrabold">Face AI — Enrollment Dashboard</h1>
+                  <h1 className="text-xl sm:text-2xl font-extrabold">Face AI Enrollment</h1>
                   <p className="text-violet-200 text-xs sm:text-sm">
                     Proses foto santri → simpan descriptor biometrik wajah ke database
                   </p>
@@ -1062,10 +1062,17 @@ function PairingAndFacePageInner() {
                     style={{ width: `${faceStats.percent}%` }}
                   />
                 </div>
-                <div className="flex flex-wrap gap-3 mt-3 text-xs text-violet-200 font-medium">
-                  <span className="bg-white/10 px-2.5 py-1 rounded-lg">✅ {faceStats.enrolled} Enrolled</span>
-                  <span className="bg-white/10 px-2.5 py-1 rounded-lg">⏳ {faceStats.unenrolled} Belum</span>
-                  <span className="bg-white/10 px-2.5 py-1 rounded-lg">📷 {faceList.filter(m => !m.foto).length} Tanpa Foto</span>
+                {/* 3 Badges Presisi & Rata Tengah */}
+                <div className="grid grid-cols-3 gap-2 mt-3 text-xs text-violet-100 font-bold text-center">
+                  <div className="bg-white/10 backdrop-blur-sm px-2 py-2 rounded-xl flex items-center justify-center gap-1.5">
+                    <span>✅</span> <span>{faceStats.enrolled} Enrolled</span>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm px-2 py-2 rounded-xl flex items-center justify-center gap-1.5">
+                    <span>⏳</span> <span>{faceStats.unenrolled} Belum</span>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm px-2 py-2 rounded-xl flex items-center justify-center gap-1.5">
+                    <span>📷</span> <span>{faceList.filter(m => !m.foto).length} Tanpa Foto</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1265,31 +1272,34 @@ function PairingAndFacePageInner() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-sm text-gray-800 dark:text-white truncate">{m.nama}</p>
-                          <GenderBadge gender={m.jenis_kelamin} size="xs" />
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                          {m.nis} {m.kelas_madin && `· ${m.kelas_madin}`}
+                        <p className="font-bold text-sm text-gray-900 dark:text-white leading-snug">
+                          {m.nama}
                         </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          NIS: <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{m.nis}</span>
+                          {m.kelas_madin && ` · ${m.kelas_madin}`}
+                        </p>
+                        {/* Baris Bawah: Gender & Status Biometrik */}
+                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                          <GenderBadge gender={m.jenis_kelamin} size="xs" />
+                          {m.enrolled ? (
+                            <div className="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                              <CheckCircle2 size={11} />
+                              <span>Enrolled</span>
+                            </div>
+                          ) : m.foto ? (
+                            <div className="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                              <AlertCircle size={11} />
+                              <span>Belum Enrolled</span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                              <Camera size={11} />
+                              <span>Tanpa Foto</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-
-                      {m.enrolled ? (
-                        <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0">
-                          <CheckCircle2 size={12} />
-                          Enrolled
-                        </div>
-                      ) : m.foto ? (
-                        <div className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0">
-                          <AlertCircle size={12} />
-                          Belum
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0">
-                          <Camera size={12} />
-                          Tanpa Foto
-                        </div>
-                      )}
                     </div>
                   ))
                 )}

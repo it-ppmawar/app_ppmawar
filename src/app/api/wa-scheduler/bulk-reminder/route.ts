@@ -10,6 +10,10 @@ import {
   calculateScheduledTimeWIB, 
   formatToWaPhone 
 } from '@/lib/services/waScheduler';
+import { 
+  getTelegramConfig, 
+  sendTeacherReminderTelegram 
+} from '@/lib/services/telegramBot';
 
 export const dynamic = 'force-dynamic';
 
@@ -171,6 +175,7 @@ export async function POST(request: Request) {
     } = body;
 
     const config = await getWaSchedulerConfig();
+    const tgConfig = await getTelegramConfig();
     const effectiveLeadTime = typeof customLeadTime === 'number' ? customLeadTime : config.leadTimeMinutes;
     const effectiveIsLoop = customIsLoop !== undefined ? (customIsLoop ? 1 : 0) : config.isLoop;
 
@@ -449,17 +454,73 @@ export async function POST(request: Request) {
         }
       }
 
-      const sendResult = await sendWaSchedule({
-        phone_number: formattedPhone,
-        message: messageText,
-        scheduled_time: scheduleTimeStr,
-        is_loop: itemIsLoop,
-        loop_interval: itemLoopInterval,
-        apiKey: config.apiKey,
-        endpoint: config.endpoint
-      });
+      // ── Kirim ke Telegram (jika guru sudah pairing & mode mendukung) ────────
+      let telegramResult: { success: boolean; message: string } | null = null;
+      if (tgConfig.notificationMode !== 'wa_only') {
+        try {
+          // Ambil telegram_chat_id guru dari database
+          const [guruTgRows] = await pool.execute<RowDataPacket[]>(
+            'SELECT telegram_chat_id FROM guru WHERE guru_id IN (SELECT guru_id FROM guru WHERE no_hp = ? LIMIT 1) AND telegram_chat_id IS NOT NULL AND telegram_chat_id != "" LIMIT 1',
+            [item.guru_whatsapp]
+          );
+          
+          // Fallback: cari via nama guru jika query HP tidak cocok
+          let guruTgChatId = guruTgRows[0]?.telegram_chat_id || '';
+          
+          if (!guruTgChatId && item.guru_nama) {
+            const [guruTgByName] = await pool.execute<RowDataPacket[]>(
+              'SELECT telegram_chat_id FROM guru WHERE nama = ? AND telegram_chat_id IS NOT NULL AND telegram_chat_id != "" LIMIT 1',
+              [item.guru_nama]
+            );
+            guruTgChatId = guruTgByName[0]?.telegram_chat_id || '';
+          }
 
-      if (sendResult.success) {
+          if (guruTgChatId) {
+            telegramResult = await sendTeacherReminderTelegram({
+              chat_id: guruTgChatId,
+              guru_nama: item.guru_nama,
+              hari: item.hari || currentDay,
+              tanggal: itemTargetDate,
+              jam_mulai: item.jam_mulai,
+              jam_selesai: item.jam_selesai,
+              kelas_nama: item.kelas_nama,
+              mata_pelajaran: valMapel,
+              tipe: item.tipe,
+              quick_url: item.quick_url || 'https://app.ppmawar.or.id/',
+              quick_izin_url: item.quick_izin_url,
+              botToken: tgConfig.botToken,
+            });
+          }
+        } catch (tgErr: any) {
+          console.error('[Telegram] Error sending to guru:', tgErr.message);
+        }
+      }
+
+      // ── Kirim ke WA Gateway (jika mode mendukung) ────────────────────────
+      let sendResult: { success: boolean; message: string; data?: any } = { success: false, message: 'Dilewati (mode Telegram Only)' };
+      
+      if (tgConfig.notificationMode !== 'telegram_only') {
+        sendResult = await sendWaSchedule({
+          phone_number: formattedPhone,
+          message: messageText,
+          scheduled_time: scheduleTimeStr,
+          is_loop: itemIsLoop,
+          loop_interval: itemLoopInterval,
+          apiKey: config.apiKey,
+          endpoint: config.endpoint
+        });
+      } else {
+        // Mode telegram_only: anggap sukses jika Telegram berhasil
+        sendResult = { 
+          success: !!(telegramResult?.success), 
+          message: telegramResult?.success ? 'Dikirim via Telegram' : (telegramResult?.message || 'Guru belum pairing Telegram')
+        };
+      }
+
+      // Hitung sukses: minimal salah satu channel berhasil
+      const overallSuccess = sendResult.success || telegramResult?.success === true;
+
+      if (overallSuccess) {
         successCount++;
         return {
           guru_nama: item.guru_nama,
@@ -468,6 +529,8 @@ export async function POST(request: Request) {
           scheduled_time: scheduleTimeStr,
           loop_interval: itemLoopInterval,
           success: true,
+          telegram_sent: telegramResult?.success || false,
+          wa_scheduled: sendResult.success,
           data: sendResult.data
         };
       } else {
@@ -478,6 +541,8 @@ export async function POST(request: Request) {
           hari: item.hari,
           scheduled_time: scheduleTimeStr,
           success: false,
+          telegram_sent: telegramResult?.success || false,
+          wa_scheduled: false,
           error: sendResult.message
         };
       }

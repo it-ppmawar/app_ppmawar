@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { UserCog, Search, Plus, Trash2, Edit, Phone, MapPin, BookOpen, Home as HomeIcon, UserPlus, FileText, Download, Upload, X } from 'lucide-react';
+import { UserCog, Search, Plus, Trash2, Edit, Phone, MapPin, BookOpen, Home as HomeIcon, UserPlus, FileText, Download, Upload, X, Send, Copy, Check, ExternalLink } from 'lucide-react';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
 import { downloadTemplate } from '@/lib/downloadTemplate';
 
@@ -25,6 +25,16 @@ export default function GuruPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+  const [copiedGuruId, setCopiedGuruId] = useState<number | null>(null);
+
+  const handleCopyTgLink = (guruId: number) => {
+    const link = `https://t.me/ppma_notif_bot?start=guru_${guruId}`;
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(link);
+      setCopiedGuruId(guruId);
+      setTimeout(() => setCopiedGuruId(null), 2500);
+    }
+  };
 
   // Filter State
   const [showFilters, setShowFilters] = useState(false);
@@ -236,6 +246,8 @@ export default function GuruPage() {
           jabatan: editingGuru.jabatan,
           alamat: editingGuru.alamat,
           whatsapp: editingGuru.whatsapp || editingGuru.no_hp,
+          telegram_chat_id: editingGuru.telegram_chat_id || null,
+          telegram_username: editingGuru.telegram_username || null,
           foto: fotoName
         })
       });
@@ -590,6 +602,33 @@ export default function GuruPage() {
                         <span className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 font-medium">
                           <Phone size={12} /> {item.whatsapp || item.no_hp || '-'}
                         </span>
+                        {/* Telegram Status & Quick Link */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {item.telegram_chat_id ? (
+                            <span className="inline-flex items-center gap-1 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 px-1.5 py-0.5 rounded text-[10px] font-bold" title={`Chat ID: ${item.telegram_chat_id}`}>
+                              <Send size={9} /> @{item.telegram_username || item.telegram_chat_id}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleCopyTgLink(item.guru_id)}
+                              className="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-800 hover:bg-sky-50 text-gray-600 dark:text-gray-400 hover:text-sky-600 px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors border border-gray-200 dark:border-gray-700"
+                              title="Salin link pairing Telegram untuk guru ini"
+                            >
+                              {copiedGuruId === item.guru_id ? (
+                                <>
+                                  <Check size={9} className="text-emerald-500" />
+                                  <span className="text-emerald-600 font-bold">Tersalin!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Send size={9} className="text-sky-500" />
+                                  <span>Hubungkan TG</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
                         <span className="flex items-start gap-1.5 text-xs text-gray-500 max-w-[200px] whitespace-normal">
                           <MapPin size={12} className="shrink-0 mt-0.5" />
                           <span className="line-clamp-2" title={item.alamat}>{item.alamat || '-'}</span>
@@ -803,6 +842,49 @@ export default function GuruPage() {
                   className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+
+              {/* Telegram Information */}
+              <div className="p-3 bg-sky-50/60 dark:bg-sky-950/20 rounded-xl border border-sky-200/80 dark:border-sky-800/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-sky-900 dark:text-sky-300 flex items-center gap-1.5">
+                    <Send size={13} className="text-sky-500" />
+                    Telegram Notifikasi Bot (@ppma_notif_bot)
+                  </label>
+                  {editingGuru.guru_id && (
+                    <a
+                      href={`https://t.me/ppma_notif_bot?start=guru_${editingGuru.guru_id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink size={10} /> Link Pairing
+                    </a>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-500 block mb-1">Telegram Chat ID</span>
+                    <input
+                      type="text"
+                      value={editingGuru.telegram_chat_id || ''}
+                      onChange={(e) => setEditingGuru({ ...editingGuru, telegram_chat_id: e.target.value })}
+                      placeholder="Contoh: 123456789"
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-gray-800 border border-sky-200 dark:border-sky-700 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-500 block mb-1">Telegram Username</span>
+                    <input
+                      type="text"
+                      value={editingGuru.telegram_username || ''}
+                      onChange={(e) => setEditingGuru({ ...editingGuru, telegram_username: e.target.value.replace('@', '') })}
+                      placeholder="username_guru (tanpa @)"
+                      className="w-full px-2.5 py-1.5 bg-white dark:bg-gray-800 border border-sky-200 dark:border-sky-700 rounded-lg text-xs font-bold focus:ring-2 focus:ring-sky-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Alamat Lengkap</label>
                 <textarea

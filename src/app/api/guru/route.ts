@@ -16,7 +16,7 @@ export async function GET() {
     const { role, userId, username } = payload as any;
     const tokenAsrama = (payload as any).namaAsrama || null;
 
-    let query = `SELECT guru_id, nip, nama, jenis_kelamin, jabatan, alamat, no_hp as whatsapp, foto FROM guru`;
+    let query = `SELECT guru_id, nip, nama, jenis_kelamin, jabatan, alamat, no_hp as whatsapp, telegram_chat_id, telegram_username, foto FROM guru`;
     let params: any[] = [];
 
     if (role === 'guru') {
@@ -98,15 +98,15 @@ export async function POST(request: Request) {
     }
 
     const data = await request.json();
-    const { nip, nama, jenis_kelamin, jabatan, alamat, whatsapp, foto } = data;
+    const { nip, nama, jenis_kelamin, jabatan, alamat, whatsapp, telegram_chat_id, telegram_username, foto } = data;
 
     if (!nama) {
       return NextResponse.json({ error: 'Nama wajib diisi' }, { status: 400 });
     }
 
     const sql = `
-      INSERT INTO guru (nip, nama, jenis_kelamin, jabatan, alamat, no_hp, foto)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO guru (nip, nama, jenis_kelamin, jabatan, alamat, no_hp, telegram_chat_id, telegram_username, foto)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       nip || null,
@@ -115,6 +115,8 @@ export async function POST(request: Request) {
       jabatan || null,
       alamat || null,
       whatsapp || null,
+      telegram_chat_id || null,
+      telegram_username || null,
       foto || null
     ];
 
@@ -155,7 +157,7 @@ export async function PUT(request: Request) {
 
     const { role, guruId: loggedInGuruId } = payload as any;
     const data = await request.json();
-    const { guru_id, nama, jenis_kelamin, jabatan, alamat, whatsapp, foto } = data;
+    const { guru_id, nama, jenis_kelamin, jabatan, alamat, whatsapp, telegram_chat_id, telegram_username, foto } = data;
 
     if (!guru_id) return NextResponse.json({ error: 'ID tidak valid' }, { status: 400 });
 
@@ -174,6 +176,8 @@ export async function PUT(request: Request) {
     if (jabatan !== undefined) { updates.push('jabatan = ?'); params.push(jabatan); }
     if (alamat !== undefined) { updates.push('alamat = ?'); params.push(alamat); }
     if (whatsapp !== undefined) { updates.push('no_hp = ?'); params.push(whatsapp); }
+    if (telegram_chat_id !== undefined) { updates.push('telegram_chat_id = ?'); params.push(telegram_chat_id || null); }
+    if (telegram_username !== undefined) { updates.push('telegram_username = ?'); params.push(telegram_username || null); }
     if (foto !== undefined) { updates.push('foto = ?'); params.push(foto); }
 
     if (updates.length > 0) {

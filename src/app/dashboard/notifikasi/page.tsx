@@ -2675,6 +2675,20 @@ function NotifikasiContent() {
                       placeholder="Contoh: 081234567890"
                       className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-purple-500 outline-none"
                     />
+                    <div className="mt-2 p-2 bg-sky-50 dark:bg-sky-950/30 rounded-lg border border-sky-200 dark:border-sky-800 flex items-center justify-between text-xs">
+                      <span className="text-sky-900 dark:text-sky-300 font-medium flex items-center gap-1.5">
+                        <Send size={12} className="text-sky-500" />
+                        Jalur Telegram Bot:
+                      </span>
+                      <a
+                        href={`https://t.me/ppma_notif_bot?start=kepala_madin_${kepalaMadinTarget}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
+                      >
+                        Hubungkan Telegram Kepala Madin 📲
+                      </a>
+                    </div>
                   </div>
                 </div>
 
