@@ -38,6 +38,66 @@ export async function GET(request: Request) {
     const isRentang = !!(tanggal_dari && tanggal_sampai);
     let rows: RowDataPacket[] = [];
 
+    // Mapping nama asli guru dan user
+    const nameMap: Record<string, string> = {};
+    try {
+      const [guruList] = await pool.execute<RowDataPacket[]>(
+        `SELECT g.guru_id, g.nip, g.nama, g.user_id, u.username, u.nama as user_nama
+         FROM guru g
+         LEFT JOIN users u ON g.user_id = u.id OR u.guru_id = g.guru_id`
+      );
+      for (const g of guruList) {
+        if (g.nama) {
+          const realName = g.nama.trim();
+          if (g.nip) nameMap[String(g.nip).toLowerCase()] = realName;
+          if (g.guru_id) {
+            nameMap[String(g.guru_id).toLowerCase()] = realName;
+            nameMap[`guru_${g.guru_id}`.toLowerCase()] = realName;
+          }
+          if (g.user_id) {
+            nameMap[String(g.user_id).toLowerCase()] = realName;
+            nameMap[`user_${g.user_id}`.toLowerCase()] = realName;
+          }
+          if (g.username) {
+            nameMap[String(g.username).toLowerCase()] = realName;
+          }
+        }
+      }
+
+      const [usersList] = await pool.execute<RowDataPacket[]>(
+        `SELECT id, username, nama, role FROM users`
+      );
+      for (const u of usersList) {
+        if (u.nama && u.nama.trim()) {
+          const realName = u.nama.trim();
+          if (u.username && !nameMap[String(u.username).toLowerCase()]) {
+            nameMap[String(u.username).toLowerCase()] = realName;
+          }
+          if (u.id && !nameMap[String(u.id).toLowerCase()]) {
+            nameMap[String(u.id).toLowerCase()] = realName;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Name map build error:", e);
+    }
+
+    const resolveNamaPenginput = (raw: string, fallbackNamaGuru?: string) => {
+      if (!raw || raw.trim() === '') return fallbackNamaGuru || 'Pengajar';
+      const clean = raw.trim();
+      const lower = clean.toLowerCase();
+
+      if (lower === 'sistem otomatis') return 'Sistem Otomatis';
+      if (lower === 'admin' || lower === 'administrator') return nameMap['admin'] || 'Administrator';
+      if (nameMap[lower]) return nameMap[lower];
+
+      const numMatch = lower.match(/\d+/);
+      if (numMatch && nameMap[numMatch[0]]) return nameMap[numMatch[0]];
+
+      if (fallbackNamaGuru && fallbackNamaGuru.trim() !== '') return fallbackNamaGuru;
+      return clean;
+    };
+
     // Audit map untuk menelusuri siapa yang menginput absensi santri
     let auditMap: Record<string, string> = {};
     if (murid_id) {
@@ -46,14 +106,15 @@ export async function GET(request: Request) {
           `SELECT user_nama, user_role, keterangan, created_at
            FROM audit_log
            WHERE tabel IN ('absensi', 'absensi_quran', 'absensi_kegiatan')
-           ORDER BY id DESC LIMIT 300`
+           ORDER BY id DESC LIMIT 500`
         );
         for (const a of auditRows) {
           const match = (a.keterangan || "").match(/(\d{4}-\d{2}-\d{2})/);
           if (match && match[1]) {
             const key = match[1];
             if (!auditMap[key]) {
-              auditMap[key] = a.user_nama ? `${a.user_nama}` : "Pengajar";
+              const rawName = a.user_nama ? String(a.user_nama).trim() : "";
+              auditMap[key] = resolveNamaPenginput(rawName);
             }
           }
         }
@@ -72,10 +133,12 @@ export async function GET(request: Request) {
           COALESCE(jm.jam_selesai, "") as jam_selesai,
           COALESCE(jm.mata_pelajaran, "Madin") as mata_pelajaran,
           COALESCE(km.nama_kelas, "-") as kelas_nama,
+          COALESCE(g.nama, "") as guru_nama,
           "Madin" as tipe_label
          FROM absensi a
          LEFT JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
          LEFT JOIN kelas_madin km ON jm.kelas_madin_id = km.kelas_id
+         LEFT JOIN guru g ON jm.guru_id = g.guru_id
          WHERE a.murid_id = ? AND ${dateWhere}
          ORDER BY a.tanggal DESC, jm.jam_mulai ASC`,
         dateParams
@@ -91,10 +154,12 @@ export async function GET(request: Request) {
           COALESCE(jq.jam_selesai, "") as jam_selesai,
           COALESCE(jq.mata_pelajaran, "Tahfidz / Tilawah") as mata_pelajaran,
           COALESCE(kq.nama_kelas, "-") as kelas_nama,
+          COALESCE(g.nama, "") as guru_nama,
           "Quran" as tipe_label
          FROM absensi_quran a
          LEFT JOIN jadwal_quran jq ON a.jadwal_quran_id = jq.id
          LEFT JOIN kelas_quran kq ON jq.kelas_quran_id = kq.id
+         LEFT JOIN guru g ON jq.guru_id = g.guru_id
          WHERE a.murid_id = ? AND ${dateWhere}
          ORDER BY a.tanggal DESC, jq.jam_mulai ASC`,
         dateParams
@@ -110,10 +175,12 @@ export async function GET(request: Request) {
           COALESCE(jk.jam_selesai, "") as jam_selesai,
           COALESCE(jk.nama_kegiatan, "Kegiatan Asrama") as mata_pelajaran,
           COALESCE(k.nama_kamar, "-") as kelas_nama,
+          COALESCE(g.nama, "") as guru_nama,
           "Kegiatan" as tipe_label
          FROM absensi_kegiatan a
          LEFT JOIN jadwal_kegiatan jk ON a.kegiatan_id = jk.kegiatan_id
          LEFT JOIN kamar k ON jk.kamar_id = k.kamar_id
+         LEFT JOIN guru g ON jk.guru_id = g.guru_id
          WHERE a.murid_id = ? AND ${dateWhere}
          ORDER BY a.tanggal DESC, jk.jam_mulai ASC`,
         dateParams
@@ -143,6 +210,7 @@ export async function GET(request: Request) {
           COALESCE(jm.mata_pelajaran, jq.mata_pelajaran, jk.nama_kegiatan, "") as mata_pelajaran,
           COALESCE(km.nama_kelas, kq.nama_kelas, k.nama_kamar, "") as kelas_nama,
           COALESCE(a.is_otomatis, 0) as is_otomatis,
+          COALESCE(g.nama, "") as guru_nama,
           CASE 
             WHEN a.jadwal_madin_id IS NOT NULL THEN 'Madin'
             WHEN a.jadwal_quran_id IS NOT NULL THEN 'Quran'
@@ -156,6 +224,7 @@ export async function GET(request: Request) {
          LEFT JOIN kelas_quran kq ON jq.kelas_quran_id = kq.id
          LEFT JOIN jadwal_kegiatan jk ON a.kegiatan_id = jk.kegiatan_id
          LEFT JOIN kamar k ON jk.kamar_id = k.kamar_id
+         LEFT JOIN guru g ON a.guru_id = g.guru_id
          WHERE a.guru_id = ? AND ${dateWhere}
          ORDER BY a.tanggal DESC, a.absensi_id DESC`,
         dateParams
@@ -204,7 +273,7 @@ export async function GET(request: Request) {
       };
 
       // Siapa yang menginput data ini
-      let penginput = "Pengajar Kelas";
+      let penginput = r.guru_nama || "Pengajar Kelas";
       if (r.is_otomatis === 1) {
         penginput = "Sistem Otomatis";
       } else if (tipe === "guru") {
@@ -215,10 +284,10 @@ export async function GET(request: Request) {
         } else if ((r.keterangan || "").toLowerCase().includes("menginput absensi")) {
           penginput = "Input Mandiri (Guru)";
         } else {
-          penginput = "Guru";
+          penginput = r.guru_nama || "Guru";
         }
       } else if (murid_id) {
-        penginput = auditMap[tglStr] || "Pengajar Kelas";
+        penginput = auditMap[tglStr] || r.guru_nama || "Pengajar Kelas";
       }
 
       return {

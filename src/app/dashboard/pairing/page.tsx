@@ -955,39 +955,35 @@ function PairingAndFacePageInner() {
                           : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50'
                       }`}
                     >
-                      {/* Baris Atas: Foto merapat ke atas sejajar nama & NIS, action button di kanan */}
-                      <div className="flex items-start gap-3">
+                      {/* Baris 1: Foto + Nama + Action */}
+                      <div className="flex items-center gap-3">
                         {/* Avatar / Foto */}
-                        <div className={`w-11 h-11 rounded-full overflow-hidden flex-shrink-0 ring-2 ${m.paired ? 'ring-emerald-400' : 'ring-gray-300 dark:ring-gray-600'}`}>
+                        <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden flex-shrink-0 ring-2 ${m.paired ? 'ring-emerald-400' : 'ring-gray-300 dark:ring-gray-600'}`}>
                           {m.foto ? (
                             <img src={m.foto} alt={m.nama} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400">
                               {m.jenis_kelamin === 'Perempuan' ? (
-                                <SantriPutriIcon size={20} className="text-rose-400" />
+                                <SantriPutriIcon size={18} className="text-rose-400" />
                               ) : (
-                                <SantriPutraIcon size={20} className="text-teal-500" />
+                                <SantriPutraIcon size={18} className="text-teal-500" />
                               )}
                             </div>
                           )}
                         </div>
 
-                        {/* Info Santri */}
+                        {/* Nama Santri */}
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-sm text-gray-900 dark:text-white leading-snug">
                             {m.nama}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            NIS: <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{m.nis}</span>
-                            {m.kelas_madin && ` · ${m.kelas_madin}`}
-                          </p>
                         </div>
 
                         {/* Actions & Status Badge di Kanan Atas */}
-                        <div className="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
                           {m.paired ? (
                             <>
-                              <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2.5 py-1 rounded-full">
+                              <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2 py-0.5 rounded-full">
                                 <CheckCircle2 size={12} />
                                 <span className="hidden sm:inline">Terpasang</span>
                               </div>
@@ -1002,7 +998,7 @@ function PairingAndFacePageInner() {
                           ) : (
                             <button
                               onClick={() => handleQuickPairFromList(m.nis)}
-                              className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition active:scale-95"
+                              className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-sm transition active:scale-95"
                             >
                               <Camera size={12} />
                               <span>Pairing</span>
@@ -1011,12 +1007,18 @@ function PairingAndFacePageInner() {
                         </div>
                       </div>
 
-                      {/* Baris Bawah: Merapat ke kiri sejajar dengan ujung kiri foto */}
-                      <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-gray-100 dark:border-gray-800/60 flex-wrap">
+                      {/* Baris 2: NIS & Kelas — Merapat ke kiri sejajar dengan awal foto */}
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-medium">
+                        NIS: <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{m.nis}</span>
+                        {m.kelas_madin && ` · ${m.kelas_madin}`}
+                      </p>
+
+                      {/* Baris 3: Gender Badge & QR — Merapat ke kiri sejajar dengan awal foto */}
+                      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800/60 flex-wrap">
                         <GenderBadge gender={m.jenis_kelamin} size="xs" />
                         {m.barcode_id && (
-                          <span className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded font-bold border border-indigo-200/50 dark:border-indigo-800/40 truncate max-w-[210px] sm:max-w-md" title={m.barcode_id}>
-                            QR: {m.barcode_id.length > 20 ? `${m.barcode_id.slice(0, 20)}...` : m.barcode_id}
+                          <span className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded font-bold border border-indigo-200/50 dark:border-indigo-800/40 truncate max-w-[160px] sm:max-w-xs inline-block" title={m.barcode_id}>
+                            QR: {m.barcode_id.length > 14 ? `${m.barcode_id.slice(0, 14)}...` : m.barcode_id}
                           </span>
                         )}
                       </div>
@@ -1261,9 +1263,9 @@ function PairingAndFacePageInner() {
                           : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50'
                       }`}
                     >
-                      {/* Baris Atas: Foto merapat ke atas sejajar nama & NIS, status badge di kanan atas */}
-                      <div className="flex items-start gap-3">
-                        <div className={`w-11 h-11 rounded-full overflow-hidden flex-shrink-0 ring-2 ${m.enrolled ? 'ring-emerald-400' : 'ring-gray-300 dark:ring-gray-600'}`}>
+                      {/* Baris 1: Foto + Nama + Status Badge */}
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden flex-shrink-0 ring-2 ${m.enrolled ? 'ring-emerald-400' : 'ring-gray-300 dark:ring-gray-600'}`}>
                           {m.foto ? (
                             <img src={m.foto} alt={m.nama} className="w-full h-full object-cover" />
                           ) : (
@@ -1281,25 +1283,21 @@ function PairingAndFacePageInner() {
                           <p className="font-bold text-sm text-gray-900 dark:text-white leading-snug">
                             {m.nama}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            NIS: <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{m.nis}</span>
-                            {m.kelas_madin && ` · ${m.kelas_madin}`}
-                          </p>
                         </div>
 
-                        <div className="flex-shrink-0 pt-0.5">
+                        <div className="flex-shrink-0">
                           {m.enrolled ? (
-                            <div className="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2.5 py-1 rounded-full">
+                            <div className="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2 py-0.5 rounded-full">
                               <CheckCircle2 size={12} />
                               <span className="hidden sm:inline">Enrolled</span>
                             </div>
                           ) : m.foto ? (
-                            <div className="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-bold px-2.5 py-1 rounded-full">
+                            <div className="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-bold px-2 py-0.5 rounded-full">
                               <AlertCircle size={12} />
                               <span className="hidden sm:inline">Belum</span>
                             </div>
                           ) : (
-                            <div className="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold px-2.5 py-1 rounded-full">
+                            <div className="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold px-2 py-0.5 rounded-full">
                               <Camera size={12} />
                               <span className="hidden sm:inline">Tanpa Foto</span>
                             </div>
@@ -1307,8 +1305,14 @@ function PairingAndFacePageInner() {
                         </div>
                       </div>
 
-                      {/* Baris Bawah: Merapat ke kiri sejajar dengan ujung kiri foto */}
-                      <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-gray-100 dark:border-gray-800/60 flex-wrap">
+                      {/* Baris 2: NIS & Kelas — Merapat ke kiri sejajar dengan awal foto */}
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-medium">
+                        NIS: <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{m.nis}</span>
+                        {m.kelas_madin && ` · ${m.kelas_madin}`}
+                      </p>
+
+                      {/* Baris 3: Gender Badge & Biometrik — Merapat ke kiri sejajar dengan awal foto */}
+                      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800/60 flex-wrap">
                         <GenderBadge gender={m.jenis_kelamin} size="xs" />
                         {m.enrolled ? (
                           <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-200/50 dark:border-emerald-800/40">
