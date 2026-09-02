@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Shield, Search, RefreshCw, Calendar, User, Activity, ChevronLeft, ChevronRight, Info, ShieldAlert } from 'lucide-react';
+import { Shield, Search, RefreshCw, Calendar, User, Activity, ChevronLeft, ChevronRight, Info, ShieldAlert, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface AuditLog {
   id: number;
@@ -159,6 +159,45 @@ export default function AuditLogPage() {
       });
     } catch { return dt; }
   };
+  const [sortField, setSortField] = useState<'created_at' | 'user' | 'aksi' | 'keterangan' | 'ip_address'>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (field: 'created_at' | 'user' | 'aksi' | 'keterangan' | 'ip_address') => {
+    if (sortField === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder(field === 'created_at' ? 'desc' : 'asc');
+    }
+  };
+
+  const sortedLogs = [...logs].sort((a, b) => {
+    let valA = '';
+    let valB = '';
+
+    if (sortField === 'created_at') {
+      valA = a.created_at || '';
+      valB = b.created_at || '';
+      return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (sortField === 'user') {
+      valA = (a.nama_lengkap || a.user_nama || '').toLowerCase();
+      valB = (b.nama_lengkap || b.user_nama || '').toLowerCase();
+      return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (sortField === 'aksi') {
+      valA = (AKSI_LABEL[a.aksi] || a.aksi || '').toLowerCase();
+      valB = (AKSI_LABEL[b.aksi] || b.aksi || '').toLowerCase();
+      return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (sortField === 'keterangan') {
+      valA = (a.keterangan || '').toLowerCase();
+      valB = (b.keterangan || '').toLowerCase();
+      return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (sortField === 'ip_address') {
+      valA = (a.ip_address || '').toLowerCase();
+      valB = (b.ip_address || '').toLowerCase();
+      return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    }
+    return 0;
+  });
 
   if (myRole && myRole !== 'admin') {
     return (
@@ -168,9 +207,12 @@ export default function AuditLogPage() {
         </div>
         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Akses Dibatasi</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Hanya Admin Utama yang memiliki hak akses untuk melihat rekam jejak Audit Log sistem.
+          Halaman Audit Log hanya dapat diakses oleh Administrator Utama.
         </p>
-        <Link href="/dashboard" className="inline-block px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-sm hover:bg-indigo-700 transition-colors">
+        <Link
+          href="/dashboard"
+          className="inline-block px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-colors"
+        >
           Kembali ke Dashboard
         </Link>
       </div>
@@ -178,72 +220,87 @@ export default function AuditLogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="bg-indigo-600 p-2 rounded-xl">
-            <Shield className="text-white w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Audit Log</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Riwayat aktivitas sistem — siapa, apa, kapan, dari mana</p>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
+            <Shield className="text-indigo-600 dark:text-indigo-400 w-7 h-7" />
+            Audit Log
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Riwayat aktivitas sistem — siapa, apa, kapan, dan dari mana
+          </p>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 mb-4 shadow-sm">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Filter Bar */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Filter Aksi */}
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Aksi</label>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-1">Aksi</label>
             <select
               value={filterAksi}
               onChange={e => { setFilterAksi(e.target.value); setPage(1); }}
-              className="w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
+              className="w-full text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Semua Aksi</option>
-              {Object.entries(AKSI_LABEL).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
-              ))}
+              <option value="simpan_absen">Simpan Absen</option>
+              <option value="ubah_status">Ubah Status</option>
+              <option value="hapus_absen">Hapus Absen</option>
+              <option value="login">Login</option>
+              <option value="logout">Logout</option>
             </select>
           </div>
+
+          {/* Filter Tabel */}
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Tabel</label>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-1">Tabel</label>
             <select
               value={filterTabel}
               onChange={e => { setFilterTabel(e.target.value); setPage(1); }}
-              className="w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
+              className="w-full text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Semua Tabel</option>
               <option value="absensi">absensi (Madin)</option>
-              <option value="absensi_quran">absensi_quran</option>
-              <option value="absensi_kegiatan">absensi_kegiatan</option>
+              <option value="absensi_quran">absensi_quran (MQ)</option>
+              <option value="absensi_kegiatan">absensi_kegiatan (Asrama)</option>
+              <option value="users">users</option>
             </select>
           </div>
+
+          {/* Filter Tanggal */}
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Tanggal</label>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-1">Tanggal</label>
             <input
               type="date"
               value={filterTanggal}
               onChange={e => { setFilterTanggal(e.target.value); setPage(1); }}
-              className="w-full text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2"
+              className="w-full text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
+
+          {/* Actions */}
           <div className="flex items-end gap-2">
             <button
-              onClick={() => { setFilterAksi(''); setFilterTabel(''); setFilterTanggal(''); setFilterUserId(''); setPage(1); }}
-              className="flex-1 text-sm bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg px-3 py-2 transition-colors"
+              onClick={() => {
+                setFilterAksi('');
+                setFilterTabel('');
+                setFilterTanggal('');
+                setFilterUserId('');
+                setPage(1);
+              }}
+              className="flex-1 text-xs py-2 px-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               Reset
             </button>
             <button
-              onClick={fetchLogs}
-              className="flex items-center justify-center gap-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 py-2 transition-colors shrink-0"
-              title="Refresh Data Log"
+              onClick={() => fetchLogs()}
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
             >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              <span className="hidden sm:inline">Refresh</span>
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              Refresh
             </button>
           </div>
         </div>
@@ -265,7 +322,7 @@ export default function AuditLogPage() {
           <div className="flex items-center justify-center py-16">
             <RefreshCw className="animate-spin text-indigo-500 w-8 h-8" />
           </div>
-        ) : logs.length === 0 ? (
+        ) : sortedLogs.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <Shield className="mx-auto mb-3 w-12 h-12 opacity-30" />
             <p className="text-sm">Belum ada log yang ditemukan</p>
@@ -276,16 +333,81 @@ export default function AuditLogPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Waktu</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">User</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Aksi</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">Keterangan</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell">IP</th>
+                  <th 
+                    onClick={() => handleSort('created_at')}
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan waktu"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Waktu</span>
+                      {sortField === 'created_at' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={13} className="text-indigo-600 dark:text-indigo-400" /> : <ArrowDown size={13} className="text-indigo-600 dark:text-indigo-400" />
+                      ) : (
+                        <ArrowUpDown size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('user')}
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan user/nama"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>User</span>
+                      {sortField === 'user' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={13} className="text-indigo-600 dark:text-indigo-400" /> : <ArrowDown size={13} className="text-indigo-600 dark:text-indigo-400" />
+                      ) : (
+                        <ArrowUpDown size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('aksi')}
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan aksi"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Aksi</span>
+                      {sortField === 'aksi' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={13} className="text-indigo-600 dark:text-indigo-400" /> : <ArrowDown size={13} className="text-indigo-600 dark:text-indigo-400" />
+                      ) : (
+                        <ArrowUpDown size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('keterangan')}
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan keterangan"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Keterangan</span>
+                      {sortField === 'keterangan' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={13} className="text-indigo-600 dark:text-indigo-400" /> : <ArrowDown size={13} className="text-indigo-600 dark:text-indigo-400" />
+                      ) : (
+                        <ArrowUpDown size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('ip_address')}
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    title="Klik untuk mengurutkan berdasarkan IP Address"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>IP</span>
+                      {sortField === 'ip_address' ? (
+                        sortOrder === 'asc' ? <ArrowUp size={13} className="text-indigo-600 dark:text-indigo-400" /> : <ArrowDown size={13} className="text-indigo-600 dark:text-indigo-400" />
+                      ) : (
+                        <ArrowUpDown size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                      )}
+                    </div>
+                  </th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {logs.map(log => (
+                {sortedLogs.map(log => (
                   <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">

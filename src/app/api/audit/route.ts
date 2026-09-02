@@ -43,8 +43,11 @@ export async function GET(request: Request) {
       [...params, limit, offset]
     );
 
-    // Mapping nama asli guru dan user
-    const nameMap: Record<string, string> = {};
+    // Mapping nama asli guru dan user secara terisolasi agar tidak ada bentrok ID
+    const guruById: Record<string, string> = {};
+    const guruByNip: Record<string, string> = {};
+    const userByUsername: Record<string, string> = {};
+    const userById: Record<string, string> = {};
     const jadwalGuruMap: Record<string, string> = {};
 
     try {
@@ -57,30 +60,26 @@ export async function GET(request: Request) {
           const realName = g.nama.trim();
           if (g.guru_id) {
             const gId = String(g.guru_id).toLowerCase();
-            nameMap[gId] = realName;
-            nameMap[`guru_${gId}`] = realName;
-            nameMap[`g_${gId}`] = realName;
+            guruById[gId] = realName;
+            guruById[`guru_${gId}`] = realName;
             const padded = gId.padStart(2, '0');
-            nameMap[`guru_${padded}`] = realName;
+            guruById[`guru_${padded}`] = realName;
           }
           if (g.nip) {
             const nipStr = String(g.nip).trim().toLowerCase();
-            nameMap[nipStr] = realName;
-            nameMap[`guru_${nipStr}`] = realName;
+            guruByNip[nipStr] = realName;
+            guruByNip[`guru_${nipStr}`] = realName;
             const numOnly = nipStr.replace(/\D/g, '');
             if (numOnly) {
-              nameMap[numOnly] = realName;
-              nameMap[`guru_${numOnly}`] = realName;
+              guruByNip[numOnly] = realName;
+              guruByNip[`guru_${numOnly}`] = realName;
               const numInt = String(parseInt(numOnly, 10));
-              nameMap[numInt] = realName;
-              nameMap[`guru_${numInt}`] = realName;
+              guruByNip[numInt] = realName;
+              guruByNip[`guru_${numInt}`] = realName;
             }
           }
           if (g.user_id) {
-            const uId = String(g.user_id).toLowerCase();
-            nameMap[uId] = realName;
-            nameMap[`user_${uId}`] = realName;
-            nameMap[`guru_${uId}`] = realName;
+            guruById[`user_${g.user_id}`] = realName;
           }
         }
       }
@@ -93,15 +92,10 @@ export async function GET(request: Request) {
         const uName = (u.nama || '').trim();
         if (u.username) {
           const uname = String(u.username).trim().toLowerCase();
-          if (uName && !nameMap[uname]) {
-            nameMap[uname] = uName;
-          }
+          if (uName) userByUsername[uname] = uName;
         }
-        if (u.id) {
-          const uid = String(u.id);
-          if (uName && !nameMap[uid]) {
-            nameMap[uid] = uName;
-          }
+        if (u.id && uName) {
+          userById[String(u.id)] = uName;
         }
       }
 
@@ -125,52 +119,62 @@ export async function GET(request: Request) {
       console.warn("Audit name map build error:", e);
     }
 
-    const resolveNama = (raw: string, userId?: number | string, tabel?: string, recordId?: number | null) => {
-      if (userId && nameMap[String(userId).toLowerCase()]) {
-        return nameMap[String(userId).toLowerCase()];
-      }
-      if (!raw || raw.trim() === '') {
-        if (tabel && recordId && jadwalGuruMap[`${tabel}_${recordId}`]) {
-          return jadwalGuruMap[`${tabel}_${recordId}`];
-        }
-        return '';
-      }
-      const clean = raw.trim();
+    const resolveNama = (raw: string, userId?: number | string, userRole?: string, tabel?: string, recordId?: number | null) => {
+      const clean = (raw || '').trim();
       const lower = clean.toLowerCase();
 
-      if (lower === 'adm' || lower === 'admin' || lower === 'administrator') {
-        return nameMap['admin'] || nameMap['adm'] || 'Administrator';
+      // 1. Akun Admin Utama atau role admin khusus
+      if (lower === 'adm' || lower === 'admin' || lower === 'administrator' || userRole === 'admin') {
+        if (userByUsername[lower] && userByUsername[lower].toLowerCase() !== 'adm') {
+          return userByUsername[lower];
+        }
+        return 'Administrator';
       }
-      if (nameMap[lower]) return nameMap[lower];
 
+      // 2. Cek username persis di userByUsername (misal staff_putri, kepala_madin_putra, dll)
+      if (userByUsername[lower]) {
+        return userByUsername[lower];
+      }
+
+      // 3. Cek format guru_XX atau nip
+      if (guruById[lower]) return guruById[lower];
+      if (guruByNip[lower]) return guruByNip[lower];
+
+      // 4. Ekstrak angka dari format 'guru_17', 'guru_04', 'guru27', dll
       const numMatch = lower.match(/\d+/g);
       if (numMatch) {
         for (const num of numMatch) {
           const numNoZero = String(parseInt(num, 10));
-          if (nameMap[`guru_${num}`]) return nameMap[`guru_${num}`];
-          if (nameMap[`guru_${numNoZero}`]) return nameMap[`guru_${numNoZero}`];
-          if (nameMap[num]) return nameMap[num];
-          if (nameMap[numNoZero]) return nameMap[numNoZero];
-          if (nameMap[`user_${num}`]) return nameMap[`user_${num}`];
+          if (guruById[num]) return guruById[num];
+          if (guruById[numNoZero]) return guruById[numNoZero];
+          if (guruById[`guru_${num}`]) return guruById[`guru_${num}`];
+          if (guruById[`guru_${numNoZero}`]) return guruById[`guru_${numNoZero}`];
+          if (guruByNip[num]) return guruByNip[num];
+          if (guruByNip[numNoZero]) return guruByNip[numNoZero];
         }
       }
 
-      if (/^[0-9a-f]+$/i.test(lower) && lower.length >= 3) {
-        const decFromHex = String(parseInt(lower, 16));
-        if (nameMap[decFromHex]) return nameMap[decFromHex];
+      // 5. Cek dari ID user jika role guru
+      if (userRole === 'guru' && userId && guruById[`user_${userId}`]) {
+        return guruById[`user_${userId}`];
       }
 
-      // Fallback ke guru dari jadwal jika aksi absensi
+      // 6. Fallback ke guru dari jadwal jika aksi absensi
       if (tabel && recordId && jadwalGuruMap[`${tabel}_${recordId}`]) {
         return jadwalGuruMap[`${tabel}_${recordId}`];
       }
 
-      return clean;
+      // 7. Cek userById jika ada nama di users
+      if (userId && userById[String(userId)]) {
+        return userById[String(userId)];
+      }
+
+      return clean || '—';
     };
 
     const enrichedRows = rows.map((r: any) => ({
       ...r,
-      nama_lengkap: resolveNama(r.user_nama, r.user_id, r.tabel, r.record_id),
+      nama_lengkap: resolveNama(r.user_nama, r.user_id, r.user_role, r.tabel, r.record_id),
     }));
 
     const [countRows] = await pool.query<RowDataPacket[]>(
