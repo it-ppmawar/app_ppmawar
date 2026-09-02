@@ -51,6 +51,7 @@ function QuickAbsenContent() {
   const [kehadiran, setKehadiran] = useState<{ [muridId: number]: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
 
   // Izin / Sakit States
@@ -79,39 +80,30 @@ function QuickAbsenContent() {
     }
   }, []);
 
-  const startCamera = async (mode: 'user' | 'environment') => {
+  const openCamera = async () => {
     stopCameraStream();
+    setIsSwitchingCamera(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: mode } }
-      });
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: { ideal: facingMode },
+          width: { ideal: cameraOrientation === 'portrait' ? 720 : 1280 },
+          height: { ideal: cameraOrientation === 'portrait' ? 1280 : 720 },
+        },
+        audio: false,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       mediaStreamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
       }
+      setShowCamera(true);
     } catch (err) {
-      try {
-        const fallbackStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: mode }
-        });
-        mediaStreamRef.current = fallbackStream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = fallbackStream;
-          videoRef.current.play();
-        }
-      } catch (e: any) {
-        alert('Gagal membuka kamera: ' + (e.message || 'Kamera tidak diizinkan'));
-        setShowCamera(false);
-      }
+      console.warn('Gagal membuka kamera:', err);
+      alert('Tidak dapat mengakses kamera. Pastikan izin kamera telah diaktifkan di browser.');
+    } finally {
+      setIsSwitchingCamera(false);
     }
-  };
-
-  const openCamera = () => {
-    setShowCamera(true);
-    setTimeout(() => {
-      startCamera(facingMode);
-    }, 200);
   };
 
   const closeCamera = () => {
@@ -120,58 +112,42 @@ function QuickAbsenContent() {
   };
 
   const switchCamera = async () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextMode);
+    stopCameraStream();
     setIsSwitchingCamera(true);
-    const newFacing = facingMode === 'environment' ? 'user' : 'environment';
-    setFacingMode(newFacing);
-    await startCamera(newFacing);
-    setIsSwitchingCamera(false);
+    try {
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: { exact: nextMode },
+          width: { ideal: cameraOrientation === 'portrait' ? 720 : 1280 },
+          height: { ideal: cameraOrientation === 'portrait' ? 1280 : 720 },
+        },
+        audio: false,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints).catch(async () => {
+        return await navigator.mediaDevices.getUserMedia({ video: { facingMode: nextMode }, audio: false });
+      });
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.warn('Gagal switch kamera:', err);
+    } finally {
+      setIsSwitchingCamera(false);
+    }
   };
 
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    const videoWidth = video.videoWidth;
-    const videoHeight = video.videoHeight;
-
-    let targetWidth = videoWidth;
-    let targetHeight = videoHeight;
-
-    if (cameraOrientation === 'portrait') {
-      if (videoWidth > videoHeight) {
-        targetWidth = (videoHeight * 3) / 4;
-        targetHeight = videoHeight;
-      } else {
-        targetWidth = videoWidth;
-        targetHeight = (videoWidth * 4) / 3;
-        if (targetHeight > videoHeight) {
-          targetHeight = videoHeight;
-          targetWidth = (videoHeight * 3) / 4;
-        }
-      }
-    } else {
-      if (videoHeight > videoWidth) {
-        targetWidth = videoWidth;
-        targetHeight = (videoWidth * 3) / 4;
-      } else {
-        targetHeight = videoHeight;
-        targetWidth = (videoHeight * 4) / 3;
-        if (targetWidth > videoWidth) {
-          targetWidth = videoWidth;
-          targetHeight = (videoWidth * 3) / 4;
-        }
-      }
-    }
-
-    canvas.width = targetWidth;
-    canvas.height = targetHeight;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
     const ctx = canvas.getContext('2d');
-    if (ctx) {
-      const sx = (videoWidth - targetWidth) / 2;
-      const sy = (videoHeight - targetHeight) / 2;
-      ctx.drawImage(video, sx, sy, targetWidth, targetHeight, 0, 0, targetWidth, targetHeight);
-    }
-
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     setPhotoUrl(dataUrl);
     closeCamera();
@@ -179,43 +155,44 @@ function QuickAbsenContent() {
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setPhotoUrl(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => { return () => stopCameraStream(); }, [stopCameraStream]);
 
   const formatHariTanggalPesantren = (rawDate?: string, rawTime?: string) => {
     try {
-      const d = rawDate ? new Date(rawDate.includes('T') ? rawDate : `${rawDate}T12:00:00+07:00`) : new Date();
-      const hariArr = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-      const nextHariArr = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
-      const bulanArr = [
+      if (!rawDate) return '';
+      const [thnStr, blnStr, tglStr] = rawDate.split('-');
+      const thnNum = parseInt(thnStr, 10);
+      const blnNum = parseInt(blnStr, 10);
+      const tglNum = parseInt(tglStr, 10);
+      if (isNaN(thnNum) || isNaN(blnNum) || isNaN(tglNum)) return rawDate;
+
+      const d = new Date(thnNum, blnNum - 1, tglNum);
+      const namaHari = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const namaBulan = [
         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
       ];
 
       const dayIdx = d.getDay();
-      const hariIni = hariArr[dayIdx];
-      const hariBesok = nextHariArr[dayIdx];
-      const tglNum = d.getDate();
-      const blnName = bulanArr[d.getMonth()];
-      const thnNum = d.getFullYear();
+      const hariIni = namaHari[dayIdx];
+      const hariBesok = namaHari[(dayIdx + 1) % 7];
+      const blnName = namaBulan[blnNum - 1];
 
       let isMalam = false;
       if (rawTime) {
-        const hour = parseInt(rawTime.split(':')[0], 10);
-        if (!isNaN(hour) && (hour >= 18 || hour < 4)) {
-          isMalam = true;
-        }
-      } else {
-        const nowHour = new Date().getHours();
-        if (nowHour >= 18 || nowHour < 4) {
+        const timeParts = rawTime.split(':');
+        const jam = parseInt(timeParts[0], 10);
+        if (!isNaN(jam) && jam >= 18) {
           isMalam = true;
         }
       }
@@ -227,7 +204,7 @@ function QuickAbsenContent() {
     }
   };
 
-  const generateWaGroupMessage = (uploadedPhotoUrl?: string) => {
+  const generateWaGroupMessage = () => {
     if (!data) return '';
     const dateStr = formatHariTanggalPesantren(data.date, data.jadwal?.jam_mulai);
     const listMurid: any[] = data.murid || [];
@@ -284,7 +261,6 @@ function QuickAbsenContent() {
       msg += `\n`;
     }
 
-    // 🤲 Doa — 1 Paragraf Ringkas & Mencakup Semua
     const allAttended = sakit.length === 0 && izin.length === 0 && alpha.length === 0 && total > 0;
     let doaMsg = '';
     if (allAttended) {
@@ -305,71 +281,12 @@ function QuickAbsenContent() {
     }
     msg += `🤲 *Doa & Harapan:*\n${doaMsg}\n\n`;
 
-    if (uploadedPhotoUrl) {
-      msg += `📷 *Foto Kehadiran:* ${uploadedPhotoUrl}\n\n`;
-    }
-
     msg += `_Diinput via Pintasan Salam Mawar_\n_https://app.ppmawar.or.id_`;
     return msg;
   };
 
-  const handleShareToWA = async () => {
-    let fileToShare: File | null = null;
-    let serverPhotoUrl: string | null = null;
-
-    if (photoUrl) {
-      try {
-        if (photoUrl.startsWith('data:')) {
-          const res = await fetch(photoUrl);
-          const blob = await res.blob();
-          fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-        } else if (photoUrl.startsWith('http')) {
-          serverPhotoUrl = photoUrl;
-          const res = await fetch(photoUrl);
-          const blob = await res.blob();
-          fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-        }
-      } catch (err) {
-        console.warn('Error preparing photo file:', err);
-      }
-    }
-
-    const textWithoutPhoto = generateWaGroupMessage();
-
-    // 1. Coba Native Web Share API (Di HP/WhatsApp Mobile, ini melampirkan file FOTO langsung ke WhatsApp)
-    if (fileToShare && typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).canShare({ files: [fileToShare] })) {
-      try {
-        await navigator.share({
-          title: `LAPORAN KEHADIRAN ${(data?.jadwal?.nama_kelas || '').toUpperCase()}`,
-          text: textWithoutPhoto,
-          files: [fileToShare],
-        });
-        return;
-      } catch (shareErr: any) {
-        if (shareErr?.name === 'AbortError') return; // User membatalkan dialog share
-        console.warn('Web Share API gagal, lanjut ke fallback URL:', shareErr);
-      }
-    }
-
-    // 2. Fallback untuk Desktop/Browser tanpa Web Share API file: Unggah foto ke server agar mendapatkan tautan gambar publik
-    if (photoUrl && photoUrl.startsWith('data:') && !serverPhotoUrl) {
-      try {
-        if (fileToShare) {
-          const formData = new FormData();
-          formData.append('file', fileToShare);
-          const upRes = await fetch('/api/upload', { method: 'POST', body: formData });
-          const upData = await upRes.json();
-          if (upData.success && upData.url) {
-            const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.ppmawar.or.id';
-            serverPhotoUrl = `${origin}${upData.url}`;
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to upload photo for link sharing:', e);
-      }
-    }
-
-    const finalMessage = generateWaGroupMessage(serverPhotoUrl || (photoUrl && photoUrl.startsWith('http') ? photoUrl : undefined));
+  const handleShareToWA = () => {
+    const finalMessage = generateWaGroupMessage();
     const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(finalMessage)}`;
     window.open(waUrl, '_blank');
   };
@@ -517,9 +434,17 @@ function QuickAbsenContent() {
         setShowSuccessModal(true);
       } else {
         setError(result.error || 'Gagal menyimpan absensi.');
+        setShowErrorModal(true);
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       }
     } catch (e: any) {
       setError('Terjadi kesalahan: ' + e.message);
+      setShowErrorModal(true);
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -546,9 +471,17 @@ function QuickAbsenContent() {
         setIzinSuccess(result.message || `Permohonan ${izinStatus} berhasil dicatat.`);
       } else {
         setError(result.error || 'Gagal mengirim permohonan.');
+        setShowErrorModal(true);
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       }
     } catch (err: any) {
       setError('Terjadi kesalahan: ' + err.message);
+      setShowErrorModal(true);
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setSubmittingIzin(false);
     }
@@ -1164,6 +1097,72 @@ function QuickAbsenContent() {
         </div>
       )}
 
+      {/* Modal Pop-up Gagal Absensi / Peringatan Jarak & GPS */}
+      {showErrorModal && error && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-slate-900 border border-rose-500/70 rounded-3xl p-6 max-w-md w-full text-center shadow-2xl space-y-4 my-auto animate-in zoom-in-95 duration-200">
+            {/* Alert Icon */}
+            <div className="w-16 h-16 bg-rose-500/20 text-rose-400 rounded-full flex items-center justify-center mx-auto border border-rose-500/40">
+              <AlertCircle size={36} />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-extrabold text-rose-300 mb-1.5">
+                {error.toLowerCase().includes('jarak') || error.toLowerCase().includes('radius')
+                  ? 'Absensi Ditolak (Di Luar Radius)'
+                  : error.toLowerCase().includes('gps') || error.toLowerCase().includes('lokasi')
+                  ? 'Izin Lokasi (GPS) Diperlukan'
+                  : 'Gagal Menyimpan Absensi'}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
+                {error}
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              {(error.toLowerCase().includes('gps') || error.toLowerCase().includes('lokasi') || error.toLowerCase().includes('jarak')) && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowErrorModal(false);
+                      requestGpsPermission();
+                    }}
+                    disabled={detectingGps}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+                  >
+                    {detectingGps ? (
+                      <><Loader2 size={14} className="animate-spin" /> Mendeteksi GPS...</>
+                    ) : (
+                      <><MapPin size={14} /> Cek Ulang GPS</>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowErrorModal(false);
+                      setShowGpsModal(true);
+                    }}
+                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 font-bold text-xs rounded-xl border border-amber-500/40 transition flex items-center justify-center gap-1.5"
+                  >
+                    <HelpCircle size={14} /> Panduan Buka Izin GPS
+                  </button>
+                </>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowErrorModal(false)}
+                className="w-full py-2.5 bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 font-semibold text-xs rounded-xl transition"
+              >
+                Tutup Pemberitahuan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Pemberitahuan Sukses & Form Notifikasi WA */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
@@ -1184,134 +1183,14 @@ function QuickAbsenContent() {
               </p>
             </div>
 
-            {/* Section: Ambil/Upload Foto Kehadiran (Opsional) */}
-            <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 space-y-3 text-left">
-              <label className="block text-xs font-bold text-slate-200 flex items-center gap-2">
-                <Camera size={16} className="text-emerald-400 animate-pulse" />
-                Foto Kehadiran Kelas/Kamar (Opsional)
-              </label>
-
-              {/* Camera live view */}
-              {showCamera && (
-                <div className="rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black relative mb-3">
-                  {/* Camera toolbar */}
-                  <div className="flex justify-between items-center bg-slate-900 px-3 py-2 flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
-                      <span className="text-xs font-semibold text-slate-300">
-                        {facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setCameraOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait')}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl transition"
-                      >
-                        <span>{cameraOrientation === 'portrait' ? '📱 Potret' : '🌅 Lanskap'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={switchCamera}
-                        disabled={isSwitchingCamera}
-                        className="bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl transition"
-                      >
-                        <FlipHorizontal size={14} className={isSwitchingCamera ? 'animate-spin' : ''} />
-                        <span className="hidden sm:inline">Ganti</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={closeCamera}
-                        className="bg-rose-600 p-1 rounded-lg text-white"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Video preview */}
-                  <div className="relative min-h-[220px] bg-black">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className={`w-full object-cover ${cameraOrientation === 'portrait' ? 'aspect-[3/4] max-h-[380px]' : 'aspect-[4/3] max-h-[300px]'}`}
-                    />
-                  </div>
-
-                  <div className="flex justify-center bg-slate-900 py-2.5 px-4">
-                    <button
-                      type="button"
-                      onClick={capturePhoto}
-                      className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-2 rounded-full shadow-lg transition flex items-center gap-2 text-xs"
-                    >
-                      <Camera size={16} /> Ambil Foto
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <canvas ref={canvasRef} className="hidden" />
-
-              {/* Buttons side-by-side full width */}
-              <div className="grid grid-cols-2 gap-2.5 w-full">
-                {!showCamera ? (
-                  <button
-                    type="button"
-                    onClick={openCamera}
-                    className="w-full bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 font-bold py-3 rounded-xl border border-emerald-700/50 text-xs transition flex items-center justify-center gap-2"
-                  >
-                    <Camera size={16} />
-                    {photoUrl ? 'Ambil Ulang' : 'Buka Kamera'}
-                  </button>
-                ) : (
-                  <div className="w-full" />
-                )}
-
-                <div className="w-full">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                    id="quick-presence-photo-input"
-                  />
-                  <label
-                    htmlFor="quick-presence-photo-input"
-                    className="w-full cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 rounded-xl border border-slate-700 text-xs transition flex items-center justify-center gap-2 text-center block"
-                  >
-                    <ImageIcon size={16} /> Upload File
-                  </label>
-                </div>
-              </div>
-
-              {photoUrl && (
-                <div className="mt-2.5 relative w-full h-44 rounded-xl overflow-hidden border-2 border-emerald-500/80 shadow-md">
-                  <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setPhotoUrl('')}
-                    className="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white rounded-full p-1 shadow-md w-7 h-7 flex items-center justify-center"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-
-              <p className="text-[10px] text-slate-400 font-medium text-center">
-                Gunakan tombol <strong>Buka Kamera</strong> untuk foto langsung, atau <strong>Upload File</strong> jika memilih dari galeri.
-              </p>
-            </div>
-
             {/* Action Buttons */}
-            <div className="space-y-2.5 pt-1">
+            <div className="space-y-2.5 pt-2">
               <button
                 onClick={handleShareToWA}
                 type="button"
                 className="w-full bg-[#128C7E] hover:bg-[#075E54] text-white px-4 py-3 rounded-xl font-bold text-xs transition shadow-md flex items-center justify-center gap-2 active:scale-95"
               >
-                <Send size={15} /> Kirim Laporan & Foto ke Grup WA
+                <Send size={15} /> Kirim Ringkasan Laporan ke Grup WA
               </button>
 
               <Link

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, X as XIcon, User, MapPin, QrCode, Brain, BookOpen, HeartPulse, Send, FileText, CheckCircle2, RefreshCw, HelpCircle, Loader2 } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, X as XIcon, User, MapPin, QrCode, Brain, BookOpen, HeartPulse, Send, FileText, CheckCircle2, RefreshCw, HelpCircle, Loader2, AlertCircle } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -61,6 +61,7 @@ function InputAbsenContent() {
   const [saving, setSaving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState('');
   const [detectingLocation, setDetectingLocation] = useState(false);
@@ -375,7 +376,7 @@ function InputAbsenContent() {
     }
   };
 
-  const generateWaGroupMessage = (uploadedPhotoUrl?: string) => {
+  const generateWaGroupMessage = () => {
     const dateStr = formatHariTanggalPesantren(tanggalAbsen || undefined, jadwalInfo?.jam_mulai);
     const total = murid.length;
     const hadir = murid.filter(m => m.status === 'Hadir').length;
@@ -449,72 +450,13 @@ function InputAbsenContent() {
     }
     msg += `🤲 *Doa & Harapan:*\n${doaMsg}\n\n`;
 
-    if (uploadedPhotoUrl) {
-      msg += `📷 *Foto Kehadiran:* ${uploadedPhotoUrl}\n\n`;
-    }
-
     msg += `🔗 *Lihat Detail Absensi:* https://app.ppmawar.or.id/dashboard/absen\n`;
     msg += `\n_Diinput via Pintasan Salam Mawar_\n_https://app.ppmawar.or.id_`;
     return msg;
   };
 
-  const handleShareToWA = async () => {
-    let fileToShare: File | null = null;
-    let serverPhotoUrl: string | null = null;
-
-    if (photoUrl) {
-      try {
-        if (photoUrl.startsWith('data:')) {
-          const res = await fetch(photoUrl);
-          const blob = await res.blob();
-          fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-        } else if (photoUrl.startsWith('http')) {
-          serverPhotoUrl = photoUrl;
-          const res = await fetch(photoUrl);
-          const blob = await res.blob();
-          fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-        }
-      } catch (err) {
-        console.warn('Error preparing photo file:', err);
-      }
-    }
-
-    const textWithoutPhoto = generateWaGroupMessage();
-
-    // 1. Coba Native Web Share API (Di HP/WhatsApp Mobile, ini melampirkan file FOTO langsung ke WhatsApp)
-    if (fileToShare && typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).canShare({ files: [fileToShare] })) {
-      try {
-        await navigator.share({
-          title: `LAPORAN KEHADIRAN ${namaTarget.toUpperCase()}`,
-          text: textWithoutPhoto,
-          files: [fileToShare],
-        });
-        return;
-      } catch (shareErr: any) {
-        if (shareErr?.name === 'AbortError') return;
-        console.warn('Web Share API gagal, lanjut ke fallback URL:', shareErr);
-      }
-    }
-
-    // 2. Fallback untuk Desktop/Browser tanpa Web Share API file: Unggah foto ke server agar mendapatkan tautan gambar publik
-    if (photoUrl && photoUrl.startsWith('data:') && !serverPhotoUrl) {
-      try {
-        if (fileToShare) {
-          const formData = new FormData();
-          formData.append('file', fileToShare);
-          const upRes = await fetch('/api/upload', { method: 'POST', body: formData });
-          const upData = await upRes.json();
-          if (upData.success && upData.url) {
-            const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.ppmawar.or.id';
-            serverPhotoUrl = `${origin}${upData.url}`;
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to upload photo for link sharing:', e);
-      }
-    }
-
-    const finalMessage = generateWaGroupMessage(serverPhotoUrl || (photoUrl && photoUrl.startsWith('http') ? photoUrl : undefined));
+  const handleShareToWA = () => {
+    const finalMessage = generateWaGroupMessage();
     const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(finalMessage)}`;
     window.open(waUrl, '_blank');
   };
@@ -545,10 +487,12 @@ function InputAbsenContent() {
         setIsSuccess(true);
       } else {
         setErrorMsg(data.error || 'Gagal menyimpan absensi');
+        setShowErrorModal(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
       setErrorMsg('Terjadi kesalahan saat menyimpan. Periksa koneksi internet Anda.');
+      setShowErrorModal(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSaving(false);
@@ -565,140 +509,6 @@ function InputAbsenContent() {
         </div>
         <h2 className="text-2xl font-extrabold text-gray-800 dark:text-gray-200 mb-2">Absensi Berhasil Disimpan!</h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">Data kehadiran santri telah berhasil masuk ke sistem.</p>
-        
-        {/* Section: Ambil/Upload Foto */}
-        <div id="camera-section-container" className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-gray-150 dark:border-gray-750 mb-6 space-y-3 text-left">
-          <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-            <Camera size={18} className="text-indigo-600 dark:text-indigo-400 animate-pulse" />
-            Foto Kehadiran Kelas/Kamar (Opsional)
-          </label>
-
-          {/* Camera live view */}
-          {showCamera && (
-            <div className="rounded-2xl overflow-hidden border-2 border-indigo-400 dark:border-indigo-600 bg-black relative mb-3">
-              {/* Camera toolbar */}
-              <div className="flex justify-between items-center bg-gray-900 px-3 py-2 flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
-                  <span className="text-xs font-semibold text-gray-300">
-                    {facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCameraOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait')}
-                    className="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all"
-                  >
-                    <span>{cameraOrientation === 'portrait' ? '📱 Potret' : '🌅 Lanskap'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={switchCamera}
-                    disabled={isSwitchingCamera}
-                    title={facingMode === 'environment' ? 'Ganti ke Kamera Depan' : 'Ganti ke Kamera Belakang'}
-                    className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all ${
-                      isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 active:scale-95 text-white'
-                    }`}
-                  >
-                    <FlipHorizontal size={14} className={isSwitchingCamera ? 'animate-spin' : ''} />
-                    <span className="hidden sm:inline">
-                      {isSwitchingCamera ? 'Mengganti...' : facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={closeCamera}
-                    className="bg-red-500 hover:bg-red-650 p-1.5 rounded-lg transition-colors"
-                    aria-label="Tutup Kamera"
-                  >
-                    <XIcon size={16} className="text-white" />
-                  </button>
-                </div>
-              </div>
-              {/* Video preview */}
-              <div className="relative min-h-[240px] bg-black">
-                {isSwitchingCamera && (
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 gap-2">
-                    <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-white text-xs font-semibold">Mengganti kamera...</span>
-                  </div>
-                )}
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className={`w-full object-cover transition-all ${
-                    cameraOrientation === 'portrait' ? 'aspect-[3/4] max-h-[480px]' : 'aspect-[4/3] max-h-[360px]'
-                  }`}
-                />
-              </div>
-              {/* Capture button */}
-              <div className="flex justify-center bg-gray-900 py-3 px-4">
-                <button
-                  type="button"
-                  onClick={capturePhoto}
-                  className="bg-white hover:bg-gray-100 active:scale-95 text-gray-900 font-bold px-8 py-2.5 rounded-full shadow-lg transition-all flex items-center gap-2 text-sm"
-                >
-                  <Camera size={16} /> Ambil Foto
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Canvas (hidden) for snapshot */}
-          <canvas ref={canvasRef} className="hidden" />
-
-          {/* Buttons side-by-side full width */}
-          <div className="grid grid-cols-2 gap-3 w-full">
-            {!showCamera ? (
-              <button
-                type="button"
-                onClick={openCamera}
-                className="w-full cursor-pointer bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold py-3.5 rounded-xl border border-indigo-200 dark:border-indigo-850 text-xs transition-all flex items-center justify-center gap-2"
-              >
-                <Camera size={16} />
-                {photoUrl ? 'Ambil Ulang' : 'Buka Kamera'}
-              </button>
-            ) : (
-              <div className="w-full" />
-            )}
-
-            <div className="w-full">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="hidden"
-                id="presence-photo-input"
-              />
-              <label
-                htmlFor="presence-photo-input"
-                className="w-full cursor-pointer bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-750 text-gray-750 dark:text-gray-250 font-bold py-3.5 rounded-xl border border-gray-200 dark:border-gray-650 text-xs transition-all flex items-center justify-center gap-2 text-center block"
-              >
-                <Image size={16} /> Upload File
-              </label>
-            </div>
-          </div>
-
-          {photoUrl && (
-            <div className="mt-3 relative w-full h-48 rounded-xl overflow-hidden border-2 border-indigo-200 dark:border-indigo-700 shadow-sm animate-in fade-in duration-300">
-              <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
-              <button
-                type="button"
-                onClick={() => setPhotoUrl('')}
-                className="absolute top-2 right-2 bg-red-650 hover:bg-red-750 text-white rounded-full p-1.5 shadow-md transition-colors w-7 h-7 flex items-center justify-center"
-              >
-                <XIcon size={14} />
-              </button>
-            </div>
-          )}
-
-          <p className="text-[10px] text-gray-400 font-medium text-center">
-            Gunakan tombol <strong>Buka Kamera</strong> untuk foto langsung, atau <strong>Upload File</strong> jika ingin memilih dari galeri.
-          </p>
-        </div>
 
         <div className="space-y-3">
           <button
@@ -706,7 +516,7 @@ function InputAbsenContent() {
             type="button"
             className="w-full bg-[#128C7E] hover:bg-[#075E54] text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md flex items-center justify-center gap-2"
           >
-            Kirim Laporan & Foto ke Grup WA
+            Kirim Ringkasan Laporan ke Grup WA
           </button>
           <Link href={`/dashboard/notifikasi?kegiatan=${tipe}&kelas=${kelas_id}`} className="block w-full bg-[#25D366] hover:bg-[#1DA851] text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md flex items-center justify-center gap-2">
             Lanjut Kirim Pesan WA Wali Murid
@@ -1359,6 +1169,71 @@ function InputAbsenContent() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Modal Pop-up Gagal Absensi / Peringatan Jarak & GPS */}
+      {showErrorModal && errorMsg && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800/80 rounded-3xl p-6 max-w-md w-full text-center shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto border border-red-200 dark:border-red-800">
+              <AlertCircle size={36} />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-extrabold text-red-700 dark:text-red-300 mb-1.5">
+                {errorMsg.toLowerCase().includes('jarak') || errorMsg.toLowerCase().includes('radius')
+                  ? 'Absensi Ditolak (Di Luar Radius)'
+                  : errorMsg.toLowerCase().includes('gps') || errorMsg.toLowerCase().includes('lokasi')
+                  ? 'Izin Lokasi (GPS) Diperlukan'
+                  : 'Gagal Menyimpan Absensi'}
+              </h3>
+              <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-sm mx-auto">
+                {errorMsg}
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              {(errorMsg.toLowerCase().includes('gps') || errorMsg.toLowerCase().includes('lokasi') || errorMsg.toLowerCase().includes('jarak')) && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowErrorModal(false);
+                      requestGpsLocation();
+                    }}
+                    disabled={detectingLocation}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+                  >
+                    {detectingLocation ? (
+                      <><Loader2 size={14} className="animate-spin" /> Mendeteksi GPS...</>
+                    ) : (
+                      <><MapPin size={14} /> Cek Ulang GPS</>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowErrorModal(false);
+                      setShowGpsModal(true);
+                    }}
+                    className="w-full py-2.5 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 active:scale-95 text-amber-750 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-300 dark:border-amber-700 transition flex items-center justify-center gap-1.5"
+                  >
+                    <HelpCircle size={14} /> Panduan Buka Izin GPS
+                  </button>
+                </>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowErrorModal(false)}
+                className="w-full py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 text-gray-700 dark:text-gray-300 font-semibold text-xs rounded-xl transition"
+              >
+                Tutup Pemberitahuan
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Zoom Photo Modal */}
