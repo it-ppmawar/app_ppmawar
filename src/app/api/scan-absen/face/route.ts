@@ -98,6 +98,21 @@ export async function POST(request: NextRequest) {
         const lateSecs = selesaiSecs + tenggangSecs;
 
         if (nowSecs >= earlySecs && nowSecs <= lateSecs) {
+          // 1. Inisialisasi teman sekamar/kegiatan yang belum scan sebagai Alpha (Scoped Auto-Alpa)
+          await db.query(
+            `INSERT IGNORE INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan)
+             SELECT ?, m2.murid_id, ?, 'Alpha', 'Belum Scan'
+             FROM murid m2
+             WHERE (m2.kamar_id = ? OR ? IS NULL)
+               AND m2.murid_id != ?
+               AND NOT EXISTS (
+                 SELECT 1 FROM absensi_kegiatan a2 
+                 WHERE a2.kegiatan_id = ? AND a2.murid_id = m2.murid_id AND a2.tanggal = ?
+               )`,
+            [k.kegiatan_id, today, murid.kamar_id, murid.kamar_id, murid.murid_id, k.kegiatan_id, today]
+          );
+
+          // 2. Tandai santri yang melakukan scan sebagai Hadir
           const [ext] = await db.query<RowDataPacket[]>(
             'SELECT absensi_kegiatan_id FROM absensi_kegiatan WHERE murid_id = ? AND kegiatan_id = ? AND tanggal = ?',
             [murid.murid_id, k.kegiatan_id, today]
@@ -106,6 +121,11 @@ export async function POST(request: NextRequest) {
             await db.query(
               'INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)',
               [k.kegiatan_id, murid.murid_id, today, 'Hadir', 'Face AI']
+            );
+          } else {
+            await db.query(
+              'UPDATE absensi_kegiatan SET status = ?, keterangan = ? WHERE murid_id = ? AND kegiatan_id = ? AND tanggal = ?',
+              ['Hadir', 'Face AI', murid.murid_id, k.kegiatan_id, today]
             );
           }
           recordedMessages.push(`Kegiatan "${k.nama_kegiatan}"`);
@@ -127,6 +147,21 @@ export async function POST(request: NextRequest) {
           const lateSecs = selesaiSecs + tenggangSecs;
 
           if (nowSecs >= earlySecs && nowSecs <= lateSecs) {
+            // 1. Inisialisasi santri sekelas Madin yang belum scan sebagai Alpha (Scoped Auto-Alpa)
+            await db.query(
+              `INSERT IGNORE INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan)
+               SELECT ?, m2.murid_id, ?, 'Alpha', 'Belum Scan'
+               FROM murid m2
+               WHERE (m2.kelas_madin_id = ? OR m2.kelas_madin_2_id = ?)
+                 AND m2.murid_id != ?
+                 AND NOT EXISTS (
+                   SELECT 1 FROM absensi a2 
+                   WHERE a2.jadwal_madin_id = ? AND a2.murid_id = m2.murid_id AND a2.tanggal = ?
+                 )`,
+              [m.jadwal_id, today, murid.kelas_madin_id, murid.kelas_madin_id, murid.murid_id, m.jadwal_id, today]
+            );
+
+            // 2. Tandai santri yang melakukan scan sebagai Hadir
             const [ext] = await db.query<RowDataPacket[]>(
               'SELECT absensi_id FROM absensi WHERE murid_id = ? AND jadwal_madin_id = ? AND tanggal = ?',
               [murid.murid_id, m.jadwal_id, today]
@@ -135,6 +170,11 @@ export async function POST(request: NextRequest) {
               await db.query(
                 'INSERT INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)',
                 [m.jadwal_id, murid.murid_id, today, 'Hadir', 'Face AI']
+              );
+            } else {
+              await db.query(
+                'UPDATE absensi SET status = ?, keterangan = ? WHERE murid_id = ? AND jadwal_madin_id = ? AND tanggal = ?',
+                ['Hadir', 'Face AI', murid.murid_id, m.jadwal_id, today]
               );
             }
             recordedMessages.push(`Madin (${m.mata_pelajaran})`);
@@ -157,6 +197,21 @@ export async function POST(request: NextRequest) {
           const lateSecs = selesaiSecs + tenggangSecs;
 
           if (nowSecs >= earlySecs && nowSecs <= lateSecs) {
+            // 1. Inisialisasi santri sekelas Quran yang belum scan sebagai Alpha (Scoped Auto-Alpa)
+            await db.query(
+              `INSERT IGNORE INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan)
+               SELECT ?, m2.murid_id, ?, 'Alpha', 'Belum Scan'
+               FROM murid m2
+               WHERE m2.kelas_quran_id = ?
+                 AND m2.murid_id != ?
+                 AND NOT EXISTS (
+                   SELECT 1 FROM absensi_quran a2 
+                   WHERE a2.jadwal_quran_id = ? AND a2.murid_id = m2.murid_id AND a2.tanggal = ?
+                 )`,
+              [q.jadwal_id, today, murid.kelas_quran_id, murid.murid_id, q.jadwal_id, today]
+            );
+
+            // 2. Tandai santri yang melakukan scan sebagai Hadir
             const [ext] = await db.query<RowDataPacket[]>(
               'SELECT absensi_quran_id FROM absensi_quran WHERE murid_id = ? AND jadwal_quran_id = ? AND tanggal = ?',
               [murid.murid_id, q.jadwal_id, today]
@@ -165,6 +220,11 @@ export async function POST(request: NextRequest) {
               await db.query(
                 'INSERT INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)',
                 [q.jadwal_id, murid.murid_id, today, 'Hadir', 'Face AI']
+              );
+            } else {
+              await db.query(
+                'UPDATE absensi_quran SET status = ?, keterangan = ? WHERE murid_id = ? AND jadwal_quran_id = ? AND tanggal = ?',
+                ['Hadir', 'Face AI', murid.murid_id, q.jadwal_id, today]
               );
             }
             recordedMessages.push(`MQ (${q.mata_pelajaran})`);

@@ -202,7 +202,7 @@ export async function GET(request: Request) {
 
     const mappedMurid = murid.map(m => ({
       ...m,
-      status: existingMap[m.murid_id]?.status || 'Hadir',
+      status: existingMap[m.murid_id]?.status || 'Alpha',
       keterangan: existingMap[m.murid_id]?.keterangan || ''
     }));
 

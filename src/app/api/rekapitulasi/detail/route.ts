@@ -57,6 +57,9 @@ export async function GET(request: Request) {
           if (g.user_id) {
             nameMap[String(g.user_id).toLowerCase()] = realName;
             nameMap[`user_${g.user_id}`.toLowerCase()] = realName;
+            // Mapping hex representation dari user_id (misal user_id=177936 → hex '2b710')
+            const hexId = Number(g.user_id).toString(16).toLowerCase();
+            if (hexId && !nameMap[hexId]) nameMap[hexId] = realName;
           }
           if (g.username) {
             nameMap[String(g.username).toLowerCase()] = realName;
@@ -75,6 +78,9 @@ export async function GET(request: Request) {
           }
           if (u.id && !nameMap[String(u.id).toLowerCase()]) {
             nameMap[String(u.id).toLowerCase()] = realName;
+            // Juga mapping hex dari user id
+            const hexUserId = Number(u.id).toString(16).toLowerCase();
+            if (hexUserId && !nameMap[hexUserId]) nameMap[hexUserId] = realName;
           }
         }
       }
@@ -89,11 +95,31 @@ export async function GET(request: Request) {
 
       if (lower === 'sistem otomatis') return 'Sistem Otomatis';
       if (lower === 'admin' || lower === 'administrator') return nameMap['admin'] || 'Administrator';
+      
+      // Coba langsung dari nameMap
       if (nameMap[lower]) return nameMap[lower];
 
-      const numMatch = lower.match(/\d+/);
-      if (numMatch && nameMap[numMatch[0]]) return nameMap[numMatch[0]];
+      // Coba ekstrak angka dari akhir string (untuk format 'guru_130', 'user_79', dll)
+      const numSuffixMatch = lower.match(/^[a-z_]*(\d+)$/);
+      if (numSuffixMatch && nameMap[numSuffixMatch[1]]) return nameMap[numSuffixMatch[1]];
 
+      // Coba semua angka yang ada dalam string (lebih longgar)
+      const allNums = lower.match(/\d+/g);
+      if (allNums) {
+        for (const num of allNums) {
+          if (nameMap[num]) return nameMap[num];
+          if (nameMap[`guru_${num}`]) return nameMap[`guru_${num}`];
+          if (nameMap[`user_${num}`]) return nameMap[`user_${num}`];
+        }
+      }
+
+      // Coba parse sebagai hex lalu lookup desimalnya (untuk format hex-like seperti '2b310')
+      if (/^[0-9a-f]+$/i.test(lower) && lower.length >= 3) {
+        const decFromHex = String(parseInt(lower, 16));
+        if (nameMap[decFromHex]) return nameMap[decFromHex];
+      }
+
+      // Fallback ke nama guru dari jadwal (lebih reliable dari audit_log)
       if (fallbackNamaGuru && fallbackNamaGuru.trim() !== '') return fallbackNamaGuru;
       return clean;
     };
@@ -273,11 +299,12 @@ export async function GET(request: Request) {
       };
 
       // Siapa yang menginput data ini
+      // Prioritas: 1) Sistem Otomatis, 2) guru_nama dari tabel jadwal (nama resmi), 3) auditMap (username)
       let penginput = r.guru_nama || "Pengajar Kelas";
       if (r.is_otomatis === 1) {
         penginput = "Sistem Otomatis";
       } else if (tipe === "guru") {
-        if (r.status === "Izin" || r.status === "Sakit") {
+        if (r.status === "Izin" || r.status === "Sakit" || statusNorm === "Izin" || statusNorm === "Sakit") {
           penginput = "Pengajuan Izin";
         } else if ((r.keterangan || "").toLowerCase().includes("scan")) {
           penginput = "Scan Mandiri (Guru)";
@@ -287,7 +314,15 @@ export async function GET(request: Request) {
           penginput = r.guru_nama || "Guru";
         }
       } else if (murid_id) {
-        penginput = auditMap[tglStr] || r.guru_nama || "Pengajar Kelas";
+        // Prioritaskan guru_nama dari JOIN jadwal (nama resmi dari Data Guru & Pembina)
+        // Gunakan auditMap hanya jika guru_nama kosong
+        const guruNamaFromJadwal = (r.guru_nama || "").trim();
+        if (guruNamaFromJadwal) {
+          penginput = guruNamaFromJadwal;
+        } else {
+          // Fallback ke audit_log, resolve username ke nama lengkap
+          penginput = auditMap[tglStr] || "Pengajar Kelas";
+        }
       }
 
       return {
