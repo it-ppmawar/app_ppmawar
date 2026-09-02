@@ -123,6 +123,10 @@ export default function RekapitulasiPage() {
     activeStatus: string; // 'semua' | 'Hadir' | 'Izin' | 'Sakit' | 'Alpha'
   } | null>(null);
 
+  // Sorting di dalam Modal Detail Absensi
+  const [detailSortField, setDetailSortField] = useState<'tanggal' | 'waktu' | 'mata_pelajaran' | 'status' | 'keterangan' | 'penginput'>('tanggal');
+  const [detailSortOrder, setDetailSortOrder] = useState<'asc' | 'desc'>('desc');
+
   // Filter pencarian nama / nis / wali / alamat (client-side)
   const [searchNama, setSearchNama] = useState('');
 
@@ -267,6 +271,8 @@ export default function RekapitulasiPage() {
   };
 
   const openDetail = async (item: any, initialStatus: string = 'semua') => {
+    setDetailSortField('tanggal');
+    setDetailSortOrder('desc');
     setDetailModal({
       item,
       data: [],
@@ -321,6 +327,15 @@ export default function RekapitulasiPage() {
     } else {
       setSortField(field);
       setSortOrder(field === 'nama' || field === 'identifier' || field === 'nama_wali' || field === 'alamat' ? 'asc' : 'desc');
+    }
+  };
+
+  const handleDetailSort = (field: 'tanggal' | 'waktu' | 'mata_pelajaran' | 'status' | 'keterangan' | 'penginput') => {
+    if (detailSortField === field) {
+      setDetailSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setDetailSortField(field);
+      setDetailSortOrder(field === 'tanggal' ? 'desc' : 'asc');
     }
   };
 
@@ -434,14 +449,39 @@ export default function RekapitulasiPage() {
       return;
     }
 
-    const list = detailModal.activeStatus === 'semua'
+    const rawList = detailModal.activeStatus === 'semua'
       ? detailModal.data
       : detailModal.data.filter((d: any) => d.status === detailModal.activeStatus);
 
-    if (list.length === 0) {
+    if (rawList.length === 0) {
       alert(`Tidak ada data untuk status ${detailModal.activeStatus}.`);
       return;
     }
+
+    const list = [...rawList].sort((a: any, b: any) => {
+      let valA = '';
+      let valB = '';
+      if (detailSortField === 'tanggal') {
+        valA = `${a.tanggal || ''} ${a.jam_mulai || ''}`;
+        valB = `${b.tanggal || ''} ${b.jam_mulai || ''}`;
+      } else if (detailSortField === 'waktu') {
+        valA = a.jam_mulai || '';
+        valB = b.jam_mulai || '';
+      } else if (detailSortField === 'mata_pelajaran') {
+        valA = (a.mata_pelajaran || '').toLowerCase();
+        valB = (b.mata_pelajaran || '').toLowerCase();
+      } else if (detailSortField === 'status') {
+        valA = (a.status || '').toLowerCase();
+        valB = (b.status || '').toLowerCase();
+      } else if (detailSortField === 'keterangan') {
+        valA = (a.keterangan || '').toLowerCase();
+        valB = (b.keterangan || '').toLowerCase();
+      } else if (detailSortField === 'penginput') {
+        valA = (a.penginput || '').toLowerCase();
+        valB = (b.penginput || '').toLowerCase();
+      }
+      return detailSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    });
 
     const item = detailModal.item;
     const isGuru = filter.tipe === 'guru';
@@ -1171,11 +1211,11 @@ export default function RekapitulasiPage() {
                   <p className="text-sm font-bold text-red-700 dark:text-red-300">{detailModal.error}</p>
                 </div>
               ) : (() => {
-                const list = detailModal.activeStatus === 'semua'
+                const rawList = detailModal.activeStatus === 'semua'
                   ? detailModal.data
                   : detailModal.data.filter((d: any) => d.status === detailModal.activeStatus);
 
-                if (list.length === 0) {
+                if (rawList.length === 0) {
                   return (
                     <div className="flex flex-col items-center justify-center py-20 text-gray-400 text-center w-full">
                       <CalendarDays size={38} className="mx-auto mb-2.5 text-gray-300 dark:text-gray-600" />
@@ -1187,18 +1227,121 @@ export default function RekapitulasiPage() {
                   );
                 }
 
+                const list = [...rawList].sort((a: any, b: any) => {
+                  let valA = '';
+                  let valB = '';
+                  if (detailSortField === 'tanggal') {
+                    valA = `${a.tanggal || ''} ${a.jam_mulai || ''}`;
+                    valB = `${b.tanggal || ''} ${b.jam_mulai || ''}`;
+                  } else if (detailSortField === 'waktu') {
+                    valA = a.jam_mulai || '';
+                    valB = b.jam_mulai || '';
+                  } else if (detailSortField === 'mata_pelajaran') {
+                    valA = (a.mata_pelajaran || '').toLowerCase();
+                    valB = (b.mata_pelajaran || '').toLowerCase();
+                  } else if (detailSortField === 'status') {
+                    valA = (a.status || '').toLowerCase();
+                    valB = (b.status || '').toLowerCase();
+                  } else if (detailSortField === 'keterangan') {
+                    valA = (a.keterangan || '').toLowerCase();
+                    valB = (b.keterangan || '').toLowerCase();
+                  } else if (detailSortField === 'penginput') {
+                    valA = (a.penginput || '').toLowerCase();
+                    valB = (b.penginput || '').toLowerCase();
+                  }
+                  return detailSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                });
+
                 return (
                   <div className="overflow-x-auto w-full border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm bg-white dark:bg-gray-800">
                     <table className="w-full min-w-[860px] text-left text-xs sm:text-sm">
                       <thead className="bg-gray-50 dark:bg-gray-900/70 text-gray-500 dark:text-gray-400 font-bold uppercase text-[11px] border-b border-gray-100 dark:border-gray-700">
                         <tr>
                           <th className="py-3 px-4 text-center w-12 min-w-[48px]">No</th>
-                          <th className="py-3 px-4 w-[160px] min-w-[160px]">Hari, Tanggal</th>
-                          <th className="py-3 px-4 w-[130px] min-w-[130px]">Waktu</th>
-                          <th className="py-3 px-4 w-[260px] min-w-[260px]">Jadwal / Mapel / Kegiatan</th>
-                          <th className="py-3 px-4 text-center w-[100px] min-w-[100px]">Status</th>
-                          <th className="py-3 px-4 w-[140px] min-w-[140px]">Keterangan</th>
-                          <th className="py-3 px-4 w-[150px] min-w-[150px]">Diinput Oleh</th>
+                          <th 
+                            onClick={() => handleDetailSort('tanggal')}
+                            className="py-3 px-4 w-[160px] min-w-[160px] cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                            title="Klik untuk mengurutkan berdasarkan tanggal"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>Hari, Tanggal</span>
+                              {detailSortField === 'tanggal' ? (
+                                detailSortOrder === 'asc' ? <ArrowUp size={13} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={13} className="text-purple-600 dark:text-purple-400" />
+                              ) : (
+                                <ArrowUpDown size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                              )}
+                            </div>
+                          </th>
+                          <th 
+                            onClick={() => handleDetailSort('waktu')}
+                            className="py-3 px-4 w-[130px] min-w-[130px] cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                            title="Klik untuk mengurutkan berdasarkan waktu"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>Waktu</span>
+                              {detailSortField === 'waktu' ? (
+                                detailSortOrder === 'asc' ? <ArrowUp size={13} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={13} className="text-purple-600 dark:text-purple-400" />
+                              ) : (
+                                <ArrowUpDown size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                              )}
+                            </div>
+                          </th>
+                          <th 
+                            onClick={() => handleDetailSort('mata_pelajaran')}
+                            className="py-3 px-4 w-[260px] min-w-[260px] cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                            title="Klik untuk mengurutkan berdasarkan jadwal/mapel/kegiatan"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>Jadwal / Mapel / Kegiatan</span>
+                              {detailSortField === 'mata_pelajaran' ? (
+                                detailSortOrder === 'asc' ? <ArrowUp size={13} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={13} className="text-purple-600 dark:text-purple-400" />
+                              ) : (
+                                <ArrowUpDown size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                              )}
+                            </div>
+                          </th>
+                          <th 
+                            onClick={() => handleDetailSort('status')}
+                            className="py-3 px-4 text-center w-[100px] min-w-[100px] cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                            title="Klik untuk mengurutkan berdasarkan status"
+                          >
+                            <div className="flex items-center justify-center gap-1.5">
+                              <span>Status</span>
+                              {detailSortField === 'status' ? (
+                                detailSortOrder === 'asc' ? <ArrowUp size={13} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={13} className="text-purple-600 dark:text-purple-400" />
+                              ) : (
+                                <ArrowUpDown size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                              )}
+                            </div>
+                          </th>
+                          <th 
+                            onClick={() => handleDetailSort('keterangan')}
+                            className="py-3 px-4 w-[140px] min-w-[140px] cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                            title="Klik untuk mengurutkan berdasarkan keterangan"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>Keterangan</span>
+                              {detailSortField === 'keterangan' ? (
+                                detailSortOrder === 'asc' ? <ArrowUp size={13} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={13} className="text-purple-600 dark:text-purple-400" />
+                              ) : (
+                                <ArrowUpDown size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                              )}
+                            </div>
+                          </th>
+                          <th 
+                            onClick={() => handleDetailSort('penginput')}
+                            className="py-3 px-4 w-[150px] min-w-[150px] cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                            title="Klik untuk mengurutkan berdasarkan penginput"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>Diinput Oleh</span>
+                              {detailSortField === 'penginput' ? (
+                                detailSortOrder === 'asc' ? <ArrowUp size={13} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={13} className="text-purple-600 dark:text-purple-400" />
+                              ) : (
+                                <ArrowUpDown size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400" />
+                              )}
+                            </div>
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
