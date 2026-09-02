@@ -45,60 +45,96 @@ export async function GET(request: Request) {
 
     // Mapping nama asli guru dan user
     const nameMap: Record<string, string> = {};
+    const jadwalGuruMap: Record<string, string> = {};
+
     try {
-      const [guruList] = await pool.execute<RowDataPacket[]>(
-        `SELECT g.guru_id, g.nip, g.nama, g.user_id, u.username, u.nama as user_nama
-         FROM guru g
-         LEFT JOIN users u ON g.user_id = u.id OR u.guru_id = g.guru_id`
+      // 1. Ambil seluruh data guru
+      const [guruList] = await pool.query<RowDataPacket[]>(
+        `SELECT guru_id, nip, nama, user_id FROM guru WHERE nama IS NOT NULL`
       );
       for (const g of guruList) {
-        if (g.nama) {
+        if (g.nama && g.nama.trim()) {
           const realName = g.nama.trim();
-          if (g.nip) nameMap[String(g.nip).toLowerCase()] = realName;
           if (g.guru_id) {
-            nameMap[String(g.guru_id).toLowerCase()] = realName;
-            nameMap[`guru_${g.guru_id}`.toLowerCase()] = realName;
-            nameMap[`g_${g.guru_id}`.toLowerCase()] = realName;
-            const padded = String(g.guru_id).padStart(2, '0');
-            nameMap[`guru_${padded}`.toLowerCase()] = realName;
+            const gId = String(g.guru_id).toLowerCase();
+            nameMap[gId] = realName;
+            nameMap[`guru_${gId}`] = realName;
+            nameMap[`g_${gId}`] = realName;
+            const padded = gId.padStart(2, '0');
+            nameMap[`guru_${padded}`] = realName;
+          }
+          if (g.nip) {
+            const nipStr = String(g.nip).trim().toLowerCase();
+            nameMap[nipStr] = realName;
+            nameMap[`guru_${nipStr}`] = realName;
+            const numOnly = nipStr.replace(/\D/g, '');
+            if (numOnly) {
+              nameMap[numOnly] = realName;
+              nameMap[`guru_${numOnly}`] = realName;
+              const numInt = String(parseInt(numOnly, 10));
+              nameMap[numInt] = realName;
+              nameMap[`guru_${numInt}`] = realName;
+            }
           }
           if (g.user_id) {
-            nameMap[String(g.user_id).toLowerCase()] = realName;
-            nameMap[`user_${g.user_id}`.toLowerCase()] = realName;
-            const hexId = Number(g.user_id).toString(16).toLowerCase();
-            if (hexId && !nameMap[hexId]) nameMap[hexId] = realName;
-          }
-          if (g.username) {
-            nameMap[String(g.username).toLowerCase()] = realName;
+            const uId = String(g.user_id).toLowerCase();
+            nameMap[uId] = realName;
+            nameMap[`user_${uId}`] = realName;
+            nameMap[`guru_${uId}`] = realName;
           }
         }
       }
 
-      const [usersList] = await pool.execute<RowDataPacket[]>(
+      // 2. Ambil seluruh data users
+      const [usersList] = await pool.query<RowDataPacket[]>(
         `SELECT id, username, nama, role FROM users`
       );
       for (const u of usersList) {
-        if (u.nama && u.nama.trim()) {
-          const realName = u.nama.trim();
-          if (u.username && !nameMap[String(u.username).toLowerCase()]) {
-            nameMap[String(u.username).toLowerCase()] = realName;
+        const uName = (u.nama || '').trim();
+        if (u.username) {
+          const uname = String(u.username).trim().toLowerCase();
+          if (uName && !nameMap[uname]) {
+            nameMap[uname] = uName;
           }
-          if (u.id && !nameMap[String(u.id).toLowerCase()]) {
-            nameMap[String(u.id).toLowerCase()] = realName;
-            const hexUserId = Number(u.id).toString(16).toLowerCase();
-            if (hexUserId && !nameMap[hexUserId]) nameMap[hexUserId] = realName;
+        }
+        if (u.id) {
+          const uid = String(u.id);
+          if (uName && !nameMap[uid]) {
+            nameMap[uid] = uName;
           }
         }
       }
+
+      // 3. Ambil mapping jadwal ke guru pengajar (untuk simpan_absen)
+      const [madinJadwal] = await pool.query<RowDataPacket[]>(
+        `SELECT j.jadwal_id, g.nama FROM jadwal_madin j JOIN guru g ON j.guru_id = g.guru_id WHERE g.nama IS NOT NULL`
+      );
+      madinJadwal.forEach((r: any) => { if (r.nama) jadwalGuruMap[`absensi_${r.jadwal_id}`] = r.nama.trim(); });
+
+      const [quranJadwal] = await pool.query<RowDataPacket[]>(
+        `SELECT j.id, g.nama FROM jadwal_quran j JOIN guru g ON j.guru_id = g.guru_id WHERE g.nama IS NOT NULL`
+      );
+      quranJadwal.forEach((r: any) => { if (r.nama) jadwalGuruMap[`absensi_quran_${r.id}`] = r.nama.trim(); });
+
+      const [kegiatanJadwal] = await pool.query<RowDataPacket[]>(
+        `SELECT j.kegiatan_id, g.nama FROM jadwal_kegiatan j JOIN guru g ON j.guru_id = g.guru_id WHERE g.nama IS NOT NULL`
+      );
+      kegiatanJadwal.forEach((r: any) => { if (r.nama) jadwalGuruMap[`absensi_kegiatan_${r.kegiatan_id}`] = r.nama.trim(); });
+
     } catch (e) {
       console.warn("Audit name map build error:", e);
     }
 
-    const resolveNama = (raw: string, userId?: number | string) => {
+    const resolveNama = (raw: string, userId?: number | string, tabel?: string, recordId?: number | null) => {
       if (userId && nameMap[String(userId).toLowerCase()]) {
         return nameMap[String(userId).toLowerCase()];
       }
-      if (!raw || raw.trim() === '') return '';
+      if (!raw || raw.trim() === '') {
+        if (tabel && recordId && jadwalGuruMap[`${tabel}_${recordId}`]) {
+          return jadwalGuruMap[`${tabel}_${recordId}`];
+        }
+        return '';
+      }
       const clean = raw.trim();
       const lower = clean.toLowerCase();
 
@@ -107,14 +143,16 @@ export async function GET(request: Request) {
       }
       if (nameMap[lower]) return nameMap[lower];
 
-      const numSuffixMatch = lower.match(/^[a-z_]*(\d+)$/);
-      if (numSuffixMatch) {
-        const num = numSuffixMatch[1];
-        const numNoLeadingZero = String(parseInt(num, 10));
-        if (nameMap[num]) return nameMap[num];
-        if (nameMap[numNoLeadingZero]) return nameMap[numNoLeadingZero];
-        if (nameMap[`guru_${numNoLeadingZero}`]) return nameMap[`guru_${numNoLeadingZero}`];
-        if (nameMap[`guru_${num}`]) return nameMap[`guru_${num}`];
+      const numMatch = lower.match(/\d+/g);
+      if (numMatch) {
+        for (const num of numMatch) {
+          const numNoZero = String(parseInt(num, 10));
+          if (nameMap[`guru_${num}`]) return nameMap[`guru_${num}`];
+          if (nameMap[`guru_${numNoZero}`]) return nameMap[`guru_${numNoZero}`];
+          if (nameMap[num]) return nameMap[num];
+          if (nameMap[numNoZero]) return nameMap[numNoZero];
+          if (nameMap[`user_${num}`]) return nameMap[`user_${num}`];
+        }
       }
 
       if (/^[0-9a-f]+$/i.test(lower) && lower.length >= 3) {
@@ -122,12 +160,17 @@ export async function GET(request: Request) {
         if (nameMap[decFromHex]) return nameMap[decFromHex];
       }
 
+      // Fallback ke guru dari jadwal jika aksi absensi
+      if (tabel && recordId && jadwalGuruMap[`${tabel}_${recordId}`]) {
+        return jadwalGuruMap[`${tabel}_${recordId}`];
+      }
+
       return clean;
     };
 
     const enrichedRows = rows.map((r: any) => ({
       ...r,
-      nama_lengkap: resolveNama(r.user_nama, r.user_id),
+      nama_lengkap: resolveNama(r.user_nama, r.user_id, r.tabel, r.record_id),
     }));
 
     const [countRows] = await pool.query<RowDataPacket[]>(
