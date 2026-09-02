@@ -77,17 +77,11 @@ function getDetailKelasKamar(log: AuditLog): string | null {
   if (obj.nama_kamar || obj.kamar) {
     parts.push(`Kamar: ${obj.nama_kamar || obj.kamar}`);
   }
-  // Line/tipe (madin/quran/kegiatan)
-  if (obj.line && !parts.length) {
-    parts.push(`Tipe: ${obj.line}`);
-  }
-  // Tanggal absen jika ada
-  if (obj.tanggal) {
-    parts.push(`Tgl: ${obj.tanggal}`);
-  }
-  // Jumlah santri (untuk simpan_absen bulk)
-  if (obj.jumlah !== undefined) {
-    parts.push(`${obj.jumlah} santri`);
+  // Mapel / Kegiatan
+  if (obj.mata_pelajaran) {
+    parts.push(`Mapel: ${obj.mata_pelajaran}`);
+  } else if (obj.nama_kegiatan) {
+    parts.push(`Kegiatan: ${obj.nama_kegiatan}`);
   }
 
   return parts.length > 0 ? parts.join(' · ') : null;
@@ -153,6 +147,7 @@ export default function AuditLogPage() {
   const formatDate = (dt: string) => {
     try {
       return new Date(dt).toLocaleString('id-ID', {
+        weekday: 'long',
         day: '2-digit', month: 'short', year: 'numeric',
         hour: '2-digit', minute: '2-digit', second: '2-digit',
         timeZone: 'Asia/Jakarta',
@@ -330,12 +325,12 @@ export default function AuditLogPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700">
                   <th 
                     onClick={() => handleSort('created_at')}
-                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group whitespace-nowrap"
                     title="Klik untuk mengurutkan berdasarkan waktu"
                   >
                     <div className="flex items-center gap-1.5">
@@ -349,7 +344,7 @@ export default function AuditLogPage() {
                   </th>
                   <th 
                     onClick={() => handleSort('user')}
-                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group whitespace-nowrap"
                     title="Klik untuk mengurutkan berdasarkan user/nama"
                   >
                     <div className="flex items-center gap-1.5">
@@ -363,7 +358,7 @@ export default function AuditLogPage() {
                   </th>
                   <th 
                     onClick={() => handleSort('aksi')}
-                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group whitespace-nowrap"
                     title="Klik untuk mengurutkan berdasarkan aksi"
                   >
                     <div className="flex items-center gap-1.5">
@@ -377,7 +372,7 @@ export default function AuditLogPage() {
                   </th>
                   <th 
                     onClick={() => handleSort('keterangan')}
-                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group whitespace-nowrap"
                     title="Klik untuk mengurutkan berdasarkan keterangan"
                   >
                     <div className="flex items-center gap-1.5">
@@ -391,7 +386,7 @@ export default function AuditLogPage() {
                   </th>
                   <th 
                     onClick={() => handleSort('ip_address')}
-                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden md:table-cell cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group"
+                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer hover:bg-gray-100/70 dark:hover:bg-gray-800/70 transition-colors select-none group whitespace-nowrap"
                     title="Klik untuk mengurutkan berdasarkan IP Address"
                   >
                     <div className="flex items-center gap-1.5">
@@ -411,8 +406,8 @@ export default function AuditLogPage() {
                   <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        <Calendar size={12} />
-                        {formatDate(log.created_at)}
+                        <Calendar size={12} className="shrink-0" />
+                        <span>{formatDate(log.created_at)}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -421,7 +416,7 @@ export default function AuditLogPage() {
                           <User size={13} />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-800 dark:text-gray-200 text-xs leading-tight">
+                          <p className="font-semibold text-gray-800 dark:text-gray-200 text-xs leading-tight whitespace-nowrap">
                             {log.nama_lengkap && log.nama_lengkap !== log.user_nama ? log.nama_lengkap : log.user_nama || '—'}
                           </p>
                           <div className="flex items-center gap-1.5 mt-0.5">
@@ -435,14 +430,14 @@ export default function AuditLogPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${AKSI_COLOR[log.aksi] || 'bg-gray-100 text-gray-600'}`}>
                         <Activity size={10} />
                         {AKSI_LABEL[log.aksi] || log.aksi}
                       </span>
                       <p className="text-[10px] text-gray-400 mt-0.5">{log.tabel}</p>
                     </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
+                    <td className="px-4 py-3">
                       <p className="text-xs text-gray-600 dark:text-gray-400 max-w-xs truncate">{log.keterangan || '—'}</p>
                       {(() => {
                         const detail = getDetailKelasKamar(log);
@@ -453,12 +448,12 @@ export default function AuditLogPage() {
                         ) : null;
                       })()}
                     </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <code className="text-[11px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
                         {log.ip_address || '—'}
                       </code>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <button
                         onClick={() => setSelectedLog(log)}
                         className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
