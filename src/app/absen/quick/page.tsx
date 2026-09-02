@@ -285,9 +285,44 @@ function QuickAbsenContent() {
     return msg;
   };
 
-  const handleShareToWA = () => {
-    const finalMessage = generateWaGroupMessage();
-    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(finalMessage)}`;
+  const handleShareToWA = async () => {
+    let fileToShare: File | null = null;
+
+    if (photoUrl) {
+      try {
+        if (photoUrl.startsWith('data:')) {
+          const res = await fetch(photoUrl);
+          const blob = await res.blob();
+          fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+        } else if (photoUrl.startsWith('blob:')) {
+          const res = await fetch(photoUrl);
+          const blob = await res.blob();
+          fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+        }
+      } catch (err) {
+        console.warn('Error preparing photo file:', err);
+      }
+    }
+
+    const textReport = generateWaGroupMessage();
+
+    // 1. Coba Native Web Share API (Di HP Android/iOS, ini langsung melampirkan foto ke WhatsApp tanpa upload ke server)
+    if (fileToShare && typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).canShare({ files: [fileToShare] })) {
+      try {
+        await navigator.share({
+          title: `LAPORAN KEHADIRAN ${(data?.jadwal?.nama_kelas || '').toUpperCase()}`,
+          text: textReport,
+          files: [fileToShare],
+        });
+        return;
+      } catch (shareErr: any) {
+        if (shareErr?.name === 'AbortError') return; // User membatalkan dialog share
+        console.warn('Web Share API gagal, lanjut ke fallback URL:', shareErr);
+      }
+    }
+
+    // 2. Fallback untuk browser yang tidak mendukung share file langsung (tetap 100% tanpa upload ke server):
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(textReport)}`;
     window.open(waUrl, '_blank');
   };
 
@@ -1182,6 +1217,129 @@ function QuickAbsenContent() {
                 Data presensi kelas <strong>{jadwal?.nama_kelas || 'Madin/Al-Qur\'an'}</strong> telah tersimpan di sistem.
               </p>
             </div>
+            <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 space-y-3 text-left">
+              <label className="block text-xs font-bold text-slate-200 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Camera size={16} className="text-emerald-400 animate-pulse" />
+                  Foto Kehadiran Kelas/Kamar (Opsional)
+                </span>
+                <span className="text-[10px] text-emerald-400/80 font-normal">Tanpa Beban Server</span>
+              </label>
+
+              {/* Camera live view */}
+              {showCamera && (
+                <div className="rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black relative mb-3">
+                  {/* Camera toolbar */}
+                  <div className="flex justify-between items-center bg-slate-900 px-3 py-2 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
+                      <span className="text-xs font-semibold text-slate-300">
+                        {facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCameraOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait')}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl transition"
+                      >
+                        <span>{cameraOrientation === 'portrait' ? '📱 Potret' : '🌅 Lanskap'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={switchCamera}
+                        disabled={isSwitchingCamera}
+                        className="bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl transition"
+                      >
+                        <FlipHorizontal size={14} className={isSwitchingCamera ? 'animate-spin' : ''} />
+                        <span className="hidden sm:inline">Ganti</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={closeCamera}
+                        className="bg-rose-600 p-1 rounded-lg text-white"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Video preview */}
+                  <div className="relative min-h-[220px] bg-black">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`w-full object-cover ${cameraOrientation === 'portrait' ? 'aspect-[3/4] max-h-[380px]' : 'aspect-[4/3] max-h-[300px]'}`}
+                    />
+                  </div>
+
+                  <div className="flex justify-center bg-slate-900 py-2.5 px-4">
+                    <button
+                      type="button"
+                      onClick={capturePhoto}
+                      className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-2 rounded-full shadow-lg transition flex items-center gap-2 text-xs"
+                    >
+                      <Camera size={16} /> Ambil Foto
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <canvas ref={canvasRef} className="hidden" />
+
+              {/* Buttons side-by-side full width */}
+              <div className="grid grid-cols-2 gap-2.5 w-full">
+                {!showCamera ? (
+                  <button
+                    type="button"
+                    onClick={openCamera}
+                    className="w-full bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 font-bold py-3 rounded-xl border border-emerald-700/50 text-xs transition flex items-center justify-center gap-2"
+                  >
+                    <Camera size={16} />
+                    {photoUrl ? 'Ambil Ulang' : 'Buka Kamera'}
+                  </button>
+                ) : (
+                  <div className="w-full" />
+                )}
+
+                <div className="w-full">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    id="quick-presence-photo-input"
+                  />
+                  <label
+                    htmlFor="quick-presence-photo-input"
+                    className="w-full cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 rounded-xl border border-slate-700 text-xs transition flex items-center justify-center gap-2 text-center block"
+                  >
+                    <ImageIcon size={16} /> Upload File
+                  </label>
+                </div>
+              </div>
+
+              {photoUrl && (
+                <div className="mt-2.5 relative w-full h-44 rounded-xl overflow-hidden border-2 border-emerald-500/80 shadow-md">
+                  <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setPhotoUrl('')}
+                    className="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white rounded-full p-1 shadow-md w-7 h-7 flex items-center justify-center"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              <p className="text-[10px] text-slate-400 font-medium text-center">
+                {photoUrl
+                  ? 'Foto siap dilampirkan langsung ke WhatsApp saat Anda menekan tombol kirim.'
+                  : 'Ambil foto dari kamera atau pilih gambar dari galeri untuk dilampirkan ke pesan WhatsApp.'}
+              </p>
+            </div>
 
             {/* Action Buttons */}
             <div className="space-y-2.5 pt-2">
@@ -1190,7 +1348,7 @@ function QuickAbsenContent() {
                 type="button"
                 className="w-full bg-[#128C7E] hover:bg-[#075E54] text-white px-4 py-3 rounded-xl font-bold text-xs transition shadow-md flex items-center justify-center gap-2 active:scale-95"
               >
-                <Send size={15} /> Kirim Ringkasan Laporan ke Grup WA
+                <Send size={15} /> {photoUrl ? 'Kirim Laporan & Foto ke Grup WA' : 'Kirim Ringkasan Laporan ke Grup WA'}
               </button>
 
               <Link
