@@ -8,6 +8,7 @@ interface AuditLog {
   id: number;
   user_id: number;
   user_nama: string;
+  nama_lengkap?: string;
   user_role: string;
   aksi: string;
   tabel: string;
@@ -298,8 +299,17 @@ export default function AuditLogPage() {
                           <User size={13} />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-800 dark:text-gray-200 text-xs leading-tight">{log.user_nama || '—'}</p>
-                          <p className="text-gray-400 text-[10px]">{log.user_role}</p>
+                          <p className="font-semibold text-gray-800 dark:text-gray-200 text-xs leading-tight">
+                            {log.nama_lengkap && log.nama_lengkap !== log.user_nama ? log.nama_lengkap : log.user_nama || '—'}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {log.nama_lengkap && log.nama_lengkap !== log.user_nama && (
+                              <span className="font-mono text-[10px] text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1 rounded">
+                                {log.user_nama}
+                              </span>
+                            )}
+                            <span className="text-gray-400 text-[10px]">{ROLE_LABEL[log.user_role] || log.user_role}</span>
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -386,7 +396,12 @@ export default function AuditLogPage() {
             <div className="p-5 space-y-3">
               {[
                 ['Waktu', formatDate(selectedLog.created_at)],
-                ['User', `${selectedLog.user_nama} (${ROLE_LABEL[selectedLog.user_role] || selectedLog.user_role})`],
+                [
+                  'User',
+                  selectedLog.nama_lengkap && selectedLog.nama_lengkap !== selectedLog.user_nama
+                    ? `${selectedLog.nama_lengkap} (${selectedLog.user_nama} • ${ROLE_LABEL[selectedLog.user_role] || selectedLog.user_role})`
+                    : `${selectedLog.user_nama} (${ROLE_LABEL[selectedLog.user_role] || selectedLog.user_role})`
+                ],
                 ['Aksi', AKSI_LABEL[selectedLog.aksi] || selectedLog.aksi],
                 ['Tabel', selectedLog.tabel],
                 ['Record ID', selectedLog.record_id?.toString() || '—'],
