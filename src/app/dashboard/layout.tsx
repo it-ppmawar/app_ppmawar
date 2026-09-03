@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2, Megaphone, Shield, ChevronDown, Database, Layers, Sparkles, Send } from 'lucide-react';
+import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2, Megaphone, Shield, ChevronDown, Database, Layers, Sparkles, Send, ExternalLink, Globe, Smartphone } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -22,9 +22,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     menuUtama: false,
     manajemenData: false,
     manajemenSistem: false,
+    aplikasiYayasan: false,
   });
 
-  const toggleSection = (sectionKey: 'menuUtama' | 'manajemenData' | 'manajemenSistem') => {
+  const toggleSection = (sectionKey: 'menuUtama' | 'manajemenData' | 'manajemenSistem' | 'aplikasiYayasan') => {
     setOpenSections(prev => ({
       ...prev,
       [sectionKey]: !prev[sectionKey]
@@ -804,6 +805,113 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </div>
           )}
+
+          {/* ========================================================================= */}
+          {/* 4. GRUP APLIKASI YAYASAN (Tautan Ekosistem Pesantren)                      */}
+          {/* ========================================================================= */}
+          <div className="px-3 mb-3">
+            <button
+              onClick={() => toggleSection('aplikasiYayasan')}
+              className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all border border-gray-100 dark:border-gray-700/60 shadow-sm group"
+              aria-label="Toggle Aplikasi Yayasan"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 group-hover:scale-105 transition-transform">
+                  <Globe size={16} />
+                </div>
+                <span className="text-xs font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-wider whitespace-nowrap">
+                  Aplikasi Yayasan
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ChevronDown
+                  size={16}
+                  className={`text-gray-400 transition-transform duration-300 ${
+                    openSections.aplikasiYayasan ? 'rotate-180 text-amber-600 dark:text-amber-400' : 'rotate-0'
+                  }`}
+                />
+              </div>
+            </button>
+
+            {openSections.aplikasiYayasan && (
+              <ul className="space-y-1 mt-2 pl-1 pr-1 animate-[fadeIn_0.2s_ease-out]">
+                <li>
+                  <a
+                    href="https://ppmawar.or.id/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowSidebar(false)}
+                    className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-gray-700 dark:text-gray-200 transition-colors font-medium group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <Globe size={17} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 truncate">
+                          PP. MATHOLI'UL ANWAR
+                        </div>
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                          Website Resmi Pondok
+                        </div>
+                      </div>
+                    </div>
+                    <ExternalLink size={14} className="text-gray-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 shrink-0" />
+                  </a>
+                </li>
+
+                <li>
+                  <a
+                    href="https://play.google.com/store/apps/details?id=id.quizb.bukuwirid"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowSidebar(false)}
+                    className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/30 text-gray-700 dark:text-gray-200 transition-colors font-medium group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 flex items-center justify-center shrink-0">
+                        <Smartphone size={17} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-blue-700 dark:group-hover:text-blue-400 truncate">
+                          Mafatihul Akhyar (Beta)
+                        </div>
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                          Aplikasi Wirid &amp; Doa Santri
+                        </div>
+                      </div>
+                    </div>
+                    <ExternalLink size={14} className="text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 shrink-0" />
+                  </a>
+                </li>
+
+                <li>
+                  <a
+                    href="https://app.mamawar.sch.id/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowSidebar(false)}
+                    className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 text-gray-700 dark:text-gray-200 transition-colors font-medium group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400 flex items-center justify-center shrink-0">
+                        <Sparkles size={17} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-rose-700 dark:group-hover:text-rose-400 truncate">
+                          Rose App
+                        </div>
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                          MA Matholi'ul Anwar
+                        </div>
+                      </div>
+                    </div>
+                    <ExternalLink size={14} className="text-gray-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 shrink-0" />
+                  </a>
+                </li>
+              </ul>
+            )}
+          </div>
 
         </div>
         
