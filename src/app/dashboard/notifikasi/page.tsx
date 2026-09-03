@@ -1008,12 +1008,92 @@ function NotifikasiContent() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 text-center mb-6">
-        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Bell className="text-gray-400 dark:text-gray-500" size={32} />
+      {/* ===== CARD OTOMATISASI WA SCHEDULER ===== */}
+      {(role === 'admin' || role === 'staff') && (
+        <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-200/80 dark:border-emerald-800/50 shadow-sm space-y-3">
+          {/* Baris 1: Judul satu baris utuh dengan 1 ikon lampu indikator aktif */}
+          <div className="flex items-center gap-2">
+            <span className="flex h-2.5 w-2.5 relative shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <h4 className="font-extrabold text-sm sm:text-base text-emerald-950 dark:text-emerald-300">
+              Otomatisasi WA Scheduler (wa.quizb.my.id)
+            </h4>
+          </div>
+
+          {/* Baris 2: Deskripsi satu baris utuh */}
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+            Kirim notifikasi pengingat ke WhatsApp guru secara otomatis tanpa perlu membuka tautan satu per satu.
+          </p>
+
+          {/* Baris 3: Tiga Tombol Aksi - presisi dan seragam */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap md:flex-nowrap items-stretch gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => setSchedulerModalOpen(true)}
+              className="px-3.5 py-2.5 min-h-[44px] text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-center active:scale-95"
+            >
+              <Settings2 size={14} className="shrink-0" />
+              <span>Opsi &amp; Looping</span>
+            </button>
+            <button
+              type="button"
+              disabled={isSchedulerSending || activeReminders.length === 0}
+              onClick={() => handleBulkScheduleWA('active_today')}
+              className="px-3.5 py-2.5 min-h-[44px] text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md hover:shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2 text-center disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {isSchedulerSending ? <Loader2 size={14} className="animate-spin shrink-0" /> : <Zap size={14} className="shrink-0" />}
+              <span>{isSchedulerSending ? 'Menjadwalkan...' : 'Kirim Semua Otomatis'}</span>
+            </button>
+            {/* Tombol Batalkan / Hapus Semua Antrean (Libur Mendadak) */}
+            <button
+              type="button"
+              disabled={isClearingPending}
+              onClick={handleClearPending}
+              title="Batalkan & Hapus semua antrean di WA Scheduler saat libur mendadak"
+              className="col-span-2 sm:col-span-auto sm:w-auto px-4 py-2.5 min-h-[44px] text-xs font-bold text-red-700 dark:text-red-300 bg-red-100/90 hover:bg-red-200 dark:bg-red-950/60 dark:hover:bg-red-900/80 border border-red-300 dark:border-red-800 rounded-xl transition-all flex items-center justify-center gap-2 text-center disabled:opacity-50 shadow-sm active:scale-95 md:ml-auto"
+            >
+              {isClearingPending ? <Loader2 size={14} className="animate-spin shrink-0" /> : <Power size={14} className="shrink-0" />}
+              <span>{isClearingPending ? 'Membatalkan...' : 'Batalkan Semua Antrean (Libur)'}</span>
+            </button>
+          </div>
+
+          {/* Status Alert Notifikasi Scheduler */}
+          {schedulerStatusMsg && (
+            <div className={`p-3 rounded-xl text-xs font-medium flex items-start justify-between gap-2 ${
+              schedulerStatusMsg.type === 'success'
+                ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800'
+                : 'bg-red-100 text-red-900 dark:bg-red-950/60 dark:text-red-200 border border-red-300 dark:border-red-800'
+            }`}>
+              <div className="flex items-center gap-2">
+                {schedulerStatusMsg.type === 'success' ? <CheckCircle2 size={16} className="text-emerald-600 shrink-0" /> : <AlertTriangle size={16} className="text-red-600 shrink-0" />}
+                <span>{schedulerStatusMsg.text}</span>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setSchedulerStatusMsg(null)}
+                className="text-[11px] font-bold underline shrink-0"
+              >
+                Tutup
+              </button>
+            </div>
+          )}
         </div>
-        <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">Push Notifikasi (Perangkat)</h3>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Notifikasi jadwal absensi Anda akan muncul di perangkat ini.</p>
+      )}
+
+      {/* ===== CARD PUSH NOTIFIKASI (PERANGKAT) ===== */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 sm:p-6 overflow-hidden mb-6">
+        {/* Header Push Notifikasi: ikon lonceng di samping kiri judul + deskripsi */}
+        <div className="flex items-center gap-3.5 mb-5">
+          <div className="w-11 h-11 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
+            <Bell className="text-gray-500 dark:text-gray-400" size={22} />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-base text-gray-800 dark:text-gray-100">Push Notifikasi (Perangkat)</h3>
+            <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">Notifikasi jadwal absensi Anda akan muncul di perangkat ini.</p>
+          </div>
+        </div>
         
         <button 
           onClick={async () => {
@@ -1069,13 +1149,13 @@ function NotifikasiContent() {
               alert('Anda sebelumnya telah memblokir notifikasi. Silakan ubah di pengaturan browser.');
             }
           }}
-          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl transition-colors text-sm shadow-md w-full sm:w-auto"
+          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl transition-colors text-xs sm:text-sm shadow-md w-full sm:w-auto active:scale-95"
         >
           Tes Izin Notifikasi Perangkat
         </button>
 
         {showSettingsGuide && (
-          <div className="mt-8 text-left bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-5 animate-[slideDown_0.3s_ease-out]">
+          <div className="mt-6 text-left bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-5 animate-[slideDown_0.3s_ease-out]">
             <h4 className="font-bold text-orange-800 dark:text-orange-400 mb-2 flex items-center gap-2">
               <AlertTriangle size={18} /> Notifikasi tidak muncul/berbunyi?
             </h4>
@@ -1099,18 +1179,25 @@ function NotifikasiContent() {
         <div className="mt-6 border border-blue-200 dark:border-blue-800/50 rounded-2xl overflow-hidden">
           <button
             onClick={() => setShowChromeGuide(!showChromeGuide)}
-            className="w-full flex items-center justify-between gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-left"
+            className="w-full p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-left space-y-1.5"
           >
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-100 dark:bg-blue-800/50 p-2 rounded-full">
-                <Smartphone size={16} className="text-blue-600 dark:text-blue-400" />
+            {/* Baris 1: Ikon HP sejajar dengan teks Ada notifikasi Chrome yang mengganggu? + Panah dropdown */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="bg-blue-100 dark:bg-blue-800/50 p-1.5 rounded-lg shrink-0">
+                  <Smartphone size={16} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <p className="font-bold text-xs sm:text-sm text-blue-900 dark:text-blue-200">
+                  Ada notifikasi Chrome yang mengganggu?
+                </p>
               </div>
-              <div>
-                <p className="font-bold text-sm text-blue-800 dark:text-blue-300">Ada notifikasi Chrome yang mengganggu?</p>
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">&quot;Ketuk untuk menyalin URL aplikasi ini&quot; — cara mematikannya</p>
-              </div>
+              {showChromeGuide ? <ChevronUp size={16} className="text-blue-500 shrink-0" /> : <ChevronDown size={16} className="text-blue-500 shrink-0" />}
             </div>
-            {showChromeGuide ? <ChevronUp size={16} className="text-blue-500 shrink-0" /> : <ChevronDown size={16} className="text-blue-500 shrink-0" />}
+
+            {/* Baris 2: Merapat ke kiri sejajar ujung kiri ikon HP */}
+            <p className="text-[11px] sm:text-xs text-blue-600 dark:text-blue-400 leading-tight">
+              &quot;Ketuk untuk menyalin URL aplikasi ini&quot; — cara mematikannya
+            </p>
           </button>
 
           {showChromeGuide && (
@@ -2006,77 +2093,6 @@ function NotifikasiContent() {
                 </div>
               ) : (
                 <>
-                  {/* Banner Otomatisasi WA Scheduler */}
-                  <div className="mb-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-200/80 dark:border-emerald-800/50 shadow-sm space-y-3">
-                    {/* Baris 1: Judul satu baris utuh dengan 1 ikon lampu indikator aktif */}
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-2.5 w-2.5 relative shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                      </span>
-                      <h4 className="font-extrabold text-sm sm:text-base text-emerald-950 dark:text-emerald-300">
-                        Otomatisasi WA Scheduler (wa.quizb.my.id)
-                      </h4>
-                    </div>
-
-                    {/* Baris 2: Deskripsi satu baris utuh */}
-                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                      Kirim notifikasi pengingat ke WhatsApp guru secara otomatis tanpa perlu membuka tautan satu per satu.
-                    </p>
-
-                    {/* Baris 3: Tiga Tombol Aksi - presisi dan seragam */}
-                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap md:flex-nowrap items-stretch gap-2.5 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setSchedulerModalOpen(true)}
-                        className="px-3.5 py-2.5 min-h-[44px] text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-center active:scale-95"
-                      >
-                        <Settings2 size={14} className="shrink-0" />
-                        <span>Opsi &amp; Looping</span>
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isSchedulerSending || activeReminders.length === 0}
-                        onClick={() => handleBulkScheduleWA('active_today')}
-                        className="px-3.5 py-2.5 min-h-[44px] text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-md hover:shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2 text-center disabled:opacity-50 disabled:pointer-events-none"
-                      >
-                        {isSchedulerSending ? <Loader2 size={14} className="animate-spin shrink-0" /> : <Zap size={14} className="shrink-0" />}
-                        <span>{isSchedulerSending ? 'Menjadwalkan...' : 'Kirim Semua Otomatis'}</span>
-                      </button>
-                      {/* Tombol Batalkan / Hapus Semua Antrean (Libur Mendadak) */}
-                      <button
-                        type="button"
-                        disabled={isClearingPending}
-                        onClick={handleClearPending}
-                        title="Batalkan & Hapus semua antrean di WA Scheduler saat libur mendadak"
-                        className="col-span-2 sm:col-span-auto sm:w-auto px-4 py-2.5 min-h-[44px] text-xs font-bold text-red-700 dark:text-red-300 bg-red-100/90 hover:bg-red-200 dark:bg-red-950/60 dark:hover:bg-red-900/80 border border-red-300 dark:border-red-800 rounded-xl transition-all flex items-center justify-center gap-2 text-center disabled:opacity-50 shadow-sm active:scale-95 md:ml-auto"
-                      >
-                        {isClearingPending ? <Loader2 size={14} className="animate-spin shrink-0" /> : <Power size={14} className="shrink-0" />}
-                        <span>{isClearingPending ? 'Membatalkan...' : 'Batalkan Semua Antrean (Libur)'}</span>
-                      </button>
-                    </div>
-
-                    {/* Status Alert Notifikasi Scheduler */}
-                    {schedulerStatusMsg && (
-                      <div className={`p-3 rounded-xl text-xs font-medium flex items-start justify-between gap-2 ${
-                        schedulerStatusMsg.type === 'success'
-                          ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800'
-                          : 'bg-red-100 text-red-900 dark:bg-red-950/60 dark:text-red-200 border border-red-300 dark:border-red-800'
-                      }`}>
-                        <div className="flex items-center gap-2">
-                          {schedulerStatusMsg.type === 'success' ? <CheckCircle2 size={16} className="text-emerald-600 shrink-0" /> : <AlertTriangle size={16} className="text-red-600 shrink-0" />}
-                          <span>{schedulerStatusMsg.text}</span>
-                        </div>
-                        <button 
-                          type="button" 
-                          onClick={() => setSchedulerStatusMsg(null)}
-                          className="text-[11px] font-bold underline shrink-0"
-                        >
-                          Tutup
-                        </button>
-                      </div>
-                    )}
-                  </div>
 
                   {/* Banner Peringatan Mode Libur */}
                   {isModeLibur && (

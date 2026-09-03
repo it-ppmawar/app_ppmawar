@@ -205,6 +205,9 @@ function InputAbsenContent() {
       return;
     }
 
+    const targetJadwalIds = (jadwal_id || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+    const primaryJadwalId = targetJadwalIds[0] || jadwal_id;
+
     setSubmittingIzin(true);
     try {
       const res = await fetch('/api/absen/izin', {
@@ -212,7 +215,8 @@ function InputAbsenContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tipe,
-          jadwal_id,
+          jadwal_id: primaryJadwalId,
+          jadwal_ids: targetJadwalIds,
           status: izinStatus,
           keterangan: izinKeterangan,
           foto_bukti: izinFoto
@@ -497,6 +501,9 @@ function InputAbsenContent() {
   };
 
   const handleSave = async () => {
+    const targetJadwalIds = (jadwal_id || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+    const primaryJadwalId = targetJadwalIds[0] || jadwal_id;
+
     if (!confirm('Simpan data absensi sekarang?')) return;
     setSaving(true);
     try {
@@ -505,7 +512,8 @@ function InputAbsenContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tipe,
-          jadwal_id,
+          jadwal_id: primaryJadwalId,
+          jadwal_ids: targetJadwalIds,
           absensi: murid.map(m => ({
             murid_id: m.murid_id,
             status: m.status,

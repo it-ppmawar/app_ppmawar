@@ -24,10 +24,16 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const tipe = searchParams.get('tipe');
-    const kelas_id = searchParams.get('kelas_id');
-    const jadwal_id = searchParams.get('jadwal_id'); // Just in case we need it to check existing absensi
+    const kelas_id_param = searchParams.get('kelas_id');
+    const jadwal_id_param = searchParams.get('jadwal_id'); // May be comma-separated for combined classes
 
-    if (!tipe || !kelas_id) return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
+    // Kelas gabungan: kelas_id bisa berupa "12,13,14" (comma-separated)
+    const kelas_id_list = (kelas_id_param || '').split(',').map(s => s.trim()).filter(Boolean);
+    const kelas_id = kelas_id_list[0] || ''; // kelas_id pertama sebagai primary
+    const jadwal_id_list = (jadwal_id_param || '').split(',').map(s => s.trim()).filter(Boolean);
+    const jadwal_id = jadwal_id_list[0] || '';
+
+    if (!tipe || kelas_id_list.length === 0) return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
 
     if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (!namaAsrama) {
@@ -113,14 +119,19 @@ export async function GET(request: Request) {
       }
     } else {
       if (tipe === 'madin') {
-        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kelas_madin_id = ? OR kelas_madin_2_id = ? ORDER BY nama ASC';
-        params = [kelas_id, kelas_id];
+        // Dukung kelas gabungan: murid dari semua kelas dalam daftar kelas_id_list
+        const placeholders = kelas_id_list.flatMap(() => ['?', '?']).join(', ');
+        const madinParams = kelas_id_list.flatMap(id => [id, id]);
+        query = `SELECT DISTINCT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali, kelas_madin_id as nama_kelas_ref FROM murid WHERE ${kelas_id_list.map(() => '(kelas_madin_id = ? OR kelas_madin_2_id = ?)').join(' OR ')} ORDER BY nama ASC`;
+        params = madinParams;
       } else if (tipe === 'quran') {
-        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kelas_quran_id = ? ORDER BY nama ASC';
-        params = [kelas_id];
+        const placeholders = kelas_id_list.map(() => '?').join(', ');
+        query = `SELECT DISTINCT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kelas_quran_id IN (${placeholders}) ORDER BY nama ASC`;
+        params = kelas_id_list;
       } else if (tipe === 'kegiatan') {
-        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kamar_id = ? ORDER BY nama ASC';
-        params = [kelas_id];
+        const placeholders = kelas_id_list.map(() => '?').join(', ');
+        query = `SELECT DISTINCT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kamar_id IN (${placeholders}) ORDER BY nama ASC`;
+        params = kelas_id_list;
       } else {
         return NextResponse.json({ error: 'Tipe tidak valid' }, { status: 400 });
       }
@@ -206,15 +217,17 @@ export async function GET(request: Request) {
       keterangan: existingMap[m.murid_id]?.keterangan || ''
     }));
 
-    // Query nama kelas/kamar untuk laporan
+    // Query nama kelas/kamar untuk laporan — dukung multiple kelas gabungan
     let namaTarget = 'Kelas/Kamar';
     try {
       if (tipe === 'madin') {
-        const [rows]: any = await pool.execute('SELECT nama_kelas FROM kelas_madin WHERE kelas_id = ? LIMIT 1', [kelas_id]);
-        if (rows.length > 0) namaTarget = `Kelas Madin ${rows[0].nama_kelas}`;
+        const ph = kelas_id_list.map(() => '?').join(',');
+        const [rows]: any = await pool.execute(`SELECT nama_kelas FROM kelas_madin WHERE kelas_id IN (${ph}) ORDER BY nama_kelas ASC`, kelas_id_list);
+        if (rows.length > 0) namaTarget = `Kelas Madin ${rows.map((r: any) => r.nama_kelas).join(' & ')}`;
       } else if (tipe === 'quran') {
-        const [rows]: any = await pool.execute('SELECT nama_kelas FROM kelas_quran WHERE id = ? LIMIT 1', [kelas_id]);
-        if (rows.length > 0) namaTarget = `Kelas Qur'an ${rows[0].nama_kelas}`;
+        const ph = kelas_id_list.map(() => '?').join(',');
+        const [rows]: any = await pool.execute(`SELECT nama_kelas FROM kelas_quran WHERE id IN (${ph}) ORDER BY nama_kelas ASC`, kelas_id_list);
+        if (rows.length > 0) namaTarget = `Kelas Qur'an ${rows.map((r: any) => r.nama_kelas).join(' & ')}`;
       } else if (tipe === 'kegiatan') {
         const [rows]: any = await pool.execute('SELECT nama_kamar, nama_asrama FROM kamar WHERE kamar_id = ? LIMIT 1', [kelas_id]);
         if (rows.length > 0) {

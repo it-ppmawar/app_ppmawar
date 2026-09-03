@@ -407,7 +407,7 @@ export default function InputAbsenPage() {
                     {isAktif && (
                       <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-blue-100 dark:border-blue-900/40">
                         <Link
-                          href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${sched.kelas_id}&jadwal_id=${sched.jadwal_id}&action=izin`}
+                          href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${(sched.kelas_ids || [sched.kelas_id]).join(',')}&jadwal_id=${(sched.jadwal_ids || [sched.jadwal_id]).join(',')}&action=izin`}
                           className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
                           title="Ajukan Izin atau Sakit Mengajar"
                         >
@@ -416,7 +416,7 @@ export default function InputAbsenPage() {
                         </Link>
 
                         <Link
-                          href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${sched.kelas_id}&jadwal_id=${sched.jadwal_id}`}
+                          href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${(sched.kelas_ids || [sched.kelas_id]).join(',')}&jadwal_id=${(sched.jadwal_ids || [sched.jadwal_id]).join(',')}`}
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95 ${
                             sudahAbsen
                               ? 'bg-green-600 hover:bg-green-700 text-white'

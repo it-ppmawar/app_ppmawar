@@ -155,11 +155,47 @@ export async function GET() {
     // Sort by jam_mulai
     schedulesWithStatus.sort((a: any, b: any) => a.jam_mulai.localeCompare(b.jam_mulai));
 
+    // ===== MERGE KELAS GABUNGAN =====
+    // Guru yang mengajar lebih dari 1 kelas pada jam & tipe yang sama → digabung jadi 1 kartu
+    const mergedMap = new Map<string, any>();
+    for (const sched of schedulesWithStatus as any[]) {
+      // Kunci: tipe + jam_mulai + jam_selesai (jika guru_id tersedia, gunakan guru_id, kalau tidak gunakan saja kelas_id saja supaya tidak digabung sembarangan)
+      const guruKey = sched.guru_id ? `${sched.tipe}_${sched.guru_id}_${sched.jam_mulai}_${sched.jam_selesai}` : `${sched.tipe}_${sched.kelas_id}_${sched.jadwal_id}`;
+      if (mergedMap.has(guruKey)) {
+        const existing = mergedMap.get(guruKey)!;
+        // Gabungkan nama kelas (hindari duplikat)
+        if (!existing._kelas_names.includes(sched.nama_kelas)) {
+          existing._kelas_names.push(sched.nama_kelas);
+          existing.nama_kelas = existing._kelas_names.join(' & ');
+        }
+        // Gabungkan mata pelajaran (hindari duplikat)
+        if (sched.mata_pelajaran && !existing._mapel_names.includes(sched.mata_pelajaran)) {
+          existing._mapel_names.push(sched.mata_pelajaran);
+          existing.mata_pelajaran = existing._mapel_names.join(' & ');
+        }
+        // Gabungkan jadwal_ids dan kelas_ids
+        if (!existing.jadwal_ids.includes(sched.jadwal_id)) existing.jadwal_ids.push(sched.jadwal_id);
+        if (!existing.kelas_ids.includes(sched.kelas_id)) existing.kelas_ids.push(sched.kelas_id);
+        // Jika salah satu sudah diisi, anggap sudah diisi
+        if (sched.sudah_absen) existing.sudah_absen = true;
+      } else {
+        mergedMap.set(guruKey, {
+          ...sched,
+          jadwal_ids: [sched.jadwal_id],
+          kelas_ids: [sched.kelas_id],
+          _kelas_names: [sched.nama_kelas],
+          _mapel_names: sched.mata_pelajaran ? [sched.mata_pelajaran] : [],
+        });
+      }
+    }
+
+    const mergedSchedules = Array.from(mergedMap.values()).map(({ _kelas_names, _mapel_names, ...rest }) => rest);
+
     return NextResponse.json({
       success: true,
       hari: currentDay,
       waktu: currentTime,
-      data: schedulesWithStatus
+      data: mergedSchedules
     });
 
   } catch (error: any) {
