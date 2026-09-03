@@ -1095,64 +1095,66 @@ function NotifikasiContent() {
           </div>
         </div>
         
-        <button 
-          onClick={async () => {
-            if (typeof window === 'undefined' || !('Notification' in window)) {
-              alert('Browser Anda tidak mendukung notifikasi.');
-              return;
-            }
+        <div className="flex justify-center pt-1">
+          <button 
+            onClick={async () => {
+              if (typeof window === 'undefined' || !('Notification' in window)) {
+                alert('Browser Anda tidak mendukung notifikasi.');
+                return;
+              }
 
-            const fireTestNotification = async () => {
-              const title = 'Tes Notifikasi PPMA';
-              const options = {
-                body: 'Ini adalah tes notifikasi. Jika Anda melihat ini, berarti fitur Push Notification BEKERJA!',
-                icon: '/logo.png',
-                badge: '/logo.png',
-                vibrate: [200, 100, 200]
-              };
-              try {
-                if ('serviceWorker' in navigator) {
-                  // Tambahkan timeout 2 detik agar tidak hang selamanya jika SW belum siap
-                  const reg = await Promise.race([
-                    navigator.serviceWorker.ready,
-                    new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
-                  ]).catch(() => null);
+              const fireTestNotification = async () => {
+                const title = 'Tes Notifikasi PPMA';
+                const options = {
+                  body: 'Ini adalah tes notifikasi. Jika Anda melihat ini, berarti fitur Push Notification BEKERJA!',
+                  icon: '/logo.png',
+                  badge: '/logo.png',
+                  vibrate: [200, 100, 200]
+                };
+                try {
+                  if ('serviceWorker' in navigator) {
+                    // Tambahkan timeout 2 detik agar tidak hang selamanya jika SW belum siap
+                    const reg = await Promise.race([
+                      navigator.serviceWorker.ready,
+                      new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
+                    ]).catch(() => null);
 
-                  if (reg) {
-                    await reg.showNotification(title, options);
-                    alert('Berhasil ditembakkan dari Service Worker! Cek bagian atas layar/laci notifikasi Anda.');
-                    setShowSettingsGuide(true);
-                    return;
+                    if (reg) {
+                      await reg.showNotification(title, options);
+                      alert('Berhasil ditembakkan dari Service Worker! Cek bagian atas layar/laci notifikasi Anda.');
+                      setShowSettingsGuide(true);
+                      return;
+                    }
                   }
+                  
+                  // Fallback jika Service Worker tidak siap atau tidak ada
+                  new Notification(title, options);
+                  alert('Berhasil ditembakkan (API Standar).');
+                } catch (err: any) {
+                  alert('Gagal memunculkan: ' + err.message);
                 }
-                
-                // Fallback jika Service Worker tidak siap atau tidak ada
-                new Notification(title, options);
-                alert('Berhasil ditembakkan (API Standar).');
-              } catch (err: any) {
-                alert('Gagal memunculkan: ' + err.message);
-              }
-              setShowSettingsGuide(true);
-            };
+                setShowSettingsGuide(true);
+              };
 
-            if (Notification.permission === 'granted') {
-              await fireTestNotification();
-            } else if (Notification.permission !== 'denied') {
-              const p = await Notification.requestPermission();
-              if (p === 'granted') {
-                alert('Izin diberikan! Menembakkan notifikasi pertama...');
+              if (Notification.permission === 'granted') {
                 await fireTestNotification();
+              } else if (Notification.permission !== 'denied') {
+                const p = await Notification.requestPermission();
+                if (p === 'granted') {
+                  alert('Izin diberikan! Menembakkan notifikasi pertama...');
+                  await fireTestNotification();
+                } else {
+                  alert('Izin notifikasi ditolak.');
+                }
               } else {
-                alert('Izin notifikasi ditolak.');
+                alert('Anda sebelumnya telah memblokir notifikasi. Silakan ubah di pengaturan browser.');
               }
-            } else {
-              alert('Anda sebelumnya telah memblokir notifikasi. Silakan ubah di pengaturan browser.');
-            }
-          }}
-          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl transition-colors text-xs sm:text-sm shadow-md w-full sm:w-auto active:scale-95"
-        >
-          Tes Izin Notifikasi Perangkat
-        </button>
+            }}
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl transition-colors text-xs sm:text-sm shadow-md w-full sm:w-auto active:scale-95 text-center"
+          >
+            Tes Izin Notifikasi Perangkat
+          </button>
+        </div>
 
         {showSettingsGuide && (
           <div className="mt-6 text-left bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-5 animate-[slideDown_0.3s_ease-out]">

@@ -35,25 +35,31 @@ export async function GET() {
 
     let queryMadin = `
       SELECT j.jadwal_id, j.hari, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, 
-             j.kelas_madin_id as kelas_id, m.nama_kelas, 'madin' as tipe
+             j.kelas_madin_id as kelas_id, m.nama_kelas, 'madin' as tipe,
+             j.guru_id, g.nama as nama_guru
       FROM jadwal_madin j
       JOIN kelas_madin m ON j.kelas_madin_id = m.kelas_id
+      LEFT JOIN guru g ON j.guru_id = g.guru_id
       WHERE j.hari = ?
     `;
     
     let queryQuran = `
       SELECT j.id as jadwal_id, j.hari, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, 
-             j.kelas_quran_id as kelas_id, q.nama_kelas, 'quran' as tipe
+             j.kelas_quran_id as kelas_id, q.nama_kelas, 'quran' as tipe,
+             j.guru_id, g.nama as nama_guru
       FROM jadwal_quran j
       JOIN kelas_quran q ON j.kelas_quran_id = q.id
+      LEFT JOIN guru g ON j.guru_id = g.guru_id
       WHERE j.hari = ?
     `;
 
     let queryKegiatan = `
       SELECT j.kegiatan_id as jadwal_id, j.hari, j.jam_mulai, j.jam_selesai, j.nama_kegiatan as mata_pelajaran, 
-             j.kamar_id as kelas_id, k.nama_kamar as nama_kelas, 'kegiatan' as tipe
+             j.kamar_id as kelas_id, k.nama_kamar as nama_kelas, 'kegiatan' as tipe,
+             j.guru_id, g.nama as nama_guru
       FROM jadwal_kegiatan j
       JOIN kamar k ON j.kamar_id = k.kamar_id
+      LEFT JOIN guru g ON j.guru_id = g.guru_id
       WHERE j.hari = ?
     `;
 
@@ -159,8 +165,11 @@ export async function GET() {
     // Guru yang mengajar lebih dari 1 kelas pada jam & tipe yang sama → digabung jadi 1 kartu
     const mergedMap = new Map<string, any>();
     for (const sched of schedulesWithStatus as any[]) {
-      // Kunci: tipe + jam_mulai + jam_selesai (jika guru_id tersedia, gunakan guru_id, kalau tidak gunakan saja kelas_id saja supaya tidak digabung sembarangan)
-      const guruKey = sched.guru_id ? `${sched.tipe}_${sched.guru_id}_${sched.jam_mulai}_${sched.jam_selesai}` : `${sched.tipe}_${sched.kelas_id}_${sched.jadwal_id}`;
+      const effGuru = sched.guru_id || (role === 'guru' ? guruId : null);
+      const guruKey = effGuru
+        ? `${sched.tipe}_${effGuru}_${sched.hari}_${sched.jam_mulai}_${sched.jam_selesai}`
+        : `${sched.tipe}_${(sched.mata_pelajaran || '').trim()}_${sched.hari}_${sched.jam_mulai}_${sched.jam_selesai}`;
+
       if (mergedMap.has(guruKey)) {
         const existing = mergedMap.get(guruKey)!;
         // Gabungkan nama kelas (hindari duplikat)
@@ -176,6 +185,7 @@ export async function GET() {
         // Gabungkan jadwal_ids dan kelas_ids
         if (!existing.jadwal_ids.includes(sched.jadwal_id)) existing.jadwal_ids.push(sched.jadwal_id);
         if (!existing.kelas_ids.includes(sched.kelas_id)) existing.kelas_ids.push(sched.kelas_id);
+        if (!existing.nama_guru && sched.nama_guru) existing.nama_guru = sched.nama_guru;
         // Jika salah satu sudah diisi, anggap sudah diisi
         if (sched.sudah_absen) existing.sudah_absen = true;
       } else {

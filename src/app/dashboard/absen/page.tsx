@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CalendarCheck, Clock, BookOpen, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, QrCode, Brain, Lock, LockOpen, CheckCircle, Hourglass, HeartPulse } from 'lucide-react';
+import { CalendarCheck, Clock, BookOpen, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, QrCode, Brain, Lock, LockOpen, CheckCircle, Hourglass, HeartPulse, User } from 'lucide-react';
 import Link from 'next/link';
 
 type TipeFilter = 'semua' | 'quran' | 'madin' | 'kegiatan';
@@ -391,6 +391,13 @@ export default function InputAbsenPage() {
                     }`}>
                       {sched.mata_pelajaran || 'Mata Pelajaran'}
                     </h3>
+
+                    {sched.nama_guru && (
+                      <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 mb-1.5">
+                        <User size={13} className="shrink-0" />
+                        <span>{sched.nama_guru}</span>
+                      </p>
+                    )}
 
                     <div className="flex items-center gap-4 text-xs font-semibold mt-3">
                       <div className={`flex items-center gap-1.5 ${isAktif ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400'}`}>
