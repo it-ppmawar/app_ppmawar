@@ -791,7 +791,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           PP. MATHOLI'UL ANWAR
                         </div>
                         <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                          Website Resmi Pondok
+                          Website Resmi Pesantren
                         </div>
                       </div>
                     </div>
