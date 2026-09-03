@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Clock, BookOpen, Activity, FileText, CheckCircle, XCircle, AlertTriangle, Users, User, Camera, CalendarDays, ClipboardCheck, QrCode, CreditCard, Archive, PenTool, Trash2, Pencil, X, Check } from 'lucide-react';
+import { Clock, BookOpen, Activity, FileText, CheckCircle, XCircle, AlertTriangle, Users, User, Camera, CalendarDays, ClipboardCheck, QrCode, CreditCard, Archive, PenTool, Trash2, Pencil, X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -17,6 +17,14 @@ export default function DashboardPage() {
   const [schedules, setSchedules] = useState<any[]>([]);
   const [allSchedules, setAllSchedules] = useState<any[]>([]);
   const [loadingSchedules, setLoadingSchedules] = useState(true);
+  const [expandedSchedules, setExpandedSchedules] = useState<{ [key: string]: boolean }>({});
+
+  const toggleExpandSchedule = (tipe: string) => {
+    setExpandedSchedules(prev => ({
+      ...prev,
+      [tipe]: !prev[tipe]
+    }));
+  };
   
   const [dateStr, setDateStr] = useState('');
   const [hijriDateStr, setHijriDateStr] = useState('');
@@ -332,45 +340,82 @@ export default function DashboardPage() {
           const Icon = tipe === 'kegiatan' ? Clock : BookOpen;
           const tipeSchedules = schedules.filter(s => s.tipe === tipe);
           const activeSchedules = tipeSchedules.filter(s => s.status === 'aktif');
+          const isExpanded = !!expandedSchedules[tipe];
+          const hasMoreThan5 = activeSchedules.length > 5;
           
           return (
             <div key={tipe} className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
               <div className="bg-gradient-to-r from-emerald-700 to-green-600 dark:from-emerald-800 dark:to-green-700 px-4 py-3 flex justify-between items-center text-white">
                 <h3 className="text-sm font-semibold flex items-center gap-2"><Icon size={16} /> Jadwal {tipeName} Hari Ini</h3>
+                {activeSchedules.length > 0 && (
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/20 text-white backdrop-blur-sm shadow-sm">
+                    {activeSchedules.length} Aktif
+                  </span>
+                )}
               </div>
               
               {loadingSchedules ? (
                 <div className="p-4 text-center text-sm text-gray-500">Memuat...</div>
               ) : activeSchedules.length > 0 ? (
-                <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {activeSchedules.map((sched, idx) => (
-                    <div key={idx} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <div>
-                        <h4 className="font-bold text-gray-800 dark:text-gray-200">{sched.mata_pelajaran || 'Mata Pelajaran'}</h4>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          <span className="flex items-center gap-1"><Clock size={12}/> {sched.jam_mulai.substring(0,5)} - {sched.jam_selesai.substring(0,5)}</span>
-                          <span className="flex items-center gap-1"><BookOpen size={12}/> {sched.nama_kelas}</span>
+                <>
+                  <div
+                    className={`divide-y divide-gray-100 dark:divide-gray-700 transition-all duration-300 ${
+                      hasMoreThan5 && !isExpanded
+                        ? 'max-h-[350px] overflow-y-auto overscroll-contain pr-0.5'
+                        : ''
+                    }`}
+                  >
+                    {activeSchedules.map((sched, idx) => (
+                      <div key={idx} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                        <div>
+                          <h4 className="font-bold text-gray-800 dark:text-gray-200">{sched.mata_pelajaran || 'Mata Pelajaran'}</h4>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1"><Clock size={12}/> {sched.jam_mulai.substring(0,5)} - {sched.jam_selesai.substring(0,5)}</span>
+                            <span className="flex items-center gap-1"><BookOpen size={12}/> {sched.nama_kelas}</span>
+                          </div>
                         </div>
+                        {role === 'tamu' ? (
+                          <span className="px-3 py-1.5 bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-700 cursor-not-allowed select-none">
+                            Hanya Lihat
+                          </span>
+                        ) : (
+                          <Link 
+                            href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${sched.kelas_id}&jadwal_id=${sched.jadwal_id}`} 
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${
+                              sched.sudah_absen
+                                ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100'
+                                : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-100'
+                            }`}
+                          >
+                            {sched.sudah_absen ? 'Perbarui' : 'Isi Absen'}
+                          </Link>
+                        )}
                       </div>
-                      {role === 'tamu' ? (
-                        <span className="px-3 py-1.5 bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-700 cursor-not-allowed select-none">
-                          Hanya Lihat
-                        </span>
-                      ) : (
-                        <Link 
-                          href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${sched.kelas_id}&jadwal_id=${sched.jadwal_id}`} 
-                          className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${
-                            sched.sudah_absen
-                              ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100'
-                              : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-100'
-                          }`}
-                        >
-                          {sched.sudah_absen ? 'Perbarui' : 'Isi Absen'}
-                        </Link>
-                      )}
+                    ))}
+                  </div>
+
+                  {hasMoreThan5 && (
+                    <div className="p-2.5 bg-gray-50/90 dark:bg-gray-800/90 border-t border-gray-100 dark:border-gray-700 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpandSchedule(tipe)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-700 shadow-sm transition-all"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <ChevronUp size={14} />
+                            <span>Tampilkan Ringkas (Maks. 5) / Perkecil</span>
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown size={14} />
+                            <span>Lihat Semua ({activeSchedules.length} Jadwal) / Perlebar</span>
+                          </>
+                        )}
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               ) : (
                 <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   {tipeSchedules.length > 0 
