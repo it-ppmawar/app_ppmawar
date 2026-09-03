@@ -21,11 +21,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
     menuUtama: false,
     manajemenData: false,
+    aplikasiLainnya: false,
     manajemenSistem: false,
-    aplikasiYayasan: false,
   });
 
-  const toggleSection = (sectionKey: 'menuUtama' | 'manajemenData' | 'manajemenSistem' | 'aplikasiYayasan') => {
+  const toggleSection = (sectionKey: 'menuUtama' | 'manajemenData' | 'aplikasiLainnya' | 'manajemenSistem') => {
     setOpenSections(prev => ({
       ...prev,
       [sectionKey]: !prev[sectionKey]
@@ -746,94 +746,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 
           {/* ========================================================================= */}
-          {/* 3. GRUP MANAJEMEN SISTEM / NOTIFIKASI                                    */}
-          {/* ========================================================================= */}
-          {['admin', 'staff'].includes(userRoleLower) && (
-            <div className="px-3 mb-3">
-              <button
-                onClick={() => toggleSection('manajemenSistem')}
-                className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all border border-gray-100 dark:border-gray-700/60 shadow-sm group"
-                aria-label="Toggle Manajemen Sistem"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 group-hover:scale-105 transition-transform">
-                    {userRoleLower === 'admin' ? <Shield size={16} /> : <MessageSquare size={16} />}
-                  </div>
-                  <span className="text-xs font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-wider whitespace-nowrap">
-                    {userRoleLower === 'admin' ? 'Manajemen Sistem' : 'Pusat Pesan & WA'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ChevronDown
-                    size={16}
-                    className={`text-gray-400 transition-transform duration-300 ${
-                      openSections.manajemenSistem ? 'rotate-180 text-purple-600 dark:text-purple-400' : 'rotate-0'
-                    }`}
-                  />
-                </div>
-              </button>
-
-              {openSections.manajemenSistem && (
-                <ul className="space-y-1 mt-2 pl-1 pr-1 animate-[fadeIn_0.2s_ease-out]">
-                  {userRoleLower === 'admin' && (
-                    <li>
-                      <Link href="/dashboard/users" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/users' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
-                        <Users size={18} /> <span className="text-sm">Manajemen Pengguna</span>
-                      </Link>
-                    </li>
-                  )}
-                  <li>
-                    <Link href="/dashboard/notifikasi" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/notifikasi' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
-                      <MessageSquare size={18} /> <span className="text-sm">Notifikasi & WhatsApp</span>
-                    </Link>
-                  </li>
-                  {userRoleLower === 'admin' && (
-                    <>
-                      <li>
-                        <Link href="/dashboard/audit" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/audit' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
-                          <Shield size={18} /> <span className="text-sm">Audit Log</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/dashboard/settings" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/settings' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
-                          <Settings size={18} /> <span className="text-sm">Pengaturan</span>
-                        </Link>
-                      </li>
-                    </>
-                  )}
-                </ul>
-              )}
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* 4. GRUP APLIKASI YAYASAN (Tautan Ekosistem Pesantren)                      */}
+          {/* 3. GRUP APLIKASI LAINNYA (Tautan Ekosistem Pesantren)                     */}
           {/* ========================================================================= */}
           <div className="px-3 mb-3">
             <button
-              onClick={() => toggleSection('aplikasiYayasan')}
+              onClick={() => toggleSection('aplikasiLainnya')}
               className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all border border-gray-100 dark:border-gray-700/60 shadow-sm group"
-              aria-label="Toggle Aplikasi Yayasan"
+              aria-label="Toggle Aplikasi Lainnya"
             >
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 group-hover:scale-105 transition-transform">
                   <Globe size={16} />
                 </div>
                 <span className="text-xs font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-wider whitespace-nowrap">
-                  Aplikasi Yayasan
+                  Aplikasi Lainnya
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <ChevronDown
                   size={16}
                   className={`text-gray-400 transition-transform duration-300 ${
-                    openSections.aplikasiYayasan ? 'rotate-180 text-amber-600 dark:text-amber-400' : 'rotate-0'
+                    openSections.aplikasiLainnya ? 'rotate-180 text-amber-600 dark:text-amber-400' : 'rotate-0'
                   }`}
                 />
               </div>
             </button>
 
-            {openSections.aplikasiYayasan && (
+            {openSections.aplikasiLainnya && (
               <ul className="space-y-1 mt-2 pl-1 pr-1 animate-[fadeIn_0.2s_ease-out]">
                 <li>
                   <a
@@ -912,6 +851,67 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </ul>
             )}
           </div>
+
+          {/* ========================================================================= */}
+          {/* 4. GRUP MANAJEMEN SISTEM / NOTIFIKASI                                    */}
+          {/* ========================================================================= */}
+          {['admin', 'staff'].includes(userRoleLower) && (
+            <div className="px-3 mb-3">
+              <button
+                onClick={() => toggleSection('manajemenSistem')}
+                className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all border border-gray-100 dark:border-gray-700/60 shadow-sm group"
+                aria-label="Toggle Manajemen Sistem"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 group-hover:scale-105 transition-transform">
+                    {userRoleLower === 'admin' ? <Shield size={16} /> : <MessageSquare size={16} />}
+                  </div>
+                  <span className="text-xs font-extrabold text-gray-800 dark:text-gray-200 uppercase tracking-wider whitespace-nowrap">
+                    {userRoleLower === 'admin' ? 'Manajemen Sistem' : 'Pusat Pesan & WA'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ChevronDown
+                    size={16}
+                    className={`text-gray-400 transition-transform duration-300 ${
+                      openSections.manajemenSistem ? 'rotate-180 text-purple-600 dark:text-purple-400' : 'rotate-0'
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {openSections.manajemenSistem && (
+                <ul className="space-y-1 mt-2 pl-1 pr-1 animate-[fadeIn_0.2s_ease-out]">
+                  {userRoleLower === 'admin' && (
+                    <li>
+                      <Link href="/dashboard/users" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/users' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
+                        <Users size={18} /> <span className="text-sm">Manajemen Pengguna</span>
+                      </Link>
+                    </li>
+                  )}
+                  <li>
+                    <Link href="/dashboard/notifikasi" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/notifikasi' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
+                      <MessageSquare size={18} /> <span className="text-sm">Notifikasi & WhatsApp</span>
+                    </Link>
+                  </li>
+                  {userRoleLower === 'admin' && (
+                    <>
+                      <li>
+                        <Link href="/dashboard/audit" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/audit' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
+                          <Shield size={18} /> <span className="text-sm">Audit Log</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/settings" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors font-medium ${pathname === '/dashboard/settings' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : ''}`}>
+                          <Settings size={18} /> <span className="text-sm">Pengaturan</span>
+                        </Link>
+                      </li>
+                    </>
+                  )}
+                </ul>
+              )}
+            </div>
+          )}
 
         </div>
         
