@@ -11,16 +11,17 @@ export async function ensureDewanGuruDB(): Promise<void> {
 
   pendingPromise = (async () => {
     try {
-      // 0. FAST-PATH: Jika tabel dewan_guru sudah ada dan memiliki data, langsung selesai (<1ms)
-      // Ini mencegah DDL CREATE TABLE dieksekusi berulang-ulang dan mengunci metadata tabel MySQL
+      // 0. FAST-PATH: Jika ketiga tabel (dewan_guru, jadwal_dewan_guru, absensi_dewan_guru) sudah ada dan memiliki data, langsung selesai (<1ms)
       try {
-        const [testRow]: any = await pool.execute('SELECT id FROM dewan_guru LIMIT 1');
-        if (testRow && testRow.length > 0) {
+        const [gRow]: any = await pool.execute('SELECT id FROM dewan_guru LIMIT 1');
+        const [jRow]: any = await pool.execute('SELECT id FROM jadwal_dewan_guru LIMIT 1');
+        const [aRow]: any = await pool.execute('SELECT id FROM absensi_dewan_guru LIMIT 1');
+        if (gRow && gRow.length > 0 && jRow && jRow.length > 0) {
           isReady = true;
           return;
         }
       } catch {
-        // Tabel belum ada, lanjutkan pembuatan di bawah
+        // Salah satu tabel belum ada atau belum lengkap, lanjutkan pembuatan di bawah
       }
 
       // 1. Pastikan tabel dewan_guru
@@ -118,18 +119,23 @@ export async function ensureDewanGuruDB(): Promise<void> {
       }
 
       // 5. Auto-Seed default jadwal jika masih 0
-      const [jadwalCountRow]: any = await pool.execute('SELECT COUNT(*) as cnt FROM jadwal_dewan_guru');
-      const jadwalCount = jadwalCountRow?.[0]?.cnt || 0;
+      try {
+        const [jadwalCountRow]: any = await pool.execute('SELECT COUNT(*) as cnt FROM jadwal_dewan_guru');
+        const jadwalCount = jadwalCountRow?.[0]?.cnt || 0;
 
-      if (jadwalCount === 0) {
-        const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Sabtu'] as const;
-        for (const h of days) {
-          await pool.execute(
-            `INSERT INTO jadwal_dewan_guru (nama_sesi, homebase, hari, jam_mulai, jam_selesai, toleransi_menit, keterangan, created_by)
-             VALUES (?, 'SEMUA', ?, '07:00:00', '13:30:00', 30, 'Jam Kerja & Mengajar Harian', 'System')`,
-            [`KBM & Kehadiran Pagi (${h})`, h]
-          );
+        if (jadwalCount === 0) {
+          await pool.execute(`
+            INSERT INTO jadwal_dewan_guru (nama_sesi, homebase, hari, jam_mulai, jam_selesai, toleransi_menit, keterangan, created_by)
+            VALUES 
+              ('KBM & Kehadiran Pagi (Senin)', 'SEMUA', 'Senin', '07:00:00', '13:30:00', 30, 'Jam Kerja & Mengajar Harian', 'System'),
+              ('KBM & Kehadiran Pagi (Selasa)', 'SEMUA', 'Selasa', '07:00:00', '13:30:00', 30, 'Jam Kerja & Mengajar Harian', 'System'),
+              ('KBM & Kehadiran Pagi (Rabu)', 'SEMUA', 'Rabu', '07:00:00', '13:30:00', 30, 'Jam Kerja & Mengajar Harian', 'System'),
+              ('KBM & Kehadiran Pagi (Kamis)', 'SEMUA', 'Kamis', '07:00:00', '13:30:00', 30, 'Jam Kerja & Mengajar Harian', 'System'),
+              ('KBM & Kehadiran Pagi (Sabtu)', 'SEMUA', 'Sabtu', '07:00:00', '13:30:00', 30, 'Jam Kerja & Mengajar Harian', 'System')
+          `);
         }
+      } catch (jErr: any) {
+        console.error('[ensureDewanGuruDB] Seed jadwal error:', jErr.message);
       }
 
       isReady = true;

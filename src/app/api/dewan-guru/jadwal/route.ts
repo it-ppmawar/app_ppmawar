@@ -20,6 +20,30 @@ export async function GET(request: Request) {
     const hari = searchParams.get('hari');
     const homebase = searchParams.get('homebase');
 
+    // Self-healing: pastikan tabel jadwal_dewan_guru sudah ada
+    try {
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS jadwal_dewan_guru (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          nama_sesi VARCHAR(150) NOT NULL,
+          homebase VARCHAR(100) DEFAULT 'SEMUA',
+          hari ENUM('Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu') NOT NULL,
+          jam_mulai TIME NOT NULL,
+          jam_selesai TIME NOT NULL,
+          toleransi_menit INT NOT NULL DEFAULT 15,
+          keterangan TEXT DEFAULT NULL,
+          aktif TINYINT(1) NOT NULL DEFAULT 1,
+          created_by VARCHAR(100) DEFAULT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_jadwal_hari (hari),
+          INDEX idx_jadwal_homebase (homebase)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+    } catch (tblErr) {
+      console.warn('[jadwal-dewan-guru] Table check warning:', tblErr);
+    }
+
     let query = `SELECT * FROM jadwal_dewan_guru WHERE aktif = 1`;
     const params: any[] = [];
 
@@ -35,7 +59,27 @@ export async function GET(request: Request) {
 
     query += ` ORDER BY FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'), jam_mulai ASC`;
 
-    const [rows] = await pool.execute<RowDataPacket[]>(query, params);
+    let [rows] = await pool.execute<RowDataPacket[]>(query, params);
+
+    // Jika tabel kosong dan filter SEMUA, semai default hari kerja
+    if (rows.length === 0 && (!hari || hari === 'SEMUA') && (!homebase || homebase === 'SEMUA')) {
+      try {
+        await pool.execute(`
+          INSERT INTO jadwal_dewan_guru (nama_sesi, homebase, hari, jam_mulai, jam_selesai, toleransi_menit, keterangan, created_by)
+          VALUES 
+            ('KBM & Kehadiran Pagi (Senin)', 'SEMUA', 'Senin', '07:00:00', '13:30:00', 30, 'Jam Kerja & Mengajar Harian', 'System'),
+            ('KBM & Kehadiran Pagi (Selasa)', 'SEMUA', 'Selasa', '07:00:00', '13:30:00', 30, 'Jam Kerja & Mengajar Harian', 'System'),
+            ('KBM & Kehadiran Pagi (Rabu)', 'SEMUA', 'Rabu', '07:00:00', '13:30:00', 30, 'Jam Kerja & Mengajar Harian', 'System'),
+            ('KBM & Kehadiran Pagi (Kamis)', 'SEMUA', 'Kamis', '07:00:00', '13:30:00', 30, 'Jam Kerja & Mengajar Harian', 'System'),
+            ('KBM & Kehadiran Pagi (Sabtu)', 'SEMUA', 'Sabtu', '07:00:00', '13:30:00', 30, 'Jam Kerja & Mengajar Harian', 'System')
+        `);
+        const [reRows] = await pool.execute<RowDataPacket[]>(query, params);
+        rows = reRows;
+      } catch (seedErr) {
+        console.warn('[jadwal-dewan-guru] Auto-seed warning:', seedErr);
+      }
+    }
+
     return NextResponse.json({ success: true, data: rows });
   } catch (error: any) {
     console.error('[jadwal-dewan-guru] GET error:', error.message);

@@ -82,23 +82,33 @@ export default function JadwalDewanGuruPage() {
       if (activeHari !== 'SEMUA') url += `hari=${activeHari}&`;
       if (activeHomebase !== 'SEMUA') url += `homebase=${encodeURIComponent(activeHomebase)}&`;
 
-      const res = await fetch(url);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       const json = await res.json();
       if (!res.ok || !json.success) {
         setError(json.error || 'Gagal memuat jadwal.');
       } else {
         setSchedules(json.data || []);
       }
-    } catch {
-      setError('Koneksi gagal.');
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        setError('Waktu pemuatan habis (timeout). Silakan klik muat ulang.');
+      } else {
+        setError('Koneksi gagal atau server sedang memproses. Silakan coba lagi.');
+      }
     } finally {
       setLoading(false);
     }
   }, [activeHari, activeHomebase]);
 
+  // Muat jadwal langsung saat komponen dibuka & saat filter berubah
   useEffect(() => {
-    if (role || isPengasuh) fetchSchedules();
-  }, [role, isPengasuh, fetchSchedules]);
+    fetchSchedules();
+  }, [fetchSchedules]);
 
   const openAddModal = () => {
     setEditingSchedule(null);
@@ -254,8 +264,17 @@ export default function JadwalDewanGuruPage() {
 
         {/* Error Notification */}
         {error && (
-          <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl text-xs text-rose-600 dark:text-rose-400 flex items-center gap-2">
-            <AlertCircle size={15} /> {error}
+          <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl text-xs text-rose-600 dark:text-rose-400 flex items-center justify-between gap-2 shadow-xs">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={16} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button
+              onClick={fetchSchedules}
+              className="px-3 py-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/50 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 font-bold transition-all shrink-0 cursor-pointer"
+            >
+              Coba Lagi
+            </button>
           </div>
         )}
 
