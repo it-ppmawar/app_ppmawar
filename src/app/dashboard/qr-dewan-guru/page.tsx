@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   QrCode, Download, Send, Search, Building2, RefreshCw, FileText,
-  Archive, CheckCircle2, Phone, X, ExternalLink, Sparkles, AlertCircle, Eye
+  Archive, CheckCircle2, Phone, X, ExternalLink, Sparkles, AlertCircle, Eye,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -109,6 +110,9 @@ export default function QrDewanGuruPage() {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 24;
+
   const filteredTeachers = useMemo(() => {
     let list = teachers;
     if (search.trim()) {
@@ -123,6 +127,17 @@ export default function QrDewanGuruPage() {
     }
     return list;
   }, [teachers, search]);
+
+  // Reset page saat filter/search berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedHomebase]);
+
+  const totalPages = Math.ceil(filteredTeachers.length / pageSize) || 1;
+  const paginatedTeachers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTeachers.slice(start, start + pageSize);
+  }, [filteredTeachers, currentPage, pageSize]);
 
   const openWaDialog = (guru: any) => {
     setWaModalGuru(guru);
@@ -312,80 +327,118 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
             <p className="text-xs text-slate-400 mt-1">Coba ubah kata kunci pencarian atau filter unit.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            {filteredTeachers.map((guru, idx) => (
-              <div
-                key={guru.id}
-                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all p-3 flex flex-col justify-between group"
-              >
-                <div>
-                  {/* Homebase Badge */}
-                  <div className="flex items-center justify-between gap-1 mb-2">
-                    <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 truncate max-w-[85%]">
-                      {guru.homebase}
-                    </span>
-                    <span className="text-[9px] font-mono text-slate-400">
-                      #{idx + 1}
-                    </span>
-                  </div>
-
-                  {/* QR Image Box */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {paginatedTeachers.map((guru, idx) => {
+                const itemIndex = (currentPage - 1) * pageSize + idx + 1;
+                return (
                   <div
-                    onClick={() => setPreviewGuru(guru)}
-                    className="w-full aspect-square bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-2 border border-slate-100 dark:border-slate-800 flex items-center justify-center cursor-pointer hover:border-teal-400 transition-colors relative"
+                    key={guru.id}
+                    className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all p-3 flex flex-col justify-between group"
                   >
-                    <img
-                      src={`/api/dewan-guru/qr?token=${encodeURIComponent(guru.qr_token)}`}
-                      alt={`QR ${guru.nama}`}
-                      className="w-full h-full object-contain rounded-xl"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-teal-900/0 hover:bg-teal-900/30 rounded-2xl flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
-                      <span className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 p-1.5 rounded-xl shadow-md">
-                        <Eye size={16} />
-                      </span>
+                    <div>
+                      {/* Homebase Badge */}
+                      <div className="flex items-center justify-between gap-1 mb-2">
+                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 truncate max-w-[85%]">
+                          {guru.homebase}
+                        </span>
+                        <span className="text-[9px] font-mono text-slate-400">
+                          #{itemIndex}
+                        </span>
+                      </div>
+
+                      {/* QR Image Box */}
+                      <div
+                        onClick={() => setPreviewGuru(guru)}
+                        className="w-full aspect-square bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-2 border border-slate-100 dark:border-slate-800 flex items-center justify-center cursor-pointer hover:border-teal-400 transition-colors relative"
+                      >
+                        <img
+                          src={`/api/dewan-guru/qr?token=${encodeURIComponent(guru.qr_token)}`}
+                          alt={`QR ${guru.nama}`}
+                          className="w-full h-full object-contain rounded-xl"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-teal-900/0 hover:bg-teal-900/30 rounded-2xl flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
+                          <span className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 p-1.5 rounded-xl shadow-md">
+                            <Eye size={16} />
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Teacher Info */}
+                      <div className="mt-2 text-center">
+                        <h3
+                          className="text-xs font-black text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight"
+                          title={guru.nama}
+                        >
+                          {guru.nama}
+                        </h3>
+                        {guru.no_hp && (
+                          <p className="text-[10px] font-mono text-slate-400 mt-0.5 truncate flex items-center justify-center gap-1">
+                            <Phone size={9} /> {guru.no_hp}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="grid grid-cols-2 gap-1.5 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                      <a
+                        href={`/api/dewan-guru/qr?token=${encodeURIComponent(guru.qr_token)}&download=true`}
+                        download
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-teal-50 hover:text-teal-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
+                        title="Unduh Gambar QR"
+                      >
+                        <Download size={13} />
+                        <span>Unduh</span>
+                      </a>
+
+                      <button
+                        onClick={() => openWaDialog(guru)}
+                        className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                        title="Kirim via WhatsApp"
+                      >
+                        <Send size={13} />
+                        <span>Kirim</span>
+                      </button>
                     </div>
                   </div>
+                );
+              })}
+            </div>
 
-                  {/* Teacher Info */}
-                  <div className="mt-2 text-center">
-                    <h3
-                      className="text-xs font-black text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight"
-                      title={guru.nama}
-                    >
-                      {guru.nama}
-                    </h3>
-                    {guru.no_hp && (
-                      <p className="text-[10px] font-mono text-slate-400 mt-0.5 truncate flex items-center justify-center gap-1">
-                        <Phone size={9} /> {guru.no_hp}
-                      </p>
-                    )}
-                  </div>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200 dark:border-slate-800 shadow-xs">
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  Menampilkan <span className="font-bold text-slate-700 dark:text-slate-200">{(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredTeachers.length)}</span> dari <span className="font-bold text-teal-600 dark:text-teal-400">{filteredTeachers.length}</span> guru
                 </div>
 
-                {/* Actions */}
-                <div className="grid grid-cols-2 gap-1.5 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                  <a
-                    href={`/api/dewan-guru/qr?token=${encodeURIComponent(guru.qr_token)}&download=true`}
-                    download
-                    className="p-2 rounded-xl bg-slate-100 hover:bg-teal-50 hover:text-teal-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
-                    title="Unduh Gambar QR"
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-all cursor-pointer"
+                    title="Halaman Sebelumnya"
                   >
-                    <Download size={13} />
-                    <span>Unduh</span>
-                  </a>
+                    <ChevronLeft size={16} />
+                  </button>
+
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800">
+                    {currentPage} / {totalPages}
+                  </span>
 
                   <button
-                    onClick={() => openWaDialog(guru)}
-                    className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                    title="Kirim via WhatsApp"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-all cursor-pointer"
+                    title="Halaman Selanjutnya"
                   >
-                    <Send size={13} />
-                    <span>Kirim</span>
+                    <ChevronRight size={16} />
                   </button>
                 </div>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>

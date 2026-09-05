@@ -10,10 +10,10 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'ppmawaro_app_ppma',
   charset: 'utf8mb4',
   waitForConnections: true,
-  // PERF: Turunkan dari 10 ke 3 untuk shared hosting (cPanel biasanya limit 5-10 total koneksi)
-  connectionLimit: 3,
+  // Gunakan connectionLimit 10 agar request paralel dan multi-tab tidak kehabisan pool koneksi
+  connectionLimit: 10,
   queueLimit: 0,
-  connectTimeout: 10000,
+  connectTimeout: 15000,
   // PERF: Lepas koneksi idle setelah 60 detik agar tidak habis limit koneksi hosting
   idleTimeout: 60000,
   // PERF: Aktifkan keep-alive agar koneksi yang ada tidak di-drop server MySQL

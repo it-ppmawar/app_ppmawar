@@ -163,6 +163,8 @@ export default function AbsenGuruPage() {
     }
   }, [role, isPengasuh, mainMode, fetchDewanData]);
 
+  const [dewanDisplayLimit, setDewanDisplayLimit] = useState(60);
+
   // Filter Dewan Guru
   const filteredDewanList = useMemo(() => {
     let list = dewanData;
@@ -187,6 +189,14 @@ export default function AbsenGuruPage() {
 
     return list;
   }, [dewanData, dewanStatusFilter, dewanSearch]);
+
+  useEffect(() => {
+    setDewanDisplayLimit(60);
+  }, [dewanHomebase, dewanStatusFilter, dewanSearch]);
+
+  const displayedDewanList = useMemo(() => {
+    return filteredDewanList.slice(0, dewanDisplayLimit);
+  }, [filteredDewanList, dewanDisplayLimit]);
 
   // Open modal input
   const openInputModal = (guru: any) => {
@@ -705,62 +715,82 @@ export default function AbsenGuruPage() {
                 <p className="text-xs text-slate-400 mt-1">Coba sesuaikan filter status atau kata kunci pencarian.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
-                {filteredDewanList.map((guru, idx) => {
-                  const statusConf = STATUS_COLOR_DEWAN[guru.status || 'default'] || STATUS_COLOR_DEWAN.default;
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
+                  {displayedDewanList.map((guru, idx) => {
+                    const statusConf = STATUS_COLOR_DEWAN[guru.status || 'default'] || STATUS_COLOR_DEWAN.default;
 
-                  return (
-                    <div
-                      key={guru.id}
-                      onClick={() => openInputModal(guru)}
-                      className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all p-3 flex flex-col justify-between cursor-pointer group"
-                    >
-                      <div>
-                        {/* Header: Homebase & Gender */}
-                        <div className="flex items-center justify-between gap-1 mb-2">
-                          <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 truncate max-w-[75%]">
-                            {guru.homebase}
-                          </span>
-                          <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-md ${
-                            guru.jenis_kelamin === 'P'
-                              ? 'bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300'
-                              : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
-                          }`}>
-                            {guru.jenis_kelamin}
-                          </span>
-                        </div>
+                    return (
+                      <div
+                        key={guru.id}
+                        onClick={() => openInputModal(guru)}
+                        className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all p-3 flex flex-col justify-between cursor-pointer group"
+                      >
+                        <div>
+                          {/* Header: Homebase & Gender */}
+                          <div className="flex items-center justify-between gap-1 mb-2">
+                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 truncate max-w-[75%]">
+                              {guru.homebase}
+                            </span>
+                            <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-md ${
+                              guru.jenis_kelamin === 'P'
+                                ? 'bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300'
+                                : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                            }`}>
+                              {guru.jenis_kelamin}
+                            </span>
+                          </div>
 
-                        {/* Avatar Initial */}
-                        <div className="flex items-center justify-center my-2">
-                          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white font-black text-sm flex items-center justify-center shadow-sm">
-                            {guru.nama ? guru.nama[0] : 'G'}
+                          {/* Avatar Initial */}
+                          <div className="flex items-center justify-center my-2">
+                            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white font-black text-sm flex items-center justify-center shadow-sm">
+                              {guru.nama ? guru.nama[0] : 'G'}
+                            </div>
+                          </div>
+
+                          {/* Name & NIP */}
+                          <div className="text-center">
+                            <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight group-hover:text-teal-600 transition-colors">
+                              {guru.nama}
+                            </h3>
+                            {guru.nip ? (
+                              <p className="text-[10px] text-slate-400 mt-0.5">NIP: {guru.nip}</p>
+                            ) : guru.no_hp ? (
+                              <p className="text-[9px] font-mono text-slate-400 mt-0.5 truncate">{guru.no_hp}</p>
+                            ) : null}
                           </div>
                         </div>
 
-                        {/* Name & NIP */}
-                        <div className="text-center">
-                          <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight group-hover:text-teal-600 transition-colors">
-                            {guru.nama}
-                          </h3>
-                          {guru.nip ? (
-                            <p className="text-[10px] text-slate-400 mt-0.5">NIP: {guru.nip}</p>
-                          ) : guru.no_hp ? (
-                            <p className="text-[9px] font-mono text-slate-400 mt-0.5 truncate">{guru.no_hp}</p>
-                          ) : null}
+                        {/* Status Button */}
+                        <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <div className={`py-1 px-2 rounded-xl text-center text-[10px] font-black transition-all ${
+                            guru.status ? statusConf.badge : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                          }`}>
+                            {guru.status ? `${guru.status}` : 'Belum Absen'}
+                          </div>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
 
-                      {/* Status Button */}
-                      <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <div className={`py-1 px-2 rounded-xl text-center text-[10px] font-black transition-all ${
-                          guru.status ? statusConf.badge : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
-                        }`}>
-                          {guru.status ? `${guru.status}` : 'Belum Absen'}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {/* Load More Controls for Desktop/Mobile Performance */}
+                {filteredDewanList.length > displayedDewanList.length && (
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-2 pb-4">
+                    <button
+                      onClick={() => setDewanDisplayLimit(prev => prev + 60)}
+                      className="py-2.5 px-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/40 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                    >
+                      Muat Lebih Banyak (+60 guru)
+                    </button>
+                    <button
+                      onClick={() => setDewanDisplayLimit(filteredDewanList.length)}
+                      className="py-2.5 px-5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all shadow-xs cursor-pointer"
+                    >
+                      Tampilkan Semua ({filteredDewanList.length} guru)
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -11,6 +11,18 @@ export async function ensureDewanGuruDB(): Promise<void> {
 
   pendingPromise = (async () => {
     try {
+      // 0. FAST-PATH: Jika tabel dewan_guru sudah ada dan memiliki data, langsung selesai (<1ms)
+      // Ini mencegah DDL CREATE TABLE dieksekusi berulang-ulang dan mengunci metadata tabel MySQL
+      try {
+        const [testRow]: any = await pool.execute('SELECT id FROM dewan_guru LIMIT 1');
+        if (testRow && testRow.length > 0) {
+          isReady = true;
+          return;
+        }
+      } catch {
+        // Tabel belum ada, lanjutkan pembuatan di bawah
+      }
+
       // 1. Pastikan tabel dewan_guru
       await pool.execute(`
         CREATE TABLE IF NOT EXISTS dewan_guru (

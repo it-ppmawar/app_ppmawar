@@ -64,7 +64,7 @@ export async function GET(request: Request) {
 
     // Default: return raw PNG image
     const qrBuffer = await QRCode.toBuffer(qrValue, {
-      width: 450,
+      width: 300,
       margin: 2,
       color: {
         dark: '#0f172a',
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     return new NextResponse(new Uint8Array(qrBuffer), {
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+        'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400, immutable',
         ...(download ? { 'Content-Disposition': `attachment; filename="${filename}"` } : {})
       }
     });
