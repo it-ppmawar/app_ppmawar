@@ -1,5 +1,4 @@
 import pool from '@/lib/db';
-import initialTeachers from './dewanGuruInitialData.json';
 
 let isReady = false;
 let pendingPromise: Promise<void> | null = null;
@@ -78,26 +77,32 @@ export async function ensureDewanGuruDB(): Promise<void> {
       `);
 
       // 4. Auto-Seed dewan_guru jika masih 0
+      // PERF: JSON di-load secara LAZY hanya jika dibutuhkan (tidak di-bundle di setiap route)
       const [guruCountRow]: any = await pool.execute('SELECT COUNT(*) as cnt FROM dewan_guru');
       const count = guruCountRow?.[0]?.cnt || 0;
 
-      if (count === 0 && Array.isArray(initialTeachers) && initialTeachers.length > 0) {
-        console.log(`[Auto-Seed] Menyemai ${initialTeachers.length} data dewan guru ke database...`);
-        // Insert per batch 50 agar aman dari max_allowed_packet
-        const chunkSize = 50;
-        for (let i = 0; i < initialTeachers.length; i += chunkSize) {
-          const chunk = initialTeachers.slice(i, i + chunkSize);
-          const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, 1)').join(', ');
-          const values: any[] = [];
-          for (const t of chunk) {
-            values.push(t.nama, t.jenis_kelamin, t.homebase, t.no_hp || null, t.qr_token);
+      if (count === 0) {
+        console.log('[Auto-Seed] Memuat data awal dewan guru...');
+        const { default: initialTeachers } = await import('./dewanGuruInitialData.json');
+
+        if (Array.isArray(initialTeachers) && initialTeachers.length > 0) {
+          console.log(`[Auto-Seed] Menyemai ${initialTeachers.length} data dewan guru ke database...`);
+          // Insert per batch 50 agar aman dari max_allowed_packet
+          const chunkSize = 50;
+          for (let i = 0; i < initialTeachers.length; i += chunkSize) {
+            const chunk = initialTeachers.slice(i, i + chunkSize);
+            const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, 1)').join(', ');
+            const values: any[] = [];
+            for (const t of chunk) {
+              values.push(t.nama, t.jenis_kelamin, t.homebase, t.no_hp || null, t.qr_token);
+            }
+            await pool.execute(
+              `INSERT IGNORE INTO dewan_guru (nama, jenis_kelamin, homebase, no_hp, qr_token, aktif) VALUES ${placeholders}`,
+              values
+            );
           }
-          await pool.execute(
-            `INSERT IGNORE INTO dewan_guru (nama, jenis_kelamin, homebase, no_hp, qr_token, aktif) VALUES ${placeholders}`,
-            values
-          );
+          console.log(`[Auto-Seed] Berhasil menyemai data dewan guru!`);
         }
-        console.log(`[Auto-Seed] Berhasil menyemai data dewan guru!`);
       }
 
       // 5. Auto-Seed default jadwal jika masih 0

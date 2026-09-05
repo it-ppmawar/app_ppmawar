@@ -2,9 +2,10 @@
  * googleSheets.ts
  * Helper library untuk koneksi dan operasi ke Google Sheets
  * menggunakan Service Account dari Google Cloud.
+ *
+ * PERF NOTE: googleapis di-import secara dynamic (lazy) agar tidak
+ * masuk ke server bundle Next.js (mencegah bundle 9MB di cold start).
  */
-
-import { google } from 'googleapis';
 
 // Ambil kredensial dari environment variables
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID!;
@@ -13,9 +14,10 @@ const CLIENT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL!;
 const PRIVATE_KEY = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
 
 /**
- * Membuat instance Google Sheets API yang terautentikasi
+ * Membuat instance Google Sheets API yang terautentikasi (lazy load googleapis)
  */
-function getAuthClient() {
+async function getAuthClient() {
+  const { google } = await import('googleapis');
   const auth = new google.auth.JWT({
     email: CLIENT_EMAIL,
     key: PRIVATE_KEY,
@@ -31,7 +33,7 @@ function getAuthClient() {
 async function ensureSheetExists(sheetsApi: any, sheetName: string): Promise<void> {
   const meta = await sheetsApi.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
   const existingSheets = meta.data.sheets?.map((s: any) => s.properties?.title) || [];
-  
+
   if (!existingSheets.includes(sheetName)) {
     await sheetsApi.spreadsheets.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
@@ -48,16 +50,16 @@ async function ensureSheetExists(sheetsApi: any, sheetName: string): Promise<voi
  * mencerminkan kondisi database terkini.
  */
 export async function overwriteSheet(sheetName: string, rows: (string | number | null)[][]): Promise<{ rowsWritten: number }> {
-  const sheets = getAuthClient();
-  
+  const sheets = await getAuthClient();
+
   await ensureSheetExists(sheets, sheetName);
-  
+
   // 1. Clear semua isi sheet
   await sheets.spreadsheets.values.clear({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!A:ZZ`,
   });
-  
+
   // 2. Tulis data baru (jika ada)
   if (rows.length > 0) {
     await sheets.spreadsheets.values.update({
@@ -67,7 +69,7 @@ export async function overwriteSheet(sheetName: string, rows: (string | number |
       requestBody: { values: rows },
     });
   }
-  
+
   return { rowsWritten: rows.length };
 }
 
@@ -82,18 +84,18 @@ export async function appendSheetUnique(
   newRows: (string | number | null)[][],
   uniqueKeyColumns: number[] // Indeks kolom yang menjadi kunci unik (0-based)
 ): Promise<{ appended: number; skipped: number }> {
-  const sheets = getAuthClient();
-  
+  const sheets = await getAuthClient();
+
   await ensureSheetExists(sheets, sheetName);
-  
+
   // Ambil data yang sudah ada di sheet
   const existing = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!A:ZZ`,
   });
-  
+
   const existingRows: string[][] = (existing.data.values as string[][]) || [];
-  
+
   // Jika sheet kosong, tulis header terlebih dahulu
   if (existingRows.length === 0) {
     await sheets.spreadsheets.values.update({
@@ -103,20 +105,20 @@ export async function appendSheetUnique(
       requestBody: { values: [headerRow] },
     });
   }
-  
+
   // Buat Set dari composite key baris yang sudah ada (mulai dari baris ke-2, skip header)
   const existingKeys = new Set<string>();
   for (let i = 1; i < existingRows.length; i++) {
     const key = uniqueKeyColumns.map(ci => String(existingRows[i][ci] || '')).join('||');
     existingKeys.add(key);
   }
-  
+
   // Filter hanya baris baru yang belum ada
   const rowsToAppend = newRows.filter(row => {
     const key = uniqueKeyColumns.map(ci => String(row[ci] || '')).join('||');
     return !existingKeys.has(key);
   });
-  
+
   // Append baris baru
   if (rowsToAppend.length > 0) {
     await sheets.spreadsheets.values.append({
@@ -127,7 +129,7 @@ export async function appendSheetUnique(
       requestBody: { values: rowsToAppend },
     });
   }
-  
+
   return { appended: rowsToAppend.length, skipped: newRows.length - rowsToAppend.length };
 }
 
@@ -135,7 +137,7 @@ export async function appendSheetUnique(
  * Membaca data dari tab sheet tertentu di Google Spreadsheet.
  */
 export async function readSheet(sheetName: string): Promise<(string | number | null)[][]> {
-  const sheets = getAuthClient();
+  const sheets = await getAuthClient();
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!A:ZZ`,
@@ -147,8 +149,7 @@ export async function readSheet(sheetName: string): Promise<(string | number | n
  * Mendapatkan daftar nama tab sheet yang ada di Google Spreadsheet.
  */
 export async function listSheets(): Promise<string[]> {
-  const sheets = getAuthClient();
+  const sheets = await getAuthClient();
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
   return meta.data.sheets?.map((s: any) => s.properties?.title) || [];
 }
-

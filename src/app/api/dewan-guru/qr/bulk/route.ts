@@ -2,11 +2,10 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import QRCode from 'qrcode';
 import { RowDataPacket } from 'mysql2';
-import AdmZip from 'adm-zip';
-import { jsPDF } from 'jspdf';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 import { ensureDewanGuruDB } from '@/lib/ensureDewanGuruDB';
+// PERF: AdmZip dan jsPDF di-import dynamic agar tidak masuk bundle utama (hemat ~380KB)
 
 export async function GET(request: Request) {
   try {
@@ -48,6 +47,7 @@ export async function GET(request: Request) {
     // 1. TYPE = ZIP
     // ─────────────────────────────────────────────────────────────
     if (type === 'zip') {
+      const AdmZip = (await import('adm-zip')).default;
       const zip = new AdmZip();
 
       for (let i = 0; i < rows.length; i++) {
@@ -82,6 +82,7 @@ export async function GET(request: Request) {
     // ─────────────────────────────────────────────────────────────
     // 2. TYPE = PDF (Printable A4 Sheet: 3 columns x 3 rows per page)
     // ─────────────────────────────────────────────────────────────
+    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
