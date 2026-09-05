@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   QrCode, Download, Send, Search, Building2, RefreshCw, FileText,
   Archive, CheckCircle2, Phone, X, ExternalLink, Sparkles, AlertCircle, Eye,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -187,31 +187,43 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-28">
       {/* Top Bar */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 py-2.5 sm:py-3 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-3">
+          {/* Baris 1: Ikon & Teks Judul */}
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400">
-              <QrCode size={22} />
+            <div className="p-2 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 shrink-0">
+              <QrCode size={20} />
             </div>
-            <div>
-              <h1 className="text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5 leading-tight">
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5 leading-tight truncate">
                 <span>QR Code Presensi Dewan Guru</span>
               </h1>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-400 truncate">
                 Total {teachers.length} Dewan Guru & Karyawan YPMA
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Baris 2: Tombol Kembali + 3 Tombol Aksi Seukuran Presisi */}
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            {/* Tombol Kembali */}
+            <Link
+              href="/dashboard/absen-guru"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+              title="Kembali ke Presensi Dewan Guru"
+            >
+              <ArrowLeft size={16} />
+              <span className="hidden sm:inline">Kembali</span>
+            </Link>
+
             {/* Download Bulk ZIP */}
             <a
               href={`/api/dewan-guru/qr/bulk?type=zip&homebase=${encodeURIComponent(selectedHomebase)}`}
               download
-              className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
               title="Download File ZIP Semua Gambar QR"
             >
-              <Archive size={14} />
-              <span className="hidden sm:inline">Unduh ZIP</span>
+              <Archive size={13} className="shrink-0" />
+              <span>Unduh ZIP</span>
             </a>
 
             {/* Download Bulk PDF */}
@@ -219,25 +231,23 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
               href={`/api/dewan-guru/qr/bulk?type=pdf&homebase=${encodeURIComponent(selectedHomebase)}`}
               target="_blank"
               rel="noreferrer"
-              className="py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
               title="Cetak Dokumen Katalog Kartu A4"
             >
-              <FileText size={14} />
-              <span className="hidden sm:inline">Cetak PDF (A4)</span>
+              <FileText size={13} className="shrink-0" />
+              <span>Cetak PDF</span>
             </a>
 
-            {/* Tombol Sinkronisasi */}
-            <div className="relative inline-block">
-              <button
-                onClick={() => handleSync('online')}
-                disabled={syncing}
-                className="py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                title="Tarik data terbaru dari Google Sheets"
-              >
-                <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-                <span>{syncing ? 'Sinkronisasi...' : 'Tarik Online'}</span>
-              </button>
-            </div>
+            {/* Tombol Sinkronisasi Online */}
+            <button
+              onClick={() => handleSync('online')}
+              disabled={syncing}
+              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer text-center"
+              title="Tarik data terbaru dari Google Sheets"
+            >
+              <RefreshCw size={13} className={`shrink-0 ${syncing ? 'animate-spin' : ''}`} />
+              <span>{syncing ? 'Menarik...' : 'Tarik Online'}</span>
+            </button>
           </div>
         </div>
       </div>

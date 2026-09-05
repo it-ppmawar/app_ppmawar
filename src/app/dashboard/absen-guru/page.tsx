@@ -490,48 +490,50 @@ export default function AbsenGuruPage() {
               </div>
             </div>
 
-            {/* Row 2: Controls & Date Picker */}
-            <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2 border-t border-teal-200/60 dark:border-teal-900/40">
-              <div className="flex items-center gap-2">
+            {/* Row 2: Controls & Navigation Buttons */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mt-3 pt-2.5 border-t border-teal-200/60 dark:border-teal-900/40">
+              {/* Group 1: Pilihan Tanggal & Muat Ulang (2 Kolom Presisi Memenuhi Lebar) */}
+              <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                 <input
                   type="date"
                   value={tanggal}
                   onChange={e => setTanggal(e.target.value)}
-                  className="text-xs font-bold border border-teal-200 dark:border-teal-800 rounded-xl px-2.5 py-1.5 bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className="w-full text-xs font-bold border border-teal-200 dark:border-teal-800 rounded-xl px-2.5 py-2 bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400 text-center shadow-xs cursor-pointer"
                 />
                 <button
                   onClick={mainMode === 'dewan_guru' ? fetchDewanData : fetchKbmData}
                   disabled={dewanLoading || kbmLoading}
-                  className="p-1.5 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 hover:bg-white border border-teal-200 dark:border-teal-800 transition-colors shadow-xs"
+                  className="w-full py-2 px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
                   title="Segarkan data"
                 >
-                  <RefreshCw size={14} className={(dewanLoading || kbmLoading) ? 'animate-spin' : ''} />
+                  <RefreshCw size={13} className={`shrink-0 ${(dewanLoading || kbmLoading) ? 'animate-spin' : ''}`} />
+                  <span>Segarkan</span>
                 </button>
               </div>
 
-              {/* Quick Navigation Links for Dewan Guru */}
-              <div className="flex items-center gap-1.5 text-xs">
+              {/* Group 2: Atur Jadwal, Kartu QR, Scan QR (3 Kolom Presisi Memenuhi Lebar) */}
+              <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
                 <Link
                   href="/dashboard/jadwal-dewan-guru"
-                  className="py-1.5 px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 font-bold transition-all flex items-center gap-1 shadow-xs"
+                  className="w-full py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs text-center truncate"
                 >
-                  <CalendarDays size={13} />
-                  <span className="hidden sm:inline">Atur Jadwal</span>
+                  <CalendarDays size={13} className="shrink-0" />
+                  <span>Atur Jadwal</span>
                 </Link>
 
                 <Link
                   href="/dashboard/qr-dewan-guru"
-                  className="py-1.5 px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 font-bold transition-all flex items-center gap-1 shadow-xs"
+                  className="w-full py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs text-center truncate"
                 >
-                  <QrCode size={13} />
-                  <span className="hidden sm:inline">Kartu QR</span>
+                  <QrCode size={13} className="shrink-0" />
+                  <span>Kartu QR</span>
                 </Link>
 
                 <button
                   onClick={() => setShowScanner(true)}
-                  className="py-1.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black transition-all flex items-center gap-1 shadow-sm cursor-pointer"
+                  className="w-full py-2 px-2 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-center truncate"
                 >
-                  <Camera size={13} />
+                  <Camera size={13} className="shrink-0" />
                   <span>Scan QR</span>
                 </button>
               </div>
