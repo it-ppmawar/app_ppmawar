@@ -586,12 +586,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </Link>
                       </li>
                     ) : null}
-                    {['admin', 'staff'].includes(userRoleLower) && (
-                      <li>
-                        <Link href="/dashboard/absen-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/absen-guru' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
-                          <ClipboardList size={18} /> <span className="text-sm">Absen Guru</span>
-                        </Link>
-                      </li>
+                    {(['admin', 'staff'].includes(userRoleLower) || isPengasuhRole) && (
+                      <>
+                        <li>
+                          <Link href="/dashboard/absen-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/absen-guru' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
+                            <ClipboardList size={18} /> <span className="text-sm">Absen Dewan Guru</span>
+                          </Link>
+                        </li>
+                        <li>
+                          <Link href="/dashboard/jadwal-dewan-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal-dewan-guru' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
+                            <CalendarDays size={18} /> <span className="text-sm">Jadwal Dewan Guru</span>
+                          </Link>
+                        </li>
+                        <li>
+                          <Link href="/dashboard/qr-dewan-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/qr-dewan-guru' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
+                            <QrCode size={18} /> <span className="text-sm">QR Code Dewan Guru</span>
+                          </Link>
+                        </li>
+                      </>
                     )}
                     <li>
                       <Link href="/dashboard/jurnal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jurnal' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
