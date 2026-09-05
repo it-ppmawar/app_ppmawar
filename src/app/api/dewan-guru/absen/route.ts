@@ -3,9 +3,12 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
+import { ensureDewanGuruDB } from '@/lib/ensureDewanGuruDB';
 
 export async function GET(request: Request) {
   try {
+    await ensureDewanGuruDB();
+
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -107,6 +110,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await ensureDewanGuruDB();
+
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

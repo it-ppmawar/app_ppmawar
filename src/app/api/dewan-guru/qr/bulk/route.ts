@@ -6,6 +6,7 @@ import AdmZip from 'adm-zip';
 import { jsPDF } from 'jspdf';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
+import { ensureDewanGuruDB } from '@/lib/ensureDewanGuruDB';
 
 export async function GET(request: Request) {
   try {
@@ -20,6 +21,8 @@ export async function GET(request: Request) {
     if (payload.role !== 'admin' && payload.role !== 'staff' && !isPengasuh) {
       return NextResponse.json({ error: 'Akses ditolak.' }, { status: 403 });
     }
+
+    await ensureDewanGuruDB();
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'zip'; // 'zip' or 'pdf'

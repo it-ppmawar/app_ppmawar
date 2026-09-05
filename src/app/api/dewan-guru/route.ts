@@ -4,9 +4,12 @@ import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 import crypto from 'crypto';
+import { ensureDewanGuruDB } from '@/lib/ensureDewanGuruDB';
 
 export async function GET(request: Request) {
   try {
+    await ensureDewanGuruDB();
+
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,31 +21,6 @@ export async function GET(request: Request) {
     const homebase = searchParams.get('homebase');
     const search = searchParams.get('search');
     const all = searchParams.get('all') === 'true';
-
-    // Pastikan tabel ada
-    await pool.execute(`
-      CREATE TABLE IF NOT EXISTS dewan_guru (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        nip VARCHAR(50) DEFAULT NULL,
-        nama VARCHAR(255) NOT NULL,
-        jenis_kelamin ENUM('L', 'P') NOT NULL DEFAULT 'L',
-        homebase VARCHAR(100) NOT NULL DEFAULT 'YPMA',
-        no_hp VARCHAR(50) DEFAULT NULL,
-        alamat TEXT DEFAULT NULL,
-        tempat_tgl_lahir VARCHAR(150) DEFAULT NULL,
-        nama_ibu VARCHAR(150) DEFAULT NULL,
-        suami_istri VARCHAR(150) DEFAULT NULL,
-        pendidikan_terakhir VARCHAR(150) DEFAULT NULL,
-        status_kepegawaian VARCHAR(50) DEFAULT NULL,
-        qr_token VARCHAR(100) NOT NULL UNIQUE,
-        foto VARCHAR(255) DEFAULT NULL,
-        aktif TINYINT(1) NOT NULL DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_homebase (homebase),
-        INDEX idx_qr_token (qr_token)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `);
 
     let query = `SELECT * FROM dewan_guru WHERE aktif = 1`;
     const params: any[] = [];

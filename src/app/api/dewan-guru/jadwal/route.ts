@@ -3,9 +3,12 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
+import { ensureDewanGuruDB } from '@/lib/ensureDewanGuruDB';
 
 export async function GET(request: Request) {
   try {
+    await ensureDewanGuruDB();
+
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -16,26 +19,6 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const hari = searchParams.get('hari');
     const homebase = searchParams.get('homebase');
-
-    // Pastikan tabel ada
-    await pool.execute(`
-      CREATE TABLE IF NOT EXISTS jadwal_dewan_guru (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        nama_sesi VARCHAR(150) NOT NULL,
-        homebase VARCHAR(100) DEFAULT 'SEMUA',
-        hari ENUM('Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu') NOT NULL,
-        jam_mulai TIME NOT NULL,
-        jam_selesai TIME NOT NULL,
-        toleransi_menit INT NOT NULL DEFAULT 15,
-        keterangan TEXT DEFAULT NULL,
-        aktif TINYINT(1) NOT NULL DEFAULT 1,
-        created_by VARCHAR(100) DEFAULT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_jadwal_hari (hari),
-        INDEX idx_jadwal_homebase (homebase)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `);
 
     let query = `SELECT * FROM jadwal_dewan_guru WHERE aktif = 1`;
     const params: any[] = [];

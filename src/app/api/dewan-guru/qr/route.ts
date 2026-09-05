@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import QRCode from 'qrcode';
 import { RowDataPacket } from 'mysql2';
+import { ensureDewanGuruDB } from '@/lib/ensureDewanGuruDB';
 
 export async function GET(request: Request) {
   try {
+    await ensureDewanGuruDB();
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
     const id = searchParams.get('id');
