@@ -492,7 +492,7 @@ export default function AbsenGuruPage() {
 
             {/* Row 2: Controls & Navigation Buttons */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mt-3 pt-2.5 border-t border-teal-200/60 dark:border-teal-900/40">
-              {/* Group 1: Pilihan Tanggal & Muat Ulang (2 Kolom Presisi Memenuhi Lebar) */}
+              {/* Group 1: Pilihan Tanggal & Atur Jadwal (2 Kolom Presisi Memenuhi Lebar) */}
               <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                 <input
                   type="date"
@@ -500,19 +500,6 @@ export default function AbsenGuruPage() {
                   onChange={e => setTanggal(e.target.value)}
                   className="w-full text-xs font-bold border border-teal-200 dark:border-teal-800 rounded-xl px-2.5 py-2 bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400 text-center shadow-xs cursor-pointer"
                 />
-                <button
-                  onClick={mainMode === 'dewan_guru' ? fetchDewanData : fetchKbmData}
-                  disabled={dewanLoading || kbmLoading}
-                  className="w-full py-2 px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                  title="Segarkan data"
-                >
-                  <RefreshCw size={13} className={`shrink-0 ${(dewanLoading || kbmLoading) ? 'animate-spin' : ''}`} />
-                  <span>Segarkan</span>
-                </button>
-              </div>
-
-              {/* Group 2: Atur Jadwal, Kartu QR, Scan QR (3 Kolom Presisi Memenuhi Lebar) */}
-              <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
                 <Link
                   href="/dashboard/jadwal-dewan-guru"
                   className="w-full py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs text-center truncate"
@@ -520,7 +507,10 @@ export default function AbsenGuruPage() {
                   <CalendarDays size={13} className="shrink-0" />
                   <span>Atur Jadwal</span>
                 </Link>
+              </div>
 
+              {/* Group 2: Kartu QR, Segarkan, Scan QR (3 Kolom Presisi Memenuhi Lebar) */}
+              <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
                 <Link
                   href="/dashboard/qr-dewan-guru"
                   className="w-full py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs text-center truncate"
@@ -528,6 +518,16 @@ export default function AbsenGuruPage() {
                   <QrCode size={13} className="shrink-0" />
                   <span>Kartu QR</span>
                 </Link>
+
+                <button
+                  onClick={mainMode === 'dewan_guru' ? fetchDewanData : fetchKbmData}
+                  disabled={dewanLoading || kbmLoading}
+                  className="w-full py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center truncate"
+                  title="Segarkan data"
+                >
+                  <RefreshCw size={13} className={`shrink-0 ${(dewanLoading || kbmLoading) ? 'animate-spin' : ''}`} />
+                  <span>Segarkan</span>
+                </button>
 
                 <button
                   onClick={() => setShowScanner(true)}
@@ -574,70 +574,95 @@ export default function AbsenGuruPage() {
         {mainMode === 'dewan_guru' && (
           <div className="space-y-3">
             {/* Stats Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-center">
-              <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Total Guru</p>
-                <p className="text-xl font-black text-slate-800 dark:text-slate-100">{dewanStats.total}</p>
+            <div className="space-y-2">
+              {/* Baris 1: Total Guru (1 Baris Memenuhi Kanan Kiri) */}
+              <div className="bg-white dark:bg-slate-900 px-4 py-2.5 sm:py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400">
+                    <Users size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Guru</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:block">Dewan Guru & Staf YPMA</p>
+                  </div>
+                </div>
+                <p className="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100">{dewanStats.total}</p>
               </div>
 
-              <div
-                onClick={() => setDewanStatusFilter(dewanStatusFilter === 'Hadir' ? 'SEMUA' : 'Hadir')}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer shadow-xs ${
-                  dewanStatusFilter === 'Hadir'
-                    ? 'bg-emerald-500 text-white border-emerald-600'
-                    : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
-                }`}
-              >
-                <p className="text-[10px] font-bold uppercase opacity-80">Hadir</p>
-                <p className="text-xl font-black">{dewanStats.hadir}</p>
+              {/* Baris 2: Hadir, Sakit, Izin, Alpha (1 Baris Berdampingan 4 Kolom) */}
+              <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-center">
+                {/* 1. Hadir */}
+                <div
+                  onClick={() => setDewanStatusFilter(dewanStatusFilter === 'Hadir' ? 'SEMUA' : 'Hadir')}
+                  className={`p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+                    dewanStatusFilter === 'Hadir'
+                      ? 'bg-emerald-500 text-white border-emerald-600'
+                      : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
+                  }`}
+                >
+                  <p className="text-[10px] font-bold uppercase opacity-80 truncate">Hadir</p>
+                  <p className="text-lg sm:text-xl font-black">{dewanStats.hadir}</p>
+                </div>
+
+                {/* 2. Sakit */}
+                <div
+                  onClick={() => setDewanStatusFilter(dewanStatusFilter === 'Sakit' ? 'SEMUA' : 'Sakit')}
+                  className={`p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+                    dewanStatusFilter === 'Sakit'
+                      ? 'bg-amber-600 text-white border-amber-700'
+                      : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
+                  }`}
+                >
+                  <p className="text-[10px] font-bold uppercase opacity-80 truncate">Sakit</p>
+                  <p className="text-lg sm:text-xl font-black">{dewanStats.sakit}</p>
+                </div>
+
+                {/* 3. Izin */}
+                <div
+                  onClick={() => setDewanStatusFilter(dewanStatusFilter === 'Izin' ? 'SEMUA' : 'Izin')}
+                  className={`p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+                    dewanStatusFilter === 'Izin'
+                      ? 'bg-blue-500 text-white border-blue-600'
+                      : 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
+                  }`}
+                >
+                  <p className="text-[10px] font-bold uppercase opacity-80 truncate">Izin</p>
+                  <p className="text-lg sm:text-xl font-black">{dewanStats.izin}</p>
+                </div>
+
+                {/* 4. Alpha */}
+                <div
+                  onClick={() => setDewanStatusFilter(dewanStatusFilter === 'Alpha' ? 'SEMUA' : 'Alpha')}
+                  className={`p-2 sm:p-2.5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+                    dewanStatusFilter === 'Alpha'
+                      ? 'bg-rose-500 text-white border-rose-600'
+                      : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+                  }`}
+                >
+                  <p className="text-[10px] font-bold uppercase opacity-80 truncate">Alpha</p>
+                  <p className="text-lg sm:text-xl font-black">{dewanStats.alpha}</p>
+                </div>
               </div>
 
+              {/* Baris 3: Belum Absen (1 Baris Memenuhi Kanan Kiri) */}
               <div
                 onClick={() => setDewanStatusFilter(dewanStatusFilter === 'BELUM' ? 'SEMUA' : 'BELUM')}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+                className={`px-4 py-2.5 sm:py-3 rounded-2xl border transition-all cursor-pointer shadow-xs flex items-center justify-between ${
                   dewanStatusFilter === 'BELUM'
                     ? 'bg-amber-500 text-white border-amber-600'
                     : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
                 }`}
               >
-                <p className="text-[10px] font-bold uppercase opacity-80">Belum Absen</p>
-                <p className="text-xl font-black">{dewanStats.belum}</p>
-              </div>
-
-              <div
-                onClick={() => setDewanStatusFilter(dewanStatusFilter === 'Izin' ? 'SEMUA' : 'Izin')}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer shadow-xs ${
-                  dewanStatusFilter === 'Izin'
-                    ? 'bg-blue-500 text-white border-blue-600'
-                    : 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
-                }`}
-              >
-                <p className="text-[10px] font-bold uppercase opacity-80">Izin</p>
-                <p className="text-xl font-black">{dewanStats.izin}</p>
-              </div>
-
-              <div
-                onClick={() => setDewanStatusFilter(dewanStatusFilter === 'Sakit' ? 'SEMUA' : 'Sakit')}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer shadow-xs ${
-                  dewanStatusFilter === 'Sakit'
-                    ? 'bg-amber-600 text-white border-amber-700'
-                    : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
-                }`}
-              >
-                <p className="text-[10px] font-bold uppercase opacity-80">Sakit</p>
-                <p className="text-xl font-black">{dewanStats.sakit}</p>
-              </div>
-
-              <div
-                onClick={() => setDewanStatusFilter(dewanStatusFilter === 'Alpha' ? 'SEMUA' : 'Alpha')}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer shadow-xs ${
-                  dewanStatusFilter === 'Alpha'
-                    ? 'bg-rose-500 text-white border-rose-600'
-                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
-                }`}
-              >
-                <p className="text-[10px] font-bold uppercase opacity-80">Alpha</p>
-                <p className="text-xl font-black">{dewanStats.alpha}</p>
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-2 rounded-xl ${dewanStatusFilter === 'BELUM' ? 'bg-amber-600 text-white' : 'bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-400'}`}>
+                    <AlertCircle size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider opacity-90">Belum Absen</p>
+                    <p className="text-xs opacity-75 font-medium hidden sm:block">Saring guru yang belum presensi</p>
+                  </div>
+                </div>
+                <p className="text-xl sm:text-2xl font-black">{dewanStats.belum}</p>
               </div>
             </div>
 

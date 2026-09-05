@@ -229,7 +229,7 @@ export default function JadwalDewanGuruPage() {
               title="Tambah Jadwal Baru"
             >
               <Plus size={15} className="shrink-0" />
-              <span>+ Jadwal</span>
+              <span>Jadwal</span>
             </button>
           </div>
         </div>

@@ -277,7 +277,7 @@ export default function DashboardPage() {
           )}
           <Link href="/dashboard/rekapitulasi" className="flex flex-col items-center justify-center p-3 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-2xl border border-purple-100 dark:border-purple-800/50 shadow-sm hover:bg-purple-100 dark:hover:bg-purple-900/50 transition">
             <FileText size={24} className="mb-2" />
-            <span className="text-[10px] font-semibold text-center">Rekapitulasi</span>
+            <span className="text-[10px] font-semibold text-center">Rekapitulasi Absen</span>
           </Link>
         </div>
 
