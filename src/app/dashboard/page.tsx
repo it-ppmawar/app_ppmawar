@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Clock, BookOpen, Activity, FileText, CheckCircle, XCircle, AlertTriangle, Users, User, Camera, CalendarDays, ClipboardCheck, QrCode, CreditCard, Archive, PenTool, Trash2, Pencil, X, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, BookOpen, Activity, FileText, CheckCircle, XCircle, AlertTriangle, Users, User, Camera, CalendarDays, ClipboardCheck, QrCode, CreditCard, Archive, PenTool, Trash2, Pencil, X, Check, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -667,13 +667,19 @@ export default function DashboardPage() {
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
           <div className="bg-green-800 dark:bg-green-900 px-4 py-2.5 text-white text-xs font-semibold flex items-center justify-between">
             <span className="flex items-center gap-1.5 font-bold">🟡 Perizinan Terbaru</span>
-            {dashboardStats?.perizinanTerbaru?.length > 0 && (
+            {role !== 'tamu' && dashboardStats?.perizinanTerbaru?.length > 0 && (
               <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                 {dashboardStats.perizinanTerbaru.length}
               </span>
             )}
           </div>
-          {(!dashboardStats?.perizinanTerbaru || dashboardStats.perizinanTerbaru.length === 0) ? (
+          {role === 'tamu' ? (
+            <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400 space-y-1">
+              <Shield size={22} className="mx-auto text-gray-400 dark:text-gray-500 mb-1 opacity-70" />
+              <p className="font-bold text-gray-700 dark:text-gray-300">Data Disembunyikan</p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500">Rincian perizinan santri tidak ditampilkan dalam Mode Tamu</p>
+            </div>
+          ) : (!dashboardStats?.perizinanTerbaru || dashboardStats.perizinanTerbaru.length === 0) ? (
             <div className="p-5 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada perizinan 1 hari terakhir</div>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-700 max-h-56 overflow-y-auto">
@@ -686,7 +692,7 @@ export default function DashboardPage() {
                       <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                         item.status === 'Sakit'
                           ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
+                          : 'bg-amber-100 text-amber-700 dark:text-amber-900/50 dark:text-amber-300'
                       }`}>
                         {item.status}
                       </span>
@@ -711,13 +717,19 @@ export default function DashboardPage() {
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
           <div className="bg-green-800 dark:bg-green-900 px-4 py-2.5 text-white text-xs font-semibold flex items-center justify-between">
             <span className="flex items-center gap-1.5 font-bold">🔴 Pelanggaran Terbaru</span>
-            {dashboardStats?.pelanggaranTerbaru?.length > 0 && (
+            {role !== 'tamu' && dashboardStats?.pelanggaranTerbaru?.length > 0 && (
               <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                 {dashboardStats.pelanggaranTerbaru.length}
               </span>
             )}
           </div>
-          {(!dashboardStats?.pelanggaranTerbaru || dashboardStats.pelanggaranTerbaru.length === 0) ? (
+          {role === 'tamu' ? (
+            <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400 space-y-1">
+              <Shield size={22} className="mx-auto text-gray-400 dark:text-gray-500 mb-1 opacity-70" />
+              <p className="font-bold text-gray-700 dark:text-gray-300">Data Disembunyikan</p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500">Rincian pelanggaran santri tidak ditampilkan dalam Mode Tamu</p>
+            </div>
+          ) : (!dashboardStats?.pelanggaranTerbaru || dashboardStats.pelanggaranTerbaru.length === 0) ? (
             <div className="p-5 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada santri alpa / pelanggaran 1 hari terakhir</div>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-700 max-h-56 overflow-y-auto">

@@ -450,8 +450,8 @@ export async function GET() {
         quran: formatStatObj(quranStatsRow),
         kegiatan: formatStatObj(kegiatanStatsRow),
       },
-      perizinanTerbaru: perizinanRows,
-      pelanggaranTerbaru: pelanggaranRows,
+      perizinanTerbaru: payload.role === 'tamu' ? [] : perizinanRows,
+      pelanggaranTerbaru: payload.role === 'tamu' ? [] : pelanggaranRows,
     }, { headers: noCacheHeaders });
 
   } catch (error: any) {
