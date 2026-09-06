@@ -645,13 +645,13 @@ export default function SettingsPage() {
             {/* Perincian Target Kategori Jadwal */}
             {settings.absensi_otomatis && (
               <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
                   <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Target Kategori Jadwal Otomatis:
                   </h4>
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
                     Pilih kategori yang ingin diberlakukan pencatatan Alpa otomatis
-                  </span>
+                  </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {/* 1. Madin */}
@@ -757,14 +757,14 @@ export default function SettingsPage() {
           </div>
 
           {/* Tips Mengelola Libur */}
-          <div className="bg-blue-50/80 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-4 flex items-start gap-3.5">
-            <Bell className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" size={20} />
-            <div>
-              <h4 className="font-bold text-sm text-blue-900 dark:text-blue-300 mb-0.5">Tips Mengelola Libur</h4>
-              <p className="text-xs leading-relaxed text-blue-800 dark:text-blue-400">
-                Ketika Pesantren memasuki masa libur (Ramadhan, haul, atau libur mendadak), aktifkan <strong>Mode Libur Pondok</strong> ini. Sistem akan otomatis membatalkan pengingat WA dan mencegah sistem mencatat &quot;Alpha&quot; secara terus-menerus ke seluruh dewan guru. Saat kegiatan aktif kembali, matikan mode libur dan tekan tombol <strong>Aktifkan & Jadwalkan Kembali</strong>.
-              </p>
+          <div className="bg-blue-50/80 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-4 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Bell className="text-blue-600 dark:text-blue-400 shrink-0" size={18} />
+              <h4 className="font-bold text-sm text-blue-900 dark:text-blue-300">Tips Mengelola Libur</h4>
             </div>
+            <p className="text-xs leading-relaxed text-blue-800 dark:text-blue-400">
+              Ketika Pesantren memasuki masa libur (Ramadhan, haul, atau libur mendadak), aktifkan <strong>Mode Libur Pondok</strong> ini. Sistem akan otomatis membatalkan pengingat WA dan mencegah sistem mencatat &quot;Alpha&quot; secara terus-menerus ke seluruh dewan guru. Saat kegiatan aktif kembali, matikan mode libur dan tekan tombol <strong>Aktifkan &amp; Jadwalkan Kembali</strong>.
+            </p>
           </div>
 
           <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-4">
@@ -871,32 +871,32 @@ export default function SettingsPage() {
           {/* Pengaturan Integrasi Telegram Bot Resmi (@ppma_notif_bot) */}
           {/* ═══════════════════════════════════════════════════════════════════ */}
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-sky-500 text-white rounded-xl shadow-sm">
-                    <Send size={20} />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                      Integrasi Telegram Bot Resmi
-                      <span className="text-xs font-extrabold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2.5 py-0.5 rounded-full">
-                        100% Anti-Banned & Gratis
-                      </span>
-                    </h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Kirim pengingat jadwal guru, rekap Kepala Madin, dan notifikasi santri secara otomatis tanpa risiko nomor diblokir.
-                    </p>
-                  </div>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-sky-500 text-white rounded-xl shadow-sm shrink-0">
+                  <Send size={18} />
                 </div>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 leading-tight">
+                  Integrasi Telegram Bot Resmi
+                </h2>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div>
+                <span className="inline-block text-[11px] font-extrabold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2.5 py-0.5 rounded-full">
+                  100% Anti-Banned &amp; Gratis
+                </span>
+              </div>
+
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                Kirim pengingat jadwal guru, rekap Kepala Madin, dan notifikasi santri secara otomatis tanpa risiko nomor diblokir.
+              </p>
+
+              <div className="flex justify-center pt-1">
                 <a
                   href={`https://t.me/${settings.telegram_bot_username || 'ppma_notif_bot'}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 border border-sky-300 dark:border-sky-800 text-sky-700 dark:text-sky-300 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all"
+                  className="w-full sm:w-auto text-center justify-center bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 border border-sky-300 dark:border-sky-800 text-sky-700 dark:text-sky-300 text-xs font-bold px-4 py-2.5 rounded-xl inline-flex items-center gap-1.5 transition-all shadow-sm"
                 >
                   <ExternalLink size={13} />
                   Buka @{settings.telegram_bot_username || 'ppma_notif_bot'}
@@ -906,21 +906,30 @@ export default function SettingsPage() {
 
             {/* Status Bot & Webhook Banner */}
             <div className="p-4 bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50 dark:from-sky-950/30 dark:via-blue-950/20 dark:to-indigo-950/30 rounded-2xl border border-sky-200/80 dark:border-sky-800/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1">
+              <div className="space-y-1.5 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-bold text-sky-950 dark:text-sky-200">
                     🤖 Bot: <strong>{botInfo?.first_name || 'PPMA Notifikasi Bot'}</strong> (@{botInfo?.username || settings.telegram_bot_username})
                   </span>
-                  <span className="text-[11px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="text-[11px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
                     <CheckCircle size={11} /> Token Terverifikasi
                   </span>
                 </div>
-                <p className="text-xs text-sky-800/80 dark:text-sky-400">
-                  Webhook URL: <code className="font-mono bg-white/70 dark:bg-black/30 px-1.5 py-0.5 rounded text-[11px]">https://app.ppmawar.or.id/api/telegram/webhook</code>
+                <div className="flex items-center gap-1.5 flex-wrap text-xs text-sky-800/80 dark:text-sky-400">
+                  <span>Webhook URL:</span>
+                  <code 
+                    className="font-mono bg-white/70 dark:bg-black/30 px-1.5 py-0.5 rounded text-[11px] max-w-[210px] sm:max-w-xs truncate inline-block align-middle"
+                    title="https://app.ppmawar.or.id/api/telegram/webhook"
+                  >
+                    .../api/telegram/webhook
+                  </code>
                   {webhookStatus?.is_active && (
-                    <span className="ml-2 font-bold text-emerald-600 dark:text-emerald-400">● Webhook Aktif</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1 text-[11px]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                      Webhook Aktif
+                    </span>
                   )}
-                </p>
+                </div>
               </div>
 
               <button
@@ -1203,18 +1212,18 @@ export default function SettingsPage() {
 
             {/* Kontrol Darurat Libur Mendadak & Jadwalkan Ulang */}
             <div className="p-5 bg-gradient-to-r from-red-50/80 via-amber-50/40 to-emerald-50/80 dark:from-red-950/25 dark:via-amber-950/20 dark:to-emerald-950/25 rounded-2xl border border-red-200/80 dark:border-red-900/40 space-y-3.5 shadow-sm">
-              <div className="flex items-start gap-3">
-                <div className="p-2.5 bg-red-600 text-white rounded-xl shadow-sm shrink-0 mt-0.5">
-                  <Power size={18} />
-                </div>
-                <div>
-                  <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-red-600 text-white rounded-xl shadow-sm shrink-0">
+                    <Power size={18} />
+                  </div>
+                  <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100 leading-tight">
                     Kontrol Darurat: Batalkan / Aktifkan Pengiriman Otomatis
                   </h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">
-                    Gunakan tombol di bawah jika pondok <strong>libur mendadak</strong> untuk membatalkan seluruh antrean pesan seketika, atau <strong>aktifkan kembali</strong> saat kegiatan belajar-mengajar normal.
-                  </p>
                 </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                  Gunakan tombol di bawah jika pondok <strong>libur mendadak</strong> untuk membatalkan seluruh antrean pesan seketika, atau <strong>aktifkan kembali</strong> saat kegiatan belajar-mengajar normal.
+                </p>
               </div>
 
               {/* Status Alert Aksi WA */}
@@ -1268,13 +1277,15 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Jeda Wali Murid */}
               <div className="p-4 bg-orange-50/50 dark:bg-orange-950/20 rounded-xl border border-orange-200/60 dark:border-orange-800/40 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-orange-900 dark:text-orange-300 uppercase tracking-wider">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-orange-900 dark:text-orange-300 uppercase tracking-wider">
                     Jeda untuk Wali Murid / Alumni
                   </label>
-                  <span className="text-xs font-black text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-md">
-                    {settings.jeda_panggilan_wali === 0 ? 'Tanpa Jeda (0 mnt)' : `${settings.jeda_panggilan_wali} Menit`}
-                  </span>
+                  <div>
+                    <span className="inline-block text-xs font-black text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50 px-2.5 py-0.5 rounded-md">
+                      {settings.jeda_panggilan_wali === 0 ? 'Tanpa Jeda (0 Menit)' : `${settings.jeda_panggilan_wali} Menit`}
+                    </span>
+                  </div>
                 </div>
                 <p className="text-[11px] text-orange-700 dark:text-orange-400">
                   Waktu tunggu antar panggilan yang dikirim oleh Wali Murid / Alumni. (0 = nonaktif / bebas kirim).
@@ -1308,13 +1319,15 @@ export default function SettingsPage() {
 
               {/* Jeda Pengurus Asrama */}
               <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200/60 dark:border-amber-800/40 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider">
                     Jeda untuk Pengurus Asrama
                   </label>
-                  <span className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md">
-                    {settings.jeda_panggilan_pengurus === 0 ? 'Tanpa Jeda (0 mnt)' : `${settings.jeda_panggilan_pengurus} Menit`}
-                  </span>
+                  <div>
+                    <span className="inline-block text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-0.5 rounded-md">
+                      {settings.jeda_panggilan_pengurus === 0 ? 'Tanpa Jeda (0 Menit)' : `${settings.jeda_panggilan_pengurus} Menit`}
+                    </span>
+                  </div>
                 </div>
                 <p className="text-[11px] text-amber-700 dark:text-amber-400">
                   Waktu tunggu antar panggilan yang dikirim oleh akun Pengurus Asrama. (0 = nonaktif / bebas kirim).
@@ -1628,13 +1641,18 @@ export default function SettingsPage() {
           </div>
         )}
 
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-sm text-blue-700 dark:text-blue-300 flex gap-3">
-          <Bell size={18} className="shrink-0 mt-0.5" />
-          <div>
-            <strong>Sinkronisasi Otomatis:</strong> Untuk mengaktifkan cron job harian otomatis, panggil endpoint
-            <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded text-xs mx-1 font-mono">POST /api/sync/googlesheet</code>
-            dengan header <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded text-xs font-mono">Authorization: Bearer ppma_sync_secret_2024_secure</code> menggunakan layanan cron job eksternal (seperti cron-job.org atau Vercel Cron).
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-sm text-blue-700 dark:text-blue-300 space-y-1.5">
+          <div className="flex items-center gap-2 font-bold text-blue-900 dark:text-blue-200">
+            <Bell size={18} className="shrink-0 text-blue-600 dark:text-blue-400" />
+            <span>Sinkronisasi Otomatis:</span>
           </div>
+          <p className="leading-relaxed text-xs sm:text-sm text-blue-800/90 dark:text-blue-300/90">
+            Untuk mengaktifkan cron job harian otomatis, panggil endpoint{' '}
+            <code className="bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded text-xs font-mono break-all inline-block my-0.5">POST /api/sync/googlesheet</code>{' '}
+            dengan header{' '}
+            <code className="bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded text-xs font-mono break-all inline-block my-0.5">Authorization: Bearer ppma_sync_secret_2024_secure</code>{' '}
+            menggunakan layanan cron job eksternal (seperti cron-job.org atau Vercel Cron).
+          </p>
         </div>
       </div>
 
