@@ -122,6 +122,7 @@ export default function AbsenGuruPage() {
   const [dewanHomebase, setDewanHomebase] = useState('SEMUA');
   const [dewanStatusFilter, setDewanStatusFilter] = useState('SEMUA');
   const [dewanSearch, setDewanSearch] = useState('');
+  const [batchLoading, setBatchLoading] = useState(false);
 
   // Modal Input Absensi Guru
   const [inputModalGuru, setInputModalGuru] = useState<any>(null);
@@ -236,19 +237,25 @@ export default function AbsenGuruPage() {
     }
   };
 
-  // Batch mark remaining as Hadir
-  const handleBatchMarkHadir = async () => {
+  // Batch set status for remaining teachers
+  const handleBatchSetStatus = async (targetStatus: 'Hadir' | 'Izin' | 'Sakit' | 'Alpha') => {
     const unrecorded = filteredDewanList.filter(g => !g.status);
     if (unrecorded.length === 0) {
-      alert('Semua guru dalam filter ini sudah memiliki status absensi.');
+      alert('Semua guru dalam daftar/filter ini sudah memiliki status absensi.');
       return;
     }
-    if (!confirm(`Tandai ${unrecorded.length} dewan guru yang belum absen sebagai HADIR hari ini?`)) {
+    const filterInfo = dewanHomebase !== 'SEMUA' ? ` (Unit: ${dewanHomebase})` : '';
+    if (!confirm(`Tandai ${unrecorded.length} dewan guru yang belum absen${filterInfo} sebagai ${targetStatus.toUpperCase()} hari ini?`)) {
       return;
     }
 
+    setBatchLoading(true);
     try {
-      const batch = unrecorded.map(g => ({ guru_id: g.id, status: 'Hadir', keterangan: 'Presensi Massal' }));
+      const batch = unrecorded.map(g => ({
+        guru_id: g.id,
+        status: targetStatus,
+        keterangan: `Presensi Massal (${targetStatus})`
+      }));
       const res = await fetch('/api/dewan-guru/absen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -258,11 +265,13 @@ export default function AbsenGuruPage() {
       if (!res.ok || !json.success) {
         alert(json.error || 'Gagal memperbarui absensi massal');
       } else {
-        alert(`Berhasil menandai ${unrecorded.length} guru sebagai Hadir!`);
-        fetchDewanData();
+        alert(`Berhasil menandai ${unrecorded.length} guru sebagai ${targetStatus}!`);
+        await fetchDewanData();
       }
     } catch {
       alert('Koneksi gagal.');
+    } finally {
+      setBatchLoading(false);
     }
   };
 
@@ -685,35 +694,68 @@ export default function AbsenGuruPage() {
                 ))}
               </div>
 
-              {/* Search & Batch Action */}
-              <div className="flex flex-col sm:flex-row items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-                <div className="relative flex-1 w-full">
-                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Cari nama guru, homebase, atau NIP..."
-                    value={dewanSearch}
-                    onChange={e => setDewanSearch(e.target.value)}
-                    className="w-full text-xs pl-10 pr-9 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
-                  />
-                  {dewanSearch && (
-                    <button
-                      onClick={() => setDewanSearch('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"
-                    >
-                      <X size={14} />
-                    </button>
+              {/* Search Bar */}
+              <div className="relative w-full pt-1 border-t border-slate-100 dark:border-slate-800">
+                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 mt-0.5" />
+                <input
+                  type="text"
+                  placeholder="Cari nama guru, homebase, atau NIP..."
+                  value={dewanSearch}
+                  onChange={e => setDewanSearch(e.target.value)}
+                  className="w-full text-xs pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+                />
+                {dewanSearch && (
+                  <button
+                    onClick={() => setDewanSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 mt-0.5"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Set Massal 4 Tombol */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    ⚡ Set Massal ({filteredDewanList.filter(g => !g.status).length} Guru Belum Absen)
+                  </p>
+                  {batchLoading && (
+                    <span className="text-[11px] font-bold text-teal-600 animate-pulse">
+                      Memproses...
+                    </span>
                   )}
                 </div>
-
-                {/* Batch Mark Button */}
-                <button
-                  onClick={handleBatchMarkHadir}
-                  className="w-full sm:w-auto py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
-                >
-                  <UserCheck size={15} />
-                  <span>Tandai Semua Belum Hadir</span>
-                </button>
+                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                  <button
+                    disabled={batchLoading}
+                    onClick={() => handleBatchSetStatus('Hadir')}
+                    className="py-2.5 text-xs font-bold rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border dark:border-emerald-800/60 transition-all active:scale-95 text-center cursor-pointer disabled:opacity-50"
+                  >
+                    Hadir All
+                  </button>
+                  <button
+                    disabled={batchLoading}
+                    onClick={() => handleBatchSetStatus('Izin')}
+                    className="py-2.5 text-xs font-bold rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 dark:border dark:border-blue-800/60 transition-all active:scale-95 text-center cursor-pointer disabled:opacity-50"
+                  >
+                    Izin All
+                  </button>
+                  <button
+                    disabled={batchLoading}
+                    onClick={() => handleBatchSetStatus('Sakit')}
+                    className="py-2.5 text-xs font-bold rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 dark:border dark:border-amber-800/60 transition-all active:scale-95 text-center cursor-pointer disabled:opacity-50"
+                  >
+                    Sakit All
+                  </button>
+                  <button
+                    disabled={batchLoading}
+                    onClick={() => handleBatchSetStatus('Alpha')}
+                    className="py-2.5 text-xs font-bold rounded-xl bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/40 dark:text-red-300 dark:border dark:border-red-800/60 transition-all active:scale-95 text-center cursor-pointer disabled:opacity-50"
+                  >
+                    Alpha All
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -788,12 +830,18 @@ export default function AbsenGuruPage() {
                           </div>
                         </div>
 
-                        {/* Status Button */}
+                        {/* Status / Action Button */}
                         <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                          <div className={`py-1 px-2 rounded-xl text-center text-[10px] font-black transition-all ${
-                            guru.status ? statusConf.badge : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                          <div className={`py-1.5 px-2 rounded-xl text-center text-[10px] font-black transition-all flex items-center justify-center gap-1 ${
+                            guru.status
+                              ? statusConf.badge
+                              : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-dashed border-slate-300 dark:border-slate-700 group-hover:border-teal-400 group-hover:bg-teal-50 dark:group-hover:bg-teal-950/40 group-hover:text-teal-700 dark:group-hover:text-teal-300'
                           }`}>
-                            {guru.status ? `${guru.status}` : 'Belum Absen'}
+                            {guru.status ? (
+                              <span>{guru.status}</span>
+                            ) : (
+                              <span>Catat Absen</span>
+                            )}
                           </div>
                         </div>
                       </div>
