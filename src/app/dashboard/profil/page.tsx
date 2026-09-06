@@ -11,15 +11,36 @@ export default function ProfilPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then(res => res.json())
-      .then(data => {
+    const initUser = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
         if (data.success) {
           setUser(data.user);
           setFormData(prev => ({ ...prev, newUsername: data.user.username }));
+        } else {
+          // Tidak ada sesi / 401 → coba auto-login tamu
+          try {
+            const guestRes = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ guest: true }),
+            });
+            const guestData = await guestRes.json();
+            if (guestRes.ok && guestData.success) {
+              setUser(guestData.user);
+            } else {
+              setUser({ role: 'tamu', username: 'Tamu', real_name: 'Tamu' });
+            }
+          } catch {
+            setUser({ role: 'tamu', username: 'Tamu', real_name: 'Tamu' });
+          }
         }
-      })
-      .catch(console.error);
+      } catch {
+        setUser({ role: 'tamu', username: 'Tamu', real_name: 'Tamu' });
+      }
+    };
+    initUser();
       
     const savedAvatar = localStorage.getItem('user_avatar');
     if (savedAvatar) setAvatar(savedAvatar);

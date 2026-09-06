@@ -126,15 +126,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       document.documentElement.classList.remove('dark');
     }
 
-    // Fetch User Profile
+    // Fetch User Profile — auto-login sebagai tamu jika tidak ada token
+    const tryAutoGuestLogin = async () => {
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ guest: true }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setUser(data.user);
+        } else {
+          setUser({ role: 'tamu', username: 'Tamu', real_name: 'Tamu' });
+        }
+      } catch {
+        setUser({ role: 'tamu', username: 'Tamu', real_name: 'Tamu' });
+      }
+    };
+
     fetch('/api/auth/me')
-      .then(res => res.json())
-      .then(data => {
+      .then(async res => {
+        const data = await res.json();
         if (data.success) {
           setUser(data.user);
+        } else {
+          // Tidak ada token / expired → auto-login tamu
+          await tryAutoGuestLogin();
         }
       })
-      .catch(console.error);
+      .catch(async () => {
+        await tryAutoGuestLogin();
+      });
 
     // Fetch Settings
     fetch('/api/settings')
