@@ -33,6 +33,47 @@ export async function GET(request: Request) {
     const jadwal_id_list = (jadwal_id_param || '').split(',').map(s => s.trim()).filter(Boolean);
     const jadwal_id = jadwal_id_list[0] || '';
 
+    // Auto-expand kelas gabungan jika jadwal_id diberikan dan kelas_id_list <= 1
+    if (jadwal_id && kelas_id_list.length <= 1) {
+      try {
+        if (tipe === 'madin') {
+          const [primaryJadwal]: any = await pool.execute(
+            'SELECT guru_id, hari, jam_mulai, jam_selesai FROM jadwal_madin WHERE jadwal_id = ? LIMIT 1',
+            [jadwal_id]
+          );
+          if (primaryJadwal.length > 0) {
+            const pj = primaryJadwal[0];
+            const [combRows]: any = await pool.execute(
+              'SELECT DISTINCT kelas_madin_id FROM jadwal_madin WHERE (guru_id = ? OR jadwal_id = ?) AND hari = ? AND jam_mulai = ? AND jam_selesai = ?',
+              [pj.guru_id || 0, jadwal_id, pj.hari, pj.jam_mulai, pj.jam_selesai]
+            );
+            combRows.forEach((r: any) => {
+              const kid = String(r.kelas_madin_id);
+              if (!kelas_id_list.includes(kid)) kelas_id_list.push(kid);
+            });
+          }
+        } else if (tipe === 'quran') {
+          const [primaryJadwal]: any = await pool.execute(
+            'SELECT guru_id, hari, jam_mulai, jam_selesai FROM jadwal_quran WHERE id = ? LIMIT 1',
+            [jadwal_id]
+          );
+          if (primaryJadwal.length > 0) {
+            const pj = primaryJadwal[0];
+            const [combRows]: any = await pool.execute(
+              'SELECT DISTINCT kelas_quran_id FROM jadwal_quran WHERE (guru_id = ? OR id = ?) AND hari = ? AND jam_mulai = ? AND jam_selesai = ?',
+              [pj.guru_id || 0, jadwal_id, pj.hari, pj.jam_mulai, pj.jam_selesai]
+            );
+            combRows.forEach((r: any) => {
+              const kid = String(r.kelas_quran_id);
+              if (!kelas_id_list.includes(kid)) kelas_id_list.push(kid);
+            });
+          }
+        }
+      } catch (errComb) {
+        console.warn('Error expanding combined schedule in input route:', errComb);
+      }
+    }
+
     if (!tipe || kelas_id_list.length === 0) return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
 
     if (role === 'pengurus_asrama' || role === 'pengasuh') {
@@ -82,17 +123,19 @@ export async function GET(request: Request) {
     if ((role === 'pengurus_asrama' || role === 'pengasuh') && namaAsrama) {
       // Pengurus asrama hanya melihat santri dari asrama mereka sendiri
       if (tipe === 'madin') {
-        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali FROM murid m
+        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali, k.nama_kelas FROM murid m
           JOIN kamar km ON m.kamar_id = km.kamar_id
-          WHERE (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?) AND km.nama_asrama = ? ORDER BY m.nama ASC`;
+          LEFT JOIN kelas_madin k ON (m.kelas_madin_id = k.kelas_id OR m.kelas_madin_2_id = k.kelas_id)
+          WHERE (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?) AND km.nama_asrama = ? ORDER BY k.nama_kelas ASC, m.nama ASC`;
         params = [kelas_id, kelas_id, namaAsrama];
       } else if (tipe === 'quran') {
-        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali FROM murid m
+        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali, k.nama_kelas FROM murid m
           JOIN kamar km ON m.kamar_id = km.kamar_id
-          WHERE m.kelas_quran_id = ? AND km.nama_asrama = ? ORDER BY m.nama ASC`;
+          LEFT JOIN kelas_quran k ON m.kelas_quran_id = k.id
+          WHERE m.kelas_quran_id = ? AND km.nama_asrama = ? ORDER BY k.nama_kelas ASC, m.nama ASC`;
         params = [kelas_id, namaAsrama];
       } else if (tipe === 'kegiatan') {
-        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kamar_id = ? ORDER BY nama ASC';
+        query = 'SELECT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali, km.nama_kamar as nama_kelas FROM murid m JOIN kamar km ON m.kamar_id = km.kamar_id WHERE m.kamar_id = ? ORDER BY km.nama_kamar ASC, m.nama ASC';
       } else {
         return NextResponse.json({ error: 'Tipe tidak valid' }, { status: 400 });
       }
@@ -106,13 +149,25 @@ export async function GET(request: Request) {
       }
 
       if (tipe === 'madin') {
-        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali FROM murid m WHERE (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?)${genderFilter} ORDER BY m.nama ASC`;
+        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali, k.nama_kelas 
+                 FROM murid m 
+                 LEFT JOIN kelas_madin k ON (m.kelas_madin_id = k.kelas_id OR m.kelas_madin_2_id = k.kelas_id)
+                 WHERE (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?)${genderFilter} 
+                 ORDER BY k.nama_kelas ASC, m.nama ASC`;
         params = [kelas_id, kelas_id];
       } else if (tipe === 'quran') {
-        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali FROM murid m WHERE m.kelas_quran_id = ?${genderFilter} ORDER BY m.nama ASC`;
+        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali, k.nama_kelas 
+                 FROM murid m 
+                 LEFT JOIN kelas_quran k ON m.kelas_quran_id = k.id 
+                 WHERE m.kelas_quran_id = ?${genderFilter} 
+                 ORDER BY k.nama_kelas ASC, m.nama ASC`;
         params = [kelas_id];
       } else if (tipe === 'kegiatan') {
-        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali FROM murid m WHERE m.kamar_id = ?${genderFilter} ORDER BY m.nama ASC`;
+        query = `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali, k.nama_kamar as nama_kelas 
+                 FROM murid m 
+                 LEFT JOIN kamar k ON m.kamar_id = k.kamar_id 
+                 WHERE m.kamar_id = ?${genderFilter} 
+                 ORDER BY k.nama_kamar ASC, m.nama ASC`;
         params = [kelas_id];
       } else {
         return NextResponse.json({ error: 'Tipe tidak valid' }, { status: 400 });
@@ -120,17 +175,28 @@ export async function GET(request: Request) {
     } else {
       if (tipe === 'madin') {
         // Dukung kelas gabungan: murid dari semua kelas dalam daftar kelas_id_list
-        const placeholders = kelas_id_list.flatMap(() => ['?', '?']).join(', ');
-        const madinParams = kelas_id_list.flatMap(id => [id, id]);
-        query = `SELECT DISTINCT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali, kelas_madin_id as nama_kelas_ref FROM murid WHERE ${kelas_id_list.map(() => '(kelas_madin_id = ? OR kelas_madin_2_id = ?)').join(' OR ')} ORDER BY nama ASC`;
-        params = madinParams;
+        const placeholders = kelas_id_list.map(() => '?').join(', ');
+        query = `SELECT DISTINCT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali, k.nama_kelas 
+                 FROM murid m 
+                 JOIN kelas_madin k ON (m.kelas_madin_id = k.kelas_id OR m.kelas_madin_2_id = k.kelas_id)
+                 WHERE k.kelas_id IN (${placeholders}) 
+                 ORDER BY k.nama_kelas ASC, m.nama ASC`;
+        params = kelas_id_list;
       } else if (tipe === 'quran') {
         const placeholders = kelas_id_list.map(() => '?').join(', ');
-        query = `SELECT DISTINCT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kelas_quran_id IN (${placeholders}) ORDER BY nama ASC`;
+        query = `SELECT DISTINCT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali, k.nama_kelas 
+                 FROM murid m 
+                 JOIN kelas_quran k ON m.kelas_quran_id = k.id 
+                 WHERE k.id IN (${placeholders}) 
+                 ORDER BY k.nama_kelas ASC, m.nama ASC`;
         params = kelas_id_list;
       } else if (tipe === 'kegiatan') {
         const placeholders = kelas_id_list.map(() => '?').join(', ');
-        query = `SELECT DISTINCT murid_id, nis, nama, nama_panggilan, foto, alamat, nama_wali FROM murid WHERE kamar_id IN (${placeholders}) ORDER BY nama ASC`;
+        query = `SELECT DISTINCT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.alamat, m.nama_wali, k.nama_kamar as nama_kelas 
+                 FROM murid m 
+                 JOIN kamar k ON m.kamar_id = k.kamar_id 
+                 WHERE k.kamar_id IN (${placeholders}) 
+                 ORDER BY k.nama_kamar ASC, m.nama ASC`;
         params = kelas_id_list;
       } else {
         return NextResponse.json({ error: 'Tipe tidak valid' }, { status: 400 });
