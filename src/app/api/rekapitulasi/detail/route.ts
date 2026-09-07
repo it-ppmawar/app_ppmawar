@@ -44,7 +44,7 @@ export async function GET(request: Request) {
       const [guruList] = await pool.execute<RowDataPacket[]>(
         `SELECT g.guru_id, g.nip, g.nama, g.user_id, u.username, u.nama as user_nama
          FROM guru g
-         LEFT JOIN users u ON g.user_id = u.id OR u.guru_id = g.guru_id`
+         LEFT JOIN users u ON g.user_id = u.id`
       );
       for (const g of guruList) {
         if (g.nama) {
