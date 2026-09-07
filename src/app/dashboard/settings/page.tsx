@@ -457,6 +457,7 @@ export default function SettingsPage() {
 
   const fetchAsramaData = async () => {
     setLoadingAsrama(true);
+    setFixAsramaError('');
     try {
       const res = await fetch('/api/debug/setup-asrama');
       const json = await res.json();
@@ -649,7 +650,7 @@ export default function SettingsPage() {
                   <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Target Kategori Jadwal Otomatis:
                   </h4>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 text-right">
                     Pilih kategori yang ingin diberlakukan pencatatan Alpa otomatis
                   </p>
                 </div>
@@ -872,17 +873,14 @@ export default function SettingsPage() {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600 space-y-6">
             <div className="space-y-2.5">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2 flex-wrap">
                 <div className="p-2 bg-sky-500 text-white rounded-xl shadow-sm shrink-0">
                   <Send size={18} />
                 </div>
-                <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 leading-tight">
+                <h2 className="text-base sm:text-xl font-bold text-gray-800 dark:text-gray-100 leading-tight">
                   Integrasi Telegram Bot Resmi
                 </h2>
-              </div>
-
-              <div>
-                <span className="inline-block text-[11px] font-extrabold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2.5 py-0.5 rounded-full">
+                <span className="text-[10px] sm:text-xs font-extrabold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2.5 py-0.5 rounded-full shrink-0">
                   100% Anti-Banned &amp; Gratis
                 </span>
               </div>
@@ -907,12 +905,12 @@ export default function SettingsPage() {
             {/* Status Bot & Webhook Banner */}
             <div className="p-4 bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50 dark:from-sky-950/30 dark:via-blue-950/20 dark:to-indigo-950/30 rounded-2xl border border-sky-200/80 dark:border-sky-800/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1.5 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold text-sky-950 dark:text-sky-200">
-                    🤖 Bot: <strong>{botInfo?.first_name || 'PPMA Notifikasi Bot'}</strong> (@{botInfo?.username || settings.telegram_bot_username})
+                <div className="flex items-center justify-between gap-1.5 flex-nowrap">
+                  <span className="text-[11px] sm:text-xs font-bold text-sky-950 dark:text-sky-200 truncate">
+                    🤖 <strong>{botInfo?.first_name || 'PPMA Notifikasi Bot'}</strong> (@{botInfo?.username || settings.telegram_bot_username})
                   </span>
-                  <span className="text-[11px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                    <CheckCircle size={11} /> Token Terverifikasi
+                  <span className="text-[10px] sm:text-[11px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap">
+                    <CheckCircle size={10} /> Token Terverifikasi
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap text-xs text-sky-800/80 dark:text-sky-400">
@@ -1779,7 +1777,7 @@ export default function SettingsPage() {
                 {asramaData.santri_per_asrama?.length > 0 && (
                   <div>
                     <h4 className="font-bold text-sm text-gray-700 dark:text-gray-300 mb-2">Santri per Asrama</h4>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
                       {(() => {
                         const mergedMap = new Map<string, number>();
                         asramaData.santri_per_asrama.forEach((a: any) => {
@@ -1789,9 +1787,9 @@ export default function SettingsPage() {
                           mergedMap.set(name, prev + Number(a.jumlah_santri || 0));
                         });
                         return Array.from(mergedMap.entries()).map(([nama, jumlah]) => (
-                          <div key={nama} className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 px-3 py-1.5 rounded-lg text-sm">
-                            <span className="font-bold text-indigo-700 dark:text-indigo-300">{nama}</span>
-                            <span className="text-indigo-500 ml-2">{jumlah} santri</span>
+                          <div key={nama} className="bg-indigo-50/70 dark:bg-indigo-900/20 border border-indigo-200/80 dark:border-indigo-800/60 p-2.5 rounded-xl text-center flex flex-col justify-center items-center shadow-xs">
+                            <span className="font-bold text-xs sm:text-sm text-indigo-900 dark:text-indigo-200 leading-tight">{nama}</span>
+                            <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">{jumlah} santri</span>
                           </div>
                         ));
                       })()}
