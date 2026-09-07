@@ -390,17 +390,34 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
 export async function POST(request: Request) {
   const connection = await pool.getConnection();
   try {
+    const body = await request.json();
+    const { tipe, jadwal_id, jadwal_ids, absensi, quick_token } = body;
+
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const payload = verifyToken(token) as any;
-    if (!payload || payload.role === 'wali_murid') {
-      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    let payload: any = null;
+    if (token) {
+      payload = verifyToken(token) as any;
     }
 
-    const body = await request.json();
-    const { tipe, jadwal_id, jadwal_ids, absensi } = body;
+    // Dukung autentikasi aman via quick_token (tanpa perlu menanam cookie login penuh ke browser)
+    if ((!payload || payload.role === 'wali_murid') && quick_token) {
+      const qPayload = verifyToken(quick_token) as any;
+      if (qPayload && qPayload.type === 'quick_absen') {
+        payload = {
+          userId: qPayload.user_id || 0,
+          username: `guru_${qPayload.guru_id}`,
+          role: 'guru',
+          guruId: qPayload.guru_id,
+          nama: qPayload.guru_nama
+        };
+      }
+    }
+
+    if (!payload || payload.role === 'wali_murid') {
+      return NextResponse.json({ error: 'Akses tidak sah atau sesi telah berakhir' }, { status: 401 });
+    }
 
     const targetJadwalIds = Array.isArray(jadwal_ids) && jadwal_ids.length > 0
       ? jadwal_ids

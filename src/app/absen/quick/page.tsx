@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
 // Avatar & Photo helper
@@ -346,6 +346,9 @@ function QuickAbsenContent() {
       .then(res => {
         if (!res.success) {
           setError(res.error || 'Token tidak valid atau sudah kadaluarsa.');
+          try {
+            fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+          } catch (_) {}
         } else {
           setData(res.data);
           const initialMap: { [id: number]: string } = {};
@@ -454,7 +457,8 @@ function QuickAbsenContent() {
       tanggal: data.date,
       absensi: listAbsensi,
       lokasi_lat: currentLoc?.lat,
-      lokasi_lng: currentLoc?.lng
+      lokasi_lng: currentLoc?.lng,
+      quick_token: token
     };
 
     try {
@@ -535,16 +539,28 @@ function QuickAbsenContent() {
   if (error && !data) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center shadow-xl">
-          <AlertCircle className="w-14 h-14 text-rose-400 mx-auto mb-3 animate-bounce" />
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 text-center shadow-2xl">
+          <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-9 h-9 text-rose-400 animate-pulse" />
+          </div>
           <h1 className="text-xl font-bold text-rose-300 mb-2">Tautan Tidak Valid / Expired</h1>
-          <p className="text-slate-300 text-sm mb-6">{error}</p>
+          <p className="text-slate-300 text-sm mb-6 leading-relaxed">{error}</p>
+          
           <button
-            onClick={() => router.push('/dashboard/absen')}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl transition flex items-center justify-center gap-2 text-sm"
+            onClick={async () => {
+              try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+              } catch (_) {}
+              router.push('/login');
+            }}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold py-3 rounded-2xl transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-950/40"
           >
-            <ArrowLeft className="w-4 h-4" /> Masuk ke Dashboard Absensi
+            <LogIn className="w-4 h-4" /> Masuk / Login ke Akun
           </button>
+
+          <p className="text-slate-400 text-xs mt-4 leading-relaxed">
+            Untuk keamanan privasi akun, silakan masuk menggunakan nama pengguna dan kata sandi Anda sendiri.
+          </p>
         </div>
       </div>
     );
@@ -1366,10 +1382,17 @@ function QuickAbsenContent() {
                   ✏️ Edit Absensi
                 </button>
                 <button
-                  onClick={() => router.push('/dashboard/absen')}
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    if (typeof window !== 'undefined' && window.opener) {
+                      window.close();
+                    } else {
+                      router.push('/dashboard/absen');
+                    }
+                  }}
                   className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold rounded-xl text-xs border border-slate-700 transition"
                 >
-                  Kembali ke Jadwal
+                  Selesai
                 </button>
               </div>
             </div>

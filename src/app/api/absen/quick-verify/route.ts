@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { verifyToken, signToken } from '@/lib/auth/jwt';
+import { verifyToken } from '@/lib/auth/jwt';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
@@ -28,23 +27,8 @@ export async function POST(request: Request) {
 
     const { guru_id, guru_nama, user_id, jadwal_id, tipe, date } = payload as any;
 
-    // Set session cookie agar user dianggap terautentikasi sebagai guru ini
-    const authPayload = {
-      userId: user_id || 0,
-      username: `guru_${guru_id}`,
-      role: 'guru',
-      guruId: guru_id,
-      nama: guru_nama
-    };
-
-    const sessionToken = signToken(authPayload);
-    const cookieStore = await cookies();
-    cookieStore.set('token', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/'
-    });
+    // Catatan Keamanan: Jangan tanam cookie session login penuh ke browser penerima tautan
+    // agar tautan yang dibagikan ke guru badal / perwakilan aman dan tidak membocorkan akses dashboard pemilik asli.
 
     // Ambil detail jadwal & murid sesuai tipe
     let jadwalDetail: any = null;
