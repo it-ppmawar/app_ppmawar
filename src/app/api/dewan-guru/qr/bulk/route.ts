@@ -26,6 +26,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'zip'; // 'zip' or 'pdf'
     const homebase = searchParams.get('homebase');
+    const isPreview = searchParams.get('preview') === 'true' || searchParams.get('preview') === '1';
 
     let query = `SELECT id, nip, nama, homebase, qr_token FROM dewan_guru WHERE aktif = 1`;
     const params: any[] = [];
@@ -70,10 +71,11 @@ export async function GET(request: Request) {
       const zipBuffer = zip.toBuffer();
       const zipName = `QR_Dewan_Guru_${homebase && homebase !== 'SEMUA' ? homebase.replace(/[^a-zA-Z0-9_-]/g, '_') : 'YPMA_Lengkap'}.zip`;
 
-      return new NextResponse(new Uint8Array(zipBuffer), {
+      return new NextResponse(new Uint8Array(zipBuffer) as any, {
         headers: {
           'Content-Type': 'application/zip',
           'Content-Disposition': `attachment; filename="${zipName}"`,
+          'Content-Length': String(zipBuffer.length),
           'Cache-Control': 'no-store'
         }
       });
@@ -129,7 +131,7 @@ export async function GET(request: Request) {
       const g = rows[i];
       const qrValue = `${proto}://${host}/absen/guru?token=${encodeURIComponent(g.qr_token)}`;
       const qrDataUrl = await QRCode.toDataURL(qrValue, {
-        width: 300,
+        width: 160,
         margin: 1,
         color: { dark: '#042f2e', light: '#ffffff' }
       });
@@ -179,13 +181,15 @@ export async function GET(request: Request) {
       doc.text('Scan untuk Absensi Kehadiran', x + cardWidth / 2, y + 77.5, { align: 'center' });
     }
 
-    const pdfBuffer = doc.output('arraybuffer');
+    const pdfArrayBuffer = doc.output('arraybuffer');
+    const pdfBuffer = Buffer.from(pdfArrayBuffer);
     const pdfName = `Katalog_QR_Guru_${homebase && homebase !== 'SEMUA' ? homebase.replace(/[^a-zA-Z0-9_-]/g, '_') : 'YPMA'}.pdf`;
 
-    return new NextResponse(new Uint8Array(pdfBuffer), {
+    return new NextResponse(new Uint8Array(pdfBuffer) as any, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${pdfName}"`,
+        'Content-Disposition': isPreview ? `inline; filename="${pdfName}"` : `attachment; filename="${pdfName}"`,
+        'Content-Length': String(pdfBuffer.length),
         'Cache-Control': 'no-store'
       }
     });

@@ -80,6 +80,9 @@ export async function POST(request: Request) {
       case 'jadwal_kegiatan':
         result = await importJadwal(dataRows, headers, 'kegiatan');
         break;
+      case 'jadwal_dewan_guru':
+        result = await importJadwalDewanGuru(dataRows, headers, auth.username || auth.real_name || 'Import');
+        break;
       case 'jurnal_madin':
         result = await importJurnal(dataRows, headers, 'madin', auth.userId);
         break;
@@ -1067,6 +1070,82 @@ async function importKebersihan(rows: any[][], headers: string[]) {
       result.errors.push(`Baris ${i + 2}: ${err.message}`);
     }
   }
+  return result;
+}
+
+// ─── IMPORT JADWAL DEWAN GURU ───────────────────────────────────────────────
+async function importJadwalDewanGuru(rows: any[][], headers: string[], createdBy: string = 'Import') {
+  const result = { inserted: 0, updated: 0, skipped: 0, errors: [] as string[] };
+
+  const colNamaSesi = findCol(headers, ['NAMA SESI', 'SESI', 'KEGIATAN', 'NAMA']);
+  const colHomebase = findCol(headers, ['UNIT / HOMEBASE', 'HOMEBASE', 'UNIT', 'LEMBAGA']);
+  const colHari = findCol(headers, ['HARI']);
+  const colJamMulai = findCol(headers, ['JAM MULAI', 'JAM MULAI (HH:MM)', 'MULAI', 'DARI']);
+  const colJamSelesai = findCol(headers, ['JAM SELESAI', 'JAM SELESAI (HH:MM)', 'SELESAI', 'SAMPAI']);
+  const colToleransi = findCol(headers, ['TOLERANSI', 'TOLERANSI (MENIT)', 'TOLERANSI MENIT']);
+  const colKeterangan = findCol(headers, ['KETERANGAN', 'CATATAN']);
+
+  if (colNamaSesi === -1 || colHari === -1 || colJamMulai === -1) {
+    result.errors.push('Kolom wajib (NAMA SESI, HARI, JAM MULAI) tidak ditemukan dalam file Excel');
+    return result;
+  }
+
+  const validHari = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const namaSesi = String(row[colNamaSesi] || '').trim();
+    const rawHari = String(row[colHari] || '').trim();
+    if (!namaSesi || !rawHari) { result.skipped++; continue; }
+
+    // Normalize hari (e.g. senin -> Senin, minggu -> Ahad)
+    let hari = rawHari.charAt(0).toUpperCase() + rawHari.slice(1).toLowerCase();
+    if (hari.toLowerCase() === 'minggu') hari = 'Ahad';
+    if (!validHari.includes(hari)) {
+      result.errors.push(`Baris ${i + 2}: Nama hari "${rawHari}" tidak valid.`);
+      result.skipped++;
+      continue;
+    }
+
+    const homebase = colHomebase !== -1 ? String(row[colHomebase] || 'SEMUA').trim() : 'SEMUA';
+    let jamMulai = formatTime(row[colJamMulai]);
+    let jamSelesai = colJamSelesai !== -1 ? formatTime(row[colJamSelesai]) : '13:30';
+    if (!jamMulai || jamMulai === '00:00') jamMulai = '07:00';
+    if (!jamSelesai || jamSelesai === '00:00') jamSelesai = '13:30';
+    if (jamMulai.length === 5) jamMulai += ':00';
+    if (jamSelesai.length === 5) jamSelesai += ':00';
+
+    const toleransi = colToleransi !== -1 ? (parseInt(String(row[colToleransi]), 10) || 15) : 15;
+    const keterangan = colKeterangan !== -1 ? String(row[colKeterangan] || '').trim() : '';
+
+    try {
+      const [existing] = await pool.execute<RowDataPacket[]>(
+        `SELECT id FROM jadwal_dewan_guru WHERE nama_sesi = ? AND hari = ? AND homebase = ? LIMIT 1`,
+        [namaSesi, hari, homebase]
+      );
+
+      if (existing.length > 0) {
+        await pool.execute(
+          `UPDATE jadwal_dewan_guru 
+           SET jam_mulai = ?, jam_selesai = ?, toleransi_menit = ?, keterangan = ?, aktif = 1
+           WHERE id = ?`,
+          [jamMulai, jamSelesai, toleransi, keterangan || null, existing[0].id]
+        );
+        result.updated++;
+      } else {
+        await pool.execute(
+          `INSERT INTO jadwal_dewan_guru 
+           (nama_sesi, homebase, hari, jam_mulai, jam_selesai, toleransi_menit, keterangan, aktif, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+          [namaSesi, homebase, hari, jamMulai, jamSelesai, toleransi, keterangan || null, createdBy]
+        );
+        result.inserted++;
+      }
+    } catch (err: any) {
+      result.errors.push(`Baris ${i + 2}: ${err.message}`);
+    }
+  }
+
   return result;
 }
 

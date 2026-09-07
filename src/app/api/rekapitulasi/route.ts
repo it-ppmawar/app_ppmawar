@@ -297,6 +297,35 @@ export async function GET(request: Request) {
         `;
         params = [...joinDateParams];
       }
+    } else if (tipe === 'dewan_guru') {
+      const isPengasuh = payload.role === 'pengasuh' || payload.is_pengasuh || payload.isPengasuh;
+      if (payload.role !== 'admin' && payload.role !== 'staff' && !isPengasuh) {
+        return NextResponse.json({ error: 'Akses ditolak. Rekapitulasi Presensi Dewan Guru hanya khusus Admin, Staf, dan Pengasuh.' }, { status: 403, headers: noCacheHeaders });
+      }
+
+      const { cond: joinDateCond, params: joinDateParams } = makeDateCond('a.tanggal');
+
+      let whereCond = 'WHERE dg.aktif = 1';
+      let whereParams: any[] = [];
+
+      if (target_id && target_id !== 'SEMUA' && target_id !== 'all') {
+        whereCond += ' AND dg.homebase = ?';
+        whereParams.push(target_id);
+      }
+
+      query = `
+        SELECT dg.id, dg.nip as identifier, dg.nama, dg.foto, dg.homebase, dg.homebase as alamat, dg.no_hp, dg.no_hp as nama_wali,
+          SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha
+        FROM dewan_guru dg
+        LEFT JOIN absensi_dewan_guru a ON dg.id = a.guru_id AND ${joinDateCond}
+        ${whereCond}
+        GROUP BY dg.id, dg.nip, dg.nama, dg.foto, dg.homebase, dg.no_hp
+        ORDER BY dg.homebase ASC, dg.nama ASC
+      `;
+      params = [...joinDateParams, ...whereParams];
     } else {
       return NextResponse.json({ error: 'Tipe rekap tidak valid' }, { status: 400, headers: noCacheHeaders });
     }

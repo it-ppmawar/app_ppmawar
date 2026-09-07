@@ -103,6 +103,7 @@ function FormattedDateInput({
 
 export default function RekapitulasiPage() {
   const [role, setRole] = useState('guru');
+  const [isPengasuh, setIsPengasuh] = useState(false);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
@@ -159,6 +160,7 @@ export default function RekapitulasiPage() {
       .then(d => {
         if (d.success && d.user) {
           setRole(d.user.role);
+          setIsPengasuh(d.user.role === 'pengasuh' || !!d.user.is_pengasuh);
           if (d.user.role === 'wali_murid' || d.user.role === 'wali_alumni') {
             // Auto fetch for wali murid / wali alumni
             fetchRekap(true);
@@ -172,6 +174,28 @@ export default function RekapitulasiPage() {
   }, []);
 
   const loadOptions = async (tipe: string) => {
+    // Special handling for dewan_guru: fixed list of homebases
+    if (tipe === 'dewan_guru') {
+      const homebases = [
+        { id: 'SEMUA', nama: 'SEMUA UNIT / HOMEBASE' },
+        { id: 'TKM NU MAWAR', nama: 'TKM NU MAWAR' },
+        { id: 'MI BANIN', nama: 'MI BANIN' },
+        { id: 'MI BANAT', nama: 'MI BANAT' },
+        { id: 'SMP NU', nama: 'SMP NU' },
+        { id: 'MTS PUTRA-PUTRI', nama: 'MTS PUTRA-PUTRI' },
+        { id: 'MA MAWAR', nama: 'MA MAWAR' },
+        { id: 'SMK NU', nama: 'SMK NU' },
+        { id: 'MADIN', nama: 'MADIN' },
+        { id: 'MQ', nama: 'MQ' },
+        { id: 'KOPMA', nama: 'KOPMA' },
+        { id: 'KLINIK', nama: 'KLINIK' },
+        { id: 'KBIHU MAWAR', nama: 'KBIHU MAWAR' },
+      ];
+      setOptions(homebases);
+      setFilter(prev => ({ ...prev, target_id: 'SEMUA' }));
+      return;
+    }
+
     setLoadingOptions(true);
     try {
       const res = await fetch(`/api/kelas?type=${tipe}&aggregate=true`);
@@ -221,6 +245,9 @@ export default function RekapitulasiPage() {
   const handleTipeChange = (e: any) => {
     const t = e.target.value;
     if (t === 'guru' && role !== 'admin' && role !== 'staff') {
+      return;
+    }
+    if (t === 'dewan_guru' && role !== 'admin' && role !== 'staff' && !isPengasuh) {
       return;
     }
     setFilter(prev => ({ ...prev, tipe: t }));
@@ -289,7 +316,7 @@ export default function RekapitulasiPage() {
           tanggal_dari: filter.tanggal_dari,
           tanggal_sampai: filter.tanggal_sampai,
         });
-        if (filter.tipe === 'guru') {
+        if (filter.tipe === 'guru' || filter.tipe === 'dewan_guru') {
           p.set('guru_id', item.id.toString());
         } else {
           p.set('murid_id', item.id.toString());
@@ -301,7 +328,7 @@ export default function RekapitulasiPage() {
           bulan: filter.bulan,
           tahun: filter.tahun,
         });
-        if (filter.tipe === 'guru') {
+        if (filter.tipe === 'guru' || filter.tipe === 'dewan_guru') {
           p.set('guru_id', item.id.toString());
         } else {
           p.set('murid_id', item.id.toString());
@@ -399,37 +426,57 @@ export default function RekapitulasiPage() {
     else if (filter.tipe === 'quran') tipeText = "Absensi Al-Qur'an";
     else if (filter.tipe === 'kegiatan') tipeText = 'Absensi Kegiatan Asrama';
     else if (filter.tipe === 'guru') tipeText = 'Absensi Pengajar / Guru';
+    else if (filter.tipe === 'dewan_guru') tipeText = 'Presensi Dewan Guru YPMA';
     
-    const rawTargetName = options.find(o => o.id.toString() === filter.target_id)?.nama || (filter.target_id === 'all' ? 'Semua Guru' : '-');
+    const rawTargetName = options.find(o => o.id.toString() === filter.target_id)?.nama || (filter.target_id === 'all' ? 'Semua Guru' : filter.target_id === 'SEMUA' ? 'Semua Unit' : '-');
     const targetName = rawTargetName.replace(/[\u{1F300}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA70}-\u{1FAFF}\u{FE00}-\u{FE0F}]/gu, '').trim();
     
-    const title = 'REKAPITULASI KEHADIRAN';
-    const subtitle = `Tipe: ${tipeText}\n${filter.tipe === 'guru' ? 'Guru' : 'Kelas/Kamar'}: ${targetName}`;
+    const title = filter.tipe === 'dewan_guru' ? 'REKAPITULASI PRESENSI DEWAN GURU YPMA' : 'REKAPITULASI KEHADIRAN';
+    const subtitle = filter.tipe === 'dewan_guru'
+      ? `Unit / Homebase: ${targetName}`
+      : `Tipe: ${tipeText}\n${filter.tipe === 'guru' ? 'Guru' : 'Kelas/Kamar'}: ${targetName}`;
     const period = getPeriodText();
     const safePeriod = modeRentang
       ? `${filter.tanggal_dari}_sd_${filter.tanggal_sampai}`
       : `${months[parseInt(filter.bulan) - 1]}_${filter.tahun}`;
     const filename = `Rekap_${tipeText.replace(/[^a-zA-Z0-9]/g, '')}_${safePeriod}`;
 
-    const tableColumn = ["No", "Nama Lengkap", "Identifier", "Wali / No HP", "Alamat", "Hadir", "Izin", "Sakit", "Alpha", "% Kehadiran"];
+    const tableColumn = filter.tipe === 'dewan_guru'
+      ? ["No", "Nama Lengkap", "NIP", "Unit / Homebase", "No HP / WA", "Hadir", "Izin", "Sakit", "Alpha", "% Kehadiran"]
+      : ["No", "Nama Lengkap", "Identifier", "Wali / No HP", "Alamat", "Hadir", "Izin", "Sakit", "Alpha", "% Kehadiran"];
     const tableRows: any[] = [];
 
     exportData.forEach((item, idx) => {
       const total = Number(item.hadir) + Number(item.izin) + Number(item.sakit) + Number(item.alpha);
       const percent = total === 0 ? "0%" : `${Math.round((Number(item.hadir) / total) * 100)}%`;
       
-      tableRows.push([
-        idx + 1,
-        item.nama,
-        item.identifier || '-',
-        item.nama_wali || '-',
-        item.alamat || '-',
-        item.hadir || 0,
-        item.izin || 0,
-        item.sakit || 0,
-        item.alpha || 0,
-        percent
-      ]);
+      if (filter.tipe === 'dewan_guru') {
+        tableRows.push([
+          idx + 1,
+          item.nama,
+          item.identifier || '-',
+          item.homebase || item.alamat || '-',
+          item.nama_wali || item.no_hp || '-',
+          item.hadir || 0,
+          item.izin || 0,
+          item.sakit || 0,
+          item.alpha || 0,
+          percent
+        ]);
+      } else {
+        tableRows.push([
+          idx + 1,
+          item.nama,
+          item.identifier || '-',
+          item.nama_wali || '-',
+          item.alamat || '-',
+          item.hadir || 0,
+          item.izin || 0,
+          item.sakit || 0,
+          item.alpha || 0,
+          percent
+        ]);
+      }
     });
 
     if (format === 'excel') {
@@ -484,8 +531,8 @@ export default function RekapitulasiPage() {
     });
 
     const item = detailModal.item;
-    const isGuru = filter.tipe === 'guru';
-    const tipeLabel = filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan Asrama' : 'Guru / Pengajar';
+    const isGuru = filter.tipe === 'guru' || filter.tipe === 'dewan_guru';
+    const tipeLabel = filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan Asrama' : filter.tipe === 'dewan_guru' ? 'Dewan Guru YPMA' : 'Guru / Pengajar';
 
     const title = 'RINCIAN KEHADIRAN INDIVIDUAL';
     const subtitle = `Nama: ${item.nama}\n${isGuru ? 'NIP' : 'NIS'}: ${item.identifier || '-'}\nKategori: ${tipeLabel}${detailModal.activeStatus !== 'semua' ? `\nFilter Status: ${detailModal.activeStatus}` : ''}`;
@@ -496,13 +543,15 @@ export default function RekapitulasiPage() {
       : `${months[parseInt(filter.bulan) - 1]}_${filter.tahun}`;
     const filename = `Rincian_Absensi_${safeNama}_${safePeriod}`;
 
-    const columns = ['No', 'Hari, Tanggal', 'Waktu', 'Jadwal / Mapel / Kegiatan', 'Kelas / Kamar', 'Status', 'Keterangan', 'Diinput Oleh'];
+    const columns = filter.tipe === 'dewan_guru'
+      ? ['No', 'Hari, Tanggal', 'Jam Masuk', 'Sesi / Kegiatan', 'Unit / Homebase', 'Status', 'Keterangan', 'Metode / Pencatat']
+      : ['No', 'Hari, Tanggal', 'Waktu', 'Jadwal / Mapel / Kegiatan', 'Kelas / Kamar', 'Status', 'Keterangan', 'Diinput Oleh'];
     const rows = list.map((r: any, idx: number) => [
       idx + 1,
       `${r.hari}, ${r.tanggal}`,
-      r.jam_mulai ? `${r.jam_mulai}${r.jam_selesai ? ` - ${r.jam_selesai}` : ''}` : '-',
-      r.mata_pelajaran || '-',
-      r.kelas_nama || '-',
+      r.jam_mulai ? `${r.jam_mulai}${r.jam_selesai ? ` - ${r.jam_selesai}` : ''}` : (r.jam_absen || '-'),
+      r.mata_pelajaran || r.nama_sesi || '-',
+      filter.tipe === 'dewan_guru' ? (r.kelas_nama || r.homebase || '-') : (r.kelas_nama || '-'),
       r.status || '-',
       r.keterangan || '-',
       r.penginput || '-',
@@ -623,13 +672,16 @@ export default function RekapitulasiPage() {
               {(role === 'admin' || role === 'staff') && (
                 <option value="guru">Absensi Pengajar / Guru</option>
               )}
+              {(role === 'admin' || role === 'staff' || isPengasuh) && (
+                <option value="dewan_guru">Presensi Dewan Guru YPMA</option>
+              )}
             </select>
           </div>
 
-          {/* Pilih Kelas / Guru */}
+          {/* Pilih Kelas / Guru / Homebase */}
           <div className="flex-1">
             <label className="block text-xs font-bold text-gray-500 mb-1">
-              {filter.tipe === 'guru' ? 'Pilih Guru' : 'Pilih Kelas / Kamar'}
+              {filter.tipe === 'guru' ? 'Pilih Guru' : filter.tipe === 'dewan_guru' ? 'Pilih Unit / Homebase' : 'Pilih Kelas / Kamar'}
             </label>
             <select 
               value={filter.target_id} 
@@ -640,7 +692,7 @@ export default function RekapitulasiPage() {
               {loadingOptions ? (
                 <option value="">Memuat...</option>
               ) : options.length === 0 ? (
-                <option value="">{filter.tipe === 'guru' ? 'Tidak ada data guru' : 'Tidak ada akses / kelas'}</option>
+                <option value="">{filter.tipe === 'guru' ? 'Tidak ada data guru' : filter.tipe === 'dewan_guru' ? 'Tidak ada unit' : 'Tidak ada akses / kelas'}</option>
               ) : (
                 <>
                   {filter.tipe === 'guru' && <option value="all">Semua Guru</option>}
@@ -655,13 +707,13 @@ export default function RekapitulasiPage() {
           {/* Pencarian Manual */}
           <div className="flex-1">
             <label className="block text-xs font-bold text-gray-500 mb-1">
-              Cari Nama / {filter.tipe === 'guru' ? 'NIP' : 'NIS'}
+              Cari Nama / {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'NIP' : 'NIS'}
             </label>
             <div className="relative">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Ketik untuk mencari..."
+                placeholder={filter.tipe === 'dewan_guru' ? 'Cari Nama / NIP / Unit...' : 'Ketik untuk mencari...'}
                 value={searchNama}
                 onChange={e => setSearchNama(e.target.value)}
                 className="w-full pl-9 pr-8 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all placeholder:font-normal placeholder:text-gray-400"
@@ -813,7 +865,7 @@ export default function RekapitulasiPage() {
                     title="Klik untuk mengurutkan berdasarkan wali / no hp"
                   >
                     <div className="flex items-center gap-1.5">
-                      <span>{filter.tipe === 'guru' ? 'NO. HP' : 'WALI'}</span>
+                      <span>{filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'NO. HP' : 'WALI'}</span>
                       {sortField === 'nama_wali' ? (
                         sortOrder === 'asc' ? <ArrowUp size={14} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={14} className="text-purple-600 dark:text-purple-400" />
                       ) : (
@@ -827,7 +879,7 @@ export default function RekapitulasiPage() {
                     title="Klik untuk mengurutkan berdasarkan alamat"
                   >
                     <div className="flex items-center gap-1.5">
-                      <span>ALAMAT</span>
+                      <span>{filter.tipe === 'dewan_guru' ? 'UNIT / HOMEBASE' : 'ALAMAT'}</span>
                       {sortField === 'alamat' ? (
                         sortOrder === 'asc' ? <ArrowUp size={14} className="text-purple-600 dark:text-purple-400" /> : <ArrowDown size={14} className="text-purple-600 dark:text-purple-400" />
                       ) : (
@@ -944,7 +996,7 @@ export default function RekapitulasiPage() {
                           >
                             {item.nama}
                           </div>
-                          <div className="text-[11px] text-gray-400 font-mono mt-0.5">{filter.tipe === 'guru' ? 'NIP' : 'NIS'}: {item.identifier || '-'}</div>
+                          <div className="text-[11px] text-gray-400 font-mono mt-0.5">{filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'NIP' : 'NIS'}: {item.identifier || '-'}</div>
                           {totalPertemuan > 0 && (
                             <div className="mt-2 w-full max-w-[150px] bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 flex overflow-hidden">
                               <div className="bg-green-500 h-full" style={{ width: `${presentase}%` }} title={`Kehadiran ${presentase}%`}></div>
@@ -953,15 +1005,15 @@ export default function RekapitulasiPage() {
                           )}
                         </td>
                         <td className="px-5 py-4">
-                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-1.5 max-w-[180px] truncate" title={item.nama_wali || '-'}>
+                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-1.5 max-w-[180px] truncate" title={filter.tipe === 'dewan_guru' ? (item.nama_wali || item.no_hp || '-') : (item.nama_wali || '-')}>
                             <User size={13} className="text-purple-500 shrink-0" />
-                            <span className="truncate">{item.nama_wali || '-'}</span>
+                            <span className="truncate">{filter.tipe === 'dewan_guru' ? (item.nama_wali || item.no_hp || '-') : (item.nama_wali || '-')}</span>
                           </div>
                         </td>
                         <td className="px-5 py-4">
-                          <div className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1.5 max-w-[200px] truncate" title={item.alamat || '-'}>
+                          <div className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1.5 max-w-[200px] truncate" title={filter.tipe === 'dewan_guru' ? (item.homebase || item.alamat || '-') : (item.alamat || '-')}>
                             <MapPin size={13} className="text-blue-500 shrink-0" />
-                            <span className="truncate">{item.alamat || '-'}</span>
+                            <span className="truncate">{filter.tipe === 'dewan_guru' ? (item.homebase || item.alamat || '-') : (item.alamat || '-')}</span>
                           </div>
                         </td>
                         <td className="px-5 py-4 text-center">
@@ -1113,11 +1165,11 @@ export default function RekapitulasiPage() {
                       {detailModal.item.nama}
                     </h3>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 shrink-0 mt-0.5">
-                      {filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan' : 'Guru'}
+                      {filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan' : filter.tipe === 'dewan_guru' ? 'Dewan Guru' : 'Guru'}
                     </span>
                   </div>
                   <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    <span>{filter.tipe === 'guru' ? 'NIP' : 'NIS'}: <strong className="font-mono text-gray-700 dark:text-gray-300">{detailModal.item.identifier || '-'}</strong></span>
+                    <span>{filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'NIP' : 'NIS'}: <strong className="font-mono text-gray-700 dark:text-gray-300">{detailModal.item.identifier || '-'}</strong></span>
                   </p>
                 </div>
 

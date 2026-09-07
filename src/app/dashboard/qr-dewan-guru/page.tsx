@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import {
   QrCode, Download, Send, Search, Building2, RefreshCw, FileText,
   Archive, CheckCircle2, Phone, X, ExternalLink, Sparkles, AlertCircle, Eye,
-  ChevronLeft, ChevronRight, ArrowLeft
+  ChevronLeft, ChevronRight, ArrowLeft, ZoomIn
 } from 'lucide-react';
 import Link from 'next/link';
+import { exportToExcel } from '@/lib/exportUtils';
 
 const HOMEBASES = [
   'SEMUA',
@@ -39,6 +40,7 @@ export default function QrDewanGuruPage() {
 
   // Preview Modal
   const [previewGuru, setPreviewGuru] = useState<any>(null);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
 
   // Send WhatsApp Modal
   const [waModalGuru, setWaModalGuru] = useState<any>(null);
@@ -183,6 +185,29 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handleExportExcel = () => {
+    const list = filteredTeachers;
+    if (list.length === 0) {
+      alert('Tidak ada data guru untuk diexport.');
+      return;
+    }
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.ppmawar.or.id';
+    const title = 'DATA QR CODE & LINK PRESENSI DEWAN GURU YPMA';
+    const subtitle = `Unit / Homebase: ${selectedHomebase} | Total Guru: ${list.length}`;
+    const filename = `Data_QR_Dewan_Guru_${selectedHomebase.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+    const columns = ['No', 'NIP', 'Nama Lengkap', 'Jenis Kelamin', 'Unit / Homebase', 'No. WhatsApp', 'Link Presensi Digital'];
+    const rows = list.map((g, idx) => [
+      idx + 1,
+      g.nip || '-',
+      g.nama || '-',
+      g.jenis_kelamin || '-',
+      g.homebase || '-',
+      g.no_hp || '-',
+      `${origin}/absen/guru?token=${g.qr_token}`
+    ]);
+    exportToExcel({ title, subtitle, columns, rows, filename });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-28">
       {/* Top Bar */}
@@ -203,8 +228,8 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
             </div>
           </div>
 
-          {/* Baris 2: Tombol Kembali + 3 Tombol Aksi Seukuran Presisi */}
-          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+          {/* Baris 2: Tombol Kembali + Tombol Aksi Lengkap */}
+          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
             {/* Tombol Kembali */}
             <Link
               href="/dashboard/absen-guru"
@@ -215,6 +240,37 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
               <span className="hidden sm:inline">Kembali</span>
             </Link>
 
+            {/* Preview PDF */}
+            <button
+              onClick={() => setShowPdfPreview(true)}
+              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              title="Preview Dokumen PDF Katalog Kartu QR"
+            >
+              <FileText size={13} className="shrink-0" />
+              <span>Preview PDF</span>
+            </button>
+
+            {/* Unduh Bulk PDF */}
+            <a
+              href={`/api/dewan-guru/qr/bulk?type=pdf&homebase=${encodeURIComponent(selectedHomebase)}`}
+              download
+              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              title="Unduh Dokumen PDF Katalog Kartu A4"
+            >
+              <Download size={13} className="shrink-0" />
+              <span>Unduh PDF</span>
+            </a>
+
+            {/* Unduh Excel */}
+            <button
+              onClick={handleExportExcel}
+              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              title="Unduh Daftar QR \u0026 Link Presensi ke File Excel"
+            >
+              <Download size={13} className="shrink-0" />
+              <span>Unduh Excel</span>
+            </button>
+
             {/* Download Bulk ZIP */}
             <a
               href={`/api/dewan-guru/qr/bulk?type=zip&homebase=${encodeURIComponent(selectedHomebase)}`}
@@ -224,18 +280,6 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
             >
               <Archive size={13} className="shrink-0" />
               <span>Unduh ZIP</span>
-            </a>
-
-            {/* Download Bulk PDF */}
-            <a
-              href={`/api/dewan-guru/qr/bulk?type=pdf&homebase=${encodeURIComponent(selectedHomebase)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-              title="Cetak Dokumen Katalog Kartu A4"
-            >
-              <FileText size={13} className="shrink-0" />
-              <span>Cetak PDF</span>
             </a>
 
             {/* Tombol Sinkronisasi Online */}
@@ -370,7 +414,7 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
                         />
                         <div className="absolute inset-0 bg-teal-900/0 hover:bg-teal-900/30 rounded-2xl flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
                           <span className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 p-1.5 rounded-xl shadow-md">
-                            <Eye size={16} />
+                            <ZoomIn size={16} />
                           </span>
                         </div>
                       </div>
@@ -575,6 +619,52 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
                 <Send size={15} />
                 <span>Buka WhatsApp</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Preview Modal */}
+      {showPdfPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[88vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">
+                    Preview Katalog PDF Kartu QR
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Unit: {selectedHomebase} | Total {filteredTeachers.length} Dewan Guru
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/api/dewan-guru/qr/bulk?type=pdf&homebase=${encodeURIComponent(selectedHomebase)}`}
+                  download
+                  className="py-2 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download size={14} />
+                  <span>Unduh PDF</span>
+                </a>
+                <button
+                  onClick={() => setShowPdfPreview(false)}
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden">
+              <iframe
+                src={`/api/dewan-guru/qr/bulk?type=pdf&preview=true&homebase=${encodeURIComponent(selectedHomebase)}`}
+                className="w-full h-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white"
+                title="Preview Katalog QR PDF"
+              />
             </div>
           </div>
         </div>

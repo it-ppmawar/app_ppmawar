@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 
-export const downloadTemplate = (type: 'guru' | 'alumni' | 'jadwal_madin' | 'jadwal_quran' | 'jadwal_kegiatan' | 'jurnal_madin' | 'jurnal_quran' | 'jurnal_kamar' | 'jadwal_alumni' | 'ketertiban' | 'kelas' | 'kamar' | 'users' | 'kurikulum' | 'inventaris' | 'kebersihan') => {
+export const downloadTemplate = (type: 'guru' | 'alumni' | 'jadwal_madin' | 'jadwal_quran' | 'jadwal_kegiatan' | 'jadwal_dewan_guru' | 'jurnal_madin' | 'jurnal_quran' | 'jurnal_kamar' | 'jadwal_alumni' | 'ketertiban' | 'kelas' | 'kamar' | 'users' | 'kurikulum' | 'inventaris' | 'kebersihan') => {
   let headers: string[] = [];
   let exampleRow: string[] = [];
   let filename = '';
@@ -35,6 +35,11 @@ export const downloadTemplate = (type: 'guru' | 'alumni' | 'jadwal_madin' | 'jad
       headers = ['HARI', 'JAM MULAI', 'JAM SELESAI', 'KEGIATAN', 'TEMPAT', 'GURU'];
       exampleRow = ['Ahad', '05:00', '06:00', 'Roan Bersama', 'Kamar A1', 'Ahmad Fauzi'];
       filename = 'Templat_Impor_Jadwal_Kegiatan.xlsx';
+      break;
+    case 'jadwal_dewan_guru':
+      headers = ['NAMA SESI', 'UNIT / HOMEBASE', 'HARI', 'JAM MULAI (HH:MM)', 'JAM SELESAI (HH:MM)', 'TOLERANSI (MENIT)', 'KETERANGAN'];
+      exampleRow = ['KBM & Kehadiran Pagi', 'SEMUA', 'Senin', '07:00', '13:30', '15', 'Jam Kerja & Mengajar Harian'];
+      filename = 'Templat_Impor_Jadwal_Dewan_Guru.xlsx';
       break;
     case 'jurnal_madin':
       headers = ['TANGGAL (YYYY-MM-DD)', 'KELAS MADIN', 'MATERI', 'CATATAN', 'KENDALA'];

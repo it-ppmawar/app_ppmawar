@@ -6,9 +6,10 @@ import {
   Users, Clock, RefreshCw, BookOpen, ClipboardList,
   WifiOff, UserCheck, UserX, Search, X, Home, Building2,
   QrCode, CalendarDays, Camera, CheckCircle2, AlertCircle,
-  Sparkles, SlidersHorizontal, Check, UserPlus, Phone
+  Sparkles, SlidersHorizontal, Check, UserPlus, Phone, FileText, Download
 } from 'lucide-react';
 import Link from 'next/link';
+import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
 
 // ─── Constants Dewan Guru ───────────────────────────────────────────────────
 const HOMEBASES = [
@@ -134,6 +135,10 @@ export default function AbsenGuruPage() {
   const [showScanner, setShowScanner] = useState(false);
   const [scanResultMsg, setScanResultMsg] = useState('');
   const html5QrCodeRef = useRef<any>(null);
+
+  // PDF Preview Modal
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState('');
 
   // Fetch Dewan Guru Attendance
   const fetchDewanData = useCallback(async () => {
@@ -272,6 +277,40 @@ export default function AbsenGuruPage() {
       alert('Koneksi gagal.');
     } finally {
       setBatchLoading(false);
+    }
+  };
+
+  const handleExportDewanGuru = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
+    const list = filteredDewanList;
+    if (list.length === 0) {
+      alert('Tidak ada data dewan guru untuk diexport.');
+      return;
+    }
+
+    const title = 'PRESENSI KEHADIRAN DEWAN GURU YPMA';
+    const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${dateHeaderStr || tanggal} | Unit: ${dewanHomebase}\nTotal Guru: ${dewanStats.total} | Hadir: ${dewanStats.hadir} | Izin: ${dewanStats.izin} | Sakit: ${dewanStats.sakit} | Alpha: ${dewanStats.alpha} | Belum Absen: ${dewanStats.belum}`;
+    const filename = `Presensi_Dewan_Guru_${dewanHomebase.replace(/[^a-zA-Z0-9_-]/g, '_')}_${tanggal}`;
+    const columns = ['No', 'NIP', 'Nama Guru', 'Unit / Homebase', 'No. HP', 'Status', 'Jam Masuk', 'Metode', 'Keterangan'];
+    const rows = list.map((g, idx) => [
+      idx + 1,
+      g.nip || '-',
+      g.nama || '-',
+      g.homebase || '-',
+      g.no_hp || '-',
+      g.status || 'Belum Absen',
+      g.jam_absen ? String(g.jam_absen).slice(0, 5) : '-',
+      g.metode || '-',
+      g.keterangan || '-'
+    ]);
+
+    if (format === 'excel') {
+      exportToExcel({ title, subtitle, columns, rows, filename });
+    } else {
+      const result = exportToPDF({ title, subtitle, columns, rows, filename, previewOnly });
+      if (previewOnly && result) {
+        setPdfUrl(result);
+        setShowPdfPreview(true);
+      }
     }
   };
 
@@ -561,7 +600,7 @@ export default function AbsenGuruPage() {
             }`}
           >
             <Users size={15} />
-            <span>Dewan Guru YPMA (441 Guru)</span>
+            <span>Presensi Dewan Guru YPMA ({dewanData.length || 441} Guru)</span>
           </button>
 
           <button
@@ -712,6 +751,34 @@ export default function AbsenGuruPage() {
                     <X size={14} />
                   </button>
                 )}
+              </div>
+
+              {/* Ekspor Dokumen Laporan Presensi */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  onClick={() => handleExportDewanGuru('pdf', true)}
+                  className="flex-1 sm:flex-initial py-2 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 dark:text-purple-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                  title="Preview PDF Presensi Dewan Guru"
+                >
+                  <FileText size={14} />
+                  <span>Preview PDF</span>
+                </button>
+                <button
+                  onClick={() => handleExportDewanGuru('pdf', false)}
+                  className="flex-1 sm:flex-initial py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                  title="Unduh File PDF Presensi Dewan Guru"
+                >
+                  <Download size={14} />
+                  <span>Unduh PDF</span>
+                </button>
+                <button
+                  onClick={() => handleExportDewanGuru('excel', false)}
+                  className="flex-1 sm:flex-initial py-2 px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                  title="Unduh File Excel Presensi Dewan Guru"
+                >
+                  <Download size={14} />
+                  <span>Unduh Excel</span>
+                </button>
               </div>
 
               {/* Set Massal 4 Tombol */}
@@ -1150,6 +1217,51 @@ export default function AbsenGuruPage() {
             <p className="text-[10px] text-slate-400 text-center">
               Arahkan kamera ke Kartu QR Dewan Guru untuk mencatat absensi otomatis.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Preview PDF Presensi Dewan Guru ────────────────────────────── */}
+      {showPdfPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[88vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">
+                    Preview Dokumen Presensi Dewan Guru YPMA
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Tanggal: {dateHeaderStr || tanggal} | Unit: {dewanHomebase}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleExportDewanGuru('pdf', false)}
+                  className="py-2 px-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download size={14} />
+                  <span>Unduh PDF</span>
+                </button>
+                <button
+                  onClick={() => setShowPdfPreview(false)}
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden">
+              <iframe
+                src={pdfUrl}
+                className="w-full h-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white"
+                title="Preview PDF Presensi Dewan Guru"
+              />
+            </div>
           </div>
         </div>
       )}

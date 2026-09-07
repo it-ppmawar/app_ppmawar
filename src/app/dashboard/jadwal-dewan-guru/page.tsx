@@ -4,9 +4,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CalendarDays, Plus, Clock, Building2, Trash2, Edit3, CheckCircle,
-  AlertCircle, RefreshCw, X, ShieldAlert, ArrowLeft, Filter
+  AlertCircle, RefreshCw, X, ShieldAlert, ArrowLeft, Filter, FileText, Download, Upload
 } from 'lucide-react';
 import Link from 'next/link';
+import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
+import { downloadTemplate } from '@/lib/downloadTemplate';
 
 const HOMEBASES = [
   'SEMUA',
@@ -49,6 +51,15 @@ export default function JadwalDewanGuruPage() {
     keterangan: ''
   });
   const [saving, setSaving] = useState(false);
+
+  // Export & Preview States
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState('');
+
+  // Import Modal States
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
 
   // Check auth
   useEffect(() => {
@@ -179,6 +190,67 @@ export default function JadwalDewanGuruPage() {
     }
   };
 
+  const handleExportJadwal = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
+    if (schedules.length === 0) {
+      alert('Tidak ada data jadwal untuk diexport.');
+      return;
+    }
+
+    const title = 'JADWAL PRESENSI DEWAN GURU YPMA';
+    const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nHari: ${activeHari} | Unit: ${activeHomebase} | Total: ${schedules.length} Sesi Jadwal`;
+    const filename = `Jadwal_Dewan_Guru_${activeHomebase.replace(/[^a-zA-Z0-9_-]/g, '_')}_${activeHari}`;
+    const columns = ['NO', 'HARI', 'NAMA SESI / KEGIATAN', 'UNIT / HOMEBASE', 'JAM KERJA / PRESENSI', 'TOLERANSI', 'KETERANGAN'];
+    const rows = schedules.map((s, idx) => [
+      idx + 1,
+      s.hari,
+      s.nama_sesi,
+      s.homebase || 'SEMUA',
+      `${(s.jam_mulai || '').slice(0, 5)} - ${(s.jam_selesai || '').slice(0, 5)}`,
+      `${s.toleransi_menit || 15} Menit`,
+      s.keterangan || '-'
+    ]);
+
+    if (format === 'excel') {
+      exportToExcel({ title, subtitle, columns, rows, filename });
+    } else {
+      const result = exportToPDF({ title, subtitle, columns, rows, filename, previewOnly });
+      if (previewOnly && result) {
+        setPdfUrl(result);
+        setShowPdfPreview(true);
+      }
+    }
+  };
+
+  const handleImportExcel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) return;
+
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('type', 'jadwal_dewan_guru');
+
+      const res = await fetch('/api/import', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || 'Berhasil mengimpor jadwal dewan guru');
+        setIsImportModalOpen(false);
+        setImportFile(null);
+        fetchSchedules();
+      } else {
+        alert(data.error || 'Gagal mengimpor jadwal dewan guru');
+      }
+    } catch {
+      alert('Terjadi kesalahan koneksi saat mengimpor.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
       {/* Header Bar */}
@@ -199,37 +271,87 @@ export default function JadwalDewanGuruPage() {
             </div>
           </div>
 
-          {/* Baris 2: 3 Tombol 1 Baris Seukuran Presisi Memenuhi Ruang Kanan Kiri */}
-          <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:flex sm:items-center">
-            {/* Tombol 1: Kembali */}
+          {/* Baris 2: Tombol Aksi Lengkap (Kembali, Preview, PDF, Excel, Templat, Impor, Muat Ulang, + Jadwal) */}
+          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+            {/* Tombol Kembali */}
             <Link
               href="/dashboard/absen-guru"
-              className="w-full sm:w-auto py-2 px-2 sm:px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              className="py-2 px-2.5 sm:px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
               title="Kembali ke Presensi Guru"
             >
               <ArrowLeft size={15} className="shrink-0" />
               <span>Kembali</span>
             </Link>
 
-            {/* Tombol 2: Muat Ulang */}
+            {/* Preview PDF */}
+            <button
+              onClick={() => handleExportJadwal('pdf', true)}
+              className="py-2 px-2.5 sm:px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 dark:text-purple-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              title="Preview Jadwal Dewan Guru PDF"
+            >
+              <FileText size={14} className="shrink-0" />
+              <span>Preview</span>
+            </button>
+
+            {/* Unduh PDF */}
+            <button
+              onClick={() => handleExportJadwal('pdf', false)}
+              className="py-2 px-2.5 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              title="Unduh File PDF Jadwal Dewan Guru"
+            >
+              <Download size={14} className="shrink-0" />
+              <span>PDF</span>
+            </button>
+
+            {/* Unduh Excel */}
+            <button
+              onClick={() => handleExportJadwal('excel', false)}
+              className="py-2 px-2.5 sm:px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              title="Unduh File Excel Jadwal Dewan Guru"
+            >
+              <Download size={14} className="shrink-0" />
+              <span>Excel</span>
+            </button>
+
+            {/* Unduh Templat */}
+            <button
+              onClick={() => downloadTemplate('jadwal_dewan_guru')}
+              className="py-2 px-2.5 sm:px-3 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              title="Unduh Format Templat Impor Excel"
+            >
+              <Download size={14} className="shrink-0" />
+              <span>Templat</span>
+            </button>
+
+            {/* Unggah / Impor Excel */}
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="py-2 px-2.5 sm:px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              title="Unggah / Impor Jadwal dari File Excel"
+            >
+              <Upload size={14} className="shrink-0" />
+              <span>Impor</span>
+            </button>
+
+            {/* Muat Ulang */}
             <button
               onClick={fetchSchedules}
               disabled={loading}
-              className="w-full sm:w-auto py-2 px-2 sm:px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              className="py-2 px-2.5 sm:px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
               title="Segarkan data jadwal"
             >
               <RefreshCw size={13} className={`shrink-0 ${loading ? 'animate-spin' : ''}`} />
               <span>Muat Ulang</span>
             </button>
 
-            {/* Tombol 3: Tambah Jadwal */}
+            {/* Tambah Jadwal */}
             <button
               onClick={openAddModal}
-              className="w-full sm:w-auto py-2 px-2 sm:px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              className="py-2 px-3 sm:px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer text-center"
               title="Tambah Jadwal Baru"
             >
               <Plus size={15} className="shrink-0" />
-              <span>Jadwal</span>
+              <span>+ Jadwal</span>
             </button>
           </div>
         </div>
@@ -488,6 +610,110 @@ export default function JadwalDewanGuruPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Import Excel ────────────────────────────────────────────── */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 p-5 text-white flex justify-between items-center">
+              <h2 className="text-base font-extrabold flex items-center gap-2">
+                <Upload size={18} />
+                <span>Impor Jadwal Dewan Guru</span>
+              </h2>
+              <button
+                onClick={() => { setIsImportModalOpen(false); setImportFile(null); }}
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleImportExcel} className="p-5 space-y-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Silakan pilih file Excel (.xlsx) sesuai format templat. Sistem akan secara otomatis menambahkan sesi jadwal baru atau memperbarui jadwal dengan sesi & hari yang sama.
+              </p>
+              <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-6 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors relative">
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  required
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) setImportFile(files[0]);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Upload size={32} className="mx-auto text-teal-600 dark:text-teal-400 mb-2" />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block truncate">
+                  {importFile ? importFile.name : 'Pilih File Excel (.xlsx)'}
+                </span>
+                <span className="text-[10px] text-slate-400 block mt-1">Maksimal ukuran file: 10MB</span>
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => { setIsImportModalOpen(false); setImportFile(null); }}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={importing || !importFile}
+                  className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Upload size={14} />
+                  <span>{importing ? 'Mengimpor...' : 'Mulai Impor'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Preview PDF ─────────────────────────────────────────────── */}
+      {showPdfPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[88vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">
+                    Preview Jadwal Dewan Guru YPMA
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Hari: {activeHari} | Unit: {activeHomebase} | Total {schedules.length} Sesi
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleExportJadwal('pdf', false)}
+                  className="py-2 px-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download size={14} />
+                  <span>Unduh PDF</span>
+                </button>
+                <button
+                  onClick={() => setShowPdfPreview(false)}
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden">
+              <iframe
+                src={pdfUrl}
+                className="w-full h-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white"
+                title="Preview PDF Jadwal Dewan Guru"
+              />
+            </div>
           </div>
         </div>
       )}

@@ -275,6 +275,29 @@ export async function GET(request: Request) {
         }
         return r;
       });
+    } else if (tipe === "dewan_guru" && guru_id) {
+      const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
+      const dateParams: any[] = isRentang ? [guru_id, tanggal_dari, tanggal_sampai] : [guru_id, bulan, tahun];
+      const [result] = await pool.execute<RowDataPacket[]>(
+        `SELECT a.id as absensi_id, a.tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
+          COALESCE(a.jam_absen, "") as jam_mulai,
+          "" as jam_selesai,
+          "" as hari,
+          COALESCE(j.nama_sesi, "Presensi Kehadiran") as mata_pelajaran,
+          COALESCE(dg.homebase, "-") as kelas_nama,
+          0 as is_otomatis,
+          COALESCE(dg.nama, "") as guru_nama,
+          COALESCE(a.metode, "QR_Scan") as metode,
+          COALESCE(a.dicatat_oleh, "") as dicatat_oleh,
+          "Dewan Guru" as tipe_label
+         FROM absensi_dewan_guru a
+         LEFT JOIN dewan_guru dg ON a.guru_id = dg.id
+         LEFT JOIN jadwal_dewan_guru j ON a.jadwal_id = j.id
+         WHERE a.guru_id = ? AND ${dateWhere}
+         ORDER BY a.tanggal DESC, a.jam_absen DESC`,
+        dateParams
+      );
+      rows = result;
     }
 
     const hariNames = ["Ahad", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
@@ -312,6 +335,12 @@ export async function GET(request: Request) {
           penginput = "Input Mandiri (Guru)";
         } else {
           penginput = r.guru_nama || "Guru";
+        }
+      } else if (tipe === "dewan_guru") {
+        if (r.dicatat_oleh && r.dicatat_oleh.trim() !== '') {
+          penginput = `${r.metode === 'QR_Scan' ? 'Scan QR' : (r.metode || 'Presensi')} (${r.dicatat_oleh})`;
+        } else {
+          penginput = r.metode === 'QR_Scan' ? 'Scan Mandiri (QR)' : (r.metode || 'Presensi Dewan Guru');
         }
       } else if (murid_id) {
         // Prioritaskan guru_nama dari JOIN jadwal (nama resmi dari Data Guru & Pembina)
