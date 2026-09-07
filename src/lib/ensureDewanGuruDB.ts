@@ -11,17 +11,23 @@ export async function ensureDewanGuruDB(): Promise<void> {
 
   pendingPromise = (async () => {
     try {
-      // 0. FAST-PATH: Jika ketiga tabel (dewan_guru, jadwal_dewan_guru, absensi_dewan_guru) sudah ada dan memiliki data, langsung selesai (<1ms)
+      // 0. FAST-PATH: 1 query ringan → periksa ketiga tabel sekaligus
       try {
-        const [gRow]: any = await pool.execute('SELECT id FROM dewan_guru LIMIT 1');
-        const [jRow]: any = await pool.execute('SELECT id FROM jadwal_dewan_guru LIMIT 1');
-        const [aRow]: any = await pool.execute('SELECT id FROM absensi_dewan_guru LIMIT 1');
-        if (gRow && gRow.length > 0 && jRow && jRow.length > 0) {
-          isReady = true;
-          return;
+        const [tableCheck]: any = await pool.execute(`
+          SELECT COUNT(*) as cnt FROM information_schema.tables
+          WHERE table_schema = DATABASE()
+            AND table_name IN ('dewan_guru', 'jadwal_dewan_guru', 'absensi_dewan_guru')
+        `);
+        if (tableCheck?.[0]?.cnt >= 3) {
+          // Semua tabel sudah ada → periksa data dengan 1 query
+          const [hasData]: any = await pool.execute('SELECT COUNT(*) as c FROM dewan_guru WHERE aktif = 1 LIMIT 1');
+          if (hasData?.[0]?.c > 0) {
+            isReady = true;
+            return;
+          }
         }
       } catch {
-        // Salah satu tabel belum ada atau belum lengkap, lanjutkan pembuatan di bawah
+        // Lanjutkan pembuatan tabel di bawah
       }
 
       // 1. Pastikan tabel dewan_guru

@@ -123,6 +123,7 @@ export default function AbsenGuruPage() {
   const [dewanHomebase, setDewanHomebase] = useState('SEMUA');
   const [dewanStatusFilter, setDewanStatusFilter] = useState('SEMUA');
   const [dewanSearch, setDewanSearch] = useState('');
+  const [showAllCards, setShowAllCards] = useState(false);
   const [batchLoading, setBatchLoading] = useState(false);
 
   // Modal Input Absensi Guru
@@ -600,7 +601,7 @@ export default function AbsenGuruPage() {
             }`}
           >
             <Users size={15} />
-            <span>Presensi Dewan Guru YPMA ({dewanData.length || 441} Guru)</span>
+            <span>Presensi Dewan Guru YPMA</span>
           </button>
 
           <button
@@ -849,6 +850,29 @@ export default function AbsenGuruPage() {
                 <Users size={48} className="mx-auto text-slate-300 dark:text-slate-700 mb-3" />
                 <h3 className="font-extrabold text-slate-700 dark:text-slate-200 text-sm">Tidak Ada Data Guru</h3>
                 <p className="text-xs text-slate-400 mt-1">Coba sesuaikan filter status atau kata kunci pencarian.</p>
+              </div>
+            ) : !showAllCards && dewanHomebase === 'SEMUA' && !dewanSearch.trim() && dewanStatusFilter === 'SEMUA' ? (
+              <div className="text-center py-10 sm:py-14 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto shadow-xs">
+                  <Users size={24} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base">
+                    Pilih Unit Lembaga atau Tampilkan Seluruh Data
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
+                    Untuk performa super cepat dan hemat memori pada layar HP, silakan pilih salah satu Unit di atas atau klik tombol di bawah untuk menampilkan seluruh {dewanData.length || 441} guru.
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <button
+                    onClick={() => setShowAllCards(true)}
+                    className="py-2.5 px-6 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all shadow-md shadow-teal-600/20 inline-flex items-center gap-2 cursor-pointer active:scale-95"
+                  >
+                    <Users size={16} />
+                    <span>Tampilkan Semua Data ({dewanData.length || 441} Guru)</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">

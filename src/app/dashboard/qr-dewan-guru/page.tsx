@@ -35,6 +35,7 @@ export default function QrDewanGuruPage() {
   const [stats, setStats] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [selectedHomebase, setSelectedHomebase] = useState('SEMUA');
+  const [showAllCards, setShowAllCards] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
 
@@ -208,6 +209,122 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
     exportToExcel({ title, subtitle, columns, rows, filename });
   };
 
+  // ─── Generate PDF di browser (client-side) ─────────────────────────────────
+  // Solusi untuk server timeout saat generate 441 QR sekaligus
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState(0);
+  const [clientPdfUrl, setClientPdfUrl] = useState<string | null>(null);
+
+  const handleClientPDF = async (previewOnly = false) => {
+    const list = filteredTeachers;
+    if (list.length === 0) {
+      alert('Tidak ada data guru untuk diexport.');
+      return;
+    }
+
+    setPdfGenerating(true);
+    setPdfProgress(0);
+    setClientPdfUrl(null);
+    if (!previewOnly) setShowPdfPreview(false);
+
+    try {
+      const [jsPDFModule, QRCode] = await Promise.all([
+        import('jspdf'),
+        import('qrcode')
+      ]);
+      const { jsPDF } = jsPDFModule;
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.ppmawar.or.id';
+
+      const cols = 3;
+      const rowsPerPage = 3;
+      const cardWidth = 58;
+      const cardHeight = 82;
+      const marginX = (pageWidth - cols * cardWidth) / (cols + 1);
+      const marginY = 16;
+      const gapY = (pageHeight - marginY * 2 - rowsPerPage * cardHeight) / (rowsPerPage - 1);
+
+      for (let i = 0; i < list.length; i++) {
+        const pageIndex = Math.floor(i / (cols * rowsPerPage));
+        const cardIndexInPage = i % (cols * rowsPerPage);
+        const colIndex = cardIndexInPage % cols;
+        const rowIndex = Math.floor(cardIndexInPage / cols);
+
+        if (i > 0 && cardIndexInPage === 0) doc.addPage();
+
+        if (cardIndexInPage === 0) {
+          doc.setFontSize(10);
+          doc.setTextColor(30, 41, 59);
+          doc.setFont('helvetica', 'bold');
+          doc.text("KARTU PRESENSI QR DEWAN GURU - PP. MATHOLI'UL ANWAR", pageWidth / 2, 9, { align: 'center' });
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(100, 116, 139);
+          const sub = selectedHomebase !== 'SEMUA' ? `Unit: ${selectedHomebase} | Halaman ${pageIndex + 1}` : `Halaman ${pageIndex + 1}`;
+          doc.text(sub, pageWidth / 2, 13, { align: 'center' });
+        }
+
+        const g = list[i];
+        const qrValue = `${origin}/absen/guru?token=${encodeURIComponent(g.qr_token)}`;
+        const qrDataUrl = await (QRCode as any).toDataURL(qrValue, {
+          width: 160, margin: 1, color: { dark: '#042f2e', light: '#ffffff' }
+        });
+
+        const x = marginX + colIndex * (cardWidth + marginX);
+        const y = marginY + rowIndex * (cardHeight + gapY);
+
+        doc.setDrawColor(203, 213, 225);
+        doc.setFillColor(248, 250, 252);
+        doc.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'FD');
+        doc.setFillColor(15, 118, 110);
+        doc.roundedRect(x, y, cardWidth, 12, 3, 3, 'F');
+        doc.rect(x, y + 8, cardWidth, 4, 'F');
+
+        doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
+        doc.text("PP. MATHOLI'UL ANWAR", x + cardWidth / 2, y + 5.5, { align: 'center' });
+        doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
+        doc.text(g.homebase || 'YPMA', x + cardWidth / 2, y + 9.5, { align: 'center' });
+
+        const qrSize = 42;
+        doc.addImage(qrDataUrl, 'PNG', x + (cardWidth - qrSize) / 2, y + 14, qrSize, qrSize);
+
+        doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 23, 42);
+        const splitName = doc.splitTextToSize(g.nama || 'Dewan Guru', cardWidth - 6);
+        doc.text(splitName, x + cardWidth / 2, y + 60, { align: 'center' });
+
+        doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 116, 139);
+        if (g.nip) doc.text(`NIP: ${g.nip}`, x + cardWidth / 2, y + 74, { align: 'center' });
+        else doc.text('Kartu Presensi Resmi', x + cardWidth / 2, y + 74, { align: 'center' });
+        doc.text('Scan untuk Absensi Kehadiran', x + cardWidth / 2, y + 77.5, { align: 'center' });
+
+        // Update progress tiap 5 guru
+        if (i % 5 === 0) {
+          setPdfProgress(Math.round(((i + 1) / list.length) * 100));
+          await new Promise(r => setTimeout(r, 0)); // yield ke browser
+        }
+      }
+
+      const pdfName = `Katalog_QR_Guru_${selectedHomebase !== 'SEMUA' ? selectedHomebase.replace(/[^a-zA-Z0-9_-]/g, '_') : 'YPMA'}.pdf`;
+
+      if (previewOnly) {
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        setClientPdfUrl(url);
+        setShowPdfPreview(true);
+      } else {
+        doc.save(pdfName);
+      }
+    } catch (err: any) {
+      alert('Gagal membuat PDF: ' + err.message);
+    } finally {
+      setPdfGenerating(false);
+      setPdfProgress(0);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-28">
       {/* Top Bar */}
@@ -240,43 +357,44 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
               <span className="hidden sm:inline">Kembali</span>
             </Link>
 
-            {/* Preview PDF */}
+            {/* Preview PDF (Client-Side) */}
             <button
-              onClick={() => setShowPdfPreview(true)}
-              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-              title="Preview Dokumen PDF Katalog Kartu QR"
+              onClick={() => handleClientPDF(true)}
+              disabled={pdfGenerating}
+              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
+              title="Preview Dokumen PDF Katalog Kartu QR (di browser)"
             >
               <FileText size={13} className="shrink-0" />
-              <span>Preview PDF</span>
+              <span>{pdfGenerating ? `${pdfProgress}%` : 'Preview PDF'}</span>
             </button>
 
-            {/* Unduh Bulk PDF */}
-            <a
-              href={`/api/dewan-guru/qr/bulk?type=pdf&homebase=${encodeURIComponent(selectedHomebase)}`}
-              download
-              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-              title="Unduh Dokumen PDF Katalog Kartu A4"
+            {/* Unduh PDF (Client-Side) */}
+            <button
+              onClick={() => handleClientPDF(false)}
+              disabled={pdfGenerating}
+              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
+              title="Unduh Dokumen PDF Katalog Kartu A4 (di browser)"
             >
-              <Download size={13} className="shrink-0" />
-              <span>Unduh PDF</span>
-            </a>
+              <Download size={13} className={`shrink-0 ${pdfGenerating ? 'animate-bounce' : ''}`} />
+              <span>{pdfGenerating ? `${pdfProgress}%` : 'Unduh PDF'}</span>
+            </button>
 
             {/* Unduh Excel */}
             <button
               onClick={handleExportExcel}
               className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-              title="Unduh Daftar QR \u0026 Link Presensi ke File Excel"
+              title="Unduh Daftar QR & Link Presensi ke File Excel"
             >
               <Download size={13} className="shrink-0" />
               <span>Unduh Excel</span>
             </button>
 
-            {/* Download Bulk ZIP */}
+            {/* Download Bulk ZIP (tetap server-side, untuk gambar PNG) */}
             <a
               href={`/api/dewan-guru/qr/bulk?type=zip&homebase=${encodeURIComponent(selectedHomebase)}`}
               download
               className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-              title="Download File ZIP Semua Gambar QR"
+              title="Download File ZIP Semua Gambar QR (PNG)"
             >
               <Archive size={13} className="shrink-0" />
               <span>Unduh ZIP</span>
@@ -295,6 +413,29 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
           </div>
         </div>
       </div>
+
+      {/* ── Progress Overlay saat generate PDF ──────────────────────────────── */}
+      {pdfGenerating && (
+        <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 w-72 text-center space-y-4 border border-slate-200 dark:border-slate-700">
+            <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto">
+              <FileText size={24} />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm">Membuat PDF Katalog QR...</h3>
+              <p className="text-xs text-slate-400 mt-1">Proses berlangsung di browser Anda</p>
+            </div>
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-purple-600 h-full rounded-full transition-all duration-300"
+                style={{ width: `${pdfProgress}%` }}
+              />
+            </div>
+            <p className="text-2xl font-black text-purple-600 dark:text-purple-400">{pdfProgress}%</p>
+            <p className="text-[11px] text-slate-400">Harap tunggu, jangan tutup halaman ini...</p>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 pt-4 space-y-3">
         {/* Sync Success Notification */}
@@ -379,6 +520,29 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
             <QrCode size={48} className="mx-auto text-slate-300 dark:text-slate-700 mb-3" />
             <h3 className="font-extrabold text-slate-700 dark:text-slate-200 text-sm">Tidak Ada Guru Ditemukan</h3>
             <p className="text-xs text-slate-400 mt-1">Coba ubah kata kunci pencarian atau filter unit.</p>
+          </div>
+        ) : !showAllCards && selectedHomebase === 'SEMUA' && !search.trim() ? (
+          <div className="text-center py-10 sm:py-14 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto shadow-xs">
+              <QrCode size={24} />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base">
+                Pilih Unit Lembaga atau Tampilkan Seluruh Kartu QR
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
+                Untuk menjaga kecepatan browser di layar HP dan laptop, silakan pilih salah satu tombol Unit di atas atau klik tombol di bawah untuk menampilkan seluruh {teachers.length || 441} kartu QR.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                onClick={() => setShowAllCards(true)}
+                className="py-2.5 px-6 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all shadow-md shadow-teal-600/20 inline-flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                <QrCode size={16} />
+                <span>Tampilkan Semua Kartu QR ({teachers.length || 441} Guru)</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -625,7 +789,7 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
       )}
 
       {/* PDF Preview Modal */}
-      {showPdfPreview && (
+      {showPdfPreview && clientPdfUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[88vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
             <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
@@ -644,15 +808,15 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
               </div>
               <div className="flex items-center gap-2">
                 <a
-                  href={`/api/dewan-guru/qr/bulk?type=pdf&homebase=${encodeURIComponent(selectedHomebase)}`}
-                  download
+                  href={clientPdfUrl}
+                  download={`Katalog_QR_Guru_${selectedHomebase !== 'SEMUA' ? selectedHomebase.replace(/[^a-zA-Z0-9_-]/g, '_') : 'YPMA'}.pdf`}
                   className="py-2 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <Download size={14} />
                   <span>Unduh PDF</span>
                 </a>
                 <button
-                  onClick={() => setShowPdfPreview(false)}
+                  onClick={() => { setShowPdfPreview(false); setClientPdfUrl(null); }}
                   className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 transition-colors cursor-pointer"
                 >
                   <X size={18} />
@@ -661,7 +825,7 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
             </div>
             <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden">
               <iframe
-                src={`/api/dewan-guru/qr/bulk?type=pdf&preview=true&homebase=${encodeURIComponent(selectedHomebase)}`}
+                src={clientPdfUrl}
                 className="w-full h-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white"
                 title="Preview Katalog QR PDF"
               />
