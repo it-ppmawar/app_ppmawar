@@ -581,78 +581,103 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </Link>
                   </li>
                 )}
-                {!(user?.role || '').toLowerCase().includes('petugas') && (
-                  <>
-                    {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(userRoleLower) || isPengasuhRole ? (
-                      <li>
-                        <Link href="/dashboard/absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
-                          <ClipboardCheck size={18} /> <span className="text-sm">Input Absensi</span>
-                        </Link>
-                      </li>
-                    ) : null}
+                {!(user?.role || '').toLowerCase().includes('petugas') && (() => {
+                  const hasPresensiSection = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(userRoleLower) || isPengasuhRole;
 
-                    <li>
-                      <Link href="/dashboard/tabel-jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/tabel-jadwal' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
-                        <CalendarDays size={18} /> <span className="text-sm">Tabel Jadwal</span>
-                      </Link>
-                    </li>
-                    {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(userRoleLower) || isPengasuhRole ? (
+                  return (
+                    <>
+                      {/* Sub-kategori 1: Presensi & Kehadiran */}
+                      {hasPresensiSection && (
+                        <>
+                          <li className="pt-2.5 pb-1 px-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase">
+                                Presensi & Kehadiran
+                              </span>
+                              <div className="flex-1 h-[1px] bg-gray-200/70 dark:bg-gray-700/50"></div>
+                            </div>
+                          </li>
+                          <li>
+                            <Link href="/dashboard/absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
+                              <ClipboardCheck size={18} /> <span className="text-sm">Input Absensi</span>
+                            </Link>
+                          </li>
+                          <li>
+                            <Link href="/dashboard/scan-absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/scan-absen' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
+                              <QrCode size={18} /> <span className="text-sm">Scan Absensi</span>
+                            </Link>
+                          </li>
+                          <li>
+                            <Link href="/dashboard/rekapitulasi" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/rekapitulasi' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold' : 'hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-bold'}`}>
+                              <FileText size={18} /> <span className="text-sm">Rekapitulasi Absensi</span>
+                            </Link>
+                          </li>
+                          {(['admin', 'staff'].includes(userRoleLower) || isPengasuhRole) && (
+                            <li>
+                              <Link href="/dashboard/absen-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/absen-guru' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
+                                <ClipboardList size={18} /> <span className="text-sm">Absen Dewan Guru</span>
+                              </Link>
+                            </li>
+                          )}
+                        </>
+                      )}
+
+                      {/* Sub-kategori 2: Jadwal & Agenda */}
+                      <li className="pt-3 pb-1 px-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase">
+                            Jadwal & Agenda
+                          </span>
+                          <div className="flex-1 h-[1px] bg-gray-200/70 dark:bg-gray-700/50"></div>
+                        </div>
+                      </li>
                       <li>
-                        <Link href="/dashboard/rekapitulasi" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/rekapitulasi' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold' : 'hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-bold'}`}>
-                          <FileText size={18} /> <span className="text-sm">Rekapitulasi Absensi</span>
+                        <Link href="/dashboard/tabel-jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/tabel-jadwal' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
+                          <CalendarDays size={18} /> <span className="text-sm">Tabel Jadwal</span>
                         </Link>
                       </li>
-                    ) : null}
-                    {(['admin', 'staff'].includes(userRoleLower) || isPengasuhRole) && (
-                      <>
+                      <li>
+                        <Link href="/dashboard/jadwal-alumni" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal-alumni' ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-bold' : 'hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 font-bold'}`}>
+                          <CalendarDays size={18} /> <span className="text-sm">Jadwal Alumni</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/jurnal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jurnal' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
+                          <BookOpen size={18} /> <span className="text-sm">Jurnal Kegiatan</span>
+                        </Link>
+                      </li>
+
+                      {/* Sub-kategori 3: Kedisiplinan & Asrama */}
+                      <li className="pt-3 pb-1 px-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase">
+                            Kedisiplinan & Asrama
+                          </span>
+                          <div className="flex-1 h-[1px] bg-gray-200/70 dark:bg-gray-700/50"></div>
+                        </div>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/ketertiban" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/ketertiban' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold' : 'hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 font-bold'}`}>
+                          <FileWarning size={18} /> <span className="text-sm">Ketertiban Murid</span>
+                        </Link>
+                      </li>
+                      {(['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'wali_murid'].includes(userRoleLower) || isPengasuhRole) ? (
                         <li>
-                          <Link href="/dashboard/absen-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/absen-guru' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
-                            <ClipboardList size={18} /> <span className="text-sm">Absen Dewan Guru</span>
+                          <Link href="/dashboard/panggilan" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/panggilan') ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
+                            <Megaphone size={18} /> <span className="text-sm">Panggilan Santri</span>
                           </Link>
                         </li>
-                      </>
-                    )}
-                    <li>
-                      <Link href="/dashboard/jurnal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jurnal' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
-                        <BookOpen size={18} /> <span className="text-sm">Jurnal Kegiatan</span>
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/dashboard/jadwal-alumni" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal-alumni' ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-bold' : 'hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 font-bold'}`}>
-                        <CalendarDays size={18} /> <span className="text-sm">Jadwal Alumni</span>
-                      </Link>
-                    </li>
-
-                    {['admin', 'pengurus_asrama', 'pengasuh', 'staff', 'guru'].includes(userRoleLower) || isPengasuhRole ? (
-                      <li>
-                        <Link href="/dashboard/scan-absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/scan-absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
-                          <QrCode size={18} /> <span className="text-sm">Scan Absensi</span>
-                        </Link>
-                      </li>
-                    ) : null}
-                    <li>
-                      <Link href="/dashboard/ketertiban" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/ketertiban' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold' : 'hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 font-bold'}`}>
-                        <FileWarning size={18} /> <span className="text-sm">Ketertiban Murid</span>
-                      </Link>
-                    </li>
-                    {/* Panggilan Santri */}
-                    {(['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'wali_murid'].includes(userRoleLower) || isPengasuhRole) ? (
-                      <li>
-                        <Link href="/dashboard/panggilan" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/panggilan') ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
-                          <Megaphone size={18} /> <span className="text-sm">Panggilan Santri</span>
-                        </Link>
-                      </li>
-                    ) : null}
-                    {/* Kebersihan & Sampah - di bawah Ketertiban Murid */}
-                    {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(userRoleLower) || isPengasuhRole ? (
-                      <li>
-                        <Link href="/dashboard/kebersihan" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/kebersihan') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
-                          <Trash2 size={18} /> <span className="text-sm">Kebersihan & Sampah</span>
-                        </Link>
-                      </li>
-                    ) : null}
-                  </>
-                )}
+                      ) : null}
+                      {['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_sarpras', 'petugas_kebersihan', 'petugas_kebersihan_umum'].includes(userRoleLower) || isPengasuhRole ? (
+                        <li>
+                          <Link href="/dashboard/kebersihan" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/kebersihan') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
+                            <Trash2 size={18} /> <span className="text-sm">Kebersihan & Sampah</span>
+                          </Link>
+                        </li>
+                      ) : null}
+                    </>
+                  );
+                })()}
               </ul>
             )}
           </div>
