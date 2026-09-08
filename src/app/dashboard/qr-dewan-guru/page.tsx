@@ -312,8 +312,13 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
       if (previewOnly) {
         const blob = doc.output('blob');
         const url = URL.createObjectURL(blob);
-        setClientPdfUrl(url);
-        setShowPdfPreview(true);
+        const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+        if (isMobile) {
+          window.open(url, '_blank');
+        } else {
+          setClientPdfUrl(url);
+          setShowPdfPreview(true);
+        }
       } else {
         doc.save(pdfName);
       }
@@ -807,6 +812,14 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.open(clientPdfUrl, '_blank')}
+                  className="py-2 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  title="Buka di Tab Baru Browser"
+                >
+                  <ExternalLink size={14} />
+                  <span className="hidden sm:inline">Buka Tab Baru</span>
+                </button>
                 <a
                   href={clientPdfUrl}
                   download={`Katalog_QR_Guru_${selectedHomebase !== 'SEMUA' ? selectedHomebase.replace(/[^a-zA-Z0-9_-]/g, '_') : 'YPMA'}.pdf`}
@@ -823,10 +836,16 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
                 </button>
               </div>
             </div>
-            <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden">
+            <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden flex flex-col">
+              <div className="sm:hidden mb-2 p-2.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center justify-between gap-2 text-xs text-blue-700 dark:text-blue-300">
+                <span>PDF tidak tampil di layar HP?</span>
+                <button onClick={() => window.open(clientPdfUrl, '_blank')} className="px-2.5 py-1 bg-blue-600 text-white font-bold rounded-lg shrink-0">
+                  Buka Tab Baru
+                </button>
+              </div>
               <iframe
                 src={clientPdfUrl}
-                className="w-full h-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white"
+                className="w-full flex-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white"
                 title="Preview Katalog QR PDF"
               />
             </div>

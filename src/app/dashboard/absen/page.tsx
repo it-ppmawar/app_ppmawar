@@ -10,11 +10,27 @@ type StatusFilter = 'semua' | 'terkunci' | 'terbuka' | 'selesai' | 'tertutup';
 export default function InputAbsenPage() {
   const [schedules, setSchedules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(15);
   const [hari, setHari] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [role, setRole] = useState<string>('');
   const [filter, setFilter] = useState<TipeFilter>('semua');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('semua');
+
+  useEffect(() => {
+    let progressTimer: NodeJS.Timeout;
+    if (loading) {
+      setLoadProgress(15);
+      progressTimer = setInterval(() => {
+        setLoadProgress(prev => {
+          if (prev >= 90) return prev;
+          const inc = Math.floor(Math.random() * 12) + 8;
+          return Math.min(prev + inc, 92);
+        });
+      }, 150);
+    }
+    return () => clearInterval(progressTimer);
+  }, [loading]);
 
   useEffect(() => {
     const fetchSchedules = async () => {
@@ -42,7 +58,8 @@ export default function InputAbsenPage() {
       } catch (err) {
         setErrorMsg('Terjadi kesalahan jaringan.');
       } finally {
-        setLoading(false);
+        setLoadProgress(100);
+        setTimeout(() => setLoading(false), 200);
       }
     };
     fetchSchedules();
@@ -138,9 +155,26 @@ export default function InputAbsenPage() {
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <RefreshCw className="animate-spin text-blue-500" size={32} />
-          <p className="text-gray-500 text-sm">Memuat jadwal...</p>
+        <div className="py-8 sm:py-12 flex justify-center">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-6 sm:p-7 w-full max-w-sm text-center space-y-4 border border-slate-200 dark:border-slate-800">
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto shadow-xs">
+              <CalendarCheck size={24} className="animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base">
+                Memuat Jadwal Absensi...
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Sinkronisasi data sesi & kelas hari ini</p>
+            </div>
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-teal-600 h-full rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${loadProgress}%` }}
+              />
+            </div>
+            <p className="text-2xl font-black text-teal-600 dark:text-teal-400">{loadProgress}%</p>
+            <p className="text-[11px] text-slate-400">Harap tunggu, proses sedang berlangsung...</p>
+          </div>
         </div>
       ) : errorMsg ? (
         <div className="bg-red-50 dark:bg-red-900/20 rounded-3xl p-8 border border-red-100 dark:border-red-800/50 shadow-sm text-center">

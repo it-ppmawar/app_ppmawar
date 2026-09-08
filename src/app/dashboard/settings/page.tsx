@@ -1483,7 +1483,7 @@ export default function SettingsPage() {
                   <p className="font-bold flex items-center gap-1.5 mb-1">
                     <Bell size={14} /> Integrasi Cron Job:
                   </p>
-                  Panggil endpoint <code className="bg-blue-100 dark:bg-blue-900 px-1 py-0.5 rounded font-mono text-[11px]">GET /api/sync/murid</code> dengan header <code className="bg-blue-100 dark:bg-blue-900 px-1 py-0.5 rounded font-mono text-[11px]">Authorization: Bearer ppma_sync_secret_2024_secure</code> via cPanel Cron Jobs atau cron-job.org. Sistem akan mengeksekusi sinkronisasi secara cerdas sesuai interval {settings.rutinitas_sinkronisasi} yang dipilih.
+                  Panggil endpoint <code className="bg-blue-100 dark:bg-blue-900 px-1 py-0.5 rounded font-mono text-[11px]">GET /api/sync/murid</code> <span className="whitespace-nowrap">dengan header</span> <code className="bg-blue-100 dark:bg-blue-900 px-1 py-0.5 rounded font-mono text-[11px]">Authorization: Bearer ppma_sync_secret_2024_secure</code> via cPanel Cron Jobs atau cron-job.org. Sistem akan mengeksekusi sinkronisasi secara cerdas sesuai interval {settings.rutinitas_sinkronisasi} yang dipilih.
                 </div>
               )}
             </div>
@@ -1647,7 +1647,7 @@ export default function SettingsPage() {
           <p className="leading-relaxed text-xs sm:text-sm text-blue-800/90 dark:text-blue-300/90">
             Untuk mengaktifkan cron job harian otomatis, panggil endpoint{' '}
             <code className="bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded text-xs font-mono break-all inline-block my-0.5">POST /api/sync/googlesheet</code>{' '}
-            dengan header{' '}
+            <span className="whitespace-nowrap">dengan header</span>{' '}
             <code className="bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded text-xs font-mono break-all inline-block my-0.5">Authorization: Bearer ppma_sync_secret_2024_secure</code>{' '}
             menggunakan layanan cron job eksternal (seperti cron-job.org atau Vercel Cron).
           </p>

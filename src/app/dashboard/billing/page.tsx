@@ -15,6 +15,7 @@ type SortOrder = 'asc' | 'desc';
 
 export default function BillingPage() {
   const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(12);
   const [tagihan, setTagihan] = useState<any[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isPengasuhUser, setIsPengasuhUser] = useState<boolean>(false);
@@ -51,6 +52,21 @@ export default function BillingPage() {
     return clean.toLowerCase() === 'tahfid' ? 'Asrama Tahfid' : `Asrama ${clean.toUpperCase()}`;
   }, [userAsrama]);
 
+  useEffect(() => {
+    let progressTimer: NodeJS.Timeout;
+    if (loading) {
+      setLoadProgress(12);
+      progressTimer = setInterval(() => {
+        setLoadProgress(prev => {
+          if (prev >= 90) return prev;
+          const inc = Math.floor(Math.random() * 10) + 7;
+          return Math.min(prev + inc, 92);
+        });
+      }, 150);
+    }
+    return () => clearInterval(progressTimer);
+  }, [loading]);
+
   const fetchBilling = (kategori?: string) => {
     setLoading(true);
     setErrorMsg(null);
@@ -70,7 +86,10 @@ export default function BillingPage() {
         setErrorMsg('Terjadi kesalahan jaringan: ' + err.message);
         setTagihan([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoadProgress(100);
+        setTimeout(() => setLoading(false), 200);
+      });
   };
 
   const handleSyncBilling = async () => {
@@ -458,9 +477,26 @@ export default function BillingPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-gray-500 font-medium animate-pulse">Menghubungkan ke server tagihan...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 sm:p-7 w-full max-w-sm text-center space-y-4 border border-slate-200 dark:border-slate-800">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs">
+            <CreditCard size={24} className="animate-pulse" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base">
+              Memuat Data Tagihan...
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Menghubungkan ke server database tagihan santri</p>
+          </div>
+          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
+            <div
+              className="bg-emerald-600 h-full rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${loadProgress}%` }}
+            />
+          </div>
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{loadProgress}%</p>
+          <p className="text-[11px] text-slate-400">Harap tunggu, proses sedang berlangsung...</p>
+        </div>
       </div>
     );
   }

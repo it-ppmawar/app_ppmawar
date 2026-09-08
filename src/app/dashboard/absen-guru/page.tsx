@@ -6,7 +6,7 @@ import {
   Users, Clock, RefreshCw, BookOpen, ClipboardList,
   WifiOff, UserCheck, UserX, Search, X, Home, Building2,
   QrCode, CalendarDays, Camera, CheckCircle2, AlertCircle,
-  Sparkles, SlidersHorizontal, Check, UserPlus, Phone, FileText, Download
+  Sparkles, SlidersHorizontal, Check, UserPlus, Phone, FileText, Download, ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
@@ -309,8 +309,13 @@ export default function AbsenGuruPage() {
     } else {
       const result = exportToPDF({ title, subtitle, columns, rows, filename, previewOnly });
       if (previewOnly && result) {
-        setPdfUrl(result);
-        setShowPdfPreview(true);
+        const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+        if (isMobile) {
+          window.open(result, '_blank');
+        } else {
+          setPdfUrl(result);
+          setShowPdfPreview(true);
+        }
       }
     }
   };
@@ -1265,6 +1270,14 @@ export default function AbsenGuruPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => window.open(pdfUrl, '_blank')}
+                  className="py-2 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  title="Buka di Tab Baru Browser"
+                >
+                  <ExternalLink size={14} />
+                  <span className="hidden sm:inline">Buka Tab Baru</span>
+                </button>
+                <button
                   onClick={() => handleExportDewanGuru('pdf', false)}
                   className="py-2 px-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
@@ -1279,10 +1292,16 @@ export default function AbsenGuruPage() {
                 </button>
               </div>
             </div>
-            <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden">
+            <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-hidden flex flex-col">
+              <div className="sm:hidden mb-2 p-2.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center justify-between gap-2 text-xs text-blue-700 dark:text-blue-300">
+                <span>PDF tidak tampil di layar HP?</span>
+                <button onClick={() => window.open(pdfUrl, '_blank')} className="px-2.5 py-1 bg-blue-600 text-white font-bold rounded-lg shrink-0">
+                  Buka Tab Baru
+                </button>
+              </div>
               <iframe
                 src={pdfUrl}
-                className="w-full h-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white"
+                className="w-full flex-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white"
                 title="Preview PDF Presensi Dewan Guru"
               />
             </div>
