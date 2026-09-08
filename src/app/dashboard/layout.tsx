@@ -658,7 +658,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* ========================================================================= */}
-          {/* 2. GRUP MANAJEMEN DATA (Collapsible Accordion — Default Tertutup)         */}
+          {/* 2. GRUP MANAJEMEN DATA (Data Santri/Guru, Jadwal, QR Dewan Guru, Tagihan) */}
           {/* ========================================================================= */}
           {!isTamu && !(user?.role || '').toLowerCase().includes('petugas') && (
             <div className="px-3 mb-3">
