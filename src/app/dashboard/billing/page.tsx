@@ -1072,11 +1072,11 @@ export default function BillingPage() {
                                 </div>
                               </div>
 
-                              {/* Baris Bawah: Alamat merapat ke ujung kiri sejajar dengan foto profil */}
+                              {/* Baris Bawah: Alamat merapat ke ujung kiri sejajar dengan foto profil (Maks. 2 baris) */}
                               {group.alamat && group.alamat !== '-' && (
-                                <div className="text-[11px] text-gray-400 dark:text-gray-500 flex items-center gap-1">
-                                  <MapPin size={11} className="shrink-0 text-gray-400 dark:text-gray-500" />
-                                  <span className="truncate max-w-[240px] sm:max-w-[320px]">{group.alamat}</span>
+                                <div className="text-[11px] text-gray-400 dark:text-gray-500 flex items-start gap-1 leading-snug">
+                                  <MapPin size={11} className="shrink-0 text-gray-400 dark:text-gray-500 mt-0.5" />
+                                  <span className="line-clamp-2 break-words max-w-[260px] sm:max-w-[340px]">{group.alamat}</span>
                                 </div>
                               )}
                             </div>
@@ -1289,11 +1289,11 @@ export default function BillingPage() {
                                 </div>
                               </div>
 
-                              {/* Baris Bawah: Alamat merapat ke ujung kiri sejajar dengan foto profil */}
+                              {/* Baris Bawah: Alamat merapat ke ujung kiri sejajar dengan foto profil (Maks. 2 baris) */}
                               {t.alamat && t.alamat !== '-' && (
-                                <div className="text-[11px] text-gray-400 dark:text-gray-500 flex items-center gap-1">
-                                  <MapPin size={11} className="shrink-0 text-gray-400 dark:text-gray-500" />
-                                  <span className="truncate max-w-[240px] sm:max-w-[320px]">{t.alamat}</span>
+                                <div className="text-[11px] text-gray-400 dark:text-gray-500 flex items-start gap-1 leading-snug">
+                                  <MapPin size={11} className="shrink-0 text-gray-400 dark:text-gray-500 mt-0.5" />
+                                  <span className="line-clamp-2 break-words max-w-[260px] sm:max-w-[340px]">{t.alamat}</span>
                                 </div>
                               )}
                             </div>
