@@ -1038,38 +1038,47 @@ export default function BillingPage() {
                       return (
                         <tr key={group.key} className="hover:bg-gray-50/80 dark:hover:bg-gray-700/50 transition-colors">
                           {/* Santri & Wali */}
-                          <td className="px-4 py-3.5">
-                            <div className="flex items-center gap-3">
-                              <button 
-                                onClick={() => group.foto_url && setPreviewImage({ url: group.foto_url, title: group.nama_santri })}
-                                title="Klik untuk memperbesar foto"
-                                className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center group relative cursor-pointer"
-                              >
-                                {group.foto_url ? (
-                                  <img src={group.foto_url} alt={group.nama_santri} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                ) : (
-                                  <User size={18} className="text-emerald-600 dark:text-emerald-400" />
-                                )}
-                              </button>
+                          <td className="px-4 py-3.5 align-top">
+                            <div className="flex flex-col gap-1.5">
+                              {/* Baris Atas: Foto Profil merapat pojok kiri atas sejajar Nama, NIS, dan Wali */}
+                              <div className="flex items-start gap-2.5">
+                                <button 
+                                  onClick={() => group.foto_url && setPreviewImage({ url: group.foto_url, title: group.nama_santri })}
+                                  title="Klik untuk memperbesar foto"
+                                  className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center group relative cursor-pointer mt-0.5"
+                                >
+                                  {group.foto_url ? (
+                                    <img src={group.foto_url} alt={group.nama_santri} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                  ) : (
+                                    <User size={18} className="text-emerald-600 dark:text-emerald-400" />
+                                  )}
+                                </button>
 
-                              <div>
-                                <div className="font-bold text-gray-900 dark:text-gray-100">{group.nama_santri}</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                                  <span>NIS: {group.nis}</span>
+                                <div className="min-w-0 flex-1">
+                                  {/* 1. Nama */}
+                                  <div className="font-bold text-gray-900 dark:text-gray-100 leading-snug">
+                                    {group.nama_santri}
+                                  </div>
+                                  {/* 2. NIS */}
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 leading-tight mt-0.5">
+                                    <span>NIS: {group.nis || '-'}</span>
+                                  </div>
+                                  {/* 3. Wali */}
                                   {group.nama_wali && group.nama_wali !== '-' && (
-                                    <>
-                                      <span>•</span>
-                                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">Wali: {group.nama_wali}</span>
-                                    </>
+                                    <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium leading-tight mt-0.5 truncate">
+                                      <span>Wali: {group.nama_wali}</span>
+                                    </div>
                                   )}
                                 </div>
-                                {group.alamat && group.alamat !== '-' && (
-                                  <div className="text-[11px] text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-0.5">
-                                    <MapPin size={11} className="shrink-0" />
-                                    <span className="truncate max-w-[180px]">{group.alamat}</span>
-                                  </div>
-                                )}
                               </div>
+
+                              {/* Baris Bawah: Alamat merapat ke ujung kiri sejajar dengan foto profil */}
+                              {group.alamat && group.alamat !== '-' && (
+                                <div className="text-[11px] text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                                  <MapPin size={11} className="shrink-0 text-gray-400 dark:text-gray-500" />
+                                  <span className="truncate max-w-[240px] sm:max-w-[320px]">{group.alamat}</span>
+                                </div>
+                              )}
                             </div>
                           </td>
 
@@ -1246,38 +1255,47 @@ export default function BillingPage() {
                       const waUrl = formatWaUrl(t.no_wali, t.nama_santri, t.nama_tagihan, t.nominal, t.periode);
                       return (
                         <tr key={t.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-700/50 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <button 
-                                onClick={() => t.foto_url && setPreviewImage({ url: t.foto_url, title: t.nama_santri })}
-                                title="Klik untuk memperbesar foto"
-                                className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center group relative cursor-pointer"
-                              >
-                                {t.foto_url ? (
-                                  <img src={t.foto_url} alt={t.nama_santri} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                ) : (
-                                  <User size={18} className="text-emerald-600 dark:text-emerald-400" />
-                                )}
-                              </button>
+                          <td className="px-4 py-3.5 align-top">
+                            <div className="flex flex-col gap-1.5">
+                              {/* Baris Atas: Foto Profil merapat pojok kiri atas sejajar Nama, NIS, dan Wali */}
+                              <div className="flex items-start gap-2.5">
+                                <button 
+                                  onClick={() => t.foto_url && setPreviewImage({ url: t.foto_url, title: t.nama_santri })}
+                                  title="Klik untuk memperbesar foto"
+                                  className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center group relative cursor-pointer mt-0.5"
+                                >
+                                  {t.foto_url ? (
+                                    <img src={t.foto_url} alt={t.nama_santri} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                  ) : (
+                                    <User size={18} className="text-emerald-600 dark:text-emerald-400" />
+                                  )}
+                                </button>
 
-                              <div>
-                                <div className="font-bold text-gray-900 dark:text-gray-100">{t.nama_santri}</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                                  <span>NIS: {t.nis}</span>
+                                <div className="min-w-0 flex-1">
+                                  {/* 1. Nama */}
+                                  <div className="font-bold text-gray-900 dark:text-gray-100 leading-snug">
+                                    {t.nama_santri}
+                                  </div>
+                                  {/* 2. NIS */}
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 leading-tight mt-0.5">
+                                    <span>NIS: {t.nis || '-'}</span>
+                                  </div>
+                                  {/* 3. Wali */}
                                   {t.nama_wali && t.nama_wali !== '-' && (
-                                    <>
-                                      <span>•</span>
-                                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">Wali: {t.nama_wali}</span>
-                                    </>
+                                    <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium leading-tight mt-0.5 truncate">
+                                      <span>Wali: {t.nama_wali}</span>
+                                    </div>
                                   )}
                                 </div>
-                                {t.alamat && t.alamat !== '-' && (
-                                  <div className="text-[11px] text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-0.5">
-                                    <MapPin size={11} className="shrink-0" />
-                                    <span className="truncate max-w-[200px]">{t.alamat}</span>
-                                  </div>
-                                )}
                               </div>
+
+                              {/* Baris Bawah: Alamat merapat ke ujung kiri sejajar dengan foto profil */}
+                              {t.alamat && t.alamat !== '-' && (
+                                <div className="text-[11px] text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                                  <MapPin size={11} className="shrink-0 text-gray-400 dark:text-gray-500" />
+                                  <span className="truncate max-w-[240px] sm:max-w-[320px]">{t.alamat}</span>
+                                </div>
+                              )}
                             </div>
                           </td>
 
