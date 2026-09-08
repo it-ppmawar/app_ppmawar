@@ -590,13 +590,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </Link>
                       </li>
                     ) : null}
-                    {['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) || isPengasuhRole ? (
-                      <li>
-                        <Link href="/dashboard/jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
-                          <Calendar size={18} /> <span className="text-sm">Kelola Jadwal</span>
-                        </Link>
-                      </li>
-                    ) : null}
+
                     <li>
                       <Link href="/dashboard/tabel-jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/tabel-jadwal' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
                         <CalendarDays size={18} /> <span className="text-sm">Tabel Jadwal</span>
@@ -616,16 +610,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <ClipboardList size={18} /> <span className="text-sm">Absen Dewan Guru</span>
                           </Link>
                         </li>
-                        <li>
-                          <Link href="/dashboard/jadwal-dewan-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal-dewan-guru' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
-                            <CalendarDays size={18} /> <span className="text-sm">Jadwal Dewan Guru</span>
-                          </Link>
-                        </li>
-                        <li>
-                          <Link href="/dashboard/qr-dewan-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/qr-dewan-guru' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
-                            <QrCode size={18} /> <span className="text-sm">QR Code Dewan Guru</span>
-                          </Link>
-                        </li>
                       </>
                     )}
                     <li>
@@ -638,13 +622,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <CalendarDays size={18} /> <span className="text-sm">Jadwal Alumni</span>
                       </Link>
                     </li>
-                    {canAccessBilling && (
-                      <li>
-                        <Link href="/dashboard/billing" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/billing' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
-                          <CreditCard size={18} /> <span className="text-sm">Info Tagihan</span>
-                        </Link>
-                      </li>
-                    )}
+
                     {['admin', 'pengurus_asrama', 'pengasuh', 'staff', 'guru'].includes(userRoleLower) || isPengasuhRole ? (
                       <li>
                         <Link href="/dashboard/scan-absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/scan-absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
@@ -774,6 +752,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </Link>
                     </li>
                   ) : null}
+                  {(['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) || isPengasuhRole) && (
+                    <li>
+                      <Link href="/dashboard/jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
+                        <Calendar size={18} /> <span className="text-sm">Kelola Jadwal</span>
+                      </Link>
+                    </li>
+                  )}
+                  {(['admin', 'staff'].includes(userRoleLower) || isPengasuhRole) && (
+                    <>
+                      <li>
+                        <Link href="/dashboard/jadwal-dewan-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal-dewan-guru' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
+                          <CalendarDays size={18} /> <span className="text-sm">Jadwal Dewan Guru</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/qr-dewan-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/qr-dewan-guru' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
+                          <QrCode size={18} /> <span className="text-sm">QR Code Dewan Guru</span>
+                        </Link>
+                      </li>
+                    </>
+                  )}
+                  {canAccessBilling && (
+                    <li>
+                      <Link href="/dashboard/billing" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/billing' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
+                        <CreditCard size={18} /> <span className="text-sm">Info Tagihan</span>
+                      </Link>
+                    </li>
+                  )}
                 </ul>
               )}
             </div>
