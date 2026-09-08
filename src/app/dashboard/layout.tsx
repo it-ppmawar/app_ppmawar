@@ -685,103 +685,156 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
               </button>
 
-              {openSections.manajemenData && (
-                <ul className="space-y-1 mt-2 pl-1 pr-1 animate-[fadeIn_0.2s_ease-out]">
-                  {showDataGuru && (
-                    <li>
-                      <Link href="/dashboard/guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/guru' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
-                        <UserCog size={18} /> <span className="text-sm">Data Guru & Pembina</span>
-                      </Link>
-                    </li>
-                  )}
-                  {showDataSantri && (
-                    <li>
-                      <Link href="/dashboard/murid" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/murid' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
-                        <Users size={18} /> <span className="text-sm">Data Santri</span>
-                      </Link>
-                    </li>
-                  )}
-                  {['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) && (
-                    <li>
-                      <Link
-                        href="/dashboard/pairing"
-                        onClick={() => setShowSidebar(false)}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-                          pathname.startsWith('/dashboard/pairing') || pathname.startsWith('/dashboard/face-enrollment')
-                            ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 font-bold'
-                            : 'hover:bg-cyan-50 dark:hover:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400 font-bold'
-                        }`}
-                      >
-                        <QrCode size={18} /> <span className="text-sm">Pairing & Face AI</span>
-                      </Link>
-                    </li>
-                  )}
-                  {(user?.role === 'admin' || user?.role === 'staff') && (
-                    <li>
-                      <Link href="/dashboard/alumni" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/alumni' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
-                        <GraduationCap size={18} /> <span className="text-sm">Data Alumni</span>
-                      </Link>
-                    </li>
-                  )}
-                  {showQuranMadin && (
-                    <li>
-                      <Link href="/dashboard/kelas" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/kelas' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
-                        <BookOpen size={18} /> <span className="text-sm">Manajemen Kelas</span>
-                      </Link>
-                    </li>
-                  )}
-                  {showQuranMadin && (
-                    <li>
-                      <Link href="/dashboard/kurikulum" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/kurikulum' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
-                        <BookOpen size={18} /> <span className="text-sm">Kurikulum Madin</span>
-                      </Link>
-                    </li>
-                  )}
-                  {showKamarAsrama && (
-                    <li>
-                      <Link href="/dashboard/kamar" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/kamar' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
-                        <Home size={18} /> <span className="text-sm">Kamar Asrama</span>
-                      </Link>
-                    </li>
-                  )}
-                  {/* Inventaris Asrama */}
-                  {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(userRoleLower) || isPengasuhRole ? (
-                    <li>
-                      <Link href="/dashboard/inventaris" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/inventaris') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
-                        <Archive size={18} /> <span className="text-sm">Inventaris Asrama</span>
-                      </Link>
-                    </li>
-                  ) : null}
-                  {(['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) || isPengasuhRole) && (
-                    <li>
-                      <Link href="/dashboard/jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
-                        <Calendar size={18} /> <span className="text-sm">Kelola Jadwal</span>
-                      </Link>
-                    </li>
-                  )}
-                  {(['admin', 'staff'].includes(userRoleLower) || isPengasuhRole) && (
-                    <>
-                      <li>
-                        <Link href="/dashboard/jadwal-dewan-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal-dewan-guru' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
-                          <CalendarDays size={18} /> <span className="text-sm">Jadwal Dewan Guru</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/dashboard/qr-dewan-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/qr-dewan-guru' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
-                          <QrCode size={18} /> <span className="text-sm">QR Code Dewan Guru</span>
-                        </Link>
-                      </li>
-                    </>
-                  )}
-                  {canAccessBilling && (
-                    <li>
-                      <Link href="/dashboard/billing" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/billing' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
-                        <CreditCard size={18} /> <span className="text-sm">Info Tagihan</span>
-                      </Link>
-                    </li>
-                  )}
-                </ul>
-              )}
+              {openSections.manajemenData && (() => {
+                const hasAkademikSection = showDataSantri || showDataGuru || (user?.role === 'admin' || user?.role === 'staff') || showQuranMadin;
+                const hasJadwalSection = (['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) || isPengasuhRole);
+                const hasAsramaSection = showKamarAsrama || ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(userRoleLower) || isPengasuhRole || ['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) || canAccessBilling;
+                const showSubDividers = (Number(!!hasAkademikSection) + Number(!!hasJadwalSection) + Number(!!hasAsramaSection)) > 1;
+
+                return (
+                  <ul className="space-y-1 mt-2 pl-1 pr-1 animate-[fadeIn_0.2s_ease-out]">
+                    {/* Sub-kategori 1: Santri & Akademik */}
+                    {hasAkademikSection && (
+                      <>
+                        {showSubDividers && (
+                          <li className="pt-1.5 pb-1 px-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase">
+                                Santri & Akademik
+                              </span>
+                              <div className="flex-1 h-[1px] bg-gray-200/70 dark:bg-gray-700/50"></div>
+                            </div>
+                          </li>
+                        )}
+                        {showDataSantri && (
+                          <li>
+                            <Link href="/dashboard/murid" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/murid' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
+                              <Users size={18} /> <span className="text-sm">Data Santri</span>
+                            </Link>
+                          </li>
+                        )}
+                        {showDataGuru && (
+                          <li>
+                            <Link href="/dashboard/guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/guru' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
+                              <UserCog size={18} /> <span className="text-sm">Data Guru & Pembina</span>
+                            </Link>
+                          </li>
+                        )}
+                        {(user?.role === 'admin' || user?.role === 'staff') && (
+                          <li>
+                            <Link href="/dashboard/alumni" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/alumni' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
+                              <GraduationCap size={18} /> <span className="text-sm">Data Alumni</span>
+                            </Link>
+                          </li>
+                        )}
+                        {showQuranMadin && (
+                          <>
+                            <li>
+                              <Link href="/dashboard/kelas" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/kelas' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
+                                <BookOpen size={18} /> <span className="text-sm">Manajemen Kelas</span>
+                              </Link>
+                            </li>
+                            <li>
+                              <Link href="/dashboard/kurikulum" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/kurikulum' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
+                                <BookOpen size={18} /> <span className="text-sm">Kurikulum Madin</span>
+                              </Link>
+                            </li>
+                          </>
+                        )}
+                      </>
+                    )}
+
+                    {/* Sub-kategori 2: Jadwal & Pengajar */}
+                    {hasJadwalSection && (
+                      <>
+                        {showSubDividers && (
+                          <li className="pt-3 pb-1 px-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase">
+                                Jadwal & Pengajar
+                              </span>
+                              <div className="flex-1 h-[1px] bg-gray-200/70 dark:bg-gray-700/50"></div>
+                            </div>
+                          </li>
+                        )}
+                        {(['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) || isPengasuhRole) && (
+                          <li>
+                            <Link href="/dashboard/jadwal" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
+                              <Calendar size={18} /> <span className="text-sm">Kelola Jadwal</span>
+                            </Link>
+                          </li>
+                        )}
+                        {(['admin', 'staff'].includes(userRoleLower) || isPengasuhRole) && (
+                          <>
+                            <li>
+                              <Link href="/dashboard/jadwal-dewan-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal-dewan-guru' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
+                                <CalendarDays size={18} /> <span className="text-sm">Jadwal Dewan Guru</span>
+                              </Link>
+                            </li>
+                            <li>
+                              <Link href="/dashboard/qr-dewan-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/qr-dewan-guru' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
+                                <QrCode size={18} /> <span className="text-sm">QR Code Dewan Guru</span>
+                              </Link>
+                            </li>
+                          </>
+                        )}
+                      </>
+                    )}
+
+                    {/* Sub-kategori 3: Asrama & Layanan */}
+                    {hasAsramaSection && (
+                      <>
+                        {showSubDividers && (
+                          <li className="pt-3 pb-1 px-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase">
+                                Asrama & Layanan
+                              </span>
+                              <div className="flex-1 h-[1px] bg-gray-200/70 dark:bg-gray-700/50"></div>
+                            </div>
+                          </li>
+                        )}
+                        {showKamarAsrama && (
+                          <li>
+                            <Link href="/dashboard/kamar" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/kamar' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-bold' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold'}`}>
+                              <Home size={18} /> <span className="text-sm">Kamar Asrama</span>
+                            </Link>
+                          </li>
+                        )}
+                        {['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(userRoleLower) || isPengasuhRole ? (
+                          <li>
+                            <Link href="/dashboard/inventaris" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/inventaris') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
+                              <Archive size={18} /> <span className="text-sm">Inventaris Asrama</span>
+                            </Link>
+                          </li>
+                        ) : null}
+                        {['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) && (
+                          <li>
+                            <Link
+                              href="/dashboard/pairing"
+                              onClick={() => setShowSidebar(false)}
+                              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                                pathname.startsWith('/dashboard/pairing') || pathname.startsWith('/dashboard/face-enrollment')
+                                  ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 font-bold'
+                                  : 'hover:bg-cyan-50 dark:hover:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400 font-bold'
+                              }`}
+                            >
+                              <QrCode size={18} /> <span className="text-sm">Pairing & Face AI</span>
+                            </Link>
+                          </li>
+                        )}
+                        {canAccessBilling && (
+                          <li>
+                            <Link href="/dashboard/billing" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/billing' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
+                              <CreditCard size={18} /> <span className="text-sm">Info Tagihan</span>
+                            </Link>
+                          </li>
+                        )}
+                      </>
+                    )}
+                  </ul>
+                );
+              })()}
             </div>
           )}
 
