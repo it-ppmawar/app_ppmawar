@@ -253,9 +253,15 @@ export async function GET() {
       let rawTgl = '';
       if (r.tanggal) {
         if (r.tanggal instanceof Date) {
-          rawTgl = r.tanggal.toISOString().slice(0, 10);
+          rawTgl = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(r.tanggal);
         } else {
-          rawTgl = String(r.tanggal).slice(0, 10);
+          const str = String(r.tanggal);
+          if (str.includes('T')) {
+            const d = new Date(str);
+            rawTgl = isNaN(d.getTime()) ? str.slice(0, 10) : new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(d);
+          } else {
+            rawTgl = str.slice(0, 10);
+          }
         }
       }
 
@@ -269,10 +275,35 @@ export async function GET() {
       };
     };
 
-    // 4. PERIZINAN TERBARU (Hari ini & 1 hari sebelumnya saja, tanpa limit baris)
+    // 4. PERIZINAN & PELANGGARAN TERBARU (Hari ini, kemarin, atau tanggal data absensi terbaru)
     const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const yesterdayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(yesterdayDate);
-    const targetDates = [todayStr, yesterdayStr];
+
+    let latestDbDate: string | null = null;
+    try {
+      const [maxRows] = await pool.execute<RowDataPacket[]>(`
+        SELECT MAX(tgl) as latest_tgl FROM (
+          SELECT DATE_FORMAT(MAX(tanggal), '%Y-%m-%d') as tgl FROM absensi
+          UNION ALL
+          SELECT DATE_FORMAT(MAX(tanggal), '%Y-%m-%d') as tgl FROM absensi_quran
+          UNION ALL
+          SELECT DATE_FORMAT(MAX(tanggal), '%Y-%m-%d') as tgl FROM absensi_kegiatan
+          UNION ALL
+          SELECT DATE_FORMAT(MAX(tanggal), '%Y-%m-%d') as tgl FROM pelanggaran
+        ) t
+      `);
+      if (maxRows && maxRows[0] && maxRows[0].latest_tgl) {
+        latestDbDate = maxRows[0].latest_tgl;
+      }
+    } catch (e) {
+      console.warn('latestDbDate error:', e);
+    }
+
+    const targetDatesSet = new Set<string>([todayStr, yesterdayStr]);
+    if (latestDbDate) {
+      targetDatesSet.add(latestDbDate);
+    }
+    const targetDates = Array.from(targetDatesSet);
     const datePlaceholders = targetDates.map(() => '?').join(', ');
     const genderCondition = genderFilter ? ` AND m.jenis_kelamin = ?` : '';
     const queryTargetParams = genderFilter ? [...targetDates, genderFilter] : targetDates;
@@ -281,7 +312,7 @@ export async function GET() {
     try {
       const [madinRows, quranRows, kegiatanRows, pelanggaranRows] = await Promise.all([
         pool.execute<RowDataPacket[]>(
-          `SELECT a.murid_id, m.nama, a.tanggal, a.keterangan, a.status,
+          `SELECT a.murid_id, m.nama, DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal, a.keterangan, a.status,
                   COALESCE(km.nama_kelas, '-') as kelas_nama
            FROM absensi a 
            JOIN murid m ON a.murid_id = m.murid_id 
@@ -291,7 +322,7 @@ export async function GET() {
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
-          `SELECT aq.murid_id, m.nama, aq.tanggal, aq.keterangan, aq.status,
+          `SELECT aq.murid_id, m.nama, DATE_FORMAT(aq.tanggal, '%Y-%m-%d') as tanggal, aq.keterangan, aq.status,
                   COALESCE(kq.nama_kelas, '-') as kelas_nama
            FROM absensi_quran aq 
            JOIN murid m ON aq.murid_id = m.murid_id 
@@ -301,7 +332,7 @@ export async function GET() {
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
-          `SELECT ak.murid_id, m.nama, ak.tanggal, ak.keterangan, ak.status,
+          `SELECT ak.murid_id, m.nama, DATE_FORMAT(ak.tanggal, '%Y-%m-%d') as tanggal, ak.keterangan, ak.status,
                   COALESCE(ka.nama_kamar, '-') as kelas_nama
            FROM absensi_kegiatan ak 
            JOIN murid m ON ak.murid_id = m.murid_id 
@@ -311,7 +342,7 @@ export async function GET() {
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
-          `SELECT p.pelanggaran_id, p.murid_id, m.nama, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
+          `SELECT p.pelanggaran_id, p.murid_id, m.nama, DATE_FORMAT(p.tanggal, '%Y-%m-%d') as tanggal, p.deskripsi as keterangan, p.jenis as status,
                   COALESCE(km.nama_kelas, kq.nama_kelas, ka.nama_kamar, '-') as kelas_nama
            FROM pelanggaran p 
            JOIN murid m ON p.murid_id = m.murid_id 
@@ -324,25 +355,25 @@ export async function GET() {
         ).catch(() => [[] as RowDataPacket[]]),
       ]);
 
-      // Helper sorting berjenjang: Status/Jenis -> Kelas -> Abjad Nama -> Tanggal
+      // Helper sorting berjenjang: Tanggal (Terbaru) -> Status/Jenis -> Kelas -> Abjad Nama
       const sortSantriList = (list: any[]) => {
         const statusOrder: Record<string, number> = { 'Izin': 1, 'Sakit': 2, 'Alpha': 3 };
         return list.sort((a, b) => {
-          // 1. Status / Jenis (Izin -> Sakit -> Alpha)
+          // 1. Tanggal (Terbaru di paling atas)
+          const tglComp = (b.tanggal || '').localeCompare(a.tanggal || '');
+          if (tglComp !== 0) return tglComp;
+
+          // 2. Status / Jenis (Izin -> Sakit -> Alpha)
           const orderA = statusOrder[a.status] || 99;
           const orderB = statusOrder[b.status] || 99;
           if (orderA !== orderB) return orderA - orderB;
 
-          // 2. Kelas (Natural sort A-Z dan angka tingkat)
+          // 3. Kelas (Natural sort A-Z dan angka tingkat)
           const kelasComp = (a.kelas || '').localeCompare(b.kelas || '', 'id', { numeric: true, sensitivity: 'base' });
           if (kelasComp !== 0) return kelasComp;
 
-          // 3. Abjad Nama Santri (A-Z)
-          const namaComp = (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' });
-          if (namaComp !== 0) return namaComp;
-
-          // 4. Tanggal (Terbaru di atas)
-          return (b.tanggal || '').localeCompare(a.tanggal || '');
+          // 4. Abjad Nama Santri (A-Z)
+          return (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' });
         });
       };
 
@@ -356,12 +387,12 @@ export async function GET() {
       console.warn('perizinan query error:', e);
     }
 
-    // 5. PELANGGARAN TERBARU (Rekapitulasi Absensi Alpa + Pelanggaran Ketertiban Lainnya, 1 hari terakhir)
+    // 5. PELANGGARAN TERBARU (Rekapitulasi Absensi Alpa + Pelanggaran Ketertiban Lainnya)
     let pelanggaranRows: any[] = [];
     try {
       const [madinRows, quranRows, kegiatanRows, pelanggaranRowsDb] = await Promise.all([
         pool.execute<RowDataPacket[]>(
-          `SELECT a.murid_id, m.nama, a.tanggal, a.keterangan, a.status,
+          `SELECT a.murid_id, m.nama, DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal, a.keterangan, a.status,
                   COALESCE(km.nama_kelas, '-') as kelas_nama
            FROM absensi a 
            JOIN murid m ON a.murid_id = m.murid_id 
@@ -371,7 +402,7 @@ export async function GET() {
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
-          `SELECT aq.murid_id, m.nama, aq.tanggal, aq.keterangan, aq.status,
+          `SELECT aq.murid_id, m.nama, DATE_FORMAT(aq.tanggal, '%Y-%m-%d') as tanggal, aq.keterangan, aq.status,
                   COALESCE(kq.nama_kelas, '-') as kelas_nama
            FROM absensi_quran aq 
            JOIN murid m ON aq.murid_id = m.murid_id 
@@ -381,7 +412,7 @@ export async function GET() {
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
-          `SELECT ak.murid_id, m.nama, ak.tanggal, ak.keterangan, ak.status,
+          `SELECT ak.murid_id, m.nama, DATE_FORMAT(ak.tanggal, '%Y-%m-%d') as tanggal, ak.keterangan, ak.status,
                   COALESCE(ka.nama_kamar, '-') as kelas_nama
            FROM absensi_kegiatan ak 
            JOIN murid m ON ak.murid_id = m.murid_id 
@@ -391,7 +422,7 @@ export async function GET() {
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
         pool.execute<RowDataPacket[]>(
-          `SELECT p.pelanggaran_id, p.murid_id, m.nama, p.tanggal, p.deskripsi as keterangan, p.jenis as status,
+          `SELECT p.pelanggaran_id, p.murid_id, m.nama, DATE_FORMAT(p.tanggal, '%Y-%m-%d') as tanggal, p.deskripsi as keterangan, p.jenis as status,
                   COALESCE(km.nama_kelas, kq.nama_kelas, ka.nama_kamar, '-') as kelas_nama
            FROM pelanggaran p 
            JOIN murid m ON p.murid_id = m.murid_id 
@@ -407,21 +438,21 @@ export async function GET() {
       const sortPelanggaranList = (list: any[]) => {
         const statusOrder: Record<string, number> = { 'Alpha': 1, 'Alpa': 1, '': 1 };
         return list.sort((a, b) => {
-          // 1. Status (Alpha di atas, lainnya / Pelanggaran di bawah)
+          // 1. Tanggal (Terbaru di paling atas)
+          const tglComp = (b.tanggal || '').localeCompare(a.tanggal || '');
+          if (tglComp !== 0) return tglComp;
+
+          // 2. Status (Alpha di atas, lainnya / Pelanggaran di bawah)
           const orderA = statusOrder[a.status] ?? 99;
           const orderB = statusOrder[b.status] ?? 99;
           if (orderA !== orderB) return orderA - orderB;
 
-          // 2. Kelas (Natural sort A-Z dan angka tingkat)
+          // 3. Kelas (Natural sort A-Z dan angka tingkat)
           const kelasComp = (a.kelas || '').localeCompare(b.kelas || '', 'id', { numeric: true, sensitivity: 'base' });
           if (kelasComp !== 0) return kelasComp;
 
-          // 3. Abjad Nama Santri (A-Z)
-          const namaComp = (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' });
-          if (namaComp !== 0) return namaComp;
-
-          // 4. Tanggal (Terbaru di atas)
-          return (b.tanggal || '').localeCompare(a.tanggal || '');
+          // 4. Abjad Nama Santri (A-Z)
+          return (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' });
         });
       };
 

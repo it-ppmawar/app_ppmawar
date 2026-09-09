@@ -288,8 +288,9 @@ export default function DashboardPage() {
           const isPetugasKeb = lowerRole.includes('kebersihan') || lowerRole === 'petugas_umum' || lowerRole === 'petugas';
           const isPetugasInv = lowerRole.includes('inventaris') || lowerRole.includes('sarpras') || lowerRole === 'petugas_umum' || lowerRole === 'petugas';
 
-          const showKebersihan = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(lowerRole) || isPengasuhAny || isPengurusAny || isPetugasKeb;
-          const showInventaris = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(lowerRole) || isPengasuhAny || isPengurusAny || isPetugasInv;
+          const isGuruRole = lowerRole === 'guru' && !isPengasuhAny && !isPengurusAny;
+          const showKebersihan = !isGuruRole && (['admin', 'staff', 'pengurus_asrama', 'pengasuh'].includes(lowerRole) || isPengasuhAny || isPengurusAny || isPetugasKeb);
+          const showInventaris = !isGuruRole && (['admin', 'staff', 'pengurus_asrama', 'pengasuh'].includes(lowerRole) || isPengasuhAny || isPengurusAny || isPetugasInv);
           const showTagihan = ['admin', 'wali_murid', 'pengasuh'].includes(lowerRole) || isPengasuhAny;
           const visibleCount = [showKebersihan, showInventaris, showTagihan].filter(Boolean).length;
           if (visibleCount === 0) return null;
@@ -680,12 +681,22 @@ export default function DashboardPage() {
               <p className="text-[11px] text-gray-400 dark:text-gray-500">Rincian perizinan santri tidak ditampilkan dalam Mode Tamu</p>
             </div>
           ) : (!dashboardStats?.perizinanTerbaru || dashboardStats.perizinanTerbaru.length === 0) ? (
-            <div className="p-5 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada perizinan 1 hari terakhir</div>
+            <div className="p-5 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada perizinan terbaru</div>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-700 max-h-56 overflow-y-auto">
               {dashboardStats.perizinanTerbaru.map((item: any, idx: number) => {
-                const isToday = item.tanggal ? item.tanggal.slice(0, 10) === (dashboardStats.tanggal || '') : false;
-                const formattedDate = item.tanggal ? new Date(item.tanggal.slice(0, 10) + 'T00:00:00+07:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '';
+                const todayStr = dashboardStats?.tanggal || '';
+                let yesterdayStr = '';
+                if (todayStr) {
+                  const d = new Date(todayStr + 'T12:00:00+07:00');
+                  d.setDate(d.getDate() - 1);
+                  yesterdayStr = d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+                }
+                const itemDate = item.tanggal ? item.tanggal.slice(0, 10) : '';
+                const isToday = Boolean(todayStr && itemDate === todayStr);
+                const isYesterday = Boolean(yesterdayStr && itemDate === yesterdayStr);
+                const formattedDate = itemDate ? new Date(itemDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '';
+                const dateLabel = isToday ? 'Hari ini' : isYesterday ? 'Kemarin' : formattedDate;
                 return (
                   <li key={idx} className="flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-gray-50/50 dark:hover:bg-gray-750 transition">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -704,7 +715,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <span className="shrink-0 text-[10px] font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700/60 px-1.5 py-0.5 rounded-md">
-                      {isToday ? 'Hari ini' : formattedDate}
+                      {dateLabel}
                     </span>
                   </li>
                 );
@@ -730,12 +741,22 @@ export default function DashboardPage() {
               <p className="text-[11px] text-gray-400 dark:text-gray-500">Rincian pelanggaran santri tidak ditampilkan dalam Mode Tamu</p>
             </div>
           ) : (!dashboardStats?.pelanggaranTerbaru || dashboardStats.pelanggaranTerbaru.length === 0) ? (
-            <div className="p-5 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada santri alpa / pelanggaran 1 hari terakhir</div>
+            <div className="p-5 text-center text-xs text-gray-500 dark:text-gray-400">Tidak ada santri alpa / pelanggaran terbaru</div>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-700 max-h-56 overflow-y-auto">
               {dashboardStats.pelanggaranTerbaru.map((item: any, idx: number) => {
-                const isToday = item.tanggal ? item.tanggal.slice(0, 10) === (dashboardStats.tanggal || '') : false;
-                const formattedDate = item.tanggal ? new Date(item.tanggal.slice(0, 10) + 'T00:00:00+07:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '';
+                const todayStr = dashboardStats?.tanggal || '';
+                let yesterdayStr = '';
+                if (todayStr) {
+                  const d = new Date(todayStr + 'T12:00:00+07:00');
+                  d.setDate(d.getDate() - 1);
+                  yesterdayStr = d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+                }
+                const itemDate = item.tanggal ? item.tanggal.slice(0, 10) : '';
+                const isToday = Boolean(todayStr && itemDate === todayStr);
+                const isYesterday = Boolean(yesterdayStr && itemDate === yesterdayStr);
+                const formattedDate = itemDate ? new Date(itemDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '';
+                const dateLabel = isToday ? 'Hari ini' : isYesterday ? 'Kemarin' : formattedDate;
                 const isAlpha = (item.status || '').toLowerCase().includes('alph') || (item.status || '').toLowerCase().includes('alp');
                 return (
                   <li key={idx} className="flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-gray-50/50 dark:hover:bg-gray-750 transition">
@@ -755,7 +776,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <span className="shrink-0 text-[10px] font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700/60 px-1.5 py-0.5 rounded-md">
-                      {isToday ? 'Hari ini' : formattedDate}
+                      {dateLabel}
                     </span>
                   </li>
                 );
