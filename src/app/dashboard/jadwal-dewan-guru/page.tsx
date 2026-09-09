@@ -276,15 +276,10 @@ export default function JadwalDewanGuruPage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5 leading-tight truncate">
-                <span>Pengaturan Jadwal Dewan Guru</span>
-                {isGuru && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                    Mode Lihat
-                  </span>
-                )}
+                <span>{isGuru ? 'Jadwal Dewan Guru' : 'Pengaturan Jadwal Dewan Guru'}</span>
               </h1>
               <p className="text-[11px] text-slate-400 truncate">
-                {isGuru ? 'Jadwal KBM & Kehadiran Dewan Guru YPMA' : 'Dikelola khusus oleh Admin & Pengasuh YPMA'}
+                {isGuru ? 'KBM & Kehadiran Dewan Guru YPMA' : 'Dikelola khusus oleh Admin & Pengasuh YPMA'}
               </p>
             </div>
           </div>

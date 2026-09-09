@@ -349,14 +349,9 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
             <div className="min-w-0">
               <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5 leading-tight truncate">
                 <span>QR Code Presensi Dewan Guru</span>
-                {isGuru && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                    Kartu Pribadi
-                  </span>
-                )}
               </h1>
               <p className="text-[11px] text-slate-400 truncate">
-                {isGuru ? 'Kartu Presensi Digital Kehadiran Pribadi' : `Total ${teachers.length} Dewan Guru & Karyawan YPMA`}
+                {isGuru ? 'Kartu Digital Kehadiran Pribadi' : `Total ${teachers.length} Dewan Guru & Karyawan YPMA`}
               </p>
             </div>
           </div>
@@ -382,7 +377,7 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
                 title="Preview Dokumen PDF Katalog Kartu QR (di browser)"
               >
                 <FileText size={13} className="shrink-0" />
-                <span>{pdfGenerating ? `${pdfProgress}%` : 'Preview PDF'}</span>
+                <span>{pdfGenerating ? `${pdfProgress}%` : 'Preview'}</span>
               </button>
 
               {/* Unduh PDF (Client-Side) */}
@@ -393,7 +388,7 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
                 title="Unduh Dokumen PDF Katalog Kartu A4 (di browser)"
               >
                 <Download size={13} className={`shrink-0 ${pdfGenerating ? 'animate-bounce' : ''}`} />
-                <span>{pdfGenerating ? `${pdfProgress}%` : 'Unduh PDF'}</span>
+                <span>{pdfGenerating ? `${pdfProgress}%` : 'PDF'}</span>
               </button>
 
               {/* Unduh Excel */}
@@ -448,7 +443,7 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
                 title="Preview Kartu Presensi QR PDF"
               >
                 <FileText size={13} className="shrink-0" />
-                <span>{pdfGenerating ? `${pdfProgress}%` : 'Preview PDF'}</span>
+                <span>{pdfGenerating ? `${pdfProgress}%` : 'Preview'}</span>
               </button>
 
               {/* Unduh PDF Kartu Pribadi */}
@@ -459,7 +454,7 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
                 title="Unduh Kartu Presensi QR PDF"
               >
                 <Download size={13} className={`shrink-0 ${pdfGenerating ? 'animate-bounce' : ''}`} />
-                <span>{pdfGenerating ? `${pdfProgress}%` : 'Unduh PDF'}</span>
+                <span>{pdfGenerating ? `${pdfProgress}%` : 'PDF'}</span>
               </button>
             </div>
           )}
