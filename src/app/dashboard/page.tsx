@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [editNamaValue, setEditNamaValue] = useState('');
   const [savingNama, setSavingNama] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const isTamu = (role || '').toLowerCase() === 'tamu';
 
   useEffect(() => {
     // Menentukan ucapan berdasarkan waktu
@@ -668,13 +669,13 @@ export default function DashboardPage() {
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
           <div className="bg-green-800 dark:bg-green-900 px-4 py-2.5 text-white text-xs font-semibold flex items-center justify-between">
             <span className="flex items-center gap-1.5 font-bold">🟡 Perizinan Terbaru</span>
-            {role !== 'tamu' && dashboardStats?.perizinanTerbaru?.length > 0 && (
+            {!isTamu && dashboardStats?.perizinanTerbaru?.length > 0 && (
               <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                 {dashboardStats.perizinanTerbaru.length}
               </span>
             )}
           </div>
-          {role === 'tamu' ? (
+          {isTamu ? (
             <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400 space-y-1">
               <Shield size={22} className="mx-auto text-gray-400 dark:text-gray-500 mb-1 opacity-70" />
               <p className="font-bold text-gray-700 dark:text-gray-300">Data Disembunyikan</p>
@@ -728,13 +729,13 @@ export default function DashboardPage() {
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
           <div className="bg-green-800 dark:bg-green-900 px-4 py-2.5 text-white text-xs font-semibold flex items-center justify-between">
             <span className="flex items-center gap-1.5 font-bold">🔴 Pelanggaran Terbaru</span>
-            {role !== 'tamu' && dashboardStats?.pelanggaranTerbaru?.length > 0 && (
+            {!isTamu && dashboardStats?.pelanggaranTerbaru?.length > 0 && (
               <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                 {dashboardStats.pelanggaranTerbaru.length}
               </span>
             )}
           </div>
-          {role === 'tamu' ? (
+          {isTamu ? (
             <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400 space-y-1">
               <Shield size={22} className="mx-auto text-gray-400 dark:text-gray-500 mb-1 opacity-70" />
               <p className="font-bold text-gray-700 dark:text-gray-300">Data Disembunyikan</p>
