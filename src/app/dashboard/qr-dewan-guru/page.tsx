@@ -60,7 +60,8 @@ export default function QrDewanGuruPage() {
         }
         const user = d.user;
         const pengasuhFlag = user.role === 'pengasuh' || user.is_pengasuh || user.isPengasuh;
-        if (user.role !== 'admin' && user.role !== 'staff' && !pengasuhFlag) {
+        const isGuruUser = user.role === 'guru';
+        if (user.role !== 'admin' && user.role !== 'staff' && !pengasuhFlag && !isGuruUser) {
           router.replace('/dashboard');
           return;
         }
@@ -307,7 +308,9 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
         }
       }
 
-      const pdfName = `Katalog_QR_Guru_${selectedHomebase !== 'SEMUA' ? selectedHomebase.replace(/[^a-zA-Z0-9_-]/g, '_') : 'YPMA'}.pdf`;
+      const pdfName = list.length === 1
+        ? `Kartu_QR_${(list[0].nama || 'Guru').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
+        : `Katalog_QR_Guru_${selectedHomebase !== 'SEMUA' ? selectedHomebase.replace(/[^a-zA-Z0-9_-]/g, '_') : 'YPMA'}.pdf`;
 
       if (previewOnly) {
         const blob = doc.output('blob');
@@ -330,6 +333,9 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
     }
   };
 
+  const isGuru = role === 'guru';
+  const canManage = (role === 'admin' || role === 'staff' || isPengasuh) && !isGuru;
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-28">
       {/* Top Bar */}
@@ -343,79 +349,120 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
             <div className="min-w-0">
               <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5 leading-tight truncate">
                 <span>QR Code Presensi Dewan Guru</span>
+                {isGuru && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                    Kartu Pribadi
+                  </span>
+                )}
               </h1>
               <p className="text-[11px] text-slate-400 truncate">
-                Total {teachers.length} Dewan Guru & Karyawan YPMA
+                {isGuru ? 'Kartu Presensi Digital Kehadiran Pribadi' : `Total ${teachers.length} Dewan Guru & Karyawan YPMA`}
               </p>
             </div>
           </div>
 
-          {/* Baris 2: Tombol Kembali + Tombol Aksi Lengkap */}
-          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
-            {/* Tombol Kembali */}
-            <Link
-              href="/dashboard/absen-guru"
-              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer"
-              title="Kembali ke Presensi Dewan Guru"
-            >
-              <ArrowLeft size={16} />
-              <span className="hidden sm:inline">Kembali</span>
-            </Link>
+          {/* Baris 2: Tombol Aksi */}
+          {canManage ? (
+            <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+              {/* Tombol Kembali */}
+              <Link
+                href="/dashboard/absen-guru"
+                className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+                title="Kembali ke Presensi Dewan Guru"
+              >
+                <ArrowLeft size={16} />
+                <span className="hidden sm:inline">Kembali</span>
+              </Link>
 
-            {/* Preview PDF (Client-Side) */}
-            <button
-              onClick={() => handleClientPDF(true)}
-              disabled={pdfGenerating}
-              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
-              title="Preview Dokumen PDF Katalog Kartu QR (di browser)"
-            >
-              <FileText size={13} className="shrink-0" />
-              <span>{pdfGenerating ? `${pdfProgress}%` : 'Preview PDF'}</span>
-            </button>
+              {/* Preview PDF (Client-Side) */}
+              <button
+                onClick={() => handleClientPDF(true)}
+                disabled={pdfGenerating}
+                className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
+                title="Preview Dokumen PDF Katalog Kartu QR (di browser)"
+              >
+                <FileText size={13} className="shrink-0" />
+                <span>{pdfGenerating ? `${pdfProgress}%` : 'Preview PDF'}</span>
+              </button>
 
-            {/* Unduh PDF (Client-Side) */}
-            <button
-              onClick={() => handleClientPDF(false)}
-              disabled={pdfGenerating}
-              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
-              title="Unduh Dokumen PDF Katalog Kartu A4 (di browser)"
-            >
-              <Download size={13} className={`shrink-0 ${pdfGenerating ? 'animate-bounce' : ''}`} />
-              <span>{pdfGenerating ? `${pdfProgress}%` : 'Unduh PDF'}</span>
-            </button>
+              {/* Unduh PDF (Client-Side) */}
+              <button
+                onClick={() => handleClientPDF(false)}
+                disabled={pdfGenerating}
+                className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
+                title="Unduh Dokumen PDF Katalog Kartu A4 (di browser)"
+              >
+                <Download size={13} className={`shrink-0 ${pdfGenerating ? 'animate-bounce' : ''}`} />
+                <span>{pdfGenerating ? `${pdfProgress}%` : 'Unduh PDF'}</span>
+              </button>
 
-            {/* Unduh Excel */}
-            <button
-              onClick={handleExportExcel}
-              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-              title="Unduh Daftar QR & Link Presensi ke File Excel"
-            >
-              <Download size={13} className="shrink-0" />
-              <span>Unduh Excel</span>
-            </button>
+              {/* Unduh Excel */}
+              <button
+                onClick={handleExportExcel}
+                className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                title="Unduh Daftar QR & Link Presensi ke File Excel"
+              >
+                <Download size={13} className="shrink-0" />
+                <span>Unduh Excel</span>
+              </button>
 
-            {/* Download Bulk ZIP (tetap server-side, untuk gambar PNG) */}
-            <a
-              href={`/api/dewan-guru/qr/bulk?type=zip&homebase=${encodeURIComponent(selectedHomebase)}`}
-              download
-              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-              title="Download File ZIP Semua Gambar QR (PNG)"
-            >
-              <Archive size={13} className="shrink-0" />
-              <span>Unduh ZIP</span>
-            </a>
+              {/* Download Bulk ZIP (tetap server-side, untuk gambar PNG) */}
+              <a
+                href={`/api/dewan-guru/qr/bulk?type=zip&homebase=${encodeURIComponent(selectedHomebase)}`}
+                download
+                className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                title="Download File ZIP Semua Gambar QR (PNG)"
+              >
+                <Archive size={13} className="shrink-0" />
+                <span>Unduh ZIP</span>
+              </a>
 
-            {/* Tombol Sinkronisasi Online */}
-            <button
-              onClick={() => handleSync('online')}
-              disabled={syncing}
-              className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer text-center"
-              title="Tarik data terbaru dari Google Sheets"
-            >
-              <RefreshCw size={13} className={`shrink-0 ${syncing ? 'animate-spin' : ''}`} />
-              <span>{syncing ? 'Menarik...' : 'Tarik Online'}</span>
-            </button>
-          </div>
+              {/* Tombol Sinkronisasi Online */}
+              <button
+                onClick={() => handleSync('online')}
+                disabled={syncing}
+                className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer text-center"
+                title="Tarik data terbaru dari Google Sheets"
+              >
+                <RefreshCw size={13} className={`shrink-0 ${syncing ? 'animate-spin' : ''}`} />
+                <span>{syncing ? 'Menarik...' : 'Tarik Online'}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 w-full sm:w-auto">
+              {/* Tombol Kembali (Guru) */}
+              <Link
+                href="/dashboard"
+                className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+                title="Kembali ke Beranda"
+              >
+                <ArrowLeft size={16} />
+                <span>Kembali</span>
+              </Link>
+
+              {/* Preview PDF Kartu Pribadi */}
+              <button
+                onClick={() => handleClientPDF(true)}
+                disabled={pdfGenerating || filteredTeachers.length === 0}
+                className="flex-1 sm:flex-initial py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
+                title="Preview Kartu Presensi QR PDF"
+              >
+                <FileText size={13} className="shrink-0" />
+                <span>{pdfGenerating ? `${pdfProgress}%` : 'Preview PDF'}</span>
+              </button>
+
+              {/* Unduh PDF Kartu Pribadi */}
+              <button
+                onClick={() => handleClientPDF(false)}
+                disabled={pdfGenerating || filteredTeachers.length === 0}
+                className="flex-1 sm:flex-initial py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
+                title="Unduh Kartu Presensi QR PDF"
+              >
+                <Download size={13} className={`shrink-0 ${pdfGenerating ? 'animate-bounce' : ''}`} />
+                <span>{pdfGenerating ? `${pdfProgress}%` : 'Unduh PDF'}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -443,224 +490,359 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
       )}
 
       <div className="max-w-7xl mx-auto px-4 pt-4 space-y-3">
-        {/* Sync Success Notification */}
-        {syncMsg && (
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-xs text-emerald-700 dark:text-emerald-300 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 size={16} className="shrink-0" />
-              <span>{syncMsg}</span>
-            </div>
-            <button onClick={() => setSyncMsg('')} className="text-slate-400 hover:text-slate-600">
-              <X size={14} />
-            </button>
-          </div>
-        )}
-
-        {/* Homebase Filter & Search Bar */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-          {/* Search Box */}
-          <div className="relative">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari nama guru, NIP, no. HP, atau homebase..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full text-xs pl-10 pr-9 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          {/* Homebase Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
-            {HOMEBASES.map(hb => {
-              const count = hb === 'SEMUA'
-                ? teachers.length
-                : (stats.find(s => s.homebase === hb)?.count || 0);
-
-              return (
-                <button
-                  key={hb}
-                  onClick={() => setSelectedHomebase(hb)}
-                  className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 ${
-                    selectedHomebase === hb
-                      ? 'bg-teal-600 text-white shadow-sm'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <span>{hb === 'SEMUA' ? '🌐 Semua' : hb}</span>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
-                      selectedHomebase === hb ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                    }`}
-                  >
-                    {count}
-                  </span>
+        {canManage ? (
+          <>
+            {/* Sync Success Notification */}
+            {syncMsg && (
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-xs text-emerald-700 dark:text-emerald-300 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={16} className="shrink-0" />
+                  <span>{syncMsg}</span>
+                </div>
+                <button onClick={() => setSyncMsg('')} className="text-slate-400 hover:text-slate-600">
+                  <X size={14} />
                 </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Grid Cards */}
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-            {[...Array(12)].map((_, i) => (
-              <div key={i} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-3 animate-pulse space-y-2">
-                <div className="w-full aspect-square bg-slate-100 dark:bg-slate-800 rounded-2xl" />
-                <div className="h-3.5 bg-slate-200 dark:bg-slate-700 rounded-full w-3/4 mx-auto" />
-                <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full w-1/2 mx-auto" />
               </div>
-            ))}
-          </div>
-        ) : filteredTeachers.length === 0 ? (
-          <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8">
-            <QrCode size={48} className="mx-auto text-slate-300 dark:text-slate-700 mb-3" />
-            <h3 className="font-extrabold text-slate-700 dark:text-slate-200 text-sm">Tidak Ada Guru Ditemukan</h3>
-            <p className="text-xs text-slate-400 mt-1">Coba ubah kata kunci pencarian atau filter unit.</p>
-          </div>
-        ) : !showAllCards && selectedHomebase === 'SEMUA' && !search.trim() ? (
-          <div className="text-center py-10 sm:py-14 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto shadow-xs">
-              <QrCode size={24} />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base">
-                Pilih Unit Lembaga atau Tampilkan Seluruh Kartu QR
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
-                Untuk menjaga kecepatan browser di layar HP dan laptop, silakan pilih salah satu tombol Unit di atas atau klik tombol di bawah untuk menampilkan seluruh {teachers.length || 441} kartu QR.
-              </p>
-            </div>
-            <div className="pt-2">
-              <button
-                onClick={() => setShowAllCards(true)}
-                className="py-2.5 px-6 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all shadow-md shadow-teal-600/20 inline-flex items-center gap-2 cursor-pointer active:scale-95"
-              >
-                <QrCode size={16} />
-                <span>Tampilkan Semua Kartu QR ({teachers.length || 441} Guru)</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {paginatedTeachers.map((guru, idx) => {
-                const itemIndex = (currentPage - 1) * pageSize + idx + 1;
-                return (
-                  <div
-                    key={guru.id}
-                    className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all p-3 flex flex-col justify-between group"
+            )}
+
+            {/* Homebase Filter & Search Bar */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+              {/* Search Box */}
+              <div className="relative">
+                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari nama guru, NIP, no. HP, atau homebase..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="w-full text-xs pl-10 pr-9 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"
                   >
-                    <div>
-                      {/* Homebase Badge */}
-                      <div className="flex items-center justify-between gap-1 mb-2">
-                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 truncate max-w-[85%]">
-                          {guru.homebase}
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Homebase Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+                {HOMEBASES.map(hb => {
+                  const count = hb === 'SEMUA'
+                    ? teachers.length
+                    : (stats.find(s => s.homebase === hb)?.count || 0);
+
+                  return (
+                    <button
+                      key={hb}
+                      onClick={() => setSelectedHomebase(hb)}
+                      className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 ${
+                        selectedHomebase === hb
+                          ? 'bg-teal-600 text-white shadow-sm'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      <span>{hb === 'SEMUA' ? '🌐 Semua' : hb}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                          selectedHomebase === hb ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Grid Cards (Admin / Staff / Pengasuh) */}
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {[...Array(12)].map((_, i) => (
+                  <div key={i} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-3 animate-pulse space-y-2">
+                    <div className="w-full aspect-square bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+                    <div className="h-3.5 bg-slate-200 dark:bg-slate-700 rounded-full w-3/4 mx-auto" />
+                    <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full w-1/2 mx-auto" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredTeachers.length === 0 ? (
+              <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8">
+                <QrCode size={48} className="mx-auto text-slate-300 dark:text-slate-700 mb-3" />
+                <h3 className="font-extrabold text-slate-700 dark:text-slate-200 text-sm">Tidak Ada Guru Ditemukan</h3>
+                <p className="text-xs text-slate-400 mt-1">Coba ubah kata kunci pencarian atau filter unit.</p>
+              </div>
+            ) : !showAllCards && selectedHomebase === 'SEMUA' && !search.trim() ? (
+              <div className="text-center py-10 sm:py-14 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto shadow-xs">
+                  <QrCode size={24} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base">
+                    Pilih Unit Lembaga atau Tampilkan Seluruh Kartu QR
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
+                    Untuk menjaga kecepatan browser di layar HP dan laptop, silakan pilih salah satu tombol Unit di atas atau klik tombol di bawah untuk menampilkan seluruh {teachers.length || 441} kartu QR.
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <button
+                    onClick={() => setShowAllCards(true)}
+                    className="py-2.5 px-6 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all shadow-md shadow-teal-600/20 inline-flex items-center gap-2 cursor-pointer active:scale-95"
+                  >
+                    <QrCode size={16} />
+                    <span>Tampilkan Semua Kartu QR ({teachers.length || 441} Guru)</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                  {paginatedTeachers.map((guru, idx) => {
+                    const itemIndex = (currentPage - 1) * pageSize + idx + 1;
+                    return (
+                      <div
+                        key={guru.id}
+                        className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all p-3 flex flex-col justify-between group"
+                      >
+                        <div>
+                          {/* Homebase Badge */}
+                          <div className="flex items-center justify-between gap-1 mb-2">
+                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 truncate max-w-[85%]">
+                              {guru.homebase}
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-400">
+                              #{itemIndex}
+                            </span>
+                          </div>
+
+                          {/* QR Image Box */}
+                          <div
+                            onClick={() => setPreviewGuru(guru)}
+                            className="w-full aspect-square bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-2 border border-slate-100 dark:border-slate-800 flex items-center justify-center cursor-pointer hover:border-teal-400 transition-colors relative"
+                          >
+                            <img
+                              src={`/api/dewan-guru/qr?token=${encodeURIComponent(guru.qr_token)}`}
+                              alt={`QR ${guru.nama}`}
+                              className="w-full h-full object-contain rounded-xl"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-teal-900/0 hover:bg-teal-900/30 rounded-2xl flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
+                              <span className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 p-1.5 rounded-xl shadow-md">
+                                <ZoomIn size={16} />
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Teacher Info */}
+                          <div className="mt-2 text-center">
+                            <h3
+                              className="text-xs font-black text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight"
+                              title={guru.nama}
+                            >
+                              {guru.nama}
+                            </h3>
+                            {guru.no_hp && (
+                              <p className="text-[10px] font-mono text-slate-400 mt-0.5 truncate flex items-center justify-center gap-1">
+                                <Phone size={9} /> {guru.no_hp}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="grid grid-cols-2 gap-1.5 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                          <a
+                            href={`/api/dewan-guru/qr?token=${encodeURIComponent(guru.qr_token)}&download=true`}
+                            download
+                            className="p-2 rounded-xl bg-slate-100 hover:bg-teal-50 hover:text-teal-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
+                            title="Unduh Gambar QR"
+                          >
+                            <Download size={13} />
+                            <span>Unduh</span>
+                          </a>
+
+                          <button
+                            onClick={() => openWaDialog(guru)}
+                            className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                            title="Kirim via WhatsApp"
+                          >
+                            <Send size={13} />
+                            <span>Kirim</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200 dark:border-slate-800 shadow-xs">
+                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      Menampilkan <span className="font-bold text-slate-700 dark:text-slate-200">{(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredTeachers.length)}</span> dari <span className="font-bold text-teal-600 dark:text-teal-400">{filteredTeachers.length}</span> guru
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-all cursor-pointer"
+                        title="Halaman Sebelumnya"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800">
+                        {currentPage} / {totalPages}
+                      </span>
+
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-all cursor-pointer"
+                        title="Halaman Selanjutnya"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          /* ========================================================================= */
+          /* TAMPILAN KHUSUS ROLE GURU: KARTU PRESENSI DIGITAL PRIBADI                 */
+          /* ========================================================================= */
+          <div className="py-2 sm:py-6">
+            {loading ? (
+              <div className="max-w-sm sm:max-w-md mx-auto p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm animate-pulse space-y-4 text-center">
+                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-full w-1/3 mx-auto" />
+                <div className="w-56 h-56 bg-slate-100 dark:bg-slate-800 rounded-2xl mx-auto" />
+                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-full w-2/3 mx-auto" />
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full w-1/2 mx-auto" />
+              </div>
+            ) : filteredTeachers.length === 0 ? (
+              <div className="max-w-sm sm:max-w-md mx-auto p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-3 shadow-sm">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
+                  <AlertCircle size={28} />
+                </div>
+                <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-base">
+                  Data Dewan Guru Belum Ditemukan
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Akun Anda belum terhubung secara otomatis dengan basis data Dewan Guru YPMA. Silakan hubungi Admin atau Pengasuh untuk mengaitkan akun Anda agar Kartu Presensi Digital dapat ditampilkan.
+                </p>
+                <div className="pt-2">
+                  <Link
+                    href="/dashboard"
+                    className="inline-block py-2.5 px-5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all"
+                  >
+                    Kembali ke Beranda
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              (() => {
+                const guru = filteredTeachers[0];
+                return (
+                  <div className="max-w-sm sm:max-w-md mx-auto space-y-3.5">
+                    {/* Kartu Presensi Digital */}
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-teal-500/30 dark:border-teal-500/20 shadow-xl p-5 sm:p-6 flex flex-col items-center text-center space-y-3.5 relative overflow-hidden">
+                      <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-600" />
+
+                      {/* Header Kartu */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 tracking-wider uppercase inline-block">
+                          {guru.homebase || 'YPMA'}
                         </span>
-                        <span className="text-[9px] font-mono text-slate-400">
-                          #{itemIndex}
-                        </span>
+                        <h2 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest pt-1">
+                          PP. MATHOLI'UL ANWAR
+                        </h2>
+                        <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400 tracking-wider uppercase">
+                          Kartu Presensi Digital Kehadiran
+                        </p>
                       </div>
 
-                      {/* QR Image Box */}
+                      {/* Box QR Code */}
                       <div
                         onClick={() => setPreviewGuru(guru)}
-                        className="w-full aspect-square bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-2 border border-slate-100 dark:border-slate-800 flex items-center justify-center cursor-pointer hover:border-teal-400 transition-colors relative"
+                        className="w-56 h-56 sm:w-64 sm:h-64 bg-white dark:bg-slate-800/80 p-3 rounded-2xl border-2 border-dashed border-teal-200 dark:border-teal-700/60 flex items-center justify-center cursor-pointer hover:border-teal-500 transition-all shadow-inner group relative"
+                        title="Klik untuk memperbesar tampilan QR Code"
                       >
                         <img
                           src={`/api/dewan-guru/qr?token=${encodeURIComponent(guru.qr_token)}`}
                           alt={`QR ${guru.nama}`}
-                          className="w-full h-full object-contain rounded-xl"
-                          loading="lazy"
+                          className="w-full h-full object-contain"
                         />
-                        <div className="absolute inset-0 bg-teal-900/0 hover:bg-teal-900/30 rounded-2xl flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
-                          <span className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 p-1.5 rounded-xl shadow-md">
-                            <ZoomIn size={16} />
+                        <div className="absolute inset-0 bg-teal-950/30 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="bg-white/95 dark:bg-slate-900/95 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5">
+                            <ZoomIn size={15} /> Perbesar QR
                           </span>
                         </div>
                       </div>
 
-                      {/* Teacher Info */}
-                      <div className="mt-2 text-center">
-                        <h3
-                          className="text-xs font-black text-slate-800 dark:text-slate-100 line-clamp-2 leading-tight"
-                          title={guru.nama}
-                        >
+                      {/* Identitas Guru */}
+                      <div className="space-y-1 w-full px-2">
+                        <h3 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 leading-snug">
                           {guru.nama}
                         </h3>
+                        {guru.nip ? (
+                          <p className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
+                            NIP: {guru.nip}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] font-medium text-slate-400">
+                            Dewan Guru & Pembina Pesantren
+                          </p>
+                        )}
                         {guru.no_hp && (
-                          <p className="text-[10px] font-mono text-slate-400 mt-0.5 truncate flex items-center justify-center gap-1">
-                            <Phone size={9} /> {guru.no_hp}
+                          <p className="text-[11px] font-mono text-slate-400 flex items-center justify-center gap-1.5">
+                            <Phone size={11} /> {guru.no_hp}
                           </p>
                         )}
                       </div>
+
+                      {/* Tombol Aksi Langsung pada Kartu */}
+                      <div className="w-full grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <a
+                          href={`/api/dewan-guru/qr?token=${encodeURIComponent(guru.qr_token)}&download=true`}
+                          download
+                          className="py-2.5 px-3 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                          title="Simpan gambar QR Code ke galeri HP"
+                        >
+                          <Download size={14} />
+                          <span>Unduh QR</span>
+                        </a>
+
+                        <button
+                          onClick={() => openWaDialog(guru)}
+                          className="py-2.5 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                          title="Kirim link presensi digital ke WhatsApp"
+                        >
+                          <Send size={14} />
+                          <span>Kirim WA</span>
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="grid grid-cols-2 gap-1.5 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                      <a
-                        href={`/api/dewan-guru/qr?token=${encodeURIComponent(guru.qr_token)}&download=true`}
-                        download
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-teal-50 hover:text-teal-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
-                        title="Unduh Gambar QR"
-                      >
-                        <Download size={13} />
-                        <span>Unduh</span>
-                      </a>
-
-                      <button
-                        onClick={() => openWaDialog(guru)}
-                        className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                        title="Kirim via WhatsApp"
-                      >
-                        <Send size={13} />
-                        <span>Kirim</span>
-                      </button>
+                    {/* Petunjuk Penggunaan */}
+                    <div className="p-3.5 bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200/70 dark:border-teal-800/50 rounded-2xl text-[11px] text-teal-900 dark:text-teal-200 leading-relaxed flex items-start gap-2.5 shadow-2xs">
+                      <Sparkles size={16} className="shrink-0 mt-0.5 text-teal-600 dark:text-teal-400" />
+                      <div>
+                        <p className="font-bold">Panduan Presensi Kehadiran:</p>
+                        <p className="text-slate-600 dark:text-slate-400 mt-0.5">
+                          Tunjukkan QR Code ini langsung di hadapan kamera pos presensi saat hadir mengajar, atau unduh gambarnya ke galeri ponsel Anda untuk akses cepat tanpa perlu membuka aplikasi.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 );
-              })}
-            </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200 dark:border-slate-800 shadow-xs">
-                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  Menampilkan <span className="font-bold text-slate-700 dark:text-slate-200">{(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredTeachers.length)}</span> dari <span className="font-bold text-teal-600 dark:text-teal-400">{filteredTeachers.length}</span> guru
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-all cursor-pointer"
-                    title="Halaman Sebelumnya"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800">
-                    {currentPage} / {totalPages}
-                  </span>
-
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 transition-all cursor-pointer"
-                    title="Halaman Selanjutnya"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
+              })()
             )}
           </div>
         )}

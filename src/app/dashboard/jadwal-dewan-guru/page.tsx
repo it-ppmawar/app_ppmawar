@@ -38,6 +38,9 @@ export default function JadwalDewanGuruPage() {
   const [activeHari, setActiveHari] = useState('SEMUA');
   const [activeHomebase, setActiveHomebase] = useState('SEMUA');
 
+  const isGuru = role === 'guru';
+  const canManage = (role === 'admin' || role === 'staff' || isPengasuh) && !isGuru;
+
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<any>(null);
@@ -73,7 +76,8 @@ export default function JadwalDewanGuruPage() {
         }
         const user = d.user;
         const pengasuhFlag = user.role === 'pengasuh' || user.is_pengasuh || user.isPengasuh;
-        if (user.role !== 'admin' && user.role !== 'staff' && !pengasuhFlag) {
+        const isGuruUser = user.role === 'guru';
+        if (user.role !== 'admin' && user.role !== 'staff' && !pengasuhFlag && !isGuruUser) {
           router.replace('/dashboard');
           return;
         }
@@ -100,28 +104,30 @@ export default function JadwalDewanGuruPage() {
       clearTimeout(timeoutId);
 
       const json = await res.json();
-      if (!res.ok || !json.success) {
-        setError(json.error || 'Gagal memuat jadwal.');
-      } else {
+      if (res.ok && json.success) {
         setSchedules(json.data || []);
+      } else {
+        setError(json.error || 'Gagal memuat jadwal.');
       }
     } catch (e: any) {
       if (e.name === 'AbortError') {
-        setError('Waktu pemuatan habis (timeout). Silakan klik muat ulang.');
+        setError('Waktu memuat habis. Silakan muat ulang.');
       } else {
-        setError('Koneksi gagal atau server sedang memproses. Silakan coba lagi.');
+        setError('Koneksi terputus. Silakan coba lagi.');
       }
     } finally {
       setLoading(false);
     }
   }, [activeHari, activeHomebase]);
 
-  // Muat jadwal langsung saat komponen dibuka & saat filter berubah
   useEffect(() => {
-    fetchSchedules();
-  }, [fetchSchedules]);
+    if (role || isPengasuh) {
+      fetchSchedules();
+    }
+  }, [role, isPengasuh, fetchSchedules]);
 
   const openAddModal = () => {
+    if (!canManage) return;
     setEditingSchedule(null);
     setFormData({
       nama_sesi: '',
@@ -136,6 +142,7 @@ export default function JadwalDewanGuruPage() {
   };
 
   const openEditModal = (item: any) => {
+    if (!canManage) return;
     setEditingSchedule(item);
     setFormData({
       nama_sesi: item.nama_sesi || '',
@@ -150,6 +157,7 @@ export default function JadwalDewanGuruPage() {
   };
 
   const handleDelete = async (id: number) => {
+    if (!canManage) return;
     if (!confirm('Apakah Anda yakin ingin menghapus jadwal ini?')) return;
     try {
       const res = await fetch(`/api/dewan-guru/jadwal?id=${id}`, { method: 'DELETE' });
@@ -269,96 +277,159 @@ export default function JadwalDewanGuruPage() {
             <div className="min-w-0">
               <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5 leading-tight truncate">
                 <span>Pengaturan Jadwal Dewan Guru</span>
+                {isGuru && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                    Mode Lihat
+                  </span>
+                )}
               </h1>
               <p className="text-[11px] text-slate-400 truncate">
-                Dikelola khusus oleh Admin & Pengasuh YPMA
+                {isGuru ? 'Jadwal KBM & Kehadiran Dewan Guru YPMA' : 'Dikelola khusus oleh Admin & Pengasuh YPMA'}
               </p>
             </div>
           </div>
 
           {/* Baris 2: Tombol Aksi – Rapi & Presisi di Layar HP */}
           <div className="w-full sm:w-auto space-y-1.5 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-1.5">
-            {/* Baris 1 HP: Kembali | Impor | Templat (Grid 3 Kolom) */}
-            <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
-              <Link
-                href="/dashboard/absen-guru"
-                className="py-2 px-2 sm:px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
-                title="Kembali ke Presensi Guru"
-              >
-                <ArrowLeft size={13} className="shrink-0" />
-                <span>Kembali</span>
-              </Link>
+            {canManage ? (
+              <>
+                {/* Baris 1 HP: Kembali | Impor | Templat (Grid 3 Kolom) */}
+                <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
+                  <Link
+                    href="/dashboard/absen-guru"
+                    className="py-2 px-2 sm:px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    title="Kembali ke Presensi Guru"
+                  >
+                    <ArrowLeft size={13} className="shrink-0" />
+                    <span>Kembali</span>
+                  </Link>
 
-              <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="py-2 px-2 sm:px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
-                title="Unggah / Impor Jadwal dari File Excel"
-              >
-                <Upload size={13} className="shrink-0" />
-                <span>Impor</span>
-              </button>
+                  <button
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="py-2 px-2 sm:px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    title="Unggah / Impor Jadwal dari File Excel"
+                  >
+                    <Upload size={13} className="shrink-0" />
+                    <span>Impor</span>
+                  </button>
 
-              <button
-                onClick={() => downloadTemplate('jadwal_dewan_guru')}
-                className="py-2 px-2 sm:px-3 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
-                title="Unduh Format Templat Impor Excel"
-              >
-                <Download size={13} className="shrink-0" />
-                <span>Templat</span>
-              </button>
-            </div>
+                  <button
+                    onClick={() => downloadTemplate('jadwal_dewan_guru')}
+                    className="py-2 px-2 sm:px-3 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    title="Unduh Format Templat Impor Excel"
+                  >
+                    <Download size={13} className="shrink-0" />
+                    <span>Templat</span>
+                  </button>
+                </div>
 
-            {/* Baris 2 HP: Excel | Preview | PDF (Grid 3 Kolom) */}
-            <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
-              <button
-                onClick={() => handleExportJadwal('excel', false)}
-                className="py-2 px-2 sm:px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
-                title="Unduh File Excel Jadwal Dewan Guru"
-              >
-                <Download size={13} className="shrink-0" />
-                <span>Excel</span>
-              </button>
+                {/* Baris 2 HP: Excel | Preview | PDF (Grid 3 Kolom) */}
+                <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
+                  <button
+                    onClick={() => handleExportJadwal('excel', false)}
+                    className="py-2 px-2 sm:px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    title="Unduh File Excel Jadwal Dewan Guru"
+                  >
+                    <Download size={13} className="shrink-0" />
+                    <span>Excel</span>
+                  </button>
 
-              <button
-                onClick={() => handleExportJadwal('pdf', true)}
-                className="py-2 px-2 sm:px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 dark:text-purple-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
-                title="Preview Jadwal Dewan Guru PDF"
-              >
-                <FileText size={13} className="shrink-0" />
-                <span>Preview</span>
-              </button>
+                  <button
+                    onClick={() => handleExportJadwal('pdf', true)}
+                    className="py-2 px-2 sm:px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 dark:text-purple-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    title="Preview Jadwal Dewan Guru PDF"
+                  >
+                    <FileText size={13} className="shrink-0" />
+                    <span>Preview</span>
+                  </button>
 
-              <button
-                onClick={() => handleExportJadwal('pdf', false)}
-                className="py-2 px-2 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
-                title="Unduh File PDF Jadwal Dewan Guru"
-              >
-                <Download size={13} className="shrink-0" />
-                <span>PDF</span>
-              </button>
-            </div>
+                  <button
+                    onClick={() => handleExportJadwal('pdf', false)}
+                    className="py-2 px-2 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    title="Unduh File PDF Jadwal Dewan Guru"
+                  >
+                    <Download size={13} className="shrink-0" />
+                    <span>PDF</span>
+                  </button>
+                </div>
 
-            {/* Baris 3 HP: Muat Ulang (50%) | Jadwal (50%) - Grid 2 Kolom Presisi 50-50 */}
-            <div className="grid grid-cols-2 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
-              <button
-                onClick={fetchSchedules}
-                disabled={loading}
-                className="w-full sm:w-auto py-2 px-2 sm:px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center disabled:opacity-50"
-                title="Segarkan data jadwal"
-              >
-                <RefreshCw size={12} className={`shrink-0 ${loading ? 'animate-spin' : ''}`} />
-                <span>Muat Ulang</span>
-              </button>
+                {/* Baris 3 HP: Muat Ulang (50%) | Jadwal (50%) - Grid 2 Kolom Presisi 50-50 */}
+                <div className="grid grid-cols-2 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
+                  <button
+                    onClick={fetchSchedules}
+                    disabled={loading}
+                    className="w-full sm:w-auto py-2 px-2 sm:px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center disabled:opacity-50"
+                    title="Segarkan data jadwal"
+                  >
+                    <RefreshCw size={12} className={`shrink-0 ${loading ? 'animate-spin' : ''}`} />
+                    <span>Muat Ulang</span>
+                  </button>
 
-              <button
-                onClick={openAddModal}
-                className="w-full sm:w-auto py-2 px-3 sm:px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                title="Tambah Jadwal Baru"
-              >
-                <Plus size={14} className="shrink-0" />
-                <span>Jadwal</span>
-              </button>
-            </div>
+                  <button
+                    onClick={openAddModal}
+                    className="w-full sm:w-auto py-2 px-3 sm:px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                    title="Tambah Jadwal Baru"
+                  >
+                    <Plus size={14} className="shrink-0" />
+                    <span>Jadwal</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Baris 1 HP (Guru View Only): Kembali | Excel | Preview (Grid 3 Kolom) */}
+                <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
+                  <Link
+                    href="/dashboard"
+                    className="py-2 px-2 sm:px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    title="Kembali ke Dashboard"
+                  >
+                    <ArrowLeft size={13} className="shrink-0" />
+                    <span>Kembali</span>
+                  </Link>
+
+                  <button
+                    onClick={() => handleExportJadwal('excel', false)}
+                    className="py-2 px-2 sm:px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    title="Unduh File Excel Jadwal Dewan Guru"
+                  >
+                    <Download size={13} className="shrink-0" />
+                    <span>Excel</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleExportJadwal('pdf', true)}
+                    className="py-2 px-2 sm:px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 dark:text-purple-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    title="Preview Jadwal Dewan Guru PDF"
+                  >
+                    <FileText size={13} className="shrink-0" />
+                    <span>Preview</span>
+                  </button>
+                </div>
+
+                {/* Baris 2 HP (Guru View Only): PDF (50%) | Muat Ulang (50%) - Grid 2 Kolom */}
+                <div className="grid grid-cols-2 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
+                  <button
+                    onClick={() => handleExportJadwal('pdf', false)}
+                    className="w-full sm:w-auto py-2 px-2 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    title="Unduh File PDF Jadwal Dewan Guru"
+                  >
+                    <Download size={13} className="shrink-0" />
+                    <span>PDF</span>
+                  </button>
+
+                  <button
+                    onClick={fetchSchedules}
+                    disabled={loading}
+                    className="w-full sm:w-auto py-2 px-2 sm:px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center disabled:opacity-50"
+                    title="Segarkan data jadwal"
+                  >
+                    <RefreshCw size={12} className={`shrink-0 ${loading ? 'animate-spin' : ''}`} />
+                    <span>Muat Ulang</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -434,7 +505,7 @@ export default function JadwalDewanGuruPage() {
             <CalendarDays size={48} className="mx-auto text-slate-300 dark:text-slate-700 mb-3" />
             <h3 className="font-extrabold text-slate-700 dark:text-slate-200 text-sm">Belum Ada Jadwal</h3>
             <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              Belum ada jadwal yang diatur untuk filter ini. Silakan klik tombol "Tambah Jadwal" di atas.
+              Belum ada jadwal yang diatur untuk filter ini.{canManage ? ' Silakan klik tombol "Tambah Jadwal" di atas.' : ''}
             </p>
           </div>
         ) : (
@@ -474,22 +545,24 @@ export default function JadwalDewanGuruPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-1.5 pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
-                  <button
-                    onClick={() => openEditModal(item)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    title="Edit Jadwal"
-                  >
-                    <Edit3 size={15} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-                    title="Hapus Jadwal"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
+                {canManage && (
+                  <div className="flex items-center justify-end gap-1.5 pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      onClick={() => openEditModal(item)}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      title="Edit Jadwal"
+                    >
+                      <Edit3 size={15} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                      title="Hapus Jadwal"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -22,6 +22,82 @@ export async function GET(request: Request) {
     const search = searchParams.get('search');
     const all = searchParams.get('all') === 'true';
 
+    const userRole = (payload.role || '').toLowerCase();
+
+    // Khusus role guru: Hanya tampilkan data QR Code miliknya sendiri
+    if (userRole === 'guru') {
+      let guruNama = '';
+      let guruNip = '';
+      let guruPhone = '';
+
+      if (payload.guruId) {
+        const [gRows]: any = await pool.execute('SELECT nama, nip, no_hp FROM guru WHERE guru_id = ? LIMIT 1', [payload.guruId]);
+        if (gRows && gRows.length > 0) {
+          guruNama = gRows[0].nama || '';
+          guruNip = gRows[0].nip || '';
+          guruPhone = gRows[0].no_hp || '';
+        }
+      }
+
+      if (!guruNama && payload.userId) {
+        const [uRows]: any = await pool.execute('SELECT nama, username FROM users WHERE id = ? LIMIT 1', [payload.userId]);
+        if (uRows && uRows.length > 0) {
+          guruNama = uRows[0].nama || '';
+        }
+      }
+
+      if (!guruNama && payload.username) {
+        guruNama = payload.username;
+      }
+
+      let matchedRows: any[] = [];
+
+      // 1. Coba match via NIP jika tersedia
+      if (guruNip && guruNip.trim()) {
+        const [rows]: any = await pool.execute('SELECT * FROM dewan_guru WHERE aktif = 1 AND nip = ? LIMIT 1', [guruNip.trim()]);
+        if (rows && rows.length > 0) matchedRows = rows;
+      }
+
+      // 2. Coba match exact nama (case-insensitive & trimmed)
+      if (matchedRows.length === 0 && guruNama && guruNama.trim()) {
+        const [rows]: any = await pool.execute('SELECT * FROM dewan_guru WHERE aktif = 1 AND LOWER(TRIM(nama)) = LOWER(TRIM(?)) LIMIT 1', [guruNama.trim()]);
+        if (rows && rows.length > 0) matchedRows = rows;
+      }
+
+      // 3. Coba match nama tanpa gelar (membersihkan Drs., H., Hj., S.Pd., dll)
+      if (matchedRows.length === 0 && guruNama && guruNama.trim()) {
+        const cleanName = guruNama
+          .replace(/^(drs|dra|dr|kh|h|hj|ust|ustadz|ustadzah)\.?\s+/i, '')
+          .replace(/,\s*(s\.pd|s\.e|s\.ag|m\.pd|m\.ag|m\.si|s\.kom|s\.sos|s\.farm|apt|lc).*$/i, '')
+          .trim();
+        if (cleanName.length >= 3) {
+          const [rows]: any = await pool.execute(
+            'SELECT * FROM dewan_guru WHERE aktif = 1 AND LOWER(nama) LIKE ? LIMIT 1',
+            [`%${cleanName.toLowerCase()}%`]
+          );
+          if (rows && rows.length > 0) matchedRows = rows;
+        }
+      }
+
+      // 4. Coba match nomor HP jika ada
+      if (matchedRows.length === 0 && guruPhone && guruPhone.trim().length >= 8) {
+        const cleanPhone = guruPhone.replace(/[^0-9]/g, '').slice(-9);
+        const [rows]: any = await pool.execute(
+          'SELECT * FROM dewan_guru WHERE aktif = 1 AND REPLACE(REPLACE(no_hp, "-", ""), " ", "") LIKE ? LIMIT 1',
+          [`%${cleanPhone}`]
+        );
+        if (rows && rows.length > 0) matchedRows = rows;
+      }
+
+      return NextResponse.json({
+        success: true,
+        isPersonal: true,
+        total: matchedRows.length,
+        data: matchedRows,
+        stats: []
+      });
+    }
+
     let query = `SELECT * FROM dewan_guru WHERE aktif = 1`;
     const params: any[] = [];
 

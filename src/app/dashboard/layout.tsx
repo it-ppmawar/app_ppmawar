@@ -712,7 +712,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               {openSections.manajemenData && (() => {
                 const hasAkademikSection = showDataSantri || showDataGuru || (user?.role === 'admin' || user?.role === 'staff') || showQuranMadin;
-                const hasJadwalSection = (['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) || isPengasuhRole);
+                const hasJadwalSection = (['admin', 'staff', 'pengurus_asrama', 'guru'].includes(userRoleLower) || isPengasuhRole);
                 const hasAsramaSection = showKamarAsrama || ['admin', 'staff', 'petugas_sarpras', 'pengurus_asrama', 'pengasuh', 'guru', 'petugas', 'petugas_umum', 'petugas_inventaris', 'petugas_inventaris_umum'].includes(userRoleLower) || isPengasuhRole || ['admin', 'staff', 'pengurus_asrama'].includes(userRoleLower) || canAccessBilling;
                 const showSubDividers = (Number(!!hasAkademikSection) + Number(!!hasJadwalSection) + Number(!!hasAsramaSection)) > 1;
 
@@ -789,7 +789,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </Link>
                           </li>
                         )}
-                        {(['admin', 'staff'].includes(userRoleLower) || isPengasuhRole) && (
+                        {(['admin', 'staff', 'guru'].includes(userRoleLower) || isPengasuhRole) && (
                           <>
                             <li>
                               <Link href="/dashboard/jadwal-dewan-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal-dewan-guru' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>
