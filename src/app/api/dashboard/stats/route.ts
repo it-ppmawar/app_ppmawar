@@ -275,35 +275,11 @@ export async function GET() {
       };
     };
 
-    // 4. PERIZINAN & PELANGGARAN TERBARU (Hari ini, kemarin, atau tanggal data absensi terbaru)
+    // 4. PERIZINAN & PELANGGARAN TERBARU (Hanya hari ini dan kemarin)
     const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const yesterdayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(yesterdayDate);
 
-    let latestDbDate: string | null = null;
-    try {
-      const [maxRows] = await pool.execute<RowDataPacket[]>(`
-        SELECT MAX(tgl) as latest_tgl FROM (
-          SELECT DATE_FORMAT(MAX(tanggal), '%Y-%m-%d') as tgl FROM absensi
-          UNION ALL
-          SELECT DATE_FORMAT(MAX(tanggal), '%Y-%m-%d') as tgl FROM absensi_quran
-          UNION ALL
-          SELECT DATE_FORMAT(MAX(tanggal), '%Y-%m-%d') as tgl FROM absensi_kegiatan
-          UNION ALL
-          SELECT DATE_FORMAT(MAX(tanggal), '%Y-%m-%d') as tgl FROM pelanggaran
-        ) t
-      `);
-      if (maxRows && maxRows[0] && maxRows[0].latest_tgl) {
-        latestDbDate = maxRows[0].latest_tgl;
-      }
-    } catch (e) {
-      console.warn('latestDbDate error:', e);
-    }
-
-    const targetDatesSet = new Set<string>([todayStr, yesterdayStr]);
-    if (latestDbDate) {
-      targetDatesSet.add(latestDbDate);
-    }
-    const targetDates = Array.from(targetDatesSet);
+    const targetDates = [todayStr, yesterdayStr];
     const datePlaceholders = targetDates.map(() => '?').join(', ');
     const genderCondition = genderFilter ? ` AND m.jenis_kelamin = ?` : '';
     const queryTargetParams = genderFilter ? [...targetDates, genderFilter] : targetDates;
