@@ -391,7 +391,7 @@ function QuickAbsenContent() {
     const namaKelas = data?.jadwal?.nama_kelas || 'Kelas';
     const namaGuruAsli = data?.guru_nama || 'saya';
 
-    return `Assalamu'alaikum Wr. Wb. Ustadz *${badalNama}*,\n\nMohon ridho dan bantuannya untuk berkenan membadali (menggantikan) mengajar kelas *${namaKelas}*${mapel} pada hari *${dateStr}* dikarenakan ${namaGuruAsli} berhalangan (*${izinStatus}*: ${izinKeterangan}).\n\nTautan absensi santri dapat langsung diakses di bawah ini:\n🔗 ${badalUrl}\n\nMatur suwun sanget atas bantuannya, jazakumullah khairan katsiran. 🙏`;
+    return `Assalamu'alaikum Wr. Wb. *${badalNama}*,\n\nMohon ridho dan bantuannya untuk berkenan membadali (menggantikan) mengajar kelas *${namaKelas}*${mapel} pada hari *${dateStr}* dikarenakan ${namaGuruAsli} berhalangan (*${izinStatus}*: ${izinKeterangan}).\n\nTautan absensi santri dapat langsung diakses di bawah ini:\n🔗 ${badalUrl}\n\nMatur suwun sanget atas bantuannya, jazakumullah khairan katsiran. 🙏`;
   };
 
   const handleSendBadalWa = async () => {
@@ -922,25 +922,29 @@ function QuickAbsenContent() {
                 {/* Informasi & Kirim Tautan ke Guru Badal */}
                 {izinResultData?.badal_info && (
                   <div className="bg-emerald-950/50 border border-emerald-700/60 rounded-xl p-4 text-left space-y-3 shadow-sm">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-2xl">🎖️</span>
-                      <div>
-                        <p className="text-[11px] text-emerald-400 font-bold uppercase tracking-wider">
-                          Guru Pengganti (Badal) Ditunjuk {izinResultData.badal_info.id ? '' : '(Luar Dewan Guru)'}
-                        </p>
-                        <p className="text-sm font-extrabold text-emerald-200">
-                          Ust. {izinResultData.badal_info.nama}
-                        </p>
-                        {izinResultData.badal_info.no_hp ? (
-                          <p className="text-[11px] text-emerald-300 font-medium">
-                            📱 WhatsApp: {izinResultData.badal_info.no_hp}
+                    <div className="space-y-2.5">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-xl shrink-0 mt-0.5 leading-none">🎖️</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] text-emerald-400 font-bold uppercase tracking-wider">
+                            Guru Pengganti (Badal) Ditunjuk {izinResultData.badal_info.id ? '' : '(Luar Dewan Guru)'}
                           </p>
-                        ) : (
-                          <p className="text-[10px] text-slate-400 italic">
-                            ℹ️ Nomor WA tidak tersimpan di sistem. Anda dapat menyalin tautan atau token di bawah.
+                          <p className="text-sm font-extrabold text-emerald-200">
+                            {izinResultData.badal_info.nama}
                           </p>
-                        )}
+                          {izinResultData.badal_info.no_hp && (
+                            <p className="text-[11px] text-emerald-300 font-medium mt-0.5">
+                              📱 WhatsApp: {izinResultData.badal_info.no_hp}
+                            </p>
+                          )}
+                        </div>
                       </div>
+
+                      {!izinResultData.badal_info.no_hp && (
+                        <p className="text-[11px] text-slate-400 italic">
+                          ℹ️ Nomor WA tidak tersimpan di sistem. Anda dapat menyalin tautan di bawah.
+                        </p>
+                      )}
                     </div>
 
                     {/* Tombol Aksi WhatsApp & Salin Pesan */}
@@ -979,23 +983,15 @@ function QuickAbsenContent() {
                       </button>
                     </div>
 
-                    {/* Tombol Salin Tautan & Salin Token Saja */}
-                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    {/* Tombol Salin Tautan (Cukup 1 Tombol & 1 Ikon Rapi) */}
+                    <div className="pt-1">
                       <button
                         type="button"
                         onClick={handleCopyBadalLink}
-                        className="flex-1 py-2 px-3 bg-slate-900 border border-emerald-700/80 hover:bg-slate-800 text-emerald-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
+                        className="w-full py-2.5 px-3 bg-slate-900 border border-emerald-700/80 hover:bg-slate-800 text-emerald-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow-sm"
                       >
-                        {copiedBadalLink ? <Check size={14} className="text-emerald-400" /> : <LinkIcon size={14} />}
-                        <span>{copiedBadalLink ? '✅ Tautan Tersalin!' : '🔗 Salin Tautan Absensi'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCopyBadalToken}
-                        className="flex-1 py-2 px-3 bg-slate-900 border border-emerald-700/80 hover:bg-slate-800 text-emerald-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
-                      >
-                        {copiedBadalToken ? <Check size={14} className="text-emerald-400" /> : <Key size={14} />}
-                        <span>{copiedBadalToken ? '✅ Token Tersalin!' : '🔑 Salin Token Saja'}</span>
+                        {copiedBadalLink ? <Check size={15} className="text-emerald-400" /> : <LinkIcon size={15} />}
+                        <span>{copiedBadalLink ? 'Tautan Absensi Tersalin!' : 'Salin Tautan Absensi'}</span>
                       </button>
                     </div>
 
@@ -1157,33 +1153,35 @@ function QuickAbsenContent() {
 
                       {/* Jika sudah ada yang dipilih */}
                       {selectedBadalNama ? (
-                        <div className="bg-slate-900 border border-emerald-700/80 rounded-xl p-3 flex items-center justify-between shadow-sm">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-emerald-900/60 text-emerald-300 flex items-center justify-center font-bold text-xs border border-emerald-700/50">
+                        <div className="bg-slate-900 border border-emerald-700/80 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 shadow-sm">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-emerald-900/60 text-emerald-300 flex items-center justify-center font-bold text-xs border border-emerald-700/50 shrink-0">
                               {selectedBadalNama.substring(0, 2).toUpperCase()}
                             </div>
-                            <div>
-                              <p className="text-xs font-bold text-slate-100">
-                                Ust. {selectedBadalNama}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-slate-100 truncate">
+                                {selectedBadalNama}
                               </p>
                               <p className="text-[10px] text-emerald-400 font-medium">
                                 {isManualBadal ? '✏️ Badal Manual (Luar Data Dewan Guru)' : '🎖️ Dewan Guru Terdaftar'}
                               </p>
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedBadalId('');
-                              setSelectedBadalNama('');
-                              setIsManualBadal(false);
-                              setBadalSearch('');
-                              setShowBadalDropdown(true);
-                            }}
-                            className="text-xs text-rose-400 hover:underline font-semibold px-2 py-1 bg-rose-950/40 rounded-lg transition active:scale-95"
-                          >
-                            Ganti / Batal
-                          </button>
+                          <div className="flex justify-center sm:justify-end pt-1 sm:pt-0 border-t border-slate-800 sm:border-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedBadalId('');
+                                setSelectedBadalNama('');
+                                setIsManualBadal(false);
+                                setBadalSearch('');
+                                setShowBadalDropdown(true);
+                              }}
+                              className="w-full sm:w-auto text-center text-xs text-rose-400 hover:underline font-semibold px-3 py-1.5 bg-rose-950/40 rounded-lg transition active:scale-95 cursor-pointer"
+                            >
+                              Ganti / Batal
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         /* Searchable Input + Dropdown */
@@ -1283,7 +1281,7 @@ function QuickAbsenContent() {
                       )}
 
                       <p className="text-[10px] text-emerald-300">
-                        💡 Cari nama ustadz terdaftar, atau ketik nama santri senior/alumni jika dibadali pihak luar. Tautan &amp; token absensi otomatis siap diteruskan ke badal.
+                        💡 Cari nama guru terdaftar, atau ketik nama santri senior/alumni jika dibadali pihak luar. Tautan absensi otomatis siap diteruskan ke badal.
                       </p>
                     </div>
                   )}

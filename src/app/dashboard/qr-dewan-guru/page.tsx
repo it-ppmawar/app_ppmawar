@@ -341,105 +341,103 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
       {/* Top Bar */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 py-2.5 sm:py-3 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-3">
-          {/* Baris 1: Ikon & Teks Judul */}
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 shrink-0">
-              <QrCode size={20} />
+          {/* Baris 1: Ikon, Teks Judul & Tombol Kembali */}
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 shrink-0">
+                <QrCode size={20} />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5 leading-tight truncate">
+                  <span>QR Code Presensi Dewan Guru</span>
+                </h1>
+                <p className="text-[11px] text-slate-400 truncate">
+                  {isGuru ? 'Kartu Digital Kehadiran Pribadi' : `Total ${teachers.length} Dewan Guru & Karyawan YPMA`}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5 leading-tight truncate">
-                <span>QR Code Presensi Dewan Guru</span>
-              </h1>
-              <p className="text-[11px] text-slate-400 truncate">
-                {isGuru ? 'Kartu Digital Kehadiran Pribadi' : `Total ${teachers.length} Dewan Guru & Karyawan YPMA`}
-              </p>
-            </div>
+
+            {/* Tombol Kembali di sebelah kanan teks */}
+            <Link
+              href={canManage ? "/dashboard/absen-guru" : "/dashboard"}
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+              title={canManage ? "Kembali ke Presensi Dewan Guru" : "Kembali ke Beranda"}
+            >
+              <ArrowLeft size={16} />
+              <span className="hidden sm:inline">Kembali</span>
+            </Link>
           </div>
 
           {/* Baris 2: Tombol Aksi */}
           {canManage ? (
-            <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
-              {/* Tombol Kembali */}
-              <Link
-                href="/dashboard/absen-guru"
-                className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer"
-                title="Kembali ke Presensi Dewan Guru"
-              >
-                <ArrowLeft size={16} />
-                <span className="hidden sm:inline">Kembali</span>
-              </Link>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 w-full sm:w-auto">
+              {/* Grup Tombol 1: Preview, PDF, Excel */}
+              <div className="grid grid-cols-3 sm:flex items-center gap-1.5">
+                {/* Preview PDF (Client-Side) */}
+                <button
+                  onClick={() => handleClientPDF(true)}
+                  disabled={pdfGenerating}
+                  className="py-2 px-2 sm:px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
+                  title="Preview Dokumen PDF Katalog Kartu QR (di browser)"
+                >
+                  <FileText size={13} className="shrink-0" />
+                  <span>{pdfGenerating ? `${pdfProgress}%` : 'Preview'}</span>
+                </button>
 
-              {/* Preview PDF (Client-Side) */}
-              <button
-                onClick={() => handleClientPDF(true)}
-                disabled={pdfGenerating}
-                className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
-                title="Preview Dokumen PDF Katalog Kartu QR (di browser)"
-              >
-                <FileText size={13} className="shrink-0" />
-                <span>{pdfGenerating ? `${pdfProgress}%` : 'Preview'}</span>
-              </button>
+                {/* Unduh PDF (Client-Side) */}
+                <button
+                  onClick={() => handleClientPDF(false)}
+                  disabled={pdfGenerating}
+                  className="py-2 px-2 sm:px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
+                  title="Unduh Dokumen PDF Katalog Kartu A4 (di browser)"
+                >
+                  <Download size={13} className={`shrink-0 ${pdfGenerating ? 'animate-bounce' : ''}`} />
+                  <span>{pdfGenerating ? `${pdfProgress}%` : 'PDF'}</span>
+                </button>
 
-              {/* Unduh PDF (Client-Side) */}
-              <button
-                onClick={() => handleClientPDF(false)}
-                disabled={pdfGenerating}
-                className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
-                title="Unduh Dokumen PDF Katalog Kartu A4 (di browser)"
-              >
-                <Download size={13} className={`shrink-0 ${pdfGenerating ? 'animate-bounce' : ''}`} />
-                <span>{pdfGenerating ? `${pdfProgress}%` : 'PDF'}</span>
-              </button>
+                {/* Unduh Excel */}
+                <button
+                  onClick={handleExportExcel}
+                  className="py-2 px-2 sm:px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                  title="Unduh Daftar QR & Link Presensi ke File Excel"
+                >
+                  <Download size={13} className="shrink-0" />
+                  <span>Excel</span>
+                </button>
+              </div>
 
-              {/* Unduh Excel */}
-              <button
-                onClick={handleExportExcel}
-                className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                title="Unduh Daftar QR & Link Presensi ke File Excel"
-              >
-                <Download size={13} className="shrink-0" />
-                <span>Excel</span>
-              </button>
+              {/* Grup Tombol 2: Unduh ZIP & Tarik Online (Tetap 1 baris bersama di HP) */}
+              <div className="grid grid-cols-2 sm:flex items-center gap-1.5">
+                {/* Download Bulk ZIP (tetap server-side, untuk gambar PNG) */}
+                <a
+                  href={`/api/dewan-guru/qr/bulk?type=zip&homebase=${encodeURIComponent(selectedHomebase)}`}
+                  download
+                  className="py-2 px-2 sm:px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                  title="Download File ZIP Semua Gambar QR (PNG)"
+                >
+                  <Archive size={13} className="shrink-0" />
+                  <span>Unduh ZIP</span>
+                </a>
 
-              {/* Download Bulk ZIP (tetap server-side, untuk gambar PNG) */}
-              <a
-                href={`/api/dewan-guru/qr/bulk?type=zip&homebase=${encodeURIComponent(selectedHomebase)}`}
-                download
-                className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                title="Download File ZIP Semua Gambar QR (PNG)"
-              >
-                <Archive size={13} className="shrink-0" />
-                <span>Unduh ZIP</span>
-              </a>
-
-              {/* Tombol Sinkronisasi Online */}
-              <button
-                onClick={() => handleSync('online')}
-                disabled={syncing}
-                className="flex-1 sm:flex-initial py-2 px-2 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer text-center"
-                title="Tarik data terbaru dari Google Sheets"
-              >
-                <RefreshCw size={13} className={`shrink-0 ${syncing ? 'animate-spin' : ''}`} />
-                <span>{syncing ? 'Menarik...' : 'Tarik Online'}</span>
-              </button>
+                {/* Tombol Sinkronisasi Online */}
+                <button
+                  onClick={() => handleSync('online')}
+                  disabled={syncing}
+                  className="py-2 px-2 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] sm:text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer text-center"
+                  title="Tarik data terbaru dari Google Sheets"
+                >
+                  <RefreshCw size={13} className={`shrink-0 ${syncing ? 'animate-spin' : ''}`} />
+                  <span>{syncing ? 'Menarik...' : 'Tarik Online'}</span>
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 w-full sm:w-auto">
-              {/* Tombol Kembali (Guru) */}
-              <Link
-                href="/dashboard"
-                className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer"
-                title="Kembali ke Beranda"
-              >
-                <ArrowLeft size={16} />
-                <span>Kembali</span>
-              </Link>
-
+            <div className="grid grid-cols-2 sm:flex items-center gap-1.5 w-full sm:w-auto">
               {/* Preview PDF Kartu Pribadi */}
               <button
                 onClick={() => handleClientPDF(true)}
                 disabled={pdfGenerating || filteredTeachers.length === 0}
-                className="flex-1 sm:flex-initial py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
+                className="py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
                 title="Preview Kartu Presensi QR PDF"
               >
                 <FileText size={13} className="shrink-0" />
@@ -450,7 +448,7 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
               <button
                 onClick={() => handleClientPDF(false)}
                 disabled={pdfGenerating || filteredTeachers.length === 0}
-                className="flex-1 sm:flex-initial py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
+                className="py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-60"
                 title="Unduh Kartu Presensi QR PDF"
               >
                 <Download size={13} className={`shrink-0 ${pdfGenerating ? 'animate-bounce' : ''}`} />

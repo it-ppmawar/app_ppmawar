@@ -670,7 +670,7 @@ export async function POST(request: Request) {
             `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ?`,
             [badalId, localISOTime]
           );
-          const badalKet = `Mengajar sebagai Badal Ust. ${payload.nama || 'Guru'}`;
+          const badalKet = `Mengajar sebagai Badal ${payload.nama || 'Guru'}`;
           if (badalAbsen.length === 0) {
             let insertBadal = '';
             if (tipe === 'madin') insertBadal = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, "Hadir", ?, 0, ?, ?) ON DUPLICATE KEY UPDATE status="Hadir"';
@@ -686,7 +686,7 @@ export async function POST(request: Request) {
               [payload.guruId, localISOTime]
             );
             if (guruUtamaAbsen.length === 0) {
-              const utamaKet = `Izin (Dibadal oleh Ust. ${badalNama || 'Guru Pengganti'})`;
+              const utamaKet = `Izin (Dibadal oleh ${badalNama || 'Guru Pengganti'})`;
               let insertUtama = '';
               if (tipe === 'madin') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id, guru_badal_id) VALUES (?, ?, "Izin", ?, 0, ?, ?, ?)';
               else if (tipe === 'quran') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id, guru_badal_id) VALUES (?, ?, "Izin", ?, 0, ?, ?, ?)';
@@ -698,7 +698,7 @@ export async function POST(request: Request) {
           console.warn('absensi_guru badal notice:', badalErr);
         }
       } else if (badalNama) {
-        // Badal manual di luar data dewan guru (santri senior / ustadz tamu)
+        // Badal manual di luar data dewan guru (santri senior / alumni / tamu)
         try {
           if (payload.guruId) {
             const [guruUtamaAbsen] = await connection.execute<RowDataPacket[]>(
@@ -706,7 +706,7 @@ export async function POST(request: Request) {
               [payload.guruId, localISOTime]
             );
             if (guruUtamaAbsen.length === 0) {
-              const utamaKet = `Izin (Dibadal oleh Ust. ${badalNama})`;
+              const utamaKet = `Izin (Dibadal oleh ${badalNama})`;
               let insertUtama = '';
               if (tipe === 'madin') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, "Izin", ?, 0, ?, ?)';
               else if (tipe === 'quran') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, "Izin", ?, 0, ?, ?)';
@@ -743,7 +743,7 @@ export async function POST(request: Request) {
     const tabelAbsen = tipe === 'madin' ? 'absensi' : tipe === 'quran' ? 'absensi_quran' : 'absensi_kegiatan';
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '';
     const auditKeterangan = badalId
-      ? `Input absen ${tipe} oleh Guru Badal (Ust. ${badalNama || badalId}) menggantikan Ust. ${payload.nama || payload.username || ''} untuk ${absensi.length} santri, tanggal ${localISOTime}`
+      ? `Input absen ${tipe} oleh Guru Badal (${badalNama || badalId}) menggantikan ${payload.nama || payload.username || ''} untuk ${absensi.length} santri, tanggal ${localISOTime}`
       : `Input absen ${tipe} untuk ${absensi.length} santri, tanggal ${localISOTime}`;
 
     logAudit({

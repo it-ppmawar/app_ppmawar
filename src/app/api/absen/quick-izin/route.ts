@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const validStatus = (status === 'Sakit' || status === 'sakit') ? 'Sakit' : 'Izin';
     let reasonText = (keterangan || '').trim() || (validStatus === 'Sakit' ? 'Sakit (Melalui Link WA)' : 'Izin (Melalui Link WA)');
     if (badalGuru) {
-      reasonText = `${reasonText} (Dibadal oleh Ust. ${badalGuru.nama})`;
+      reasonText = `${reasonText} (Dibadal oleh ${badalGuru.nama})`;
     }
 
     // Waktu & Tanggal saat ini (Asia/Jakarta / WIB)
