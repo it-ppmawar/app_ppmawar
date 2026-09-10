@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, X as XIcon, User, MapPin, QrCode, Brain, BookOpen, HeartPulse, Send, FileText, CheckCircle2, RefreshCw, HelpCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, X as XIcon, User, MapPin, QrCode, Brain, BookOpen, HeartPulse, Send, FileText, CheckCircle2, RefreshCw, HelpCircle, Loader2, AlertCircle, Copy } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -73,6 +73,7 @@ function InputAbsenContent() {
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [jadwalInfo, setJadwalInfo] = useState<{ mata_pelajaran: string; jam_mulai: string; jam_selesai: string; guru_nama?: string } | null>(null);
   const [tanggalAbsen, setTanggalAbsen] = useState('');
+  const [copiedWa, setCopiedWa] = useState(false);
 
   // Izin / Sakit state
   const [izinStatus, setIzinStatus] = useState<'Izin' | 'Sakit'>('Izin');
@@ -455,8 +456,30 @@ function InputAbsenContent() {
     msg += `🤲 *Doa & Harapan:*\n${doaMsg}\n\n`;
 
     msg += `🔗 *Lihat Detail Absensi:* https://app.ppmawar.or.id/dashboard/absen\n`;
-    msg += `\n_Diinput via Pintasan Salam Mawar_\n_https://app.ppmawar.or.id_`;
+    msg += `\n_Diinput via Pintasan Salam Mawar_\nhttps://app.ppmawar.or.id`;
     return msg;
+  };
+
+  const handleCopyReport = async () => {
+    const text = generateWaGroupMessage();
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopiedWa(true);
+      setTimeout(() => setCopiedWa(false), 4000);
+      return true;
+    } catch (e) {
+      console.warn('Gagal menyalin:', e);
+      return false;
+    }
   };
 
   const handleShareToWA = async () => {
@@ -464,11 +487,7 @@ function InputAbsenContent() {
 
     if (photoUrl) {
       try {
-        if (photoUrl.startsWith('data:')) {
-          const res = await fetch(photoUrl);
-          const blob = await res.blob();
-          fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-        } else if (photoUrl.startsWith('blob:')) {
+        if (photoUrl.startsWith('data:') || photoUrl.startsWith('blob:')) {
           const res = await fetch(photoUrl);
           const blob = await res.blob();
           fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
@@ -480,7 +499,10 @@ function InputAbsenContent() {
 
     const textWithoutPhoto = generateWaGroupMessage();
 
-    // 1. Coba Native Web Share API (Di HP/WhatsApp Mobile, melampirkan foto langsung ke WhatsApp TANPA simpan di server)
+    // Selalu salin teks laporan ke clipboard terlebih dahulu (penyelamat utama di iPhone / iOS jika WhatsApp hanya mengambil link/gambar saja)
+    await handleCopyReport();
+
+    // 1. Coba Native Web Share API (Di HP jika ada foto)
     if (fileToShare && typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).canShare({ files: [fileToShare] })) {
       try {
         await navigator.share({
@@ -491,13 +513,24 @@ function InputAbsenContent() {
         return;
       } catch (shareErr: any) {
         if (shareErr?.name === 'AbortError') return;
-        console.warn('Web Share API gagal, lanjut ke fallback URL:', shareErr);
+        console.warn('Web Share API gagal, lanjut ke direct WA URL:', shareErr);
       }
     }
 
-    // 2. Fallback untuk Desktop/Browser tanpa Web Share API file:
-    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(textWithoutPhoto)}`;
-    window.open(waUrl, '_blank');
+    // 2. Direct WhatsApp di Mobile (iOS/Android) atau Web WhatsApp di Desktop
+    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const encodedText = encodeURIComponent(textWithoutPhoto);
+
+    if (isMobile) {
+      // Skema whatsapp://send langsung meluncurkan aplikasi WhatsApp tanpa redirect website perantara api.whatsapp.com yang rawan truncate di iPhone
+      window.location.href = `whatsapp://send?text=${encodedText}`;
+      setTimeout(() => {
+        window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
+      }, 1500);
+    } else {
+      const waUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
+      window.open(waUrl, '_blank');
+    }
   };
 
   const handleSave = async () => {
@@ -692,6 +725,13 @@ function InputAbsenContent() {
           </p>
         </div>
 
+        {copiedWa && (
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs text-emerald-800 dark:text-emerald-200 flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            <span><strong>Teks laporan otomatis tersalin!</strong> Jika di WhatsApp kolom chat belum terisi (misal di iPhone), silakan langsung <strong>Tempel / Paste</strong>.</span>
+          </div>
+        )}
+
         <div className="space-y-3">
           <button
             onClick={handleShareToWA}
@@ -700,10 +740,24 @@ function InputAbsenContent() {
           >
             <Send size={16} /> {photoUrl ? 'Kirim Laporan & Foto ke Grup WA' : 'Kirim Ringkasan Laporan ke Grup WA'}
           </button>
-          <Link href={`/dashboard/notifikasi?kegiatan=${tipe}&kelas=${kelas_id}`} className="block w-full bg-[#25D366] hover:bg-[#1DA851] text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md flex items-center justify-center gap-2">
+
+          <button
+            onClick={handleCopyReport}
+            type="button"
+            className={`w-full py-3 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 border ${
+              copiedWa 
+                ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 border-emerald-300' 
+                : 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            {copiedWa ? <CheckCircle2 size={15} className="text-emerald-600" /> : <Copy size={15} />}
+            {copiedWa ? '✅ Teks Berhasil Disalin! (Tinggal Paste di WA)' : '📋 Salin Teks Laporan (Untuk Pengguna iPhone / Cadangan)'}
+          </button>
+
+          <Link href={`/dashboard/notifikasi?kegiatan=${tipe}&kelas=${kelas_id}`} className="block w-full bg-[#25D366] hover:bg-[#1DA851] text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md flex items-center justify-center gap-2 text-center">
             Lanjut Kirim Pesan WA Wali Murid
           </Link>
-          <Link href="/dashboard/absen" className="block w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-6 py-4 rounded-xl font-bold transition-colors">
+          <Link href="/dashboard/absen" className="block w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-6 py-4 rounded-xl font-bold transition-colors text-center">
             Kembali ke Jadwal
           </Link>
         </div>

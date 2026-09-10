@@ -152,21 +152,41 @@ export default function RekapitulasiPage() {
 
   const [options, setOptions] = useState<any[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [availableTipes, setAvailableTipes] = useState<string[]>(['madin', 'quran', 'kegiatan']);
 
   useEffect(() => {
-    // Check User Role
-    fetch('/api/auth/me')
-      .then(res => res.json())
-      .then(d => {
-        if (d.success && d.user) {
-          setRole(d.user.role);
-          setIsPengasuh(d.user.role === 'pengasuh' || !!d.user.is_pengasuh);
-          if (d.user.role === 'wali_murid' || d.user.role === 'wali_alumni') {
+    // Check User Role & Fetch User's Jadwal
+    Promise.all([
+      fetch('/api/auth/me').then(res => res.json()),
+      fetch('/api/jadwal').then(res => res.json()).catch(() => ({ success: false, data: [] }))
+    ])
+      .then(([authData, jadwalData]) => {
+        if (authData.success && authData.user) {
+          const userRole = authData.user.role;
+          const userIsPengasuh = userRole === 'pengasuh' || !!authData.user.is_pengasuh;
+          setRole(userRole);
+          setIsPengasuh(userIsPengasuh);
+
+          if (userRole === 'wali_murid' || userRole === 'wali_alumni') {
             // Auto fetch for wali murid / wali alumni
             fetchRekap(true);
           } else {
-            // Load options for the first time for teachers/admins
-            loadOptions('madin');
+            const isFullRole = ['admin', 'staff'].includes(userRole);
+            let allowedTipes = ['madin', 'quran', 'kegiatan'];
+
+            if (!isFullRole && jadwalData.success && Array.isArray(jadwalData.data)) {
+              const activeTipes = (['madin', 'quran', 'kegiatan'] as const).filter(t =>
+                jadwalData.data.some((j: any) => j.tipe === t)
+              );
+              if (activeTipes.length > 0) {
+                allowedTipes = activeTipes;
+              }
+            }
+
+            setAvailableTipes(allowedTipes);
+            const initialTipe = allowedTipes.includes('madin') ? 'madin' : allowedTipes[0];
+            setFilter(prev => ({ ...prev, tipe: initialTipe }));
+            loadOptions(initialTipe);
           }
         }
       })
@@ -248,6 +268,9 @@ export default function RekapitulasiPage() {
       return;
     }
     if (t === 'dewan_guru' && role !== 'admin' && role !== 'staff' && !isPengasuh) {
+      return;
+    }
+    if (!['admin', 'staff'].includes(role) && !availableTipes.includes(t)) {
       return;
     }
     setFilter(prev => ({ ...prev, tipe: t }));
@@ -666,9 +689,15 @@ export default function RekapitulasiPage() {
           <div className="flex-1">
             <label className="block text-xs font-bold text-gray-500 mb-1">Pilih Tipe</label>
             <select value={filter.tipe} onChange={handleTipeChange} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
-              <option value="madin">Absensi Madin</option>
-              <option value="quran">Absensi Al-Qur'an</option>
-              <option value="kegiatan">Absensi Kegiatan Asrama</option>
+              {availableTipes.includes('madin') && (
+                <option value="madin">Absensi Madin</option>
+              )}
+              {availableTipes.includes('quran') && (
+                <option value="quran">Absensi Al-Qur'an</option>
+              )}
+              {availableTipes.includes('kegiatan') && (
+                <option value="kegiatan">Absensi Kegiatan Asrama</option>
+              )}
               {(role === 'admin' || role === 'staff') && (
                 <option value="guru">Absensi Pengajar / Guru</option>
               )}

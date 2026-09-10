@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy } from 'lucide-react';
 import Link from 'next/link';
 
 // Avatar & Photo helper
@@ -53,6 +53,7 @@ function QuickAbsenContent() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+  const [copiedWa, setCopiedWa] = useState(false);
 
   // Izin / Sakit States
   const [activeTab, setActiveTab] = useState<'absen' | 'izin'>(actionParam === 'izin' ? 'izin' : 'absen');
@@ -281,8 +282,30 @@ function QuickAbsenContent() {
     }
     msg += `🤲 *Doa & Harapan:*\n${doaMsg}\n\n`;
 
-    msg += `_Diinput via Pintasan Salam Mawar_\n_https://app.ppmawar.or.id_`;
+    msg += `_Diinput via Pintasan Salam Mawar_\nhttps://app.ppmawar.or.id`;
     return msg;
+  };
+
+  const copyReportText = async () => {
+    const text = generateWaGroupMessage();
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopiedWa(true);
+      setTimeout(() => setCopiedWa(false), 4000);
+      return true;
+    } catch (e) {
+      console.warn('Gagal menyalin:', e);
+      return false;
+    }
   };
 
   const handleShareToWA = async () => {
@@ -290,11 +313,7 @@ function QuickAbsenContent() {
 
     if (photoUrl) {
       try {
-        if (photoUrl.startsWith('data:')) {
-          const res = await fetch(photoUrl);
-          const blob = await res.blob();
-          fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
-        } else if (photoUrl.startsWith('blob:')) {
+        if (photoUrl.startsWith('data:') || photoUrl.startsWith('blob:')) {
           const res = await fetch(photoUrl);
           const blob = await res.blob();
           fileToShare = new File([blob], `foto_kehadiran_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
@@ -306,7 +325,10 @@ function QuickAbsenContent() {
 
     const textReport = generateWaGroupMessage();
 
-    // 1. Coba Native Web Share API (Di HP Android/iOS, ini langsung melampirkan foto ke WhatsApp tanpa upload ke server)
+    // Selalu salin teks laporan lengkap ke clipboard terlebih dahulu (penyelamat utama jika di iPhone WhatsApp hanya menerima link/gambar saja)
+    await copyReportText();
+
+    // 1. Coba Native Web Share API (Di HP jika ada foto)
     if (fileToShare && typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).canShare({ files: [fileToShare] })) {
       try {
         await navigator.share({
@@ -317,13 +339,24 @@ function QuickAbsenContent() {
         return;
       } catch (shareErr: any) {
         if (shareErr?.name === 'AbortError') return; // User membatalkan dialog share
-        console.warn('Web Share API gagal, lanjut ke fallback URL:', shareErr);
+        console.warn('Web Share API gagal, lanjut ke direct WA URL:', shareErr);
       }
     }
 
-    // 2. Fallback untuk browser yang tidak mendukung share file langsung (tetap 100% tanpa upload ke server):
-    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(textReport)}`;
-    window.open(waUrl, '_blank');
+    // 2. Direct WhatsApp di Mobile (iOS/Android) atau Web WhatsApp di Desktop
+    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const encodedText = encodeURIComponent(textReport);
+
+    if (isMobile) {
+      // whatsapp://send langsung meluncurkan aplikasi WhatsApp tanpa melalui website perantara yang sering memotong pesan di iPhone
+      window.location.href = `whatsapp://send?text=${encodedText}`;
+      setTimeout(() => {
+        window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
+      }, 1500);
+    } else {
+      const waUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
+      window.open(waUrl, '_blank');
+    }
   };
 
   useEffect(() => {
@@ -551,7 +584,7 @@ function QuickAbsenContent() {
               try {
                 await fetch('/api/auth/logout', { method: 'POST' });
               } catch (_) {}
-              router.push('/login');
+              router.push('/');
             }}
             className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold py-3 rounded-2xl transition flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-950/40"
           >
@@ -1358,13 +1391,33 @@ function QuickAbsenContent() {
             </div>
 
             {/* Action Buttons */}
-            <div className="space-y-2.5 pt-2">
+            {copiedWa && (
+              <div className="p-2.5 bg-emerald-950/70 border border-emerald-500/50 rounded-xl text-[11px] text-emerald-200 flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                <span><strong>Teks laporan otomatis tersalin!</strong> Jika di WhatsApp kolom chat belum terisi (misal di iPhone), silakan langsung <strong>Tempel / Paste</strong>.</span>
+              </div>
+            )}
+
+            <div className="space-y-2 pt-1">
               <button
                 onClick={handleShareToWA}
                 type="button"
                 className="w-full bg-[#128C7E] hover:bg-[#075E54] text-white px-4 py-3 rounded-xl font-bold text-xs transition shadow-md flex items-center justify-center gap-2 active:scale-95"
               >
                 <Send size={15} /> {photoUrl ? 'Kirim Laporan & Foto ke Grup WA' : 'Kirim Ringkasan Laporan ke Grup WA'}
+              </button>
+
+              <button
+                onClick={copyReportText}
+                type="button"
+                className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 border ${
+                  copiedWa
+                    ? 'bg-emerald-900/60 text-emerald-200 border-emerald-500/60'
+                    : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
+                }`}
+              >
+                {copiedWa ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                {copiedWa ? '✅ Teks Berhasil Disalin! (Tinggal Paste di WA)' : '📋 Salin Teks Laporan (Untuk iPhone / Cadangan)'}
               </button>
 
               <Link
