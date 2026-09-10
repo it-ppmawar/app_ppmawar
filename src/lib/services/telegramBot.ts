@@ -1,7 +1,12 @@
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
-export const DEFAULT_TELEGRAM_TOKEN = '8260588054:AAEB_71eA2XnRLHiYQV6jsZaiapsYcMd6yE';
+// Token dibaca dari environment variable — JANGAN hardcode token di sini!
+// Set TELEGRAM_BOT_TOKEN di file .env.local (lokal) dan di cPanel/hosting (production)
+if (!process.env.TELEGRAM_BOT_TOKEN) {
+  console.warn('[TelegramBot] WARNING: TELEGRAM_BOT_TOKEN tidak di-set di environment variables!');
+}
+export const DEFAULT_TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 export const DEFAULT_TELEGRAM_USERNAME = 'ppma_notif_bot';
 const TELEGRAM_API_BASE = 'https://api.telegram.org/bot';
 

@@ -65,7 +65,7 @@ async function migrateTelegram() {
 
   // 4. Inisialisasi default settings Telegram di pengaturan_absensi_otomatis
   const defaultSettings = [
-    ['telegram_bot_token', '8260588054:AAEB_71eA2XnRLHiYQV6jsZaiapsYcMd6yE'],
+    ['telegram_bot_token', process.env.TELEGRAM_BOT_TOKEN || ''],
     ['telegram_bot_username', 'ppma_notif_bot'],
     ['telegram_notification_mode', 'both'], // 'telegram_only' | 'wa_only' | 'both'
     ['telegram_kepala_madin_putra_chat_id', ''],

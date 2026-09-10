@@ -34,7 +34,7 @@ export default function SettingsPage() {
     jeda_panggilan_pengurus: 2,
     radius_panggilan_wali: true,
     // Telegram Bot settings
-    telegram_bot_token: '8260588054:AAEB_71eA2XnRLHiYQV6jsZaiapsYcMd6yE',
+    telegram_bot_token: '',
     telegram_bot_username: 'ppma_notif_bot',
     telegram_notification_mode: 'both',
     telegram_kepala_madin_putra_chat_id: '',
@@ -157,7 +157,7 @@ export default function SettingsPage() {
           jeda_panggilan_pengurus: isNaN(parseInt(json.data.jeda_panggilan_pengurus)) ? 2 : parseInt(json.data.jeda_panggilan_pengurus),
           radius_panggilan_wali: json.data.radius_panggilan_wali !== '0',
           // Telegram Bot settings
-          telegram_bot_token: json.data.telegram_bot_token || '8260588054:AAEB_71eA2XnRLHiYQV6jsZaiapsYcMd6yE',
+          telegram_bot_token: json.data.telegram_bot_token || '',
           telegram_bot_username: json.data.telegram_bot_username || 'ppma_notif_bot',
           telegram_notification_mode: json.data.telegram_notification_mode || 'both',
           telegram_kepala_madin_putra_chat_id: json.data.telegram_kepala_madin_putra_chat_id || '',
@@ -963,7 +963,7 @@ export default function SettingsPage() {
                   type="text" 
                   value={settings.telegram_bot_token}
                   onChange={(e) => setSettings({ ...settings, telegram_bot_token: e.target.value })}
-                  placeholder="8260588054:AAEB..."
+                  placeholder="123456789:ABCdefGHI..."
                   className="w-full bg-white dark:bg-gray-800 border border-sky-300 dark:border-sky-700 px-4 py-2.5 rounded-xl text-sm font-mono font-bold text-sky-950 dark:text-sky-200 focus:ring-2 focus:ring-sky-500 transition-all"
                 />
                 <p className="text-[11px] text-sky-700 dark:text-sky-400 mt-1.5">
