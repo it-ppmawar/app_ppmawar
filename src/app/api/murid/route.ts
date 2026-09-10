@@ -134,10 +134,21 @@ export async function GET(request: Request) {
     if (tanpaKamar) {
       whereClause += ` AND m.kamar_id IS NULL`;
     }
-    // ?q= pencarian nama atau NIS (untuk Quick Pairing Panel)
+    // ?q= pencarian nama, NIS, NIK, Wali, No HP, Barcode, dll.
     if (searchQ.length >= 2) {
-      whereClause += ` AND (m.nama LIKE ? OR m.nis LIKE ?)`;
-      queryParams.push(`%${searchQ}%`, `%${searchQ}%`);
+      whereClause += ` AND (
+        m.nama LIKE ? OR 
+        m.nama_panggilan LIKE ? OR 
+        m.nis LIKE ? OR 
+        m.nik LIKE ? OR 
+        m.nama_wali LIKE ? OR 
+        m.no_wali LIKE ? OR 
+        m.no_hp LIKE ? OR 
+        m.barcode_id LIKE ? OR
+        m.alamat LIKE ?
+      )`;
+      const qParam = `%${searchQ}%`;
+      queryParams.push(qParam, qParam, qParam, qParam, qParam, qParam, qParam, qParam, qParam);
     }
 
     const sql = `

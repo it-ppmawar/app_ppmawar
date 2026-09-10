@@ -458,8 +458,16 @@ export default function DataMuridPage() {
     return murid.filter(m => {
       const matchSearch = !s || (
         (m.nama && m.nama.toLowerCase().includes(s)) ||
+        (m.nama_panggilan && m.nama_panggilan.toLowerCase().includes(s)) ||
         (m.nis && m.nis.toLowerCase().includes(s)) ||
+        (m.nik && m.nik.toLowerCase().includes(s)) ||
+        (m.barcode_id && m.barcode_id.toLowerCase().includes(s)) ||
+        (m.no_hp && m.no_hp.toLowerCase().includes(s)) ||
+        (m.nama_wali && m.nama_wali.toLowerCase().includes(s)) ||
+        (m.no_wali && m.no_wali.toLowerCase().includes(s)) ||
+        (m.no_hp_wali && m.no_hp_wali.toLowerCase().includes(s)) ||
         (m.kelas_madin && m.kelas_madin.toLowerCase().includes(s)) ||
+        (m.kelas_madin_2 && m.kelas_madin_2.toLowerCase().includes(s)) ||
         (m.kelas_quran && m.kelas_quran.toLowerCase().includes(s)) ||
         (m.nama_kamar && m.nama_kamar.toLowerCase().includes(s)) ||
         (m.alamat && m.alamat.toLowerCase().includes(s))
@@ -903,7 +911,7 @@ export default function DataMuridPage() {
               </div>
               <input
                 type="text"
-                placeholder="Cari Nama, NIS, Kelas, Kamar atau Alamat santri..."
+                placeholder="Cari Nama, NIS, NIK, Nama Wali, No. HP atau Alamat santri..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-200 transition-colors shadow-sm font-medium"
