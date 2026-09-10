@@ -402,16 +402,27 @@ export async function POST(request: Request) {
     }
 
     // Dukung autentikasi aman via quick_token (tanpa perlu menanam cookie login penuh ke browser)
-    if ((!payload || payload.role === 'wali_murid') && quick_token) {
+    let badalId: number | null = body.guru_badal_id ? Number(body.guru_badal_id) : null;
+    let badalNama: string | null = null;
+
+    if (quick_token) {
       const qPayload = verifyToken(quick_token) as any;
       if (qPayload && qPayload.type === 'quick_absen') {
-        payload = {
-          userId: qPayload.user_id || 0,
-          username: `guru_${qPayload.guru_id}`,
-          role: 'guru',
-          guruId: qPayload.guru_id,
-          nama: qPayload.guru_nama
-        };
+        if (qPayload.badal_id) {
+          badalId = Number(qPayload.badal_id);
+          badalNama = qPayload.badal_nama || null;
+        }
+        if (!payload || payload.role === 'wali_murid') {
+          payload = {
+            userId: qPayload.user_id || 0,
+            username: `guru_${qPayload.guru_id}`,
+            role: 'guru',
+            guruId: qPayload.guru_id,
+            nama: qPayload.guru_nama,
+            badalId: qPayload.badal_id || null,
+            badalNama: qPayload.badal_nama || null
+          };
+        }
       }
     }
 
@@ -551,18 +562,34 @@ export async function POST(request: Request) {
 
     await connection.beginTransaction();
 
+    // Check if guru_badal_id column exists
+    let hasBadalCol = false;
+    try {
+      const tableTarget = tipe === 'madin' ? 'absensi' : tipe === 'quran' ? 'absensi_quran' : 'absensi_kegiatan';
+      const [colRows] = await connection.execute<RowDataPacket[]>(
+        `SHOW COLUMNS FROM ${tableTarget} LIKE 'guru_badal_id'`
+      );
+      hasBadalCol = colRows.length > 0;
+    } catch (_) {}
+
     let deleteQuery = '';
     let insertQuery = '';
 
     if (tipe === 'madin') {
       deleteQuery = 'DELETE FROM absensi WHERE jadwal_madin_id = ? AND tanggal = ?';
-      insertQuery = 'INSERT INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)';
+      insertQuery = hasBadalCol
+        ? 'INSERT INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan, guru_badal_id) VALUES (?, ?, ?, ?, ?, ?)'
+        : 'INSERT INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)';
     } else if (tipe === 'quran') {
       deleteQuery = 'DELETE FROM absensi_quran WHERE jadwal_quran_id = ? AND tanggal = ?';
-      insertQuery = 'INSERT INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)';
+      insertQuery = hasBadalCol
+        ? 'INSERT INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan, guru_badal_id) VALUES (?, ?, ?, ?, ?, ?)'
+        : 'INSERT INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)';
     } else if (tipe === 'kegiatan') {
       deleteQuery = 'DELETE FROM absensi_kegiatan WHERE kegiatan_id = ? AND tanggal = ?';
-      insertQuery = 'INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)';
+      insertQuery = hasBadalCol
+        ? 'INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan, guru_badal_id) VALUES (?, ?, ?, ?, ?, ?)'
+        : 'INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)';
     }
 
     // Find all sibling schedule IDs in this class session (Team Teaching)
@@ -614,13 +641,18 @@ export async function POST(request: Request) {
         else if (stLower === 'sakit') cleanStatus = 'Sakit';
         else if (stLower === 'alpha' || stLower === 'alpa' || stLower === '') cleanStatus = 'Alpha';
 
-        await connection.execute(insertQuery, [
+        const insertParams: any[] = [
           jId,
           item.murid_id,
           localISOTime,
           cleanStatus,
           item.keterangan || ''
-        ]);
+        ];
+        if (hasBadalCol) {
+          insertParams.push(badalId || null);
+        }
+
+        await connection.execute(insertQuery, insertParams);
 
         if (item.nama_panggilan !== undefined) {
           await connection.execute(
@@ -630,8 +662,62 @@ export async function POST(request: Request) {
         }
       }
 
-      // 3. Mark guru as Hadir (jika belum pernah tercatat hari ini)
-      if (payload.role === 'guru' && payload.guruId) {
+      // 3. Mark guru as Hadir (atau jika ada Guru Badal, catat kehadiran Badal dan izin Guru Utama)
+      if (badalId) {
+        try {
+          // A. Catat Guru Badal sebagai Hadir
+          const [badalAbsen] = await connection.execute<RowDataPacket[]>(
+            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ?`,
+            [badalId, localISOTime]
+          );
+          const badalKet = `Mengajar sebagai Badal Ust. ${payload.nama || 'Guru'}`;
+          if (badalAbsen.length === 0) {
+            let insertBadal = '';
+            if (tipe === 'madin') insertBadal = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, "Hadir", ?, 0, ?, ?) ON DUPLICATE KEY UPDATE status="Hadir"';
+            else if (tipe === 'quran') insertBadal = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, "Hadir", ?, 0, ?, ?) ON DUPLICATE KEY UPDATE status="Hadir"';
+            else if (tipe === 'kegiatan') insertBadal = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) VALUES (?, ?, "Hadir", ?, 0, ?, ?) ON DUPLICATE KEY UPDATE status="Hadir"';
+            await connection.execute(insertBadal, [badalId, localISOTime, badalKet, currentTime, jId]);
+          }
+
+          // B. Pastikan Guru Utama tercatat Izin/Sakit dengan keterangan dibadal
+          if (payload.guruId) {
+            const [guruUtamaAbsen] = await connection.execute<RowDataPacket[]>(
+              `SELECT absensi_id, status FROM absensi_guru WHERE guru_id = ? AND tanggal = ?`,
+              [payload.guruId, localISOTime]
+            );
+            if (guruUtamaAbsen.length === 0) {
+              const utamaKet = `Izin (Dibadal oleh Ust. ${badalNama || 'Guru Pengganti'})`;
+              let insertUtama = '';
+              if (tipe === 'madin') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id, guru_badal_id) VALUES (?, ?, "Izin", ?, 0, ?, ?, ?)';
+              else if (tipe === 'quran') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id, guru_badal_id) VALUES (?, ?, "Izin", ?, 0, ?, ?, ?)';
+              else if (tipe === 'kegiatan') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id, guru_badal_id) VALUES (?, ?, "Izin", ?, 0, ?, ?, ?)';
+              await connection.execute(insertUtama, [payload.guruId, localISOTime, utamaKet, currentTime, jId, badalId]);
+            }
+          }
+        } catch (badalErr) {
+          console.warn('absensi_guru badal notice:', badalErr);
+        }
+      } else if (badalNama) {
+        // Badal manual di luar data dewan guru (santri senior / ustadz tamu)
+        try {
+          if (payload.guruId) {
+            const [guruUtamaAbsen] = await connection.execute<RowDataPacket[]>(
+              `SELECT absensi_id, status FROM absensi_guru WHERE guru_id = ? AND tanggal = ?`,
+              [payload.guruId, localISOTime]
+            );
+            if (guruUtamaAbsen.length === 0) {
+              const utamaKet = `Izin (Dibadal oleh Ust. ${badalNama})`;
+              let insertUtama = '';
+              if (tipe === 'madin') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, "Izin", ?, 0, ?, ?)';
+              else if (tipe === 'quran') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, "Izin", ?, 0, ?, ?)';
+              else if (tipe === 'kegiatan') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) VALUES (?, ?, "Izin", ?, 0, ?, ?)';
+              await connection.execute(insertUtama, [payload.guruId, localISOTime, utamaKet, currentTime, jId]);
+            }
+          }
+        } catch (manualBadalErr) {
+          console.warn('absensi_guru manual badal notice:', manualBadalErr);
+        }
+      } else if (payload.role === 'guru' && payload.guruId) {
         try {
           const [guruAbsen] = await connection.execute<RowDataPacket[]>(
             `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ?`,
@@ -656,6 +742,10 @@ export async function POST(request: Request) {
     // Catat ke audit log (async, tidak blocking operasi utama)
     const tabelAbsen = tipe === 'madin' ? 'absensi' : tipe === 'quran' ? 'absensi_quran' : 'absensi_kegiatan';
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '';
+    const auditKeterangan = badalId
+      ? `Input absen ${tipe} oleh Guru Badal (Ust. ${badalNama || badalId}) menggantikan Ust. ${payload.nama || payload.username || ''} untuk ${absensi.length} santri, tanggal ${localISOTime}`
+      : `Input absen ${tipe} untuk ${absensi.length} santri, tanggal ${localISOTime}`;
+
     logAudit({
       userId: payload.userId || null,
       userNama: payload.username || payload.name || '',
@@ -663,8 +753,8 @@ export async function POST(request: Request) {
       aksi: 'simpan_absen',
       tabel: tabelAbsen,
       recordId: parseInt(jadwal_id as string) || null,
-      keterangan: `Input absen ${tipe} untuk ${absensi.length} santri, tanggal ${localISOTime}`,
-      dataBaru: { jadwal_id, tipe, tanggal: localISOTime, jumlah: absensi.length },
+      keterangan: auditKeterangan,
+      dataBaru: { jadwal_id, tipe, tanggal: localISOTime, jumlah: absensi.length, badal_id: badalId || null },
       ipAddress: ipAddress.split(',')[0].trim(),
     });
 

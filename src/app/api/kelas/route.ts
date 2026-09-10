@@ -231,7 +231,7 @@ export async function GET(request: Request) {
           k.nama_kamar ASC
       `;
     } else if (actualType === 'guru') {
-      query = `SELECT guru_id as id, nama FROM guru ORDER BY nama ASC`;
+      query = `SELECT guru_id as id, nama, no_hp FROM guru ORDER BY nama ASC`;
     }
 
     const [rows] = await pool.execute<RowDataPacket[]>(query, params);

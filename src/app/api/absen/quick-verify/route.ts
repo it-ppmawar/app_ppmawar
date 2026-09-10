@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Token tidak valid atau sudah kadaluarsa (${waktuTenggang} jam)` }, { status: 401 });
     }
 
-    const { guru_id, guru_nama, user_id, jadwal_id, tipe, date } = payload as any;
+    const { guru_id, guru_nama, badal_id, badal_nama, user_id, jadwal_id, tipe, date } = payload as any;
 
     // Catatan Keamanan: Jangan tanam cookie session login penuh ke browser penerima tautan
     // agar tautan yang dibagikan ke guru badal / perwakilan aman dan tidak membocorkan akses dashboard pemilik asli.
@@ -302,6 +302,8 @@ export async function POST(request: Request) {
       data: {
         guru_id,
         guru_nama,
+        badal_id: badal_id || null,
+        badal_nama: badal_nama || null,
         tipe,
         date: targetDate,
         jadwal: jadwalDetail,

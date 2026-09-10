@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth/jwt';
+import { verifyToken, signToken } from '@/lib/auth/jwt';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import fs from 'fs';
@@ -7,7 +7,7 @@ import path from 'path';
 
 export async function POST(request: Request) {
   try {
-    const { token, status, keterangan, foto_bukti } = await request.json();
+    const { token, status, keterangan, foto_bukti, guru_badal_id, guru_badal_nama } = await request.json();
 
     if (!token) {
       return NextResponse.json({ error: 'Token tidak ditemukan' }, { status: 400 });
@@ -23,8 +23,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ID Guru tidak valid di dalam token' }, { status: 400 });
     }
 
+    // Resolve guru badal jika dipilih
+    let badalGuru: any = null;
+    const bId = guru_badal_id ? Number(guru_badal_id) : null;
+    if (bId) {
+      const [badalRows] = await pool.execute<RowDataPacket[]>(
+        'SELECT guru_id, nama, no_hp FROM guru WHERE guru_id = ?',
+        [bId]
+      );
+      if (badalRows.length > 0) {
+        badalGuru = badalRows[0];
+      }
+    } else if (guru_badal_nama && typeof guru_badal_nama === 'string' && guru_badal_nama.trim()) {
+      badalGuru = {
+        guru_id: null,
+        nama: guru_badal_nama.trim(),
+        no_hp: null
+      };
+    }
+
     const validStatus = (status === 'Sakit' || status === 'sakit') ? 'Sakit' : 'Izin';
-    const reasonText = (keterangan || '').trim() || (validStatus === 'Sakit' ? 'Sakit (Melalui Link WA)' : 'Izin (Melalui Link WA)');
+    let reasonText = (keterangan || '').trim() || (validStatus === 'Sakit' ? 'Sakit (Melalui Link WA)' : 'Izin (Melalui Link WA)');
+    if (badalGuru) {
+      reasonText = `${reasonText} (Dibadal oleh Ust. ${badalGuru.nama})`;
+    }
 
     // Waktu & Tanggal saat ini (Asia/Jakarta / WIB)
     const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
@@ -62,13 +84,16 @@ export async function POST(request: Request) {
 
     const jId = Number(jadwal_id) || null;
 
-    // Cek apakah kolom foto_bukti ada di tabel absensi_guru
+    // Cek apakah kolom foto_bukti & guru_badal_id ada di tabel absensi_guru
     let hasFotoCol = false;
+    let hasBadalCol = false;
     try {
       const [cols] = await pool.execute<RowDataPacket[]>(
-        "SHOW COLUMNS FROM absensi_guru LIKE 'foto_bukti'"
+        "SHOW COLUMNS FROM absensi_guru"
       );
-      hasFotoCol = cols.length > 0;
+      const colNames = (cols || []).map((c: any) => c.Field);
+      hasFotoCol = colNames.includes('foto_bukti');
+      hasBadalCol = colNames.includes('guru_badal_id');
     } catch (_) {}
 
     // Cek apakah sudah ada record absensi guru untuk tanggal dan jadwal ini
@@ -91,64 +116,102 @@ export async function POST(request: Request) {
     if (existingRows.length > 0) {
       // Update record yang ada
       const absensiId = existingRows[0].absensi_id;
+      let setFields = 'status = ?, keterangan = ?, waktu_absensi = ?, is_otomatis = 0';
+      const setVals: any[] = [validStatus, reasonText, currentTimeStr];
+
       if (hasFotoCol && savedFotoPath) {
-        await pool.execute(
-          'UPDATE absensi_guru SET status = ?, keterangan = ?, waktu_absensi = ?, is_otomatis = 0, foto_bukti = ? WHERE absensi_id = ?',
-          [validStatus, reasonText, currentTimeStr, savedFotoPath, absensiId]
-        );
-      } else {
-        await pool.execute(
-          'UPDATE absensi_guru SET status = ?, keterangan = ?, waktu_absensi = ?, is_otomatis = 0 WHERE absensi_id = ?',
-          [validStatus, reasonText, currentTimeStr, absensiId]
-        );
+        setFields += ', foto_bukti = ?';
+        setVals.push(savedFotoPath);
       }
+      if (hasBadalCol) {
+        setFields += ', guru_badal_id = ?';
+        setVals.push(bId || null);
+      }
+
+      setVals.push(absensiId);
+      await pool.execute(`UPDATE absensi_guru SET ${setFields} WHERE absensi_id = ?`, setVals);
     } else {
       // Insert record baru
+      const colList: string[] = ['guru_id', 'tanggal', 'status', 'keterangan', 'is_otomatis', 'waktu_absensi'];
+      const valPlaceholders: string[] = ['?', '?', '?', '?', '0', '?'];
+      const valList: any[] = [guru_id, targetDate, validStatus, reasonText, currentTimeStr];
+
       if (tipe === 'madin') {
-        if (hasFotoCol) {
-          await pool.execute(
-            'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id, foto_bukti) VALUES (?, ?, ?, ?, 0, ?, ?, ?)',
-            [guru_id, targetDate, validStatus, reasonText, currentTimeStr, jId, savedFotoPath]
-          );
-        } else {
-          await pool.execute(
-            'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, ?, ?, 0, ?, ?)',
-            [guru_id, targetDate, validStatus, reasonText, currentTimeStr, jId]
-          );
-        }
+        colList.push('jadwal_madin_id');
+        valPlaceholders.push('?');
+        valList.push(jId);
       } else if (tipe === 'quran') {
-        if (hasFotoCol) {
-          await pool.execute(
-            'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id, foto_bukti) VALUES (?, ?, ?, ?, 0, ?, ?, ?)',
-            [guru_id, targetDate, validStatus, reasonText, currentTimeStr, jId, savedFotoPath]
-          );
-        } else {
-          await pool.execute(
-            'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, ?, ?, 0, ?, ?)',
-            [guru_id, targetDate, validStatus, reasonText, currentTimeStr, jId]
-          );
-        }
+        colList.push('jadwal_quran_id');
+        valPlaceholders.push('?');
+        valList.push(jId);
       } else {
-        if (hasFotoCol) {
-          await pool.execute(
-            'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id, foto_bukti) VALUES (?, ?, ?, ?, 0, ?, ?, ?)',
-            [guru_id, targetDate, validStatus, reasonText, currentTimeStr, jId, savedFotoPath]
-          );
-        } else {
-          await pool.execute(
-            'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) VALUES (?, ?, ?, ?, 0, ?, ?)',
-            [guru_id, targetDate, validStatus, reasonText, currentTimeStr, jId]
-          );
-        }
+        colList.push('kegiatan_id');
+        valPlaceholders.push('?');
+        valList.push(jId);
       }
+
+      if (hasFotoCol && savedFotoPath) {
+        colList.push('foto_bukti');
+        valPlaceholders.push('?');
+        valList.push(savedFotoPath);
+      }
+      if (hasBadalCol && bId) {
+        colList.push('guru_badal_id');
+        valPlaceholders.push('?');
+        valList.push(bId);
+      }
+
+      await pool.execute(
+        `INSERT INTO absensi_guru (${colList.join(', ')}) VALUES (${valPlaceholders.join(', ')})`,
+        valList
+      );
+    }
+
+    // Generate quick token untuk Guru Badal jika ditunjuk
+    let badalUrl: string | null = null;
+    let badalToken: string | null = null;
+    if (badalGuru) {
+      let waktuTenggang = 3;
+      try {
+        const [settingRows] = await pool.execute<RowDataPacket[]>(
+          'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "waktu_tenggang_absensi" LIMIT 1'
+        );
+        if (settingRows.length > 0 && settingRows[0].nilai) {
+          const parsed = parseInt(settingRows[0].nilai);
+          if (!isNaN(parsed) && parsed > 0) waktuTenggang = parsed;
+        }
+      } catch (_) {}
+
+      const badalPayload: any = {
+        type: 'quick_absen',
+        guru_id: guru_id, // Guru utama yang berhalangan
+        guru_nama: guru_nama,
+        badal_id: badalGuru.guru_id || null,
+        badal_nama: badalGuru.nama,
+        jadwal_id: jId,
+        tipe,
+        date: targetDate,
+        role: 'guru',
+        waktu_tenggang: waktuTenggang,
+        createdAt: Date.now()
+      };
+      badalToken = signToken(badalPayload, `${waktuTenggang}h`);
+      badalUrl = `https://app.ppmawar.or.id/absen/quick?token=${badalToken}`;
     }
 
     return NextResponse.json({
       success: true,
-      message: `Permohonan ${validStatus} Ustadz/Ustadzah ${guru_nama || ''} berhasil dicatat dalam sistem.`,
+      message: `Permohonan ${validStatus} Ustadz/Ustadzah ${guru_nama || ''} berhasil dicatat dalam sistem.${badalGuru ? ` Guru pengganti: ${badalGuru.nama}` : ''}`,
       status: validStatus,
       keterangan: reasonText,
-      tanggal: targetDate
+      tanggal: targetDate,
+      badal_info: badalGuru ? {
+        id: badalGuru.guru_id,
+        nama: badalGuru.nama,
+        no_hp: badalGuru.no_hp
+      } : null,
+      badal_url: badalUrl,
+      badal_token: badalToken
     });
 
   } catch (error: any) {

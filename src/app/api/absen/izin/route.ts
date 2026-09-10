@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
-import { verifyToken } from '@/lib/auth/jwt';
+import { verifyToken, signToken } from '@/lib/auth/jwt';
 import fs from 'fs';
 import path from 'path';
 
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
     const { role, userId } = payload;
     const body = await request.json();
-    const { tipe, jadwal_id, status, keterangan, foto_bukti } = body;
+    const { tipe, jadwal_id, status, keterangan, foto_bukti, guru_badal_id, guru_badal_nama } = body;
 
     const jId = Number(jadwal_id);
     if (!tipe || !jId) {
@@ -78,8 +78,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Guru atau Pembina untuk jadwal ini tidak ditemukan' }, { status: 400 });
     }
 
+    // Resolve guru badal jika ada
+    let badalGuru: any = null;
+    const bId = guru_badal_id ? Number(guru_badal_id) : null;
+    if (bId) {
+      const [badalRows] = await pool.execute<RowDataPacket[]>(
+        'SELECT guru_id, nama, no_hp FROM guru WHERE guru_id = ?',
+        [bId]
+      );
+      if (badalRows.length > 0) {
+        badalGuru = badalRows[0];
+      }
+    } else if (guru_badal_nama && typeof guru_badal_nama === 'string' && guru_badal_nama.trim()) {
+      badalGuru = {
+        guru_id: null,
+        nama: guru_badal_nama.trim(),
+        no_hp: null
+      };
+    }
+
     const validStatus = (status === 'Sakit' || status === 'sakit') ? 'Sakit' : 'Izin';
-    const reasonText = (keterangan || '').trim() || (validStatus === 'Sakit' ? 'Sakit (Melalui Dashboard)' : 'Izin (Melalui Dashboard)');
+    let reasonText = (keterangan || '').trim() || (validStatus === 'Sakit' ? 'Sakit (Melalui Dashboard)' : 'Izin (Melalui Dashboard)');
+    if (badalGuru) {
+      reasonText = `${reasonText} (Dibadal oleh Ust. ${badalGuru.nama})`;
+    }
 
     // Waktu & Tanggal saat ini (Asia/Jakarta / WIB)
     const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
@@ -108,13 +130,16 @@ export async function POST(request: Request) {
       savedFotoPath = foto_bukti;
     }
 
-    // Cek kolom foto_bukti
+    // Cek kolom foto_bukti & guru_badal_id
     let hasFotoCol = false;
+    let hasBadalCol = false;
     try {
       const [cols] = await pool.execute<RowDataPacket[]>(
-        "SHOW COLUMNS FROM absensi_guru LIKE 'foto_bukti'"
+        "SHOW COLUMNS FROM absensi_guru"
       );
-      hasFotoCol = cols.length > 0;
+      const colNames = (cols || []).map((c: any) => c.Field);
+      hasFotoCol = colNames.includes('foto_bukti');
+      hasBadalCol = colNames.includes('guru_badal_id');
     } catch (_) {}
 
     // Cek apakah sudah ada record absensi_guru untuk guru, tanggal, dan jadwal ini
@@ -136,55 +161,100 @@ export async function POST(request: Request) {
 
     if (existingRows.length > 0) {
       const absensiId = existingRows[0].absensi_id;
+      let setFields = 'status = ?, keterangan = ?, waktu_absensi = ?, is_otomatis = 0';
+      const setVals: any[] = [validStatus, reasonText, currentTimeStr];
+
       if (hasFotoCol && savedFotoPath) {
-        await pool.execute(
-          'UPDATE absensi_guru SET status = ?, keterangan = ?, waktu_absensi = ?, is_otomatis = 0, foto_bukti = ? WHERE absensi_id = ?',
-          [validStatus, reasonText, currentTimeStr, savedFotoPath, absensiId]
-        );
-      } else {
-        await pool.execute(
-          'UPDATE absensi_guru SET status = ?, keterangan = ?, waktu_absensi = ?, is_otomatis = 0 WHERE absensi_id = ?',
-          [validStatus, reasonText, currentTimeStr, absensiId]
-        );
+        setFields += ', foto_bukti = ?';
+        setVals.push(savedFotoPath);
       }
+      if (hasBadalCol) {
+        setFields += ', guru_badal_id = ?';
+        setVals.push(bId || null);
+      }
+
+      setVals.push(absensiId);
+      await pool.execute(`UPDATE absensi_guru SET ${setFields} WHERE absensi_id = ?`, setVals);
     } else {
-      let insertQuery = '';
-      const insertParams: any[] = [guruId, todayStr, validStatus, reasonText, currentTimeStr];
+      const colList: string[] = ['guru_id', 'tanggal', 'status', 'keterangan', 'is_otomatis', 'waktu_absensi'];
+      const valPlaceholders: string[] = ['?', '?', '?', '?', '0', '?'];
+      const valList: any[] = [guruId, todayStr, validStatus, reasonText, currentTimeStr];
 
       if (tipe === 'madin') {
-        if (hasFotoCol && savedFotoPath) {
-          insertQuery = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id, foto_bukti) VALUES (?, ?, ?, ?, 0, ?, ?, ?)';
-          insertParams.push(jId, savedFotoPath);
-        } else {
-          insertQuery = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, ?, ?, 0, ?, ?)';
-          insertParams.push(jId);
-        }
+        colList.push('jadwal_madin_id');
+        valPlaceholders.push('?');
+        valList.push(jId);
       } else if (tipe === 'quran') {
-        if (hasFotoCol && savedFotoPath) {
-          insertQuery = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id, foto_bukti) VALUES (?, ?, ?, ?, 0, ?, ?, ?)';
-          insertParams.push(jId, savedFotoPath);
-        } else {
-          insertQuery = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, ?, ?, 0, ?, ?)';
-          insertParams.push(jId);
-        }
+        colList.push('jadwal_quran_id');
+        valPlaceholders.push('?');
+        valList.push(jId);
       } else if (tipe === 'kegiatan' || tipe === 'kamar') {
-        if (hasFotoCol && savedFotoPath) {
-          insertQuery = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id, foto_bukti) VALUES (?, ?, ?, ?, 0, ?, ?, ?)';
-          insertParams.push(jId, savedFotoPath);
-        } else {
-          insertQuery = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) VALUES (?, ?, ?, ?, 0, ?, ?)';
-          insertParams.push(jId);
-        }
+        colList.push('kegiatan_id');
+        valPlaceholders.push('?');
+        valList.push(jId);
       }
 
-      await pool.execute(insertQuery, insertParams);
+      if (hasFotoCol && savedFotoPath) {
+        colList.push('foto_bukti');
+        valPlaceholders.push('?');
+        valList.push(savedFotoPath);
+      }
+      if (hasBadalCol && bId) {
+        colList.push('guru_badal_id');
+        valPlaceholders.push('?');
+        valList.push(bId);
+      }
+
+      await pool.execute(
+        `INSERT INTO absensi_guru (${colList.join(', ')}) VALUES (${valPlaceholders.join(', ')})`,
+        valList
+      );
+    }
+
+    // Generate quick token untuk Guru Badal jika ditunjuk
+    let badalUrl: string | null = null;
+    let badalToken: string | null = null;
+    if (badalGuru) {
+      let waktuTenggang = 3;
+      try {
+        const [settingRows] = await pool.execute<RowDataPacket[]>(
+          'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "waktu_tenggang_absensi" LIMIT 1'
+        );
+        if (settingRows.length > 0 && settingRows[0].nilai) {
+          const parsed = parseInt(settingRows[0].nilai);
+          if (!isNaN(parsed) && parsed > 0) waktuTenggang = parsed;
+        }
+      } catch (_) {}
+
+      const badalPayload: any = {
+        type: 'quick_absen',
+        guru_id: guruId, // Guru utama yang berhalangan
+        guru_nama: guruNama,
+        badal_id: badalGuru.guru_id || null,
+        badal_nama: badalGuru.nama,
+        jadwal_id: jId,
+        tipe,
+        date: todayStr,
+        role: 'guru',
+        waktu_tenggang: waktuTenggang,
+        createdAt: Date.now()
+      };
+      badalToken = signToken(badalPayload, `${waktuTenggang}h`);
+      badalUrl = `https://app.ppmawar.or.id/absen/quick?token=${badalToken}`;
     }
 
     return NextResponse.json({
       success: true,
-      message: `Permohonan ${validStatus} untuk ${guruNama} berhasil dicatat.`,
+      message: `Permohonan ${validStatus} untuk ${guruNama} berhasil dicatat.${badalGuru ? ` Guru pengganti: ${badalGuru.nama}` : ''}`,
       status: validStatus,
-      guru_nama: guruNama
+      guru_nama: guruNama,
+      badal_info: badalGuru ? {
+        id: badalGuru.guru_id,
+        nama: badalGuru.nama,
+        no_hp: badalGuru.no_hp
+      } : null,
+      badal_url: badalUrl,
+      badal_token: badalToken
     });
   } catch (error: any) {
     console.error('Error submitting dashboard izin:', error);

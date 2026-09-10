@@ -635,6 +635,26 @@ export async function GET() {
       results.push('❌ Dewan guru tables error: ' + e.message);
     }
 
+    // ── Guru Badal System Migration ─────────────────────────────
+    try {
+      const badalTables = ['absensi', 'absensi_quran', 'absensi_kegiatan', 'absensi_guru'];
+      for (const t of badalTables) {
+        try {
+          const [cols] = await pool.execute<any[]>(`SHOW COLUMNS FROM ${t} LIKE 'guru_badal_id'`);
+          if (cols.length === 0) {
+            await pool.execute(`ALTER TABLE ${t} ADD COLUMN guru_badal_id INT NULL`);
+            results.push(`✅ Added guru_badal_id to ${t}`);
+          } else {
+            results.push(`ℹ️ ${t}.guru_badal_id already exists`);
+          }
+        } catch (colErr: any) {
+          results.push(`❌ ${t} guru_badal_id column: ` + colErr.message);
+        }
+      }
+    } catch (e: any) {
+      results.push('❌ Guru badal migration error: ' + e.message);
+    }
+
     return NextResponse.json({ success: true, results });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy, Search, Key, Link as LinkIcon } from 'lucide-react';
 import Link from 'next/link';
 
 // Avatar & Photo helper
@@ -62,6 +62,19 @@ function QuickAbsenContent() {
   const [izinFoto, setIzinFoto] = useState<string>('');
   const [submittingIzin, setSubmittingIzin] = useState(false);
   const [izinSuccess, setIzinSuccess] = useState<string | null>(null);
+
+  // Guru Badal States
+  const [useBadal, setUseBadal] = useState(false);
+  const [listGuru, setListGuru] = useState<any[]>([]);
+  const [selectedBadalId, setSelectedBadalId] = useState<string>('');
+  const [selectedBadalNama, setSelectedBadalNama] = useState<string>('');
+  const [isManualBadal, setIsManualBadal] = useState(false);
+  const [badalSearch, setBadalSearch] = useState('');
+  const [showBadalDropdown, setShowBadalDropdown] = useState(false);
+  const [izinResultData, setIzinResultData] = useState<any>(null);
+  const [copiedBadalWa, setCopiedBadalWa] = useState(false);
+  const [copiedBadalLink, setCopiedBadalLink] = useState(false);
+  const [copiedBadalToken, setCopiedBadalToken] = useState(false);
 
   // Camera & Photo Upload States
   const [photoUrl, setPhotoUrl] = useState<string>('');
@@ -167,6 +180,17 @@ function QuickAbsenContent() {
   };
 
   useEffect(() => { return () => stopCameraStream(); }, [stopCameraStream]);
+
+  useEffect(() => {
+    fetch('/api/kelas?type=guru')
+      .then(res => res.json())
+      .then(res => {
+        if (res.success && Array.isArray(res.data)) {
+          setListGuru(res.data);
+        }
+      })
+      .catch(err => console.warn('Gagal memuat daftar guru:', err));
+  }, []);
 
   const formatHariTanggalPesantren = (rawDate?: string, rawTime?: string) => {
     try {
@@ -359,6 +383,95 @@ function QuickAbsenContent() {
     }
   };
 
+  const generateBadalWaMessage = () => {
+    const badalNama = izinResultData?.badal_info?.nama || 'Ustadz';
+    const badalUrl = izinResultData?.badal_url || '';
+    const dateStr = formatHariTanggalPesantren(data?.date, data?.jadwal?.jam_mulai);
+    const mapel = data?.jadwal?.mata_pelajaran ? ` mata pelajaran *${data.jadwal.mata_pelajaran}*` : '';
+    const namaKelas = data?.jadwal?.nama_kelas || 'Kelas';
+    const namaGuruAsli = data?.guru_nama || 'saya';
+
+    return `Assalamu'alaikum Wr. Wb. Ustadz *${badalNama}*,\n\nMohon ridho dan bantuannya untuk berkenan membadali (menggantikan) mengajar kelas *${namaKelas}*${mapel} pada hari *${dateStr}* dikarenakan ${namaGuruAsli} berhalangan (*${izinStatus}*: ${izinKeterangan}).\n\nTautan absensi santri dapat langsung diakses di bawah ini:\n🔗 ${badalUrl}\n\nMatur suwun sanget atas bantuannya, jazakumullah khairan katsiran. 🙏`;
+  };
+
+  const handleSendBadalWa = async () => {
+    if (!izinResultData?.badal_info) return;
+    const msg = generateBadalWaMessage();
+    let phone = (izinResultData.badal_info.no_hp || '').replace(/[^0-9]/g, '');
+    if (phone.startsWith('08')) {
+      phone = '628' + phone.substring(2);
+    }
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(msg);
+      }
+      setCopiedBadalWa(true);
+      setTimeout(() => setCopiedBadalWa(false), 4000);
+    } catch (_) {}
+
+    const encodedText = encodeURIComponent(msg);
+    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (phone) {
+      if (isMobile) {
+        window.location.href = `whatsapp://send?phone=${phone}&text=${encodedText}`;
+        setTimeout(() => {
+          window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodedText}`, '_blank');
+        }, 1500);
+      } else {
+        window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodedText}`, '_blank');
+      }
+    } else {
+      if (isMobile) {
+        window.location.href = `whatsapp://send?text=${encodedText}`;
+        setTimeout(() => {
+          window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
+        }, 1500);
+      } else {
+        window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
+      }
+    }
+  };
+
+  const handleCopyBadalLink = async () => {
+    const url = izinResultData?.badal_url;
+    if (!url) return;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopiedBadalLink(true);
+      setTimeout(() => setCopiedBadalLink(false), 3000);
+    } catch (_) {}
+  };
+
+  const handleCopyBadalToken = async () => {
+    const tokenStr = izinResultData?.badal_token || (izinResultData?.badal_url ? new URL(izinResultData.badal_url).searchParams.get('token') : null);
+    if (!tokenStr) return;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(tokenStr);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = tokenStr;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopiedBadalToken(true);
+      setTimeout(() => setCopiedBadalToken(false), 3000);
+    } catch (_) {}
+  };
+
   useEffect(() => {
     if (!token) {
       setError('Token absensi tidak ditemukan. Silakan klik link dari pesan WhatsApp kembali.');
@@ -524,6 +637,23 @@ function QuickAbsenContent() {
 
   const handleIzinSubmit = async () => {
     if (!token || submittingIzin) return;
+
+    if (!izinKeterangan.trim()) {
+      alert('Harap isi alasan atau keterangan izin/sakit.');
+      return;
+    }
+
+    if (useBadal) {
+      const resolvedNama = (selectedBadalNama || badalSearch || '').trim();
+      if (!selectedBadalId && !resolvedNama) {
+        alert('Harap pilih Ustadz/Ustadzah pengganti (badal), atau ketik nama pengganti jika di luar dewan guru, atau hilangkan centang badal.');
+        return;
+      }
+    }
+
+    const finalBadalNama = useBadal ? (isManualBadal ? selectedBadalNama.trim() : (selectedBadalNama || badalSearch.trim() || null)) : null;
+    const finalBadalId = useBadal && !isManualBadal && selectedBadalId ? selectedBadalId : null;
+
     setSubmittingIzin(true);
     setError(null);
 
@@ -535,11 +665,14 @@ function QuickAbsenContent() {
           token,
           status: izinStatus,
           keterangan: izinKeterangan,
-          foto_bukti: izinFoto || null
+          foto_bukti: izinFoto || null,
+          guru_badal_id: finalBadalId,
+          guru_badal_nama: finalBadalNama
         })
       });
       const result = await res.json();
       if (result.success) {
+        setIzinResultData(result);
         setIzinSuccess(result.message || `Permohonan ${izinStatus} berhasil dicatat.`);
       } else {
         setError(result.error || 'Gagal mengirim permohonan.');
@@ -633,6 +766,19 @@ function QuickAbsenContent() {
       </header>
 
       <main className="max-w-2xl mx-auto p-4 space-y-4">
+        {/* Banner Mode Guru Badal */}
+        {data?.badal_nama && (
+          <div className="bg-emerald-950/70 border border-emerald-500/50 rounded-2xl p-3.5 text-xs flex items-center gap-3 shadow-lg">
+            <span className="text-2xl">🎖️</span>
+            <div>
+              <p className="font-extrabold text-emerald-300 text-sm">Mode Guru Pengganti (Badal)</p>
+              <p className="text-emerald-200/90 text-[11px] leading-relaxed">
+                Anda masuk sebagai Ustadz <strong>{data.badal_nama}</strong> untuk membadali Ustadz <strong>{guru_nama}</strong>. Absensi Anda akan otomatis tercatat sebagai <strong>Hadir</strong> dalam sistem.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Tab Switcher: Masuk (Absen Santri) vs Izin / Sakit */}
         <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl shadow-inner">
           <button
@@ -772,6 +918,95 @@ function QuickAbsenContent() {
                   <p className="font-bold flex items-center gap-1.5"><Sparkles size={13} /> Info Otomatisasi Kehadiran:</p>
                   <p>Status Anda telah tercatat sebagai <strong>{izinStatus}</strong> pada sistem. Anda <strong>tidak akan divonis Alpha otomatis</strong> saat waktu tenggang berakhir.</p>
                 </div>
+
+                {/* Informasi & Kirim Tautan ke Guru Badal */}
+                {izinResultData?.badal_info && (
+                  <div className="bg-emerald-950/50 border border-emerald-700/60 rounded-xl p-4 text-left space-y-3 shadow-sm">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-2xl">🎖️</span>
+                      <div>
+                        <p className="text-[11px] text-emerald-400 font-bold uppercase tracking-wider">
+                          Guru Pengganti (Badal) Ditunjuk {izinResultData.badal_info.id ? '' : '(Luar Dewan Guru)'}
+                        </p>
+                        <p className="text-sm font-extrabold text-emerald-200">
+                          Ust. {izinResultData.badal_info.nama}
+                        </p>
+                        {izinResultData.badal_info.no_hp ? (
+                          <p className="text-[11px] text-emerald-300 font-medium">
+                            📱 WhatsApp: {izinResultData.badal_info.no_hp}
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-slate-400 italic">
+                            ℹ️ Nomor WA tidak tersimpan di sistem. Anda dapat menyalin tautan atau token di bawah.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tombol Aksi WhatsApp & Salin Pesan */}
+                    <div className="pt-2 border-t border-emerald-800/60 flex flex-col sm:flex-row gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSendBadalWa}
+                        className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition"
+                      >
+                        <Send size={15} />
+                        <span>{izinResultData.badal_info.no_hp ? 'Kirim Tautan via WA' : 'Buka WhatsApp (Pilih Kontak)'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const msg = generateBadalWaMessage();
+                          try {
+                            if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+                              await navigator.clipboard.writeText(msg);
+                            } else {
+                              const ta = document.createElement('textarea');
+                              ta.value = msg;
+                              document.body.appendChild(ta);
+                              ta.select();
+                              document.execCommand('copy');
+                              document.body.removeChild(ta);
+                            }
+                            setCopiedBadalWa(true);
+                            setTimeout(() => setCopiedBadalWa(false), 3000);
+                          } catch (_) {}
+                        }}
+                        className="py-2.5 px-4 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
+                      >
+                        {copiedBadalWa ? <Check size={15} /> : <Copy size={15} />}
+                        <span>{copiedBadalWa ? 'Pesan Tersalin!' : 'Salin Pesan WA'}</span>
+                      </button>
+                    </div>
+
+                    {/* Tombol Salin Tautan & Salin Token Saja */}
+                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleCopyBadalLink}
+                        className="flex-1 py-2 px-3 bg-slate-900 border border-emerald-700/80 hover:bg-slate-800 text-emerald-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
+                      >
+                        {copiedBadalLink ? <Check size={14} className="text-emerald-400" /> : <LinkIcon size={14} />}
+                        <span>{copiedBadalLink ? '✅ Tautan Tersalin!' : '🔗 Salin Tautan Absensi'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCopyBadalToken}
+                        className="flex-1 py-2 px-3 bg-slate-900 border border-emerald-700/80 hover:bg-slate-800 text-emerald-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
+                      >
+                        {copiedBadalToken ? <Check size={14} className="text-emerald-400" /> : <Key size={14} />}
+                        <span>{copiedBadalToken ? '✅ Token Tersalin!' : '🔑 Salin Token Saja'}</span>
+                      </button>
+                    </div>
+
+                    {copiedBadalWa && (
+                      <p className="text-[11px] text-emerald-400 text-center font-medium">
+                        ✅ Draft pesan dan tautan badal berhasil disalin ke clipboard!
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="pt-2 flex flex-col sm:flex-row gap-2">
                   <button
                     type="button"
@@ -885,6 +1120,173 @@ function QuickAbsenContent() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* Opsi Tunjuk Guru Pengganti (Badal) */}
+                <div className="bg-emerald-950/40 border border-emerald-800/60 rounded-xl p-4 space-y-3">
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xl">🎖️</span>
+                      <div>
+                        <span className="text-xs font-bold text-slate-200">Tunjuk Guru Pengganti (Badal)</span>
+                        <p className="text-[10px] text-slate-400">Pilih dewan guru atau ketik nama pengganti (luar dewan guru)</p>
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={useBadal}
+                      onChange={(e) => {
+                        setUseBadal(e.target.checked);
+                        if (!e.target.checked) {
+                          setSelectedBadalId('');
+                          setSelectedBadalNama('');
+                          setIsManualBadal(false);
+                          setBadalSearch('');
+                          setShowBadalDropdown(false);
+                        }
+                      }}
+                      className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-700 bg-slate-900 cursor-pointer"
+                    />
+                  </label>
+
+                  {useBadal && (
+                    <div className="pt-2 border-t border-emerald-800/50 space-y-2 animate-in fade-in duration-200">
+                      <label className="block text-[11px] font-bold text-slate-300">
+                        Pilih atau Ketik Ustadz / Ustadzah Pengganti:
+                      </label>
+
+                      {/* Jika sudah ada yang dipilih */}
+                      {selectedBadalNama ? (
+                        <div className="bg-slate-900 border border-emerald-700/80 rounded-xl p-3 flex items-center justify-between shadow-sm">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-emerald-900/60 text-emerald-300 flex items-center justify-center font-bold text-xs border border-emerald-700/50">
+                              {selectedBadalNama.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-100">
+                                Ust. {selectedBadalNama}
+                              </p>
+                              <p className="text-[10px] text-emerald-400 font-medium">
+                                {isManualBadal ? '✏️ Badal Manual (Luar Data Dewan Guru)' : '🎖️ Dewan Guru Terdaftar'}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedBadalId('');
+                              setSelectedBadalNama('');
+                              setIsManualBadal(false);
+                              setBadalSearch('');
+                              setShowBadalDropdown(true);
+                            }}
+                            className="text-xs text-rose-400 hover:underline font-semibold px-2 py-1 bg-rose-950/40 rounded-lg transition active:scale-95"
+                          >
+                            Ganti / Batal
+                          </button>
+                        </div>
+                      ) : (
+                        /* Searchable Input + Dropdown */
+                        <div className="space-y-1.5 relative">
+                          <div className="relative">
+                            <Search size={15} className="absolute left-3 top-3 text-slate-500" />
+                            <input
+                              type="text"
+                              value={badalSearch}
+                              onChange={(e) => {
+                                setBadalSearch(e.target.value);
+                                setShowBadalDropdown(true);
+                              }}
+                              onFocus={() => setShowBadalDropdown(true)}
+                              placeholder="Ketik nama untuk mencari guru atau ketik nama baru..."
+                              className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-emerald-700/80 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                            />
+                          </div>
+
+                          {/* Dropdown Hasil Pencarian & Opsi Manual */}
+                          {showBadalDropdown && (
+                            <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-slate-800 z-20">
+                              {/* Opsi Gunakan Nama Manual */}
+                              {badalSearch.trim().length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedBadalId('');
+                                    setSelectedBadalNama(badalSearch.trim());
+                                    setIsManualBadal(true);
+                                    setShowBadalDropdown(false);
+                                  }}
+                                  className="w-full text-left p-2.5 hover:bg-amber-950/40 transition flex items-center gap-2 text-amber-300 bg-amber-950/20"
+                                >
+                                  <span className="text-base shrink-0">✏️</span>
+                                  <div>
+                                    <p className="text-xs font-bold">
+                                      Gunakan &quot;{badalSearch.trim()}&quot;
+                                    </p>
+                                    <p className="text-[10px] text-amber-400/90">
+                                      (Badal manual selain dewan guru: Santri Senior / Alumni / Ustadz Tamu)
+                                    </p>
+                                  </div>
+                                </button>
+                              )}
+
+                              {/* List Dewan Guru */}
+                              {listGuru
+                                .filter((g) => {
+                                  if (guru_nama && g.nama === guru_nama) return false;
+                                  if (!badalSearch.trim()) return true;
+                                  const q = badalSearch.toLowerCase();
+                                  return (g.nama && g.nama.toLowerCase().includes(q)) || (g.no_hp && g.no_hp.includes(q));
+                                })
+                                .map((g) => (
+                                  <button
+                                    key={g.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedBadalId(String(g.id));
+                                      setSelectedBadalNama(g.nama);
+                                      setIsManualBadal(false);
+                                      setShowBadalDropdown(false);
+                                      setBadalSearch('');
+                                    }}
+                                    className="w-full text-left p-2.5 hover:bg-slate-800/80 transition flex items-center justify-between"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-6 h-6 rounded-full bg-emerald-900/60 text-emerald-300 flex items-center justify-center font-bold text-[10px]">
+                                        {g.nama ? g.nama.substring(0, 2).toUpperCase() : 'U'}
+                                      </div>
+                                      <span className="text-xs font-semibold text-slate-200">
+                                        {g.nama}
+                                      </span>
+                                    </div>
+                                    {g.no_hp && (
+                                      <span className="text-[11px] text-emerald-400 font-mono">
+                                        {g.no_hp}
+                                      </span>
+                                    )}
+                                  </button>
+                                ))}
+
+                              {listGuru.filter((g) => {
+                                if (guru_nama && g.nama === guru_nama) return false;
+                                if (!badalSearch.trim()) return true;
+                                const q = badalSearch.toLowerCase();
+                                return (g.nama && g.nama.toLowerCase().includes(q)) || (g.no_hp && g.no_hp.includes(q));
+                              }).length === 0 && !badalSearch.trim() && (
+                                <div className="p-3 text-center text-xs text-slate-400">
+                                  Tidak ada data guru lain
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <p className="text-[10px] text-emerald-300">
+                        💡 Cari nama ustadz terdaftar, atau ketik nama santri senior/alumni jika dibadali pihak luar. Tautan &amp; token absensi otomatis siap diteruskan ke badal.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Lampiran Foto Bukti (Opsional) */}

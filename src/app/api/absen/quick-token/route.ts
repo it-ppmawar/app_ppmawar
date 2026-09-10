@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { guru_id, jadwal_id, tipe, date } = body;
+    const { guru_id, jadwal_id, tipe, date, badal_id, badal_nama } = body;
 
     if (!guru_id || !jadwal_id || !tipe) {
       return NextResponse.json({ error: 'Parameter tidak lengkap (guru_id, jadwal_id, tipe)' }, { status: 400 });
@@ -42,6 +42,25 @@ export async function POST(request: Request) {
     const guruInfo = guruRows[0];
     const targetDate = date || new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
 
+    // Ambil info guru badal jika ada
+    let badalInfo: any = null;
+    if (badal_id) {
+      const [badalRows] = await pool.execute<RowDataPacket[]>(
+        'SELECT guru_id, nama, user_id, no_hp FROM guru WHERE guru_id = ?',
+        [badal_id]
+      );
+      if (badalRows.length > 0) {
+        badalInfo = badalRows[0];
+      }
+    } else if (badal_nama && typeof badal_nama === 'string' && badal_nama.trim()) {
+      badalInfo = {
+        guru_id: null,
+        nama: badal_nama.trim(),
+        user_id: null,
+        no_hp: null
+      };
+    }
+
     // Ambil pengaturan waktu tenggang (jam)
     let waktuTenggang = 3;
     try {
@@ -55,7 +74,7 @@ export async function POST(request: Request) {
     } catch (_) {}
 
     // Generate signed quick token
-    const quickPayload = {
+    const quickPayload: any = {
       type: 'quick_absen',
       guru_id: guruInfo.guru_id,
       guru_nama: guruInfo.nama,
@@ -68,6 +87,11 @@ export async function POST(request: Request) {
       createdAt: Date.now()
     };
 
+    if (badalInfo) {
+      quickPayload.badal_id = badalInfo.guru_id || null;
+      quickPayload.badal_nama = badalInfo.nama;
+    }
+
     const quickToken = signToken(quickPayload, `${waktuTenggang}h`);
     const quickUrl = `https://app.ppmawar.or.id/absen/quick?token=${quickToken}`;
     const quickIzinUrl = `https://app.ppmawar.or.id/absen/quick?token=${quickToken}&action=izin`;
@@ -76,7 +100,12 @@ export async function POST(request: Request) {
       success: true,
       token: quickToken,
       url: quickUrl,
-      izin_url: quickIzinUrl
+      izin_url: quickIzinUrl,
+      badal_info: badalInfo ? {
+        id: badalInfo.guru_id,
+        nama: badalInfo.nama,
+        no_hp: badalInfo.no_hp
+      } : null
     });
   } catch (error: any) {
     console.error('Error generating quick token:', error);
