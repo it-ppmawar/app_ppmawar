@@ -783,7 +783,7 @@ export default function AbsenGuruPage() {
                   title="Unduh File Excel Presensi Dewan Guru"
                 >
                   <Download size={14} />
-                  <span>Unduh Excel</span>
+                  <span>Excel</span>
                 </button>
               </div>
 

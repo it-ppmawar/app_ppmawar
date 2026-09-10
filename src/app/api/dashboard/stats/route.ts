@@ -281,8 +281,45 @@ export async function GET() {
 
     const targetDates = [todayStr, yesterdayStr];
     const datePlaceholders = targetDates.map(() => '?').join(', ');
-    const genderCondition = genderFilter ? ` AND m.jenis_kelamin = ?` : '';
-    const queryTargetParams = genderFilter ? [...targetDates, genderFilter] : targetDates;
+    // Filter berbasis role untuk membatasi santri yang tampil di kartu perizinan & pelanggaran terbaru (sesuai kelas/kamar aksesnya)
+    let roleMuridCondition = '';
+    let roleMuridParams: any[] = [];
+
+    if (payload.role === 'guru') {
+      if (payload.guruId) {
+        roleMuridCondition = ` AND (
+          m.kelas_madin_id IN (SELECT kelas_id FROM kelas_madin WHERE guru_id = ?)
+          OR m.kelas_quran_id IN (SELECT id FROM kelas_quran WHERE guru_id = ?)
+          OR m.kamar_id IN (SELECT kamar_id FROM kamar WHERE guru_id = ?)
+          OR m.kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?)
+          OR m.kelas_quran_id IN (SELECT kelas_quran_id FROM jadwal_quran WHERE guru_id = ?)
+        )`;
+        roleMuridParams = [payload.guruId, payload.guruId, payload.guruId, payload.guruId, payload.guruId];
+      } else {
+        roleMuridCondition = ' AND 0=1';
+      }
+    } else if (payload.role === 'pengurus_asrama' || payload.role === 'pengasuh') {
+      if (resolvedAsrama) {
+        roleMuridCondition = ` AND m.kamar_id IN (SELECT kamar_id FROM kamar WHERE nama_asrama = ?)`;
+        roleMuridParams = [resolvedAsrama];
+      } else {
+        roleMuridCondition = ' AND 0=1';
+      }
+    } else if (payload.role === 'staff') {
+      if (genderFilter) {
+        roleMuridCondition = ` AND m.jenis_kelamin = ?`;
+        roleMuridParams = [genderFilter];
+      }
+    } else if (payload.role !== 'admin') {
+      if (payload.muridId) {
+        roleMuridCondition = ` AND m.murid_id = ?`;
+        roleMuridParams = [payload.muridId];
+      } else {
+        roleMuridCondition = ' AND 0=1';
+      }
+    }
+
+    const queryTargetParams = [...targetDates, ...roleMuridParams];
 
     let perizinanRows: any[] = [];
     try {
@@ -293,7 +330,7 @@ export async function GET() {
            FROM absensi a 
            JOIN murid m ON a.murid_id = m.murid_id 
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           WHERE LOWER(a.status) IN ('izin', 'sakit') AND a.tanggal IN (${datePlaceholders})${genderCondition}
+           WHERE LOWER(a.status) IN ('izin', 'sakit') AND a.tanggal IN (${datePlaceholders})${roleMuridCondition}
            ORDER BY a.tanggal DESC, m.nama ASC`,
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
@@ -303,7 +340,7 @@ export async function GET() {
            FROM absensi_quran aq 
            JOIN murid m ON aq.murid_id = m.murid_id 
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           WHERE LOWER(aq.status) IN ('izin', 'sakit') AND aq.tanggal IN (${datePlaceholders})${genderCondition}
+           WHERE LOWER(aq.status) IN ('izin', 'sakit') AND aq.tanggal IN (${datePlaceholders})${roleMuridCondition}
            ORDER BY aq.tanggal DESC, m.nama ASC`,
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
@@ -313,7 +350,7 @@ export async function GET() {
            FROM absensi_kegiatan ak 
            JOIN murid m ON ak.murid_id = m.murid_id 
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE LOWER(ak.status) IN ('izin', 'sakit') AND ak.tanggal IN (${datePlaceholders})${genderCondition}
+           WHERE LOWER(ak.status) IN ('izin', 'sakit') AND ak.tanggal IN (${datePlaceholders})${roleMuridCondition}
            ORDER BY ak.tanggal DESC, m.nama ASC`,
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
@@ -325,7 +362,7 @@ export async function GET() {
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%') AND p.tanggal IN (${datePlaceholders})${genderCondition}
+           WHERE (LOWER(p.jenis) LIKE '%izin%' OR LOWER(p.jenis) LIKE '%sakit%') AND p.tanggal IN (${datePlaceholders})${roleMuridCondition}
            ORDER BY p.tanggal DESC, m.nama ASC`,
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
@@ -373,7 +410,7 @@ export async function GET() {
            FROM absensi a 
            JOIN murid m ON a.murid_id = m.murid_id 
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
-           WHERE (LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL) AND a.tanggal IN (${datePlaceholders})${genderCondition}
+           WHERE (LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL) AND a.tanggal IN (${datePlaceholders})${roleMuridCondition}
            ORDER BY a.tanggal DESC, m.nama ASC`,
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
@@ -383,7 +420,7 @@ export async function GET() {
            FROM absensi_quran aq 
            JOIN murid m ON aq.murid_id = m.murid_id 
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
-           WHERE (LOWER(aq.status) IN ('alpha', 'alpa') OR aq.status = '' OR aq.status IS NULL) AND aq.tanggal IN (${datePlaceholders})${genderCondition}
+           WHERE (LOWER(aq.status) IN ('alpha', 'alpa') OR aq.status = '' OR aq.status IS NULL) AND aq.tanggal IN (${datePlaceholders})${roleMuridCondition}
            ORDER BY aq.tanggal DESC, m.nama ASC`,
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
@@ -393,7 +430,7 @@ export async function GET() {
            FROM absensi_kegiatan ak 
            JOIN murid m ON ak.murid_id = m.murid_id 
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE (LOWER(ak.status) IN ('alpha', 'alpa') OR ak.status = '' OR ak.status IS NULL) AND ak.tanggal IN (${datePlaceholders})${genderCondition}
+           WHERE (LOWER(ak.status) IN ('alpha', 'alpa') OR ak.status = '' OR ak.status IS NULL) AND ak.tanggal IN (${datePlaceholders})${roleMuridCondition}
            ORDER BY ak.tanggal DESC, m.nama ASC`,
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),
@@ -405,7 +442,7 @@ export async function GET() {
            LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
            LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
            LEFT JOIN kamar ka ON m.kamar_id = ka.kamar_id
-           WHERE (LOWER(p.jenis) NOT LIKE '%izin%' AND LOWER(p.jenis) NOT LIKE '%sakit%') AND p.tanggal IN (${datePlaceholders})${genderCondition}
+           WHERE (LOWER(p.jenis) NOT LIKE '%izin%' AND LOWER(p.jenis) NOT LIKE '%sakit%') AND p.tanggal IN (${datePlaceholders})${roleMuridCondition}
            ORDER BY p.tanggal DESC, m.nama ASC`,
           queryTargetParams
         ).catch(() => [[] as RowDataPacket[]]),

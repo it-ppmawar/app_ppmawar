@@ -398,7 +398,7 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
                 title="Unduh Daftar QR & Link Presensi ke File Excel"
               >
                 <Download size={13} className="shrink-0" />
-                <span>Unduh Excel</span>
+                <span>Excel</span>
               </button>
 
               {/* Download Bulk ZIP (tetap server-side, untuk gambar PNG) */}
