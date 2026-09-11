@@ -975,16 +975,16 @@ function NotifikasiContent() {
 
   return (
     <div className="max-w-4xl mx-auto animate-[fadeIn_0.5s_ease-out] pb-20">
-      <div className="bg-gradient-to-r from-slate-800 to-slate-700 dark:from-slate-900 dark:to-slate-800 rounded-3xl p-6 shadow-xl relative overflow-hidden mb-6 border border-slate-700/40 dark:border-slate-800/60">
-        <div className="absolute -right-4 -top-10 opacity-20 text-white pointer-events-none">
-          <Bell size={150} className="animate-[spin_20s_linear_infinite]" />
+      <div className="bg-gradient-to-r from-emerald-900 via-green-900 to-emerald-950 dark:from-emerald-950 dark:via-green-950 dark:to-teal-950 rounded-3xl p-6 shadow-xl relative overflow-hidden mb-6 border border-emerald-800/40 dark:border-emerald-900/50">
+        <div className="absolute -right-2 -top-6 opacity-15 text-white pointer-events-none">
+          <Bell size={140} className="animate-bounce" />
         </div>
         <div className="relative z-10">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
-            <Bell size={32} className="shrink-0 text-emerald-400" />
+            <Bell size={32} className="shrink-0 text-emerald-300" />
             Pusat Notifikasi
           </h1>
-          <p className="text-slate-300 mt-2 text-sm max-w-xl">
+          <p className="text-emerald-100/90 mt-2 text-sm max-w-xl">
             Daftar pemberitahuan dan informasi jadwal.
           </p>
         </div>
