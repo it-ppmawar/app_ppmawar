@@ -1150,29 +1150,27 @@ function InputAbsenContent() {
             {/* Informasi & Kirim Tautan ke Guru Badal */}
             {izinResultData?.badal_info && (
               <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 mb-6 text-left space-y-3 shadow-sm">
-                <div className="space-y-2.5">
-                  <div className="flex items-start gap-2.5">
-                    <span className="text-xl shrink-0 mt-0.5 leading-none">🎖️</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
-                        Guru Pengganti (Badal) Ditunjuk {izinResultData.badal_info.id ? '' : '(Luar Dewan Guru)'}
-                      </p>
-                      <p className="text-sm font-extrabold text-emerald-900 dark:text-emerald-200">
-                        {izinResultData.badal_info.nama}
-                      </p>
-                      {izinResultData.badal_info.no_hp && (
-                        <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-0.5">
-                          📱 WhatsApp: {izinResultData.badal_info.no_hp}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {!izinResultData.badal_info.no_hp && (
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 italic">
-                      ℹ️ Nomor WA tidak tersimpan di sistem. Anda dapat menyalin tautan di bawah.
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base shrink-0 leading-none">🎖️</span>
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
+                      Guru Pengganti (Badal) Ditunjuk {izinResultData.badal_info.id ? '' : '(Luar Dewan Guru)'}
                     </p>
-                  )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-extrabold text-emerald-900 dark:text-emerald-200">
+                      {izinResultData.badal_info.nama}
+                    </p>
+                    {izinResultData.badal_info.no_hp ? (
+                      <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-0.5">
+                        📱 WhatsApp: {izinResultData.badal_info.no_hp}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 italic mt-0.5">
+                        ℹ️ Nomor WA tidak tersimpan di sistem. Anda dapat menyalin tautan di bawah.
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Tombol Aksi WhatsApp & Salin Pesan */}

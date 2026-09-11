@@ -341,7 +341,7 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
       {/* Top Bar */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 py-2.5 sm:py-3 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-3">
-          {/* Baris 1: Ikon, Teks Judul & Tombol Kembali */}
+          {/* Baris 1: Ikon, Teks Judul & Tombol Kembali (Mobile) */}
           <div className="flex items-center justify-between gap-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="p-2 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 shrink-0">
@@ -352,25 +352,34 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
                   <span>QR Code Presensi Dewan Guru</span>
                 </h1>
                 <p className="text-[11px] text-slate-400 truncate">
-                  {isGuru ? 'Kartu Digital Kehadiran Pribadi' : `Total ${teachers.length} Dewan Guru & Karyawan YPMA`}
+                  {isGuru ? 'Kartu Digital Kehadiran Pribadi' : 'Dewan Guru & Karyawan YPMA'}
                 </p>
               </div>
             </div>
 
-            {/* Tombol Kembali di sebelah kanan teks */}
+            {/* Tombol Kembali di sebelah kanan teks (hanya di tampilan HP) */}
             <Link
               href={canManage ? "/dashboard/absen-guru" : "/dashboard"}
-              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+              className="sm:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer"
               title={canManage ? "Kembali ke Presensi Dewan Guru" : "Kembali ke Beranda"}
             >
               <ArrowLeft size={16} />
-              <span className="hidden sm:inline">Kembali</span>
             </Link>
           </div>
 
           {/* Baris 2: Tombol Aksi */}
           {canManage ? (
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 w-full sm:w-auto">
+              {/* Tombol Kembali (Tampilan Desktop: Rata kanan di samping tombol Preview) */}
+              <Link
+                href="/dashboard/absen-guru"
+                className="hidden sm:flex px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs items-center justify-center gap-1 shrink-0 cursor-pointer"
+                title="Kembali ke Presensi Dewan Guru"
+              >
+                <ArrowLeft size={14} />
+                <span>Kembali</span>
+              </Link>
+
               {/* Grup Tombol 1: Preview, PDF, Excel */}
               <div className="grid grid-cols-3 sm:flex items-center gap-1.5">
                 {/* Preview PDF (Client-Side) */}
@@ -433,6 +442,16 @@ _Pondok Pesantren Matholi'ul Anwar Simo Sungelebak_`;
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:flex items-center gap-1.5 w-full sm:w-auto">
+              {/* Tombol Kembali (Desktop untuk Guru) */}
+              <Link
+                href="/dashboard"
+                className="hidden sm:flex px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs items-center justify-center gap-1 shrink-0 cursor-pointer"
+                title="Kembali ke Beranda"
+              >
+                <ArrowLeft size={14} />
+                <span>Kembali</span>
+              </Link>
+
               {/* Preview PDF Kartu Pribadi */}
               <button
                 onClick={() => handleClientPDF(true)}
