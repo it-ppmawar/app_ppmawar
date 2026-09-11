@@ -873,20 +873,19 @@ export default function SettingsPage() {
           {/* ═══════════════════════════════════════════════════════════════════ */}
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600 space-y-6">
             <div className="space-y-2.5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-sky-500 text-white rounded-xl shadow-sm shrink-0">
-                    <Send size={18} />
-                  </div>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-sky-500 text-white rounded-xl shadow-sm shrink-0">
+                  <Send size={18} />
+                </div>
+                <div>
                   <h2 className="text-base sm:text-xl font-bold text-gray-800 dark:text-gray-100 leading-tight">
                     Integrasi Telegram Bot Resmi
                   </h2>
-                </div>
-
-                <div className="mt-1">
-                  <span className="text-[10px] sm:text-xs font-extrabold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2.5 py-0.5 rounded-full inline-block">
-                    100% Anti-Banned &amp; Gratis
-                  </span>
+                  <div className="mt-1">
+                    <span className="text-[10px] sm:text-xs font-extrabold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2.5 py-0.5 rounded-full inline-block">
+                      100% Anti-Banned &amp; Gratis
+                    </span>
+                  </div>
                 </div>
               </div>
 
