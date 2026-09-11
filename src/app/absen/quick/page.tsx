@@ -1032,21 +1032,21 @@ function QuickAbsenContent() {
 
                 {/* Info Guru & Jadwal */}
                 <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800/80 text-xs space-y-1.5">
-                  <div className="flex justify-between">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-slate-800/50 gap-0.5 sm:gap-2">
                     <span className="text-slate-400">Guru / Pembina:</span>
-                    <span className="font-bold text-slate-200">{guru_nama}</span>
+                    <span className="font-bold text-slate-200 text-right">{guru_nama}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-slate-800/50 gap-0.5 sm:gap-2">
                     <span className="text-slate-400">Kelas / Kamar:</span>
-                    <span className="font-bold text-emerald-400">{jadwal?.nama_kelas || '-'}</span>
+                    <span className="font-bold text-emerald-400 text-right">{jadwal?.nama_kelas || '-'}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-slate-800/50 gap-0.5 sm:gap-2">
                     <span className="text-slate-400">Mata Pelajaran:</span>
-                    <span className="font-bold text-slate-200">{jadwal?.mata_pelajaran || '-'}</span>
+                    <span className="font-bold text-slate-200 text-right">{jadwal?.mata_pelajaran || '-'}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 gap-0.5 sm:gap-2">
                     <span className="text-slate-400">Jadwal:</span>
-                    <span className="font-bold text-slate-200">{jadwal?.jam_mulai} - {jadwal?.jam_selesai} WIB</span>
+                    <span className="font-bold text-slate-200 text-right">{jadwal?.jam_mulai} - {jadwal?.jam_selesai} WIB</span>
                   </div>
                 </div>
 

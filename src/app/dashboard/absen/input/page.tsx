@@ -1037,20 +1037,27 @@ function InputAbsenContent() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-indigo-900/40 dark:to-blue-900/40 rounded-3xl p-6 shadow-sm border border-indigo-200 dark:border-indigo-800/50 relative overflow-hidden transition-colors">
-        <Link href="/dashboard/absen" className="absolute top-4 left-4 p-2 bg-white/50 dark:bg-black/20 hover:bg-white dark:hover:bg-black/40 rounded-full transition-colors z-20">
-          <ArrowLeft size={20} className="text-indigo-800 dark:text-indigo-200" />
-        </Link>
-        <div className="absolute top-0 right-0 -mt-4 -mr-4 text-indigo-200/50 dark:text-indigo-800/30">
+      <div className="bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-indigo-900/40 dark:to-blue-900/40 rounded-3xl p-5 sm:p-6 shadow-sm border border-indigo-200 dark:border-indigo-800/50 relative overflow-hidden transition-colors">
+        <div className="absolute top-0 right-0 -mt-4 -mr-4 text-indigo-200/50 dark:text-indigo-800/30 pointer-events-none">
           <Users size={120} />
         </div>
-        <div className="relative z-10 mt-8">
-          <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2">
+        <div className="relative z-10">
+          <h1 className="text-xl sm:text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm leading-snug">
             Input Absensi: {namaTarget}
           </h1>
-          <p className="text-indigo-600 dark:text-indigo-300 text-sm mt-1 font-medium max-w-md">
-            Silakan centang kehadiran santri di bawah ini.
-          </p>
+          <div className="flex items-center justify-between gap-3 mt-1.5 pt-1">
+            <p className="text-indigo-600 dark:text-indigo-300 text-xs sm:text-sm font-medium">
+              Silakan centang kehadiran santri di bawah ini.
+            </p>
+            <Link
+              href="/dashboard/absen"
+              className="p-2 sm:px-3 sm:py-1.5 bg-white/70 dark:bg-black/30 hover:bg-white dark:hover:bg-black/50 rounded-xl transition-all shadow-xs flex items-center gap-1.5 text-xs font-bold text-indigo-800 dark:text-indigo-200 shrink-0 cursor-pointer"
+              title="Kembali ke Jadwal Absensi"
+            >
+              <ArrowLeft size={16} />
+              <span className="hidden sm:inline">Kembali</span>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -1260,25 +1267,25 @@ function InputAbsenContent() {
             {/* Rincian Target */}
             <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/60 space-y-2 text-xs">
               {jadwalInfo?.guru_nama && (
-                <div className="flex justify-between items-center py-1 border-b border-gray-200/50 dark:border-gray-800">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1.5 border-b border-gray-200/50 dark:border-gray-800 gap-0.5 sm:gap-2">
                   <span className="text-gray-500 dark:text-gray-400">Guru / Pembina:</span>
-                  <span className="font-bold text-gray-900 dark:text-white">{jadwalInfo.guru_nama}</span>
+                  <span className="font-bold text-gray-900 dark:text-white text-right">{jadwalInfo.guru_nama}</span>
                 </div>
               )}
-              <div className="flex justify-between items-center py-1 border-b border-gray-200/50 dark:border-gray-800">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1.5 border-b border-gray-200/50 dark:border-gray-800 gap-0.5 sm:gap-2">
                 <span className="text-gray-500 dark:text-gray-400">Kelas / Kamar:</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">{namaTarget}</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-right">{namaTarget}</span>
               </div>
               {jadwalInfo?.mata_pelajaran && (
-                <div className="flex justify-between items-center py-1 border-b border-gray-200/50 dark:border-gray-800">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1.5 border-b border-gray-200/50 dark:border-gray-800 gap-0.5 sm:gap-2">
                   <span className="text-gray-500 dark:text-gray-400">Mata Pelajaran:</span>
-                  <span className="font-bold text-gray-900 dark:text-white">{jadwalInfo.mata_pelajaran}</span>
+                  <span className="font-bold text-gray-900 dark:text-white text-right">{jadwalInfo.mata_pelajaran}</span>
                 </div>
               )}
               {jadwalInfo?.jam_mulai && (
-                <div className="flex justify-between items-center py-1">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1.5 gap-0.5 sm:gap-2">
                   <span className="text-gray-500 dark:text-gray-400">Jadwal:</span>
-                  <span className="font-mono font-bold text-gray-900 dark:text-white">
+                  <span className="font-mono font-bold text-gray-900 dark:text-white text-right">
                     {jadwalInfo.jam_mulai}{jadwalInfo.jam_selesai ? ` - ${jadwalInfo.jam_selesai}` : ''} WIB
                   </span>
                 </div>
