@@ -975,9 +975,19 @@ function NotifikasiContent() {
 
   return (
     <div className="max-w-4xl mx-auto animate-[fadeIn_0.5s_ease-out] pb-20">
-      <div className="bg-gradient-to-r from-green-800 to-green-900 rounded-2xl p-6 text-white shadow-lg mb-6">
-        <h2 className="text-2xl font-bold flex items-center gap-2"><Bell className="animate-bounce" /> Pusat Notifikasi</h2>
-        <p className="text-green-100 text-sm mt-1">Daftar pemberitahuan dan informasi jadwal.</p>
+      <div className="bg-gradient-to-r from-slate-800 to-slate-700 dark:from-slate-900 dark:to-slate-800 rounded-3xl p-6 shadow-xl relative overflow-hidden mb-6 border border-slate-700/40 dark:border-slate-800/60">
+        <div className="absolute -right-4 -top-10 opacity-20 text-white pointer-events-none">
+          <Bell size={150} className="animate-[spin_20s_linear_infinite]" />
+        </div>
+        <div className="relative z-10">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
+            <Bell size={32} className="shrink-0 text-emerald-400" />
+            Pusat Notifikasi
+          </h1>
+          <p className="text-slate-300 mt-2 text-sm max-w-xl">
+            Daftar pemberitahuan dan informasi jadwal.
+          </p>
+        </div>
       </div>
 
       {/* ===== CARD NOTIFIKASI TELEGRAM RESMI ===== */}
