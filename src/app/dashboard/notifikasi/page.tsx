@@ -977,7 +977,7 @@ function NotifikasiContent() {
     <div className="max-w-4xl mx-auto animate-[fadeIn_0.5s_ease-out] pb-20">
       <div className="bg-gradient-to-r from-emerald-900 via-green-900 to-emerald-950 dark:from-emerald-950 dark:via-green-950 dark:to-teal-950 rounded-3xl p-6 shadow-xl relative overflow-hidden mb-6 border border-emerald-800/40 dark:border-emerald-900/50">
         <div className="absolute -right-2 -top-6 opacity-15 text-white pointer-events-none">
-          <Bell size={140} className="animate-bounce" />
+          <Bell size={140} className="animate-[bounce_3s_infinite]" />
         </div>
         <div className="relative z-10">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
