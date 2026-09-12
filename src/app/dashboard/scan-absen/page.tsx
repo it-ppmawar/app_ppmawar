@@ -298,8 +298,9 @@ function ScanAbsenInner() {
   const [detectResult, setDetectResult] = useState<{ nama: string; score: number; murid_id: number } | null>(null);
   const [confirmPending, setConfirmPending] = useState(false);
   const [lastUnknownDescriptor, setLastUnknownDescriptor] = useState<number[] | undefined>();
+  const [userRole, setUserRole] = useState<string>('');
+  const [availableTargets, setAvailableTargets] = useState<string[]>(['kegiatan', 'madin', 'quran']);
 
-  // Refs
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -315,6 +316,45 @@ function ScanAbsenInner() {
       const isHttps = window.location.protocol === 'https:';
       if (!isLocalhost && !isHttps) setIsHttpWarning(true);
     }
+  }, []);
+
+  // Fetch role dan jadwal akun yang sedang login untuk membatasi opsi target absensi
+  useEffect(() => {
+    const initRoleAndTargets = async () => {
+      try {
+        const resMe = await fetch('/api/auth/me');
+        const dataMe = await resMe.json();
+        if (dataMe.success && dataMe.user) {
+          const r = (dataMe.user.role || '').toLowerCase();
+          setUserRole(r);
+
+          if (['admin', 'staff'].includes(r)) {
+            setAvailableTargets(['kegiatan', 'madin', 'quran']);
+          } else {
+            // Cek jadwal aktual yang dapat diakses pengguna (guru/pengurus dll)
+            const resJadwal = await fetch('/api/jadwal');
+            const dataJadwal = await resJadwal.json();
+            if (dataJadwal.success && Array.isArray(dataJadwal.data)) {
+              const types = new Set<string>();
+              dataJadwal.data.forEach((j: any) => {
+                if (j.tipe) types.add(j.tipe);
+              });
+              const list = (['kegiatan', 'madin', 'quran'] as const).filter(t => types.has(t));
+              if (list.length === 0 && r === 'guru') {
+                setAvailableTargets(['madin']);
+              } else if (list.length > 0) {
+                setAvailableTargets(list);
+              }
+            } else if (r === 'guru') {
+              setAvailableTargets(['madin']);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal memuat target absensi:', err);
+      }
+    };
+    initRoleAndTargets();
   }, []);
 
   // Auto-switch mode dari URL param saat mount
@@ -767,9 +807,15 @@ function ScanAbsenInner() {
             <select value={selectedSchedule} onChange={(e) => setSelectedSchedule(e.target.value)} disabled={isScanning}
               className="w-full appearance-none p-4 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-2xl font-semibold focus:ring-4 focus:ring-green-500/20 focus:border-green-500 dark:text-white transition-all pr-10">
               <option value="">⚡ Absensi Otomatis (Sesuai Jadwal Aktif)</option>
-              <option value="kegiatan">🕌 Kegiatan Asrama & Pesantren</option>
-              <option value="madin">📖 Madrasah Diniyah (Madin)</option>
-              <option value="quran">📘 Madrasah Al-Qur&apos;an (MQ)</option>
+              {availableTargets.includes('kegiatan') && (
+                <option value="kegiatan">🕌 Kegiatan Asrama &amp; Pesantren</option>
+              )}
+              {availableTargets.includes('madin') && (
+                <option value="madin">📖 Madrasah Diniyah (Madin)</option>
+              )}
+              {availableTargets.includes('quran') && (
+                <option value="quran">📘 Madrasah Al-Qur&apos;an (MQ)</option>
+              )}
             </select>
             <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
