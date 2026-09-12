@@ -826,14 +826,15 @@ export default function RekapitulasiPage() {
 
         {/* ── Baris 2: Filter waktu + Tombol Tampilkan — satu baris ramping ── */}
         <div className="flex flex-col md:flex-row items-end gap-3">
-          {/* Label + Toggle mode */}
-          <div className="flex items-center gap-2 pb-0 md:pb-[3px] shrink-0">
+
+          {/* Toggle: label di atas, tombol di bawah */}
+          <div className="shrink-0 flex flex-col gap-1">
             <span className="text-xs font-bold text-gray-500 whitespace-nowrap">
               {modeRentang ? '📅 Rentang Tanggal' : '🗓️ Bulan / Tahun'}
             </span>
             <button
               onClick={() => setModeRentang(v => !v)}
-              className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full transition-all shrink-0 ${
+              className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all ${
                 modeRentang
                   ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
                   : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
@@ -845,7 +846,7 @@ export default function RekapitulasiPage() {
             </button>
           </div>
 
-          {/* Input waktu */}
+          {/* Input waktu — selalu 2 kolom flex-1 agar konsisten */}
           <div className="flex flex-1 gap-3">
             {modeRentang ? (
               /* Mode rentang tanggal */
@@ -886,12 +887,13 @@ export default function RekapitulasiPage() {
             )}
           </div>
 
-          {/* Tombol Tampilkan */}
-          <div className="shrink-0">
+          {/* Tombol Tampilkan — dengan invisible label agar aligned dengan input */}
+          <div className="shrink-0 flex flex-col gap-0.5">
+            <span className="block text-[10px] text-transparent select-none font-semibold">-</span>
             <button
               onClick={() => fetchRekap()}
               disabled={loading}
-              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-75 text-white font-bold py-2.5 px-7 rounded-xl shadow-lg shadow-purple-600/30 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap"
+              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-75 text-white font-bold py-2 px-7 rounded-xl shadow-lg shadow-purple-600/30 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap"
             >
               {loading ? (
                 <><Loader2 size={16} className="animate-spin" /> Memuat...</>
@@ -901,6 +903,7 @@ export default function RekapitulasiPage() {
             </button>
           </div>
         </div>
+
 
       </div>
       {errorMsg && (
