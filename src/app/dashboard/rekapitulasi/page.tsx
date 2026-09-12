@@ -79,10 +79,10 @@ function FormattedDateInput({
 
   return (
     <div>
-      <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">{label}</label>
+      <label className="block text-xs font-bold text-gray-500 mb-1">{label}</label>
       <div
         onClick={handleOpenPicker}
-        className="relative flex items-center bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 justify-between cursor-pointer transition-all shadow-sm group select-none"
+        className="relative flex items-center bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 justify-between cursor-pointer transition-all shadow-sm group select-none"
       >
         <span className="font-mono text-xs sm:text-sm">{formatDisplay(value)}</span>
         <Calendar size={15} className="text-purple-500 group-hover:scale-110 shrink-0 ml-1.5 transition-transform" />
@@ -824,76 +824,88 @@ export default function RekapitulasiPage() {
           </div>
         </div>
 
-        {/* ── Baris 2: Filter waktu + Tombol Tampilkan — satu baris ramping ── */}
-        <div className="flex flex-col md:flex-row items-end gap-3">
+        {/* ── Baris 2: Filter waktu + Tombol Tampilkan — 4 kolom seragam & presisi ── */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
 
-          {/* Toggle: label di atas, tombol di bawah */}
-          <div className="shrink-0 flex flex-col gap-1">
-            <span className="text-xs font-bold text-gray-500 whitespace-nowrap">
+          {/* Kolom 1: Toggle Mode Waktu */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1 truncate">
               {modeRentang ? '📅 Rentang Tanggal' : '🗓️ Bulan / Tahun'}
-            </span>
+            </label>
             <button
+              type="button"
               onClick={() => setModeRentang(v => !v)}
-              className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all ${
+              className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 rounded-xl text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-200 transition-all shadow-sm cursor-pointer select-none"
+              title="Klik untuk beralih mode waktu"
+            >
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                {modeRentang ? 'Mode Rentang' : 'Mode Bulanan'}
+              </span>
+              <span className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-lg transition-all ${
                 modeRentang
                   ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                  : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-              }`}
-              title="Ganti mode waktu"
-            >
-              {modeRentang ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
-              {modeRentang ? 'Rentang' : 'Bulan'}
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+              }`}>
+                {modeRentang ? <ToggleRight size={15} className="text-purple-600 dark:text-purple-400" /> : <ToggleLeft size={15} className="text-gray-500 dark:text-gray-400" />}
+                {modeRentang ? 'Rentang' : 'Bulan'}
+              </span>
             </button>
           </div>
 
-          {/* Input waktu — selalu 2 kolom flex-1 agar konsisten */}
-          <div className="flex flex-1 gap-3">
-            {modeRentang ? (
-              /* Mode rentang tanggal */
-              <>
-                <div className="flex-1">
-                  <FormattedDateInput
-                    label="Dari (Tgl/Bln/Thn)"
-                    value={filter.tanggal_dari}
-                    max={filter.tanggal_sampai}
-                    onChange={val => setFilter({ ...filter, tanggal_dari: val })}
-                  />
-                </div>
-                <div className="flex-1">
-                  <FormattedDateInput
-                    label="Sampai (Tgl/Bln/Thn)"
-                    value={filter.tanggal_sampai}
-                    min={filter.tanggal_dari}
-                    onChange={val => setFilter({ ...filter, tanggal_sampai: val })}
-                  />
-                </div>
-              </>
-            ) : (
-              /* Mode bulan/tahun */
-              <>
-                <div className="flex-1">
-                  <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">Bulan</label>
-                  <select value={filter.bulan} onChange={e => setFilter({ ...filter, bulan: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
-                    {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                  </select>
-                </div>
-                <div className="flex-1">
-                  <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">Tahun</label>
-                  <select value={filter.tahun} onChange={e => setFilter({ ...filter, tahun: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
-                    {[currentYear, currentYear - 1, currentYear - 2].map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
-                </div>
-              </>
-            )}
-          </div>
+          {/* Kolom 2 & 3: Input Waktu (Konsisten 2 kolom di kedua mode) */}
+          {modeRentang ? (
+            <>
+              <div>
+                <FormattedDateInput
+                  label="Dari (Tgl/Bln/Thn)"
+                  value={filter.tanggal_dari}
+                  max={filter.tanggal_sampai}
+                  onChange={val => setFilter({ ...filter, tanggal_dari: val })}
+                />
+              </div>
+              <div>
+                <FormattedDateInput
+                  label="Sampai (Tgl/Bln/Thn)"
+                  value={filter.tanggal_sampai}
+                  min={filter.tanggal_dari}
+                  onChange={val => setFilter({ ...filter, tanggal_sampai: val })}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bulan</label>
+                <select
+                  value={filter.bulan}
+                  onChange={e => setFilter({ ...filter, bulan: e.target.value })}
+                  className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all"
+                >
+                  {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Tahun</label>
+                <select
+                  value={filter.tahun}
+                  onChange={e => setFilter({ ...filter, tahun: e.target.value })}
+                  className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all"
+                >
+                  {[currentYear, currentYear - 1, currentYear - 2].map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+            </>
+          )}
 
-          {/* Tombol Tampilkan — dengan invisible label agar aligned dengan input */}
-          <div className="shrink-0 flex flex-col gap-0.5">
-            <span className="block text-[10px] text-transparent select-none font-semibold">-</span>
+          {/* Kolom 4: Tombol Tampilkan */}
+          <div>
+            <label className="block text-xs font-bold text-transparent mb-1 select-none hidden md:block">
+              Aksi
+            </label>
             <button
               onClick={() => fetchRekap()}
               disabled={loading}
-              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-75 text-white font-bold py-2 px-7 rounded-xl shadow-lg shadow-purple-600/30 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap"
+              className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-75 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
             >
               {loading ? (
                 <><Loader2 size={16} className="animate-spin" /> Memuat...</>
