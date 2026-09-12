@@ -716,13 +716,14 @@ export default function RekapitulasiPage() {
       </div>
 
       {/* Filter Panel */}
-      <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors duration-300">
-        {/* Baris 1: semua dropdown filter */}
-        <div className="flex flex-col md:flex-row gap-4">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors duration-300 space-y-3">
+
+        {/* ── Baris 1: Dropdown filter — semua kolom sama lebar ── */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {/* Pilih Tipe */}
-          <div className="flex-1">
+          <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">Pilih Tipe</label>
-            <select value={filter.tipe} onChange={handleTipeChange} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
+            <select value={filter.tipe} onChange={handleTipeChange} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
               {availableTipes.includes('madin') && (
                 <option value="madin">Absensi Madin</option>
               )}
@@ -742,7 +743,7 @@ export default function RekapitulasiPage() {
           </div>
 
           {/* Pilih Kelas / Guru / Homebase */}
-          <div className="flex-1">
+          <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">
               {filter.tipe === 'guru' ? 'Pilih Guru' : filter.tipe === 'dewan_guru' ? 'Pilih Unit / Homebase' : 'Pilih Kelas / Kamar'}
             </label>
@@ -756,7 +757,7 @@ export default function RekapitulasiPage() {
                 }
               }}
               disabled={loadingOptions || options.length === 0}
-              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50 focus:ring-2 focus:ring-purple-500 transition-all"
+              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50 focus:ring-2 focus:ring-purple-500 transition-all"
             >
               {loadingOptions ? (
                 <option value="">Memuat...</option>
@@ -773,30 +774,32 @@ export default function RekapitulasiPage() {
             </select>
           </div>
 
-          {/* Sub-filter: Majlis / Mapel / Kegiatan (hanya untuk madin/quran/kegiatan) */}
-          {['madin', 'quran', 'kegiatan'].includes(filter.tipe) && (
-            <div className="flex-1">
-              <label className="block text-xs font-bold text-gray-500 mb-1">
-                {filter.tipe === 'quran' ? 'Pilih Majlis' : filter.tipe === 'madin' ? 'Pilih Mapel' : 'Pilih Kegiatan'}
-              </label>
-              <select
-                value={subFilter}
-                onChange={e => setSubFilter(e.target.value)}
-                disabled={loadingSubFilter}
-                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50 focus:ring-2 focus:ring-purple-500 transition-all"
-              >
-                <option value="">
-                  {loadingSubFilter ? 'Memuat...' : filter.tipe === 'quran' ? 'Semua Majlis' : filter.tipe === 'madin' ? 'Semua Mapel' : 'Semua Kegiatan'}
-                </option>
-                {subFilterOptions.map(opt => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Sub-filter: Majlis / Mapel / Kegiatan — hanya untuk madin/quran/kegiatan, jika tidak ada tetap 1 kolom kosong */}
+          <div>
+            {['madin', 'quran', 'kegiatan'].includes(filter.tipe) ? (
+              <>
+                <label className="block text-xs font-bold text-gray-500 mb-1">
+                  {filter.tipe === 'quran' ? 'Pilih Majlis' : filter.tipe === 'madin' ? 'Pilih Mapel' : 'Pilih Kegiatan'}
+                </label>
+                <select
+                  value={subFilter}
+                  onChange={e => setSubFilter(e.target.value)}
+                  disabled={loadingSubFilter}
+                  className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50 focus:ring-2 focus:ring-purple-500 transition-all"
+                >
+                  <option value="">
+                    {loadingSubFilter ? 'Memuat...' : filter.tipe === 'quran' ? 'Semua Majlis' : filter.tipe === 'madin' ? 'Semua Mapel' : 'Semua Kegiatan'}
+                  </option>
+                  {subFilterOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </>
+            ) : null}
+          </div>
 
           {/* Pencarian Manual */}
-          <div className="flex-1">
+          <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">
               Cari Nama / {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'NIP' : 'NIS'}
             </label>
@@ -819,85 +822,87 @@ export default function RekapitulasiPage() {
               )}
             </div>
           </div>
+        </div>
 
-          {/* Filter Waktu: toggle mode bulan vs rentang */}
-          <div className="flex-1">
-            {/* Toggle */}
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-gray-500">
-                {modeRentang ? '📅 Rentang Tanggal' : '🗓️ Bulan / Tahun'}
-              </label>
-              <button
-                onClick={() => setModeRentang(v => !v)}
-                className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full transition-all ${
-                  modeRentang
-                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                }`}
-                title="Ganti mode waktu"
-              >
-                {modeRentang ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
-                {modeRentang ? 'Rentang' : 'Bulan'}
-              </button>
-            </div>
+        {/* ── Baris 2: Filter waktu + Tombol Tampilkan — satu baris ramping ── */}
+        <div className="flex flex-col md:flex-row items-end gap-3">
+          {/* Label + Toggle mode */}
+          <div className="flex items-center gap-2 pb-0 md:pb-[3px] shrink-0">
+            <span className="text-xs font-bold text-gray-500 whitespace-nowrap">
+              {modeRentang ? '📅 Rentang Tanggal' : '🗓️ Bulan / Tahun'}
+            </span>
+            <button
+              onClick={() => setModeRentang(v => !v)}
+              className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full transition-all shrink-0 ${
+                modeRentang
+                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                  : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+              }`}
+              title="Ganti mode waktu"
+            >
+              {modeRentang ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+              {modeRentang ? 'Rentang' : 'Bulan'}
+            </button>
+          </div>
 
+          {/* Input waktu */}
+          <div className="flex flex-1 gap-3">
             {modeRentang ? (
               /* Mode rentang tanggal */
-              <div className="grid grid-cols-2 gap-2">
-                <FormattedDateInput
-                  label="Dari (Tgl/Bln/Thn)"
-                  value={filter.tanggal_dari}
-                  max={filter.tanggal_sampai}
-                  onChange={val => setFilter({ ...filter, tanggal_dari: val })}
-                />
-                <FormattedDateInput
-                  label="Sampai (Tgl/Bln/Thn)"
-                  value={filter.tanggal_sampai}
-                  min={filter.tanggal_dari}
-                  onChange={val => setFilter({ ...filter, tanggal_sampai: val })}
-                />
-              </div>
+              <>
+                <div className="flex-1">
+                  <FormattedDateInput
+                    label="Dari (Tgl/Bln/Thn)"
+                    value={filter.tanggal_dari}
+                    max={filter.tanggal_sampai}
+                    onChange={val => setFilter({ ...filter, tanggal_dari: val })}
+                  />
+                </div>
+                <div className="flex-1">
+                  <FormattedDateInput
+                    label="Sampai (Tgl/Bln/Thn)"
+                    value={filter.tanggal_sampai}
+                    min={filter.tanggal_dari}
+                    onChange={val => setFilter({ ...filter, tanggal_sampai: val })}
+                  />
+                </div>
+              </>
             ) : (
               /* Mode bulan/tahun */
-              <div className="grid grid-cols-2 gap-2">
-                <div>
+              <>
+                <div className="flex-1">
                   <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">Bulan</label>
                   <select value={filter.bulan} onChange={e => setFilter({ ...filter, bulan: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
                     {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
                   </select>
                 </div>
-                <div>
+                <div className="flex-1">
                   <label className="block text-[10px] text-gray-400 mb-0.5 font-semibold">Tahun</label>
                   <select value={filter.tahun} onChange={e => setFilter({ ...filter, tahun: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
                     {[currentYear, currentYear - 1, currentYear - 2].map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </div>
-              </div>
+              </>
             )}
+          </div>
+
+          {/* Tombol Tampilkan */}
+          <div className="shrink-0">
+            <button
+              onClick={() => fetchRekap()}
+              disabled={loading}
+              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-75 text-white font-bold py-2.5 px-7 rounded-xl shadow-lg shadow-purple-600/30 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap"
+            >
+              {loading ? (
+                <><Loader2 size={16} className="animate-spin" /> Memuat...</>
+              ) : (
+                <><Search size={16} /> Tampilkan</>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Baris 2: Tombol Tampilkan — baris tersendiri agar tidak berdesakan */}
-        <div className="mt-4 flex justify-end">
-          <button
-            onClick={() => fetchRekap()}
-            disabled={loading}
-            className="bg-purple-600 hover:bg-purple-700 disabled:opacity-75 text-white font-bold py-2.5 px-8 rounded-xl shadow-lg shadow-purple-600/30 transition-all flex justify-center items-center gap-2 cursor-pointer"
-          >
-            {loading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" /> Memuat...
-              </>
-            ) : (
-              <>
-                <Search size={16} /> Tampilkan
-              </>
-            )}
-          </button>
-        </div>
       </div>
-
-
       {errorMsg && (
         <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 text-center font-bold">
           <AlertCircle size={20} className="inline mr-2" /> {errorMsg}
