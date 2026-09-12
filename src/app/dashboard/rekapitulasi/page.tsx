@@ -717,6 +717,7 @@ export default function RekapitulasiPage() {
 
       {/* Filter Panel */}
       <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors duration-300">
+        {/* Baris 1: semua dropdown filter */}
         <div className="flex flex-col md:flex-row gap-4">
           {/* Pilih Tipe */}
           <div className="flex-1">
@@ -874,27 +875,28 @@ export default function RekapitulasiPage() {
               </div>
             )}
           </div>
+        </div>
 
-          {/* Tombol Tampilkan */}
-          <div className="md:w-32 flex items-end">
-            <button
-              onClick={() => fetchRekap()}
-              disabled={loading}
-              className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-75 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-purple-600/30 transition-all flex justify-center items-center gap-2 cursor-pointer"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" /> Memuat...
-                </>
-              ) : (
-                <>
-                  <Search size={16} /> Tampilkan
-                </>
-              )}
-            </button>
-          </div>
+        {/* Baris 2: Tombol Tampilkan — baris tersendiri agar tidak berdesakan */}
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={() => fetchRekap()}
+            disabled={loading}
+            className="bg-purple-600 hover:bg-purple-700 disabled:opacity-75 text-white font-bold py-2.5 px-8 rounded-xl shadow-lg shadow-purple-600/30 transition-all flex justify-center items-center gap-2 cursor-pointer"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> Memuat...
+              </>
+            ) : (
+              <>
+                <Search size={16} /> Tampilkan
+              </>
+            )}
+          </button>
         </div>
       </div>
+
 
       {errorMsg && (
         <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 text-center font-bold">
