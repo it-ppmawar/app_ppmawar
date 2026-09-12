@@ -48,13 +48,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ambil waktu tenggang dari pengaturan (default: 2 jam)
+    // Ambil waktu tenggang dan waktu mulai dari pengaturan (default: tenggang 2 jam, mulai 30 menit)
     const [settingRows] = await db.query<RowDataPacket[]>(
-      'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "waktu_tenggang_absensi"'
+      `SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis
+       WHERE nama_pengaturan IN ('waktu_tenggang_absensi', 'waktu_mulai_absensi')`
     );
-    const waktuTenggangJam = (settingRows.length > 0 && !isNaN(parseFloat(settingRows[0].nilai))) 
-      ? parseFloat(settingRows[0].nilai) 
+    const settingMap: Record<string, string> = {};
+    for (const row of settingRows) settingMap[row.nama_pengaturan] = row.nilai;
+    const waktuTenggangJam = !isNaN(parseFloat(settingMap['waktu_tenggang_absensi']))
+      ? parseFloat(settingMap['waktu_tenggang_absensi'])
       : 2;
+    const waktuMulaiMenit = !isNaN(parseFloat(settingMap['waktu_mulai_absensi']))
+      ? parseFloat(settingMap['waktu_mulai_absensi'])
+      : 30;
 
     const parseTimeToSec = (tStr: string) => {
       const normalized = String(tStr || '').replace('.', ':');
@@ -109,7 +115,7 @@ export async function POST(request: NextRequest) {
           for (const k of allKegiatan) {
             const mulaiSecs = parseTimeToSec(k.jam_mulai);
             const selesaiSecs = parseTimeToSec(k.jam_selesai);
-            const earlySecs = mulaiSecs - 30 * 60; // Buka 30 menit sebelum jam mulai
+            const earlySecs = mulaiSecs - waktuMulaiMenit * 60; // Buka waktuMulaiMenit menit sebelum jam mulai
             const lateSecs = selesaiSecs + tenggangSecs; // Toleransi s/d jam_selesai + waktu_tenggang
 
             if (nowSecs >= earlySecs && nowSecs <= lateSecs) {
@@ -172,7 +178,7 @@ export async function POST(request: NextRequest) {
             for (const m of allMadin) {
               const mulaiSecs = parseTimeToSec(m.jam_mulai);
               const selesaiSecs = parseTimeToSec(m.jam_selesai);
-              const earlySecs = mulaiSecs - 30 * 60;
+              const earlySecs = mulaiSecs - waktuMulaiMenit * 60;
               const lateSecs = selesaiSecs + tenggangSecs;
 
               if (nowSecs >= earlySecs && nowSecs <= lateSecs) {
@@ -233,7 +239,7 @@ export async function POST(request: NextRequest) {
             for (const q of allQuran) {
               const mulaiSecs = parseTimeToSec(q.jam_mulai);
               const selesaiSecs = parseTimeToSec(q.jam_selesai);
-              const earlySecs = mulaiSecs - 30 * 60;
+              const earlySecs = mulaiSecs - waktuMulaiMenit * 60;
               const lateSecs = selesaiSecs + tenggangSecs;
 
               if (nowSecs >= earlySecs && nowSecs <= lateSecs) {
