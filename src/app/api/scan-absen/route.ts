@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     // 1. CARI PEMILIK KARTU DI TABEL MURID (SANTRI LAMA & BARU)
     // Menggunakan pencocokan fleksibel: barcode_id ATAU nis (dengan trim & digits fallback)
     let [muridRows] = await db.query<RowDataPacket[]>(
-      `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.foto, m.kelas_madin_id, m.kelas_quran_id, m.kamar_id, k.nama_kamar 
+      `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.foto, m.kelas_madin_id, m.kelas_madin_2_id, m.kelas_quran_id, m.kamar_id, k.nama_kamar 
        FROM murid m 
        LEFT JOIN kamar k ON m.kamar_id = k.kamar_id 
        WHERE TRIM(m.barcode_id) = ? OR TRIM(m.nis) = ? OR TRIM(m.barcode_id) = ? OR TRIM(m.nis) = ?`,
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     // Fallback jika belum ketemu: cari dengan LIKE jika digit minimal 5 karakter
     if (muridRows.length === 0 && digitsOnly.length >= 5) {
       [muridRows] = await db.query<RowDataPacket[]>(
-        `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.foto, m.kelas_madin_id, m.kelas_quran_id, m.kamar_id, k.nama_kamar 
+        `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.foto, m.kelas_madin_id, m.kelas_madin_2_id, m.kelas_quran_id, m.kamar_id, k.nama_kamar 
          FROM murid m 
          LEFT JOIN kamar k ON m.kamar_id = k.kamar_id 
          WHERE m.nis LIKE ? OR m.barcode_id LIKE ?`,
@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
       : 2;
 
     const parseTimeToSec = (tStr: string) => {
-      const [h, m, s] = String(tStr).split(':').map(Number);
+      const normalized = String(tStr || '').replace('.', ':');
+      const [h, m, s] = normalized.split(':').map(Number);
       return (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
     };
     const nowSecs = parseTimeToSec(now);
@@ -157,10 +158,14 @@ export async function POST(request: NextRequest) {
 
       // --- 2. MADRASAH DINIYAH (MADIN) ---
       if (targetCategory === 'madin' || targetCategory === 'otomatis' || targetCategory === '') {
-        if (murid.kelas_madin_id) {
+        const madinKelasIds = [murid.kelas_madin_id, murid.kelas_madin_2_id].filter(Boolean);
+        if (madinKelasIds.length > 0) {
+          const placeholders = madinKelasIds.map(() => '?').join(',');
           const [allMadin] = await db.query<RowDataPacket[]>(
-            'SELECT j.jadwal_id, j.mata_pelajaran, j.jam_mulai, j.jam_selesai FROM jadwal_madin j WHERE j.kelas_madin_id = ? AND j.hari = ?',
-            [murid.kelas_madin_id, hariDB]
+            `SELECT j.jadwal_id, j.mata_pelajaran, j.jam_mulai, j.jam_selesai, j.kelas_madin_id 
+             FROM jadwal_madin j 
+             WHERE j.kelas_madin_id IN (${placeholders}) AND j.hari = ?`,
+            [...madinKelasIds, hariDB]
           );
 
           if (allMadin.length > 0) {
@@ -182,7 +187,7 @@ export async function POST(request: NextRequest) {
                        SELECT 1 FROM absensi a2 
                        WHERE a2.jadwal_madin_id = ? AND a2.murid_id = m2.murid_id AND a2.tanggal = ?
                      )`,
-                  [m.jadwal_id, today, murid.kelas_madin_id, murid.kelas_madin_id, murid.murid_id, m.jadwal_id, today]
+                  [m.jadwal_id, today, m.kelas_madin_id, m.kelas_madin_id, murid.murid_id, m.jadwal_id, today]
                 );
 
                 // 2. Tandai santri yang melakukan scan sebagai Hadir
