@@ -305,30 +305,41 @@ export default function JadwalDewanGuruPage() {
       {/* Header Bar */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 py-2.5 sm:py-3 space-y-2.5 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-3">
-          {/* Baris 1: Ikon & Teks Judul Merapat ke Ujung Kiri */}
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 shrink-0">
-              <CalendarDays size={20} />
+          {/* Baris 1: Ikon & Teks Judul + Tombol Kembali di Layar HP (seperti pada QR Code Presensi Dewan Guru) */}
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 shrink-0">
+                <CalendarDays size={20} />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5 leading-tight truncate">
+                  <span>{isGuru ? 'Jadwal Dewan Guru' : 'Pengaturan Jadwal Dewan Guru'}</span>
+                </h1>
+                <p className="text-[11px] text-slate-400 truncate">
+                  {isGuru ? 'KBM & Kehadiran Dewan Guru YPMA' : 'Dikelola khusus oleh Admin & Pengasuh YPMA'}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5 leading-tight truncate">
-                <span>{isGuru ? 'Jadwal Dewan Guru' : 'Pengaturan Jadwal Dewan Guru'}</span>
-              </h1>
-              <p className="text-[11px] text-slate-400 truncate">
-                {isGuru ? 'KBM & Kehadiran Dewan Guru YPMA' : 'Dikelola khusus oleh Admin & Pengasuh YPMA'}
-              </p>
-            </div>
+
+            {/* Tombol Kembali di sebelah kanan teks (hanya di tampilan HP) */}
+            <Link
+              href={canManage ? "/dashboard/absen-guru" : "/dashboard"}
+              className="sm:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+              title={canManage ? "Kembali ke Presensi Guru" : "Kembali ke Beranda"}
+            >
+              <ArrowLeft size={16} />
+            </Link>
           </div>
 
           {/* Baris 2: Tombol Aksi – Rapi & Presisi di Layar HP */}
           <div className="w-full sm:w-auto space-y-1.5 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-1.5">
             {canManage ? (
               <>
-                {/* Baris 1 HP: Kembali | Impor | Templat (Grid 3 Kolom) */}
-                <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
+                {/* Baris 1 HP: Impor | Templat (Grid 2 Kolom di HP) */}
+                <div className="grid grid-cols-2 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
                   <Link
                     href="/dashboard/absen-guru"
-                    className="py-2 px-2 sm:px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    className="hidden sm:flex py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs items-center justify-center gap-1 cursor-pointer text-center"
                     title="Kembali ke Presensi Guru"
                   >
                     <ArrowLeft size={13} className="shrink-0" />
@@ -337,7 +348,7 @@ export default function JadwalDewanGuruPage() {
 
                   <button
                     onClick={() => setIsImportModalOpen(true)}
-                    className="py-2 px-2 sm:px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    className="w-full sm:w-auto py-2 px-2 sm:px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
                     title="Unggah / Impor Jadwal dari File Excel"
                   >
                     <Upload size={13} className="shrink-0" />
@@ -346,7 +357,7 @@ export default function JadwalDewanGuruPage() {
 
                   <button
                     onClick={() => downloadTemplate('jadwal_dewan_guru')}
-                    className="py-2 px-2 sm:px-3 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    className="w-full sm:w-auto py-2 px-2 sm:px-3 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
                     title="Unduh Format Templat Impor Excel"
                   >
                     <Download size={13} className="shrink-0" />
@@ -408,12 +419,13 @@ export default function JadwalDewanGuruPage() {
               </>
             ) : (
               <>
-                {/* Baris 1 HP (Guru View Only): Kembali | Excel | Preview (Grid 3 Kolom) */}
+                {/* Baris 1 HP (Guru View Only): Excel | Preview | PDF (Grid 3 Kolom sama presisi 1 baris memenuhi kanan-kiri) */}
                 <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
+                  {/* Tombol Kembali di Desktop (di HP sudah di samping judul) */}
                   <Link
                     href="/dashboard"
-                    className="py-2 px-2 sm:px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
-                    title="Kembali ke Dashboard"
+                    className="hidden sm:flex py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs items-center justify-center gap-1 cursor-pointer text-center"
+                    title="Kembali ke Beranda"
                   >
                     <ArrowLeft size={13} className="shrink-0" />
                     <span>Kembali</span>
@@ -421,7 +433,7 @@ export default function JadwalDewanGuruPage() {
 
                   <button
                     onClick={() => handleExportJadwal('excel', false)}
-                    className="py-2 px-2 sm:px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    className="w-full sm:w-auto py-2 px-2 sm:px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
                     title="Unduh File Excel Jadwal Dewan Guru"
                   >
                     <Download size={13} className="shrink-0" />
@@ -430,16 +442,13 @@ export default function JadwalDewanGuruPage() {
 
                   <button
                     onClick={() => handleExportJadwal('pdf', true)}
-                    className="py-2 px-2 sm:px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 dark:text-purple-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
+                    className="w-full sm:w-auto py-2 px-2 sm:px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 dark:text-purple-300 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
                     title="Preview Jadwal Dewan Guru PDF"
                   >
                     <FileText size={13} className="shrink-0" />
                     <span>Preview</span>
                   </button>
-                </div>
 
-                {/* Baris 2 HP (Guru View Only): PDF (50%) | Muat Ulang (50%) - Grid 2 Kolom */}
-                <div className="grid grid-cols-2 gap-1.5 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5">
                   <button
                     onClick={() => handleExportJadwal('pdf', false)}
                     className="w-full sm:w-auto py-2 px-2 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center"
@@ -448,11 +457,14 @@ export default function JadwalDewanGuruPage() {
                     <Download size={13} className="shrink-0" />
                     <span>PDF</span>
                   </button>
+                </div>
 
+                {/* Baris 2 HP (Guru View Only): Muat Ulang - Memanjang Rata Tengah Memenuhi Ruang Kanan Kiri */}
+                <div className="w-full sm:w-auto">
                   <button
                     onClick={fetchSchedules}
                     disabled={loading}
-                    className="w-full sm:w-auto py-2 px-2 sm:px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer text-center disabled:opacity-50"
+                    className="w-full sm:w-auto py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center disabled:opacity-50"
                     title="Segarkan data jadwal"
                   >
                     <RefreshCw size={12} className={`shrink-0 ${loading ? 'animate-spin' : ''}`} />
@@ -664,9 +676,9 @@ export default function JadwalDewanGuruPage() {
 
       {/* Modal Add/Edit */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden animate-[scaleUp_0.2s_ease-out]">
-            <div className={`p-4 text-white flex items-center justify-between ${
+        <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 pb-24 sm:pb-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md max-h-[calc(100dvh-6.5rem)] sm:max-h-[90vh] flex flex-col overflow-hidden animate-[scaleUp_0.2s_ease-out]">
+            <div className={`p-4 text-white flex items-center justify-between shrink-0 ${
               formData.tipe_jadwal === 'insidental'
                 ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700'
                 : 'bg-gradient-to-r from-teal-700 to-emerald-700'
@@ -687,7 +699,7 @@ export default function JadwalDewanGuruPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-5 space-y-3.5 text-xs max-h-[85vh] overflow-y-auto">
+            <form onSubmit={handleSave} className="p-4 sm:p-5 space-y-3.5 text-xs overflow-y-auto flex-1 overscroll-contain">
               {/* Pilihan Tipe Jadwal */}
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -901,7 +913,7 @@ export default function JadwalDewanGuruPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-3 pb-2 sm:pb-0 border-t border-slate-100 dark:border-slate-800 sticky bottom-0 bg-white dark:bg-slate-900 z-10">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
@@ -928,9 +940,9 @@ export default function JadwalDewanGuruPage() {
 
       {/* ── Modal Import Excel ────────────────────────────────────────────── */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
-            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 p-5 text-white flex justify-between items-center">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 pb-24 sm:pb-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md max-h-[calc(100dvh-6.5rem)] sm:max-h-[90vh] border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 p-5 text-white flex justify-between items-center shrink-0">
               <h2 className="text-base font-extrabold flex items-center gap-2">
                 <Upload size={18} />
                 <span>Impor Jadwal Dewan Guru</span>
@@ -987,8 +999,8 @@ export default function JadwalDewanGuruPage() {
 
       {/* ── Modal Preview PDF ─────────────────────────────────────────────── */}
       {showPdfPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl h-[88vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 pb-24 sm:pb-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[calc(100dvh-6.5rem)] sm:h-[88vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
             <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
