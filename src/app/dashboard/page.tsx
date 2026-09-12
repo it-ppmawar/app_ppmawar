@@ -241,14 +241,14 @@ export default function DashboardPage() {
         <div className={`grid gap-3 ${
           lowerRole === 'tamu'
             ? 'grid-cols-2'
-            : (['admin', 'pengurus_asrama', 'pengasuh', 'staff'].includes(lowerRole) || isPengasuh || isPengurusAsrama)
+            : (['admin', 'guru', 'pengurus_asrama', 'pengasuh', 'staff'].includes(lowerRole) || isPengasuh || isPengurusAsrama || lowerRole.includes('pengurus'))
             ? 'grid-cols-4'
             : lowerRole !== 'wali_murid'
             ? 'grid-cols-4'
             : 'grid-cols-3'
         }`}>
           {/* Baris 1: Full-width Scan Absen */}
-          {(['admin', 'pengurus_asrama', 'pengasuh', 'staff'].includes(lowerRole) || isPengasuh || isPengurusAsrama) && (
+          {(['admin', 'guru', 'pengurus_asrama', 'pengasuh', 'staff'].includes(lowerRole) || isPengasuh || isPengurusAsrama || lowerRole.includes('pengurus')) && (
             <Link 
               href="/dashboard/scan-absen" 
               className="col-span-full flex flex-row items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-2xl border border-green-100 dark:border-green-800/50 shadow-sm hover:bg-green-100 dark:hover:bg-green-900/50 transition"

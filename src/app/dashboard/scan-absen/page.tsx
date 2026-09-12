@@ -395,13 +395,20 @@ function ScanAbsenInner() {
         const nama = data.nama || 'Santri/Guru';
         setLastScan({ nama, waktu: now, foto: data.foto || null });
         setPopup({ type: 'success', title: 'Absen Berhasil! ✅', text: data.message, foto: data.foto || null });
-      } else {
+      } else if (res.status === 404 || data.message?.includes('tidak terdaftar')) {
         // Kartu tidak dikenal → siapkan quick pairing
         setPopup({
           type: 'warning',
           title: 'Kartu Tidak Dikenal',
           text: data.message,
           unknownCode: barcodeData
+        });
+      } else {
+        // Kesalahan server atau status lainnya
+        setPopup({
+          type: 'error',
+          title: 'Gagal Memproses Absensi',
+          text: data.message || 'Terjadi kesalahan saat memproses absensi.'
         });
       }
     } catch {

@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
 
                 // 2. Tandai santri yang melakukan scan sebagai Hadir
                 const [ext] = await db.query<RowDataPacket[]>(
-                  'SELECT id FROM absensi WHERE murid_id = ? AND jadwal_madin_id = ? AND tanggal = ?',
+                  'SELECT absensi_id FROM absensi WHERE murid_id = ? AND jadwal_madin_id = ? AND tanggal = ?',
                   [murid.murid_id, m.jadwal_id, today]
                 );
                 if (ext.length === 0) {
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
 
                 // 2. Tandai santri yang melakukan scan sebagai Hadir
                 const [ext] = await db.query<RowDataPacket[]>(
-                  'SELECT id FROM absensi_quran WHERE murid_id = ? AND jadwal_quran_id = ? AND tanggal = ?',
+                  'SELECT absensi_quran_id FROM absensi_quran WHERE murid_id = ? AND jadwal_quran_id = ? AND tanggal = ?',
                   [murid.murid_id, q.jadwal_id, today]
                 );
                 if (ext.length === 0) {
