@@ -29,6 +29,8 @@ export async function GET(request: Request) {
       let guruNama = '';
       let guruNip = '';
       let guruPhone = '';
+      let userNama = '';
+      let userName = payload.username || '';
 
       if (payload.guruId) {
         const [gRows]: any = await pool.execute('SELECT nama, nip, no_hp FROM guru WHERE guru_id = ? LIMIT 1', [payload.guruId]);
@@ -39,54 +41,116 @@ export async function GET(request: Request) {
         }
       }
 
-      if (!guruNama && payload.userId) {
+      if (payload.userId) {
         const [uRows]: any = await pool.execute('SELECT nama, username FROM users WHERE id = ? LIMIT 1', [payload.userId]);
         if (uRows && uRows.length > 0) {
-          guruNama = uRows[0].nama || '';
+          userNama = uRows[0].nama || '';
+          if (!userName) userName = uRows[0].username || '';
         }
       }
 
-      if (!guruNama && payload.username) {
-        guruNama = payload.username;
-      }
+      // Kumpulan kandidat nama untuk dicocokkan
+      const candidateNames = Array.from(new Set([guruNama, userNama, userName].filter(Boolean)));
+
+      // Helper untuk membersihkan gelar dan normalisasi nama
+      const normalizeTeacherName = (str: string): string => {
+        if (!str) return '';
+        return str
+          .toLowerCase()
+          .replace(/\b(ustadzah|ustadz|ust|kyai|k\.h|kh|habib|gus|ning|drs|dra|dr|prof|haji|hajjah|hj|h)\b\.?/gi, ' ')
+          .replace(/\b(s\.pd\.i|s\.pd|s\.ag|s\.kom|s\.si|s\.e|s\.sos|s\.h|s\.th\.i|m\.pd\.i|m\.pd|m\.ag|m\.si|m\.e|m\.h|m\.hum|m\.th\.i|lc|apt|dipl)\b\.?/gi, ' ')
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+
+      // Helper meratakan pengulangan huruf konsonan (misal robbach -> robach, muhammad -> muhamad)
+      const collapseLetters = (str: string): string => {
+        return str.replace(/([a-z])\1+/g, '$1');
+      };
+
+      // Ambil seluruh dewan guru aktif untuk scoring komprehensif
+      const [allDewan]: any = await pool.execute('SELECT * FROM dewan_guru WHERE aktif = 1');
+      const dewanList: any[] = allDewan || [];
 
       let matchedRows: any[] = [];
 
-      // 1. Coba match via NIP jika tersedia
+      // 1. Pencocokan NIP
       if (guruNip && guruNip.trim()) {
-        const [rows]: any = await pool.execute('SELECT * FROM dewan_guru WHERE aktif = 1 AND nip = ? LIMIT 1', [guruNip.trim()]);
-        if (rows && rows.length > 0) matchedRows = rows;
+        const cleanNip = guruNip.trim();
+        const found = dewanList.filter(d => d.nip && d.nip.trim() === cleanNip);
+        if (found.length > 0) matchedRows = found;
       }
 
-      // 2. Coba match exact nama (case-insensitive & trimmed)
-      if (matchedRows.length === 0 && guruNama && guruNama.trim()) {
-        const [rows]: any = await pool.execute('SELECT * FROM dewan_guru WHERE aktif = 1 AND LOWER(TRIM(nama)) = LOWER(TRIM(?)) LIMIT 1', [guruNama.trim()]);
-        if (rows && rows.length > 0) matchedRows = rows;
-      }
-
-      // 3. Coba match nama tanpa gelar (membersihkan Drs., H., Hj., S.Pd., dll)
-      if (matchedRows.length === 0 && guruNama && guruNama.trim()) {
-        const cleanName = guruNama
-          .replace(/^(drs|dra|dr|kh|h|hj|ust|ustadz|ustadzah)\.?\s+/i, '')
-          .replace(/,\s*(s\.pd|s\.e|s\.ag|m\.pd|m\.ag|m\.si|s\.kom|s\.sos|s\.farm|apt|lc).*$/i, '')
-          .trim();
-        if (cleanName.length >= 3) {
-          const [rows]: any = await pool.execute(
-            'SELECT * FROM dewan_guru WHERE aktif = 1 AND LOWER(nama) LIKE ? LIMIT 1',
-            [`%${cleanName.toLowerCase()}%`]
-          );
-          if (rows && rows.length > 0) matchedRows = rows;
-        }
-      }
-
-      // 4. Coba match nomor HP jika ada
+      // 2. Pencocokan No HP (9 digit terakhir)
       if (matchedRows.length === 0 && guruPhone && guruPhone.trim().length >= 8) {
         const cleanPhone = guruPhone.replace(/[^0-9]/g, '').slice(-9);
-        const [rows]: any = await pool.execute(
-          'SELECT * FROM dewan_guru WHERE aktif = 1 AND REPLACE(REPLACE(no_hp, "-", ""), " ", "") LIKE ? LIMIT 1',
-          [`%${cleanPhone}`]
-        );
-        if (rows && rows.length > 0) matchedRows = rows;
+        const found = dewanList.filter(d => {
+          if (!d.no_hp) return false;
+          const targetPhone = String(d.no_hp).replace(/[^0-9]/g, '').slice(-9);
+          return targetPhone && targetPhone === cleanPhone;
+        });
+        if (found.length > 0) matchedRows = found;
+      }
+
+      // 3. Pencocokan Cerdas Berdasarkan Nama
+      if (matchedRows.length === 0 && candidateNames.length > 0) {
+        let bestMatch: any = null;
+        let highestScore = 0;
+
+        for (const dg of dewanList) {
+          const rawDgName = (dg.nama || '').trim();
+          const normDgName = normalizeTeacherName(rawDgName);
+          const collapsedDgName = collapseLetters(normDgName);
+          const dgTokens = normDgName.split(' ').filter(w => w.length >= 2);
+          const collapsedDgTokens = collapsedDgName.split(' ').filter(w => w.length >= 2);
+
+          for (const cand of candidateNames) {
+            const rawCand = cand.trim();
+            const normCand = normalizeTeacherName(rawCand);
+            const collapsedCand = collapseLetters(normCand);
+            const candTokens = normCand.split(' ').filter(w => w.length >= 2);
+            const collapsedCandTokens = collapsedCand.split(' ').filter(w => w.length >= 2);
+
+            let score = 0;
+
+            // a. Exact raw match
+            if (rawCand.toLowerCase() === rawDgName.toLowerCase()) {
+              score = 1000;
+            }
+            // b. Exact normalized match
+            else if (normCand.length >= 3 && normCand === normDgName) {
+              score = 900;
+            }
+            // c. Exact collapsed letters match (e.g. "robbach wahabi" vs "robach wahabi")
+            else if (collapsedCand.length >= 3 && collapsedCand === collapsedDgName) {
+              score = 850;
+            }
+            // d. Token containment match (seluruh token penting terdapat di nama target)
+            else if (candTokens.length > 0 && dgTokens.length > 0) {
+              const matchedTokens = collapsedCandTokens.filter(t => collapsedDgTokens.some(dgt => dgt === t || dgt.includes(t) || t.includes(dgt)));
+              if (matchedTokens.length === collapsedCandTokens.length && matchedTokens.length >= 2) {
+                score = 700 + matchedTokens.length * 10;
+              } else if (matchedTokens.length >= 2) {
+                const ratio = matchedTokens.length / Math.max(collapsedCandTokens.length, collapsedDgTokens.length);
+                if (ratio >= 0.5) score = Math.round(500 * ratio);
+              }
+            }
+            // e. Substring match
+            else if (collapsedCand.length >= 5 && (collapsedDgName.includes(collapsedCand) || collapsedCand.includes(collapsedDgName))) {
+              score = 400;
+            }
+
+            if (score > highestScore) {
+              highestScore = score;
+              bestMatch = dg;
+            }
+          }
+        }
+
+        if (bestMatch && highestScore >= 250) {
+          matchedRows = [bestMatch];
+        }
       }
 
       return NextResponse.json({

@@ -373,7 +373,7 @@ export default function JadwalPage() {
     const subtitle = `Filter Guru: ${filterGuru || 'Semua'} | Filter Kelas/Kamar: ${filterTempat || 'Semua'} | Waktu: ${waktuFilter === 'semua' ? 'Semua Waktu' : waktuFilter.toUpperCase()} | ${selectedJadwal.length > 0 ? `Export Terpilih (${selectedJadwal.length})` : 'Semua Data'}`;
     const filename = `Jadwal_${activeTab}`;
 
-    const tableColumn = ["NO", "HARI", "JAM", "KEGIATAN", "TEMPAT", "GURU"];
+    const tableColumn = ["NO", "HARI", "JAM", activeTab === 'quran' ? 'MAJLIS' : activeTab === 'madin' ? 'MAPEL' : 'KEGIATAN', "TEMPAT", "GURU"];
     const tableRows: any[] = [];
 
     exportData.forEach((item, idx) => {
@@ -756,9 +756,9 @@ export default function JadwalPage() {
                       <input type="checkbox" className="rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer" checked={selectedJadwal.length === filteredJadwal.length && filteredJadwal.length > 0} onChange={toggleSelectAll} />
                     </th>
                   )}
-                  <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('hari')}>HARI{getSortIcon('hari')}</th>
-                  <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jam_mulai')}>JAM{getSortIcon('jam_mulai')}</th>
-                  <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kegiatan')}>MAJLIS / MAPEL / KEGIATAN{getSortIcon('kegiatan')}</th>
+                  <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kegiatan')}>
+                    {activeTab === 'quran' ? 'MAJLIS' : activeTab === 'madin' ? 'MAPEL' : 'KEGIATAN'}{getSortIcon('kegiatan')}
+                  </th>
                   <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tempat')}>KELAS / KAMAR{getSortIcon('tempat')}</th>
                   <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('guru')}>GURU{getSortIcon('guru')}</th>
                   {(role === 'admin' || role === 'staff') && (
@@ -916,7 +916,7 @@ export default function JadwalPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Kegiatan / Mapel</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">{activeTab === 'quran' ? 'Majlis' : activeTab === 'madin' ? 'Mata Pelajaran (Mapel)' : 'Nama Kegiatan'}</label>
                 <input type="text" value={editingJadwal.kegiatan} onChange={(e) => setEditingJadwal({ ...editingJadwal, kegiatan: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs" required />
               </div>
               <div>
@@ -1019,7 +1019,7 @@ export default function JadwalPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Kegiatan / Mapel</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">{activeTab === 'quran' ? 'Majlis' : activeTab === 'madin' ? 'Mata Pelajaran (Mapel)' : 'Nama Kegiatan'}</label>
                 <input type="text" value={newJadwal.kegiatan} onChange={(e) => setNewJadwal({ ...newJadwal, kegiatan: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg" required />
               </div>
               <div>

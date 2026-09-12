@@ -29,6 +29,7 @@ export async function GET(request: Request) {
     const tahun = searchParams.get('tahun');
     const tanggal_dari = searchParams.get('tanggal_dari'); // YYYY-MM-DD
     const tanggal_sampai = searchParams.get('tanggal_sampai'); // YYYY-MM-DD
+    const sub_filter = searchParams.get('sub_filter') || ''; // nama mapel/majlis/kegiatan
 
     // Mode: rentang tanggal atau bulan/tahun
     const isRentang = !!(tanggal_dari && tanggal_sampai);
@@ -114,11 +115,8 @@ export async function GET(request: Request) {
     if (tipe === 'madin') {
       if (!target_id) return NextResponse.json({ error: 'Pilih Kelas Madin' }, { status: 400, headers: noCacheHeaders });
 
-      // Subquery hadir: tabel absensi tanpa alias
       const { cond: subDateCond, params: subDateParams } = makeDateCond('tanggal');
-      // Subquery scan kamar: tabel absensi_kamar alias ak
       const { cond: scanDateCond, params: scanDateParams } = makeDateCond('ak.tanggal');
-      // JOIN absensi utama: alias a
       const { cond: joinDateCond, params: joinDateParams } = makeDateCond('a.tanggal');
 
       let whereCond = 'WHERE (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?)';
@@ -135,6 +133,10 @@ export async function GET(request: Request) {
         whereParams = [];
       }
 
+      // Kondisi sub_filter mapel
+      const subFilterMapelCond = sub_filter ? `AND jm_sf.mata_pelajaran = '${sub_filter.replace(/'/g, "''")}'` : '';
+      const subFilterAbsensiCond = sub_filter ? `AND jm_sub.mata_pelajaran = '${sub_filter.replace(/'/g, "''")}'` : '';
+
       params = [...subDateParams, ...scanDateParams, ...joinDateParams, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
@@ -145,16 +147,19 @@ export async function GET(request: Request) {
         FROM murid m
         LEFT JOIN kelas_madin km ON (m.kelas_madin_id = km.kelas_id OR m.kelas_madin_2_id = km.kelas_id)
         LEFT JOIN (
-          SELECT murid_id, tanggal FROM absensi WHERE LOWER(status) = 'hadir' AND ${subDateCond}
+          SELECT ab.murid_id, ab.tanggal FROM absensi ab
+          ${sub_filter ? 'JOIN jadwal_madin jm_sub ON ab.jadwal_madin_id = jm_sub.jadwal_id ' + subFilterAbsensiCond : ''}
+          WHERE LOWER(ab.status) = 'hadir' AND ${subDateCond}
           UNION
           SELECT ak.murid_id, ak.tanggal
           FROM absensi_kamar ak
-          JOIN jadwal_madin jm ON jm.kelas_madin_id = (
+          JOIN jadwal_madin jm_sf ON jm_sf.kelas_madin_id = (
             SELECT kelas_madin_id FROM murid WHERE murid_id = ak.murid_id LIMIT 1
-          ) AND jm.hari = DAYNAME(ak.tanggal)
+          ) AND jm_sf.hari = DAYNAME(ak.tanggal) ${subFilterMapelCond}
           WHERE ${scanDateCond}
         ) att ON m.murid_id = att.murid_id
         LEFT JOIN absensi a ON m.murid_id = a.murid_id AND ${joinDateCond}
+          ${sub_filter ? `AND a.jadwal_madin_id IN (SELECT jadwal_id FROM jadwal_madin WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
@@ -180,6 +185,9 @@ export async function GET(request: Request) {
         whereParams = [];
       }
 
+      const subFilterQuranCond = sub_filter ? `AND jq_sf.mata_pelajaran = '${sub_filter.replace(/'/g, "''")}'` : '';
+      const subFilterQuranAbsensiCond = sub_filter ? `AND jq_sub.mata_pelajaran = '${sub_filter.replace(/'/g, "''")}'` : '';
+
       params = [...subDateParams, ...scanDateParams, ...joinDateParams, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
@@ -190,16 +198,19 @@ export async function GET(request: Request) {
         FROM murid m
         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
         LEFT JOIN (
-          SELECT murid_id, tanggal FROM absensi_quran WHERE LOWER(status) = 'hadir' AND ${subDateCond}
+          SELECT aq.murid_id, aq.tanggal FROM absensi_quran aq
+          ${sub_filter ? 'JOIN jadwal_quran jq_sub ON aq.jadwal_quran_id = jq_sub.id ' + subFilterQuranAbsensiCond : ''}
+          WHERE LOWER(aq.status) = 'hadir' AND ${subDateCond}
           UNION
           SELECT ak.murid_id, ak.tanggal
           FROM absensi_kamar ak
-          JOIN jadwal_quran jq ON jq.kelas_quran_id = (
+          JOIN jadwal_quran jq_sf ON jq_sf.kelas_quran_id = (
             SELECT kelas_quran_id FROM murid WHERE murid_id = ak.murid_id LIMIT 1
-          ) AND jq.hari = DAYNAME(ak.tanggal)
+          ) AND jq_sf.hari = DAYNAME(ak.tanggal) ${subFilterQuranCond}
           WHERE ${scanDateCond}
         ) att ON m.murid_id = att.murid_id
         LEFT JOIN absensi_quran a ON m.murid_id = a.murid_id AND ${joinDateCond}
+          ${sub_filter ? `AND a.jadwal_quran_id IN (SELECT id FROM jadwal_quran WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
@@ -243,6 +254,8 @@ export async function GET(request: Request) {
         whereParams = [asr];
       }
 
+      const subFilterKegiatanCond = sub_filter ? `AND jk_sf.nama_kegiatan = '${sub_filter.replace(/'/g, "''")}'` : '';
+
       params = [...subDateParams1, ...subDateParams2, ...joinDateParams, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
@@ -253,11 +266,14 @@ export async function GET(request: Request) {
         FROM murid m
         LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
         LEFT JOIN (
-          SELECT murid_id, tanggal FROM absensi_kegiatan att_k WHERE LOWER(status) = 'hadir' AND ${subDateCond1}
+          SELECT att_k.murid_id, att_k.tanggal FROM absensi_kegiatan att_k
+          ${sub_filter ? `JOIN jadwal_kegiatan jk_sf ON att_k.kegiatan_id = jk_sf.kegiatan_id ${subFilterKegiatanCond}` : ''}
+          WHERE LOWER(att_k.status) = 'hadir' AND ${subDateCond1}
           UNION
           SELECT murid_id, tanggal FROM absensi_kamar att_s WHERE ${subDateCond2}
         ) att ON m.murid_id = att.murid_id
         LEFT JOIN absensi_kegiatan a ON m.murid_id = a.murid_id AND ${joinDateCond}
+          ${sub_filter ? `AND a.kegiatan_id IN (SELECT kegiatan_id FROM jadwal_kegiatan WHERE nama_kegiatan = '${sub_filter.replace(/'/g, "''")}')` : ''}
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC

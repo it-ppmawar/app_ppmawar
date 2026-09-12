@@ -154,6 +154,11 @@ export default function RekapitulasiPage() {
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [availableTipes, setAvailableTipes] = useState<string[]>(['madin', 'quran', 'kegiatan']);
 
+  // Sub-filter: Majlis / Mapel / Kegiatan
+  const [subFilter, setSubFilter] = useState('');
+  const [subFilterOptions, setSubFilterOptions] = useState<string[]>([]);
+  const [loadingSubFilter, setLoadingSubFilter] = useState(false);
+
   useEffect(() => {
     // Check User Role & Fetch User's Jadwal
     Promise.all([
@@ -262,6 +267,30 @@ export default function RekapitulasiPage() {
     }
   };
 
+  const loadSubFilterOptions = async (tipe: string, targetId: string) => {
+    if (!['madin', 'quran', 'kegiatan'].includes(tipe)) {
+      setSubFilterOptions([]);
+      setSubFilter('');
+      return;
+    }
+    setLoadingSubFilter(true);
+    try {
+      const qs = new URLSearchParams({ tipe, target_id: targetId }).toString();
+      const res = await fetch(`/api/rekapitulasi/sub-filter?${qs}`);
+      const json = await res.json();
+      if (json.success && json.data.length > 0) {
+        setSubFilterOptions(json.data.map((r: any) => r.nama));
+      } else {
+        setSubFilterOptions([]);
+      }
+    } catch {
+      setSubFilterOptions([]);
+    } finally {
+      setLoadingSubFilter(false);
+    }
+    setSubFilter('');
+  };
+
   const handleTipeChange = (e: any) => {
     const t = e.target.value;
     if (t === 'guru' && role !== 'admin' && role !== 'staff') {
@@ -274,6 +303,8 @@ export default function RekapitulasiPage() {
       return;
     }
     setFilter(prev => ({ ...prev, tipe: t }));
+    setSubFilter('');
+    setSubFilterOptions([]);
     loadOptions(t);
   };
 
@@ -295,6 +326,7 @@ export default function RekapitulasiPage() {
           tanggal_dari: filter.tanggal_dari,
           tanggal_sampai: filter.tanggal_sampai,
         });
+        if (subFilter) p.set('sub_filter', subFilter);
         qs = p.toString();
       } else {
         const p = new URLSearchParams({
@@ -303,6 +335,7 @@ export default function RekapitulasiPage() {
           bulan: filter.bulan,
           tahun: filter.tahun,
         });
+        if (subFilter) p.set('sub_filter', subFilter);
         qs = p.toString();
       }
       const res = await fetch(`/api/rekapitulasi?${qs}`);
@@ -712,9 +745,15 @@ export default function RekapitulasiPage() {
             <label className="block text-xs font-bold text-gray-500 mb-1">
               {filter.tipe === 'guru' ? 'Pilih Guru' : filter.tipe === 'dewan_guru' ? 'Pilih Unit / Homebase' : 'Pilih Kelas / Kamar'}
             </label>
-            <select 
-              value={filter.target_id} 
-              onChange={e => setFilter({...filter, target_id: e.target.value})} 
+            <select
+              value={filter.target_id}
+              onChange={e => {
+                const newTargetId = e.target.value;
+                setFilter({...filter, target_id: newTargetId});
+                if (['madin', 'quran', 'kegiatan'].includes(filter.tipe)) {
+                  loadSubFilterOptions(filter.tipe, newTargetId);
+                }
+              }}
               disabled={loadingOptions || options.length === 0}
               className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50 focus:ring-2 focus:ring-purple-500 transition-all"
             >
@@ -732,6 +771,28 @@ export default function RekapitulasiPage() {
               )}
             </select>
           </div>
+
+          {/* Sub-filter: Majlis / Mapel / Kegiatan (hanya untuk madin/quran/kegiatan) */}
+          {['madin', 'quran', 'kegiatan'].includes(filter.tipe) && (
+            <div className="flex-1">
+              <label className="block text-xs font-bold text-gray-500 mb-1">
+                {filter.tipe === 'quran' ? 'Pilih Majlis' : filter.tipe === 'madin' ? 'Pilih Mapel' : 'Pilih Kegiatan'}
+              </label>
+              <select
+                value={subFilter}
+                onChange={e => setSubFilter(e.target.value)}
+                disabled={loadingSubFilter}
+                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50 focus:ring-2 focus:ring-purple-500 transition-all"
+              >
+                <option value="">
+                  {loadingSubFilter ? 'Memuat...' : filter.tipe === 'quran' ? 'Semua Majlis' : filter.tipe === 'madin' ? 'Semua Mapel' : 'Semua Kegiatan'}
+                </option>
+                {subFilterOptions.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Pencarian Manual */}
           <div className="flex-1">
