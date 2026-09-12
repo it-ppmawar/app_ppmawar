@@ -37,8 +37,8 @@ export const downloadTemplate = (type: 'guru' | 'alumni' | 'jadwal_madin' | 'jad
       filename = 'Templat_Impor_Jadwal_Kegiatan.xlsx';
       break;
     case 'jadwal_dewan_guru':
-      headers = ['NAMA SESI', 'UNIT / HOMEBASE', 'HARI', 'JAM MULAI (HH:MM)', 'JAM SELESAI (HH:MM)', 'TOLERANSI (MENIT)', 'KETERANGAN'];
-      exampleRow = ['KBM & Kehadiran Pagi', 'SEMUA', 'Senin', '07:00', '13:30', '15', 'Jam Kerja & Mengajar Harian'];
+      headers = ['NAMA SESI', 'UNIT / HOMEBASE', 'TIPE (rutin/insidental)', 'HARI', 'TANGGAL (YYYY-MM-DD)', 'JAM MULAI (HH:MM)', 'JAM SELESAI (HH:MM)', 'TOLERANSI (MENIT)', 'KETERANGAN'];
+      exampleRow = ['KBM & Kehadiran Pagi', 'SEMUA', 'rutin', 'Senin', '', '07:00', '13:30', '15', 'Jam Kerja & Mengajar Harian'];
       filename = 'Templat_Impor_Jadwal_Dewan_Guru.xlsx';
       break;
     case 'jurnal_madin':

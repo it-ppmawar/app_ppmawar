@@ -19,6 +19,26 @@ export async function ensureDewanGuruDB(): Promise<void> {
             AND table_name IN ('dewan_guru', 'jadwal_dewan_guru', 'absensi_dewan_guru')
         `);
         if (tableCheck?.[0]?.cnt >= 3) {
+          // Pastikan kolom tipe_jadwal dan tanggal sudah ada (migrasi otomatis)
+          try {
+            await pool.execute(`
+              ALTER TABLE jadwal_dewan_guru 
+              ADD COLUMN tipe_jadwal ENUM('rutin', 'insidental') NOT NULL DEFAULT 'rutin' AFTER homebase
+            `);
+          } catch {}
+          try {
+            await pool.execute(`
+              ALTER TABLE jadwal_dewan_guru 
+              ADD COLUMN tanggal DATE DEFAULT NULL AFTER hari
+            `);
+          } catch {}
+          try {
+            await pool.execute(`ALTER TABLE jadwal_dewan_guru ADD INDEX idx_jadwal_tipe (tipe_jadwal)`);
+          } catch {}
+          try {
+            await pool.execute(`ALTER TABLE jadwal_dewan_guru ADD INDEX idx_jadwal_tanggal (tanggal)`);
+          } catch {}
+
           // Semua tabel sudah ada → periksa data dengan 1 query
           const [hasData]: any = await pool.execute('SELECT COUNT(*) as c FROM dewan_guru WHERE aktif = 1 LIMIT 1');
           if (hasData?.[0]?.c > 0) {
@@ -61,7 +81,9 @@ export async function ensureDewanGuruDB(): Promise<void> {
           id INT AUTO_INCREMENT PRIMARY KEY,
           nama_sesi VARCHAR(150) NOT NULL,
           homebase VARCHAR(100) DEFAULT 'SEMUA',
+          tipe_jadwal ENUM('rutin', 'insidental') NOT NULL DEFAULT 'rutin',
           hari ENUM('Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu') NOT NULL,
+          tanggal DATE DEFAULT NULL,
           jam_mulai TIME NOT NULL,
           jam_selesai TIME NOT NULL,
           toleransi_menit INT NOT NULL DEFAULT 15,
@@ -71,9 +93,30 @@ export async function ensureDewanGuruDB(): Promise<void> {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           INDEX idx_jadwal_hari (hari),
-          INDEX idx_jadwal_homebase (homebase)
+          INDEX idx_jadwal_homebase (homebase),
+          INDEX idx_jadwal_tipe (tipe_jadwal),
+          INDEX idx_jadwal_tanggal (tanggal)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
       `);
+
+      try {
+        await pool.execute(`
+          ALTER TABLE jadwal_dewan_guru 
+          ADD COLUMN tipe_jadwal ENUM('rutin', 'insidental') NOT NULL DEFAULT 'rutin' AFTER homebase
+        `);
+      } catch {}
+      try {
+        await pool.execute(`
+          ALTER TABLE jadwal_dewan_guru 
+          ADD COLUMN tanggal DATE DEFAULT NULL AFTER hari
+        `);
+      } catch {}
+      try {
+        await pool.execute(`ALTER TABLE jadwal_dewan_guru ADD INDEX idx_jadwal_tipe (tipe_jadwal)`);
+      } catch {}
+      try {
+        await pool.execute(`ALTER TABLE jadwal_dewan_guru ADD INDEX idx_jadwal_tanggal (tanggal)`);
+      } catch {}
 
       // 3. Pastikan tabel absensi_dewan_guru
       await pool.execute(`

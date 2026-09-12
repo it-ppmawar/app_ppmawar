@@ -1079,14 +1079,16 @@ async function importJadwalDewanGuru(rows: any[][], headers: string[], createdBy
 
   const colNamaSesi = findCol(headers, ['NAMA SESI', 'SESI', 'KEGIATAN', 'NAMA']);
   const colHomebase = findCol(headers, ['UNIT / HOMEBASE', 'HOMEBASE', 'UNIT', 'LEMBAGA']);
+  const colTipe = findCol(headers, ['TIPE JADWAL', 'TIPE (rutin/insidental)', 'TIPE', 'JENIS']);
   const colHari = findCol(headers, ['HARI']);
+  const colTanggal = findCol(headers, ['TANGGAL (YYYY-MM-DD)', 'TANGGAL', 'TGL']);
   const colJamMulai = findCol(headers, ['JAM MULAI', 'JAM MULAI (HH:MM)', 'MULAI', 'DARI']);
   const colJamSelesai = findCol(headers, ['JAM SELESAI', 'JAM SELESAI (HH:MM)', 'SELESAI', 'SAMPAI']);
   const colToleransi = findCol(headers, ['TOLERANSI', 'TOLERANSI (MENIT)', 'TOLERANSI MENIT']);
   const colKeterangan = findCol(headers, ['KETERANGAN', 'CATATAN']);
 
-  if (colNamaSesi === -1 || colHari === -1 || colJamMulai === -1) {
-    result.errors.push('Kolom wajib (NAMA SESI, HARI, JAM MULAI) tidak ditemukan dalam file Excel');
+  if (colNamaSesi === -1 || colJamMulai === -1) {
+    result.errors.push('Kolom wajib (NAMA SESI, JAM MULAI) tidak ditemukan dalam file Excel');
     return result;
   }
 
@@ -1095,16 +1097,38 @@ async function importJadwalDewanGuru(rows: any[][], headers: string[], createdBy
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const namaSesi = String(row[colNamaSesi] || '').trim();
-    const rawHari = String(row[colHari] || '').trim();
-    if (!namaSesi || !rawHari) { result.skipped++; continue; }
+    if (!namaSesi) { result.skipped++; continue; }
 
-    // Normalize hari (e.g. senin -> Senin, minggu -> Ahad)
-    let hari = rawHari.charAt(0).toUpperCase() + rawHari.slice(1).toLowerCase();
+    const rawTipe = colTipe !== -1 ? String(row[colTipe] || '').trim().toLowerCase() : '';
+    let tipe_jadwal: 'rutin' | 'insidental' = rawTipe === 'insidental' ? 'insidental' : 'rutin';
+
+    let tanggal: string | null = null;
+    if (colTanggal !== -1 && row[colTanggal]) {
+      const val = row[colTanggal];
+      if (!isNaN(Number(val)) && Number(val) > 20000) {
+        const date = new Date(Math.round((Number(val) - 25569) * 86400 * 1000));
+        tanggal = date.toISOString().split('T')[0];
+      } else {
+        tanggal = String(val).trim();
+      }
+      if (tanggal) tipe_jadwal = 'insidental';
+    }
+
+    let rawHari = colHari !== -1 ? String(row[colHari] || '').trim() : '';
+
+    if (tipe_jadwal === 'insidental' && tanggal) {
+      try {
+        const d = new Date(tanggal + 'T00:00:00');
+        if (!isNaN(d.getTime())) {
+          rawHari = validHari[d.getDay()];
+        }
+      } catch {}
+    }
+
+    let hari = rawHari ? rawHari.charAt(0).toUpperCase() + rawHari.slice(1).toLowerCase() : 'Senin';
     if (hari.toLowerCase() === 'minggu') hari = 'Ahad';
     if (!validHari.includes(hari)) {
-      result.errors.push(`Baris ${i + 2}: Nama hari "${rawHari}" tidak valid.`);
-      result.skipped++;
-      continue;
+      hari = 'Senin';
     }
 
     const homebase = colHomebase !== -1 ? String(row[colHomebase] || 'SEMUA').trim() : 'SEMUA';
@@ -1119,25 +1143,33 @@ async function importJadwalDewanGuru(rows: any[][], headers: string[], createdBy
     const keterangan = colKeterangan !== -1 ? String(row[colKeterangan] || '').trim() : '';
 
     try {
-      const [existing] = await pool.execute<RowDataPacket[]>(
-        `SELECT id FROM jadwal_dewan_guru WHERE nama_sesi = ? AND hari = ? AND homebase = ? LIMIT 1`,
-        [namaSesi, hari, homebase]
-      );
+      let existingQuery = '';
+      let existingParams: any[] = [];
+
+      if (tipe_jadwal === 'insidental' && tanggal) {
+        existingQuery = `SELECT id FROM jadwal_dewan_guru WHERE nama_sesi = ? AND tanggal = ? AND homebase = ? LIMIT 1`;
+        existingParams = [namaSesi, tanggal, homebase];
+      } else {
+        existingQuery = `SELECT id FROM jadwal_dewan_guru WHERE nama_sesi = ? AND hari = ? AND homebase = ? AND (tipe_jadwal = 'rutin' OR tipe_jadwal IS NULL) LIMIT 1`;
+        existingParams = [namaSesi, hari, homebase];
+      }
+
+      const [existing] = await pool.execute<RowDataPacket[]>(existingQuery, existingParams);
 
       if (existing.length > 0) {
         await pool.execute(
           `UPDATE jadwal_dewan_guru 
-           SET jam_mulai = ?, jam_selesai = ?, toleransi_menit = ?, keterangan = ?, aktif = 1
+           SET tipe_jadwal = ?, hari = ?, tanggal = ?, jam_mulai = ?, jam_selesai = ?, toleransi_menit = ?, keterangan = ?, aktif = 1
            WHERE id = ?`,
-          [jamMulai, jamSelesai, toleransi, keterangan || null, existing[0].id]
+          [tipe_jadwal, hari, tanggal, jamMulai, jamSelesai, toleransi, keterangan || null, existing[0].id]
         );
         result.updated++;
       } else {
         await pool.execute(
           `INSERT INTO jadwal_dewan_guru 
-           (nama_sesi, homebase, hari, jam_mulai, jam_selesai, toleransi_menit, keterangan, aktif, created_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-          [namaSesi, homebase, hari, jamMulai, jamSelesai, toleransi, keterangan || null, createdBy]
+           (nama_sesi, homebase, tipe_jadwal, hari, tanggal, jam_mulai, jam_selesai, toleransi_menit, keterangan, aktif, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+          [namaSesi, homebase, tipe_jadwal, hari, tanggal, jamMulai, jamSelesai, toleransi, keterangan || null, createdBy]
         );
         result.inserted++;
       }

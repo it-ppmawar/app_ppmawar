@@ -126,6 +126,10 @@ export default function AbsenGuruPage() {
   const [showAllCards, setShowAllCards] = useState(false);
   const [batchLoading, setBatchLoading] = useState(false);
 
+  // Sesi Jadwal (KBM vs Insidental / Rapat)
+  const [jadwalList, setJadwalList] = useState<any[]>([]);
+  const [selectedJadwalId, setSelectedJadwalId] = useState<number | null>(null);
+
   // Modal Input Absensi Guru
   const [inputModalGuru, setInputModalGuru] = useState<any>(null);
   const [inputStatus, setInputStatus] = useState<'Hadir' | 'Izin' | 'Sakit' | 'Alpha'>('Hadir');
@@ -142,12 +146,14 @@ export default function AbsenGuruPage() {
   const [pdfUrl, setPdfUrl] = useState('');
 
   // Fetch Dewan Guru Attendance
-  const fetchDewanData = useCallback(async () => {
+  const fetchDewanData = useCallback(async (targetJadwal?: number | null | unknown) => {
     setDewanLoading(true);
     setDewanError('');
     try {
       let url = `/api/dewan-guru/absen?tanggal=${tanggal}`;
       if (dewanHomebase !== 'SEMUA') url += `&homebase=${encodeURIComponent(dewanHomebase)}`;
+      const jId = typeof targetJadwal === 'number' ? targetJadwal : selectedJadwalId;
+      if (jId) url += `&jadwal_id=${jId}`;
 
       const res = await fetch(url);
       const json = await res.json();
@@ -156,13 +162,23 @@ export default function AbsenGuruPage() {
       } else {
         setDewanData(json.data || []);
         if (json.stats) setDewanStats(json.stats);
+        if (json.jadwalList) {
+          setJadwalList(json.jadwalList);
+          if (targetJadwal === undefined && !selectedJadwalId && json.jadwalList.length > 0) {
+            setSelectedJadwalId(json.selectedJadwalId || json.jadwalList[0].id);
+          }
+        }
       }
     } catch {
       setDewanError('Koneksi gagal.');
     } finally {
       setDewanLoading(false);
     }
-  }, [tanggal, dewanHomebase]);
+  }, [tanggal, dewanHomebase, selectedJadwalId]);
+
+  useEffect(() => {
+    setSelectedJadwalId(null);
+  }, [tanggal]);
 
   useEffect(() => {
     if ((role || isPengasuh) && mainMode === 'dewan_guru') {
@@ -224,6 +240,7 @@ export default function AbsenGuruPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           guru_id: inputModalGuru.id,
+          jadwal_id: selectedJadwalId || undefined,
           tanggal,
           status: inputStatus,
           keterangan: inputKeterangan
@@ -259,13 +276,18 @@ export default function AbsenGuruPage() {
     try {
       const batch = unrecorded.map(g => ({
         guru_id: g.id,
+        jadwal_id: selectedJadwalId || undefined,
         status: targetStatus,
         keterangan: `Presensi Massal (${targetStatus})`
       }));
       const res = await fetch('/api/dewan-guru/absen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batch, tanggal })
+        body: JSON.stringify({
+          tanggal,
+          jadwal_id: selectedJadwalId || undefined,
+          batch
+        })
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
@@ -288,8 +310,10 @@ export default function AbsenGuruPage() {
       return;
     }
 
+    const currentJadwal = jadwalList.find(j => j.id === selectedJadwalId);
+    const sesiInfo = currentJadwal ? ` | Sesi: ${currentJadwal.nama_sesi} (${(currentJadwal.jam_mulai || '').slice(0, 5)} - ${(currentJadwal.jam_selesai || '').slice(0, 5)})` : '';
     const title = 'PRESENSI KEHADIRAN DEWAN GURU YPMA';
-    const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${dateHeaderStr || tanggal} | Unit: ${dewanHomebase}\nTotal Guru: ${dewanStats.total} | Hadir: ${dewanStats.hadir} | Izin: ${dewanStats.izin} | Sakit: ${dewanStats.sakit} | Alpha: ${dewanStats.alpha} | Belum Absen: ${dewanStats.belum}`;
+    const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${dateHeaderStr || tanggal}${sesiInfo} | Unit: ${dewanHomebase}\nTotal Guru: ${dewanStats.total} | Hadir: ${dewanStats.hadir} | Izin: ${dewanStats.izin} | Sakit: ${dewanStats.sakit} | Alpha: ${dewanStats.alpha} | Belum Absen: ${dewanStats.belum}`;
     const filename = `Presensi_Dewan_Guru_${dewanHomebase.replace(/[^a-zA-Z0-9_-]/g, '_')}_${tanggal}`;
     const columns = ['No', 'NIP', 'Nama Guru', 'Unit / Homebase', 'No. HP', 'Status', 'Jam Masuk', 'Metode', 'Keterangan'];
     const rows = list.map((g, idx) => [
@@ -351,7 +375,12 @@ export default function AbsenGuruPage() {
                 const res = await fetch('/api/dewan-guru/absen', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ qr_token: tokenFound, tanggal, status: 'Hadir' })
+                  body: JSON.stringify({
+                    qr_token: tokenFound,
+                    tanggal,
+                    jadwal_id: selectedJadwalId || undefined,
+                    status: 'Hadir'
+                  })
                 });
                 const json = await res.json();
                 if (json.success) {
@@ -391,7 +420,7 @@ export default function AbsenGuruPage() {
 
   const [activeTab, setActiveTab] = useState<'semua' | 'madin' | 'quran' | 'kegiatan'>('semua');
   const [genderMode, setGenderMode] = useState<'PUTRA' | 'PUTRI'>('PUTRA');
-  const [levelTab, setLevelTab] = useState<'WUSTHO_MAK' | 'ULA' | 'WUSTHO'>('WUSTHO_MAK');
+  const [levelTab, setLevelTab] = useState<'SEMUA' | 'ULA' | 'WUSTHO' | 'MAK' | 'TQ'>('SEMUA');
   const [activeAsrama, setActiveAsrama] = useState('Asrama A');
   const [waktuFilter, setWaktuFilter] = useState<'semua' | 'pagi' | 'siang' | 'sore' | 'malam'>('semua');
   const [kbmSearch, setKbmSearch] = useState('');
@@ -454,14 +483,12 @@ export default function AbsenGuruPage() {
       const n = (c.nama_kelas || '').toUpperCase();
       const putri = n.includes('PUTRI') || n.includes('TQ PUTRI');
       if (genderMode === 'PUTRI' ? !putri : putri) return false;
-      if (genderMode === 'PUTRA') {
-        return levelTab === 'WUSTHO_MAK'
-          ? n.includes('WUSTHO') || n.includes('MAK') || n === 'TQ PUTRA'
-          : n.includes('ULA');
-      }
-      return levelTab === 'WUSTHO'
-        ? n.includes('WUSTHO') || n.includes('MAK')
-        : n.includes('ULA') || n.includes('TQ PUTRI');
+      if (levelTab === 'SEMUA') return true;
+      if (levelTab === 'ULA') return n.includes('ULA');
+      if (levelTab === 'WUSTHO') return n.includes('WUSTHO');
+      if (levelTab === 'MAK') return n.includes('MAK');
+      if (levelTab === 'TQ') return n.includes('TQ');
+      return true;
     },
     [genderMode, levelTab]
   );
@@ -574,7 +601,7 @@ export default function AbsenGuruPage() {
                 </Link>
 
                 <button
-                  onClick={mainMode === 'dewan_guru' ? fetchDewanData : fetchKbmData}
+                  onClick={() => (mainMode === 'dewan_guru' ? fetchDewanData() : fetchKbmData())}
                   disabled={dewanLoading || kbmLoading}
                   className="w-full py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center truncate"
                   title="Segarkan data"
@@ -627,6 +654,62 @@ export default function AbsenGuruPage() {
         {/* ═════════════════════════════════════════════════════════════════════ */}
         {mainMode === 'dewan_guru' && (
           <div className="space-y-3">
+            {/* Sesi Presensi Dewan Guru (KBM vs Insidental / Rapat) */}
+            {jadwalList.length > 0 && (
+              <div className="bg-white dark:bg-slate-900 p-2.5 sm:p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Clock size={15} className="text-teal-600 dark:text-teal-400 shrink-0" />
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-100">
+                      Pilih Sesi Presensi:
+                    </span>
+                  </div>
+                  {(() => {
+                    const cur = jadwalList.find(j => j.id === selectedJadwalId);
+                    if (cur?.tipe_jadwal === 'insidental') {
+                      return (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white shadow-xs flex items-center gap-1">
+                          <span>📢 INSIDENTAL / RAPAT</span>
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs no-scrollbar">
+                  {jadwalList.map(j => {
+                    const isSelected = selectedJadwalId === j.id;
+                    const isInsidental = j.tipe_jadwal === 'insidental';
+                    return (
+                      <button
+                        key={j.id}
+                        onClick={() => {
+                          setSelectedJadwalId(j.id);
+                          fetchDewanData(j.id);
+                        }}
+                        className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
+                          isSelected
+                            ? isInsidental
+                              ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-400/40'
+                              : 'bg-teal-600 text-white shadow-xs ring-2 ring-teal-500/40'
+                            : isInsidental
+                              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <span>{isInsidental ? '📢' : '🕒'}</span>
+                        <span>{j.nama_sesi}</span>
+                        <span className="text-[10px] opacity-85">
+                          ({(j.jam_mulai || '').slice(0, 5)} - {(j.jam_selesai || '').slice(0, 5)})
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Stats Summary Cards */}
             <div className="space-y-2">
               {/* Baris 1: Total Guru (1 Baris Memenuhi Kanan Kiri) */}
@@ -1016,18 +1099,44 @@ export default function AbsenGuruPage() {
             {activeTab !== 'semua' && (
               <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 flex flex-col gap-3">
                 {activeTab === 'madin' && (
-                  <div className="flex w-full bg-gray-100 dark:bg-gray-900 p-1 rounded-xl border border-gray-200/50 dark:border-gray-700">
-                    {(['PUTRA', 'PUTRI'] as const).map(g => (
-                      <button
-                        key={g}
-                        onClick={() => setGenderMode(g)}
-                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all text-center ${
-                          genderMode === g ? 'bg-white dark:bg-gray-800 text-green-700 dark:text-green-400 shadow-xs' : 'text-gray-500'
-                        }`}
-                      >
-                        {g}
-                      </button>
-                    ))}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex w-full bg-gray-100 dark:bg-gray-900 p-1 rounded-xl border border-gray-200/50 dark:border-gray-700">
+                      {(['PUTRA', 'PUTRI'] as const).map(g => (
+                        <button
+                          key={g}
+                          onClick={() => setGenderMode(g)}
+                          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all text-center cursor-pointer ${
+                            genderMode === g ? 'bg-white dark:bg-gray-800 text-teal-700 dark:text-teal-400 shadow-xs' : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex w-full bg-gray-100 dark:bg-gray-900 p-1 rounded-xl border border-gray-200/50 dark:border-gray-700 flex-wrap gap-1">
+                      {(
+                        [
+                          { id: 'SEMUA', label: 'Semua Jenjang' },
+                          { id: 'ULA', label: 'Ula' },
+                          { id: 'WUSTHO', label: 'Wustho' },
+                          { id: 'MAK', label: 'MAK' },
+                          { id: 'TQ', label: 'TQ' },
+                        ] as const
+                      ).map(lvl => (
+                        <button
+                          key={lvl.id}
+                          onClick={() => setLevelTab(lvl.id)}
+                          className={`flex-1 min-w-[70px] py-1.5 text-xs font-bold rounded-lg transition-all text-center cursor-pointer ${
+                            levelTab === lvl.id
+                              ? 'bg-teal-600 text-white shadow-xs'
+                              : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                          }`}
+                        >
+                          {lvl.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 

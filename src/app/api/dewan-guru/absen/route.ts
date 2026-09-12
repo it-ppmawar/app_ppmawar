@@ -26,14 +26,22 @@ export async function GET(request: Request) {
     const days = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     const hari = days[d.getDay()];
 
-    // 1. Ambil jadwal dewan guru untuk hari ini
-    let jadwalQuery = `SELECT * FROM jadwal_dewan_guru WHERE hari = ? AND aktif = 1`;
-    const jadwalParams: any[] = [hari];
+    // 1. Ambil jadwal dewan guru untuk hari ini:
+    // Rutin untuk hari ini ATAU Insidental untuk tanggal ini
+    let jadwalQuery = `
+      SELECT * FROM jadwal_dewan_guru 
+      WHERE aktif = 1 
+        AND (
+          ((tipe_jadwal = 'rutin' OR tipe_jadwal IS NULL) AND hari = ?)
+          OR (tipe_jadwal = 'insidental' AND tanggal = ?)
+        )
+    `;
+    const jadwalParams: any[] = [hari, tanggal];
     if (homebase && homebase !== 'SEMUA') {
       jadwalQuery += ` AND (homebase = ? OR homebase = 'SEMUA')`;
       jadwalParams.push(homebase);
     }
-    jadwalQuery += ` ORDER BY jam_mulai ASC`;
+    jadwalQuery += ` ORDER BY CASE WHEN tipe_jadwal = 'insidental' THEN 0 ELSE 1 END ASC, jam_mulai ASC`;
     const [jadwalRows] = await pool.execute<RowDataPacket[]>(jadwalQuery, jadwalParams);
 
     // 2. Ambil guru
@@ -68,9 +76,11 @@ export async function GET(request: Request) {
       absensiMap.set(key, a);
     }
 
+    // Target Sesi Jadwal (default: sesi pertama hari ini)
+    const targetJadwalId = jadwalId ? parseInt(jadwalId, 10) : (jadwalRows[0]?.id || 0);
+
     const data = (guruRows as any[]).map(guru => {
-      // Cek status absensi untuk jadwalId spesifik atau sesi pertama hari ini
-      const targetJadwalId = jadwalId ? parseInt(jadwalId, 10) : (jadwalRows[0]?.id || 0);
+      // Cek status absensi untuk targetJadwalId spesifik atau sesi pertama hari ini
       const match = absensiMap.get(`${guru.id}_${targetJadwalId}`) ||
                     absensiMap.get(`${guru.id}_0`) ||
                     (absensiRows as any[]).find(a => a.guru_id === guru.id);
@@ -100,6 +110,7 @@ export async function GET(request: Request) {
       hari,
       stats: { total, hadir, izin, sakit, alpha, belum },
       jadwalList: jadwalRows,
+      selectedJadwalId: targetJadwalId,
       data
     });
   } catch (error: any) {
