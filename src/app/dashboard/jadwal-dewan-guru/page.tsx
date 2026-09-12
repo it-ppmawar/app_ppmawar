@@ -773,10 +773,10 @@ export default function JadwalDewanGuruPage() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-amber-800 dark:text-amber-400 mb-1 uppercase tracking-wider">
+                    <label className="block text-[10px] font-bold text-amber-800 dark:text-amber-400 mb-1.5 uppercase tracking-wider">
                       💡 Templat Cepat Nama Sesi Rapat:
                     </label>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="grid grid-cols-2 gap-1.5">
                       {[
                         'Rapat Pleno Dewan Guru',
                         'Rapat Evaluasi KBM Bulanan',
@@ -789,9 +789,13 @@ export default function JadwalDewanGuruPage() {
                           key={preset}
                           type="button"
                           onClick={() => setFormData({ ...formData, nama_sesi: preset })}
-                          className="text-[10px] py-1 px-2 rounded-lg bg-white dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-slate-700 dark:text-slate-200 border border-amber-200 dark:border-amber-800/80 font-semibold transition-colors cursor-pointer"
+                          className={`text-[10px] sm:text-[11px] py-2 px-2.5 rounded-xl text-center flex items-center justify-center font-medium leading-snug transition-all cursor-pointer border min-h-[38px] ${
+                            formData.nama_sesi === preset
+                              ? 'bg-amber-500 text-white border-amber-600 font-bold shadow-xs'
+                              : 'bg-white dark:bg-slate-800 hover:bg-amber-100/70 dark:hover:bg-amber-900/60 text-slate-700 dark:text-slate-200 border-amber-200/90 dark:border-amber-800/80 shadow-2xs'
+                          }`}
                         >
-                          + {preset}
+                          <span>+ {preset}</span>
                         </button>
                       ))}
                     </div>
