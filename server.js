@@ -121,6 +121,16 @@ app.prepare().then(() => {
     res.json({ status: 'ok', message: 'Express Server & Next.js running normally.' });
   });
 
+  // Cegah browser & LiteSpeed caching pada dokumen HTML agar pembaruan tampilan langsung aktif
+  server.use((req, res, next) => {
+    if (!req.url.startsWith('/_next/static') && !req.url.startsWith('/favicon.ico')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    next();
+  });
+
   // Tangani semua request lain melalui Next.js App Router
   server.use((req, res) => {
     return handle(req, res);

@@ -15,6 +15,8 @@ if ($key !== $SECRET_KEY) {
 }
 
 header('Content-Type: text/plain; charset=utf-8');
+header('X-LiteSpeed-Purge: *');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
 $targetDir = __DIR__;
 if (basename($targetDir) === 'public') {
