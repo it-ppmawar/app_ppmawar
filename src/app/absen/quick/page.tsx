@@ -1665,13 +1665,13 @@ function QuickAbsenContent() {
               </p>
             </div>
             <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 space-y-3 text-left">
-              <label className="block text-xs font-bold text-slate-200 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Camera size={16} className="text-emerald-400 animate-pulse" />
-                  Foto Kehadiran Kelas/Kamar (Opsional)
-                </span>
-                <span className="text-[10px] text-emerald-400/80 font-normal">Tanpa Beban Server</span>
+              <label className="block text-xs font-bold text-slate-200 flex items-center gap-2">
+                <Camera size={16} className="text-emerald-400 animate-pulse" />
+                Foto Kehadiran Kelas/Kamar (Opsional)
               </label>
+              <p className="text-[10px] text-emerald-400/80 font-medium mt-0.5 pl-6 flex items-center gap-1">
+                ⚡ Diproses langsung di HP (Tanpa Beban Server)
+              </p>
 
               {/* Camera live view */}
               {showCamera && (
