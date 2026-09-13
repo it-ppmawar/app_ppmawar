@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { GraduationCap, Search, Edit, Trash2, RotateCcw, Download, FileText, Upload, X, Plus } from 'lucide-react';
+import { GraduationCap, Search, Edit, Trash2, RotateCcw, Download, FileText, Upload, X, Plus, RefreshCw, Database, CheckCircle2 } from 'lucide-react';
 import { downloadTemplate } from '@/lib/downloadTemplate';
 
 export default function AlumniManagementPage() {
@@ -15,6 +15,15 @@ export default function AlumniManagementPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
+
+  // Sinkronisasi Mitra Dump State
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isSyncResultModalOpen, setIsSyncResultModalOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [serverDumpInfo, setServerDumpInfo] = useState<{ availableOnServer: boolean; filename?: string; size?: string } | null>(null);
+  const [dumpUploadFile, setDumpUploadFile] = useState<File | null>(null);
+  const [syncMode, setSyncMode] = useState<'server' | 'upload'>('server');
+  const [syncResult, setSyncResult] = useState<any>(null);
 
   const handleImportExcel = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +50,63 @@ export default function AlumniManagementPage() {
       alert('Terjadi kesalahan koneksi');
     } finally {
       setImporting(false);
+    }
+  };
+
+  const handleOpenSyncModal = async () => {
+    setIsSyncModalOpen(true);
+    try {
+      const res = await fetch('/api/sync/mitra-dump');
+      const data = await res.json();
+      if (data.success) {
+        setServerDumpInfo(data);
+        if (!data.availableOnServer) {
+          setSyncMode('upload');
+        } else {
+          setSyncMode('server');
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal cek status file dump server:', e);
+    }
+  };
+
+  const handleExecuteSyncMitra = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setSyncing(true);
+    try {
+      let res: Response;
+      if (syncMode === 'upload') {
+        if (!dumpUploadFile) {
+          alert('Silakan pilih file dump database (.sql atau .adding) terlebih dahulu!');
+          setSyncing(false);
+          return;
+        }
+        const formData = new FormData();
+        formData.append('file', dumpUploadFile);
+        res = await fetch('/api/sync/mitra-dump', {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        res = await fetch('/api/sync/mitra-dump', {
+          method: 'POST',
+        });
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        setSyncResult(data);
+        setIsSyncModalOpen(false);
+        setIsSyncResultModalOpen(true);
+        fetchAlumni();
+      } else {
+        alert(data.error || 'Gagal menyinkronkan data alumni');
+      }
+    } catch (err: any) {
+      alert('Gagal menghubungi server sinkronisasi: ' + err.message);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -348,6 +414,17 @@ export default function AlumniManagementPage() {
               title="Impor Excel"
             >
               <Upload size={14} /> Impor
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenSyncModal}
+              disabled={syncing}
+              className="flex-1 md:flex-none justify-center px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-75"
+              title="Sinkronisasi Data Alumni dari Database Mitra Smart Pesantren"
+            >
+              <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">{syncing ? 'Sinkronisasi...' : 'Sinkronisasi'}</span>
+              <span className="sm:hidden">{syncing ? '...' : 'Sync'}</span>
             </button>
             <button
               type="button"
@@ -750,6 +827,173 @@ export default function AlumniManagementPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Dialog Sinkronisasi Mitra Dump */}
+      {isSyncModalOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white relative">
+              <button
+                onClick={() => { if (!syncing) setIsSyncModalOpen(false); }}
+                disabled={syncing}
+                className="absolute top-5 right-5 text-white/80 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-3 backdrop-blur-md">
+                <Database size={24} className="text-white" />
+              </div>
+              <h2 className="text-xl font-black">Sinkronisasi Data Alumni</h2>
+              <p className="text-xs text-emerald-100 mt-1">
+                Ekstrak otomatis ribuan data santri boyong &amp; lulus dari database Smart Pesantren
+              </p>
+            </div>
+
+            <form onSubmit={handleExecuteSyncMitra} className="p-6 space-y-4">
+              <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1.5 rounded-2xl gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setSyncMode('server')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                    syncMode === 'server'
+                      ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                  }`}
+                >
+                  File Server ({serverDumpInfo?.filename || 'DOC...adding'})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSyncMode('upload')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                    syncMode === 'upload'
+                      ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                  }`}
+                >
+                  Unggah Dump Baru (.sql)
+                </button>
+              </div>
+
+              {syncMode === 'server' ? (
+                <div className="space-y-3 bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-800/40">
+                  <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
+                    <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                    <span>File Dump Smart Pesantren Terdeteksi</span>
+                  </div>
+                  <div className="text-xs text-emerald-700 dark:text-emerald-400 space-y-1">
+                    <p>• File: <span className="font-mono font-bold">{serverDumpInfo?.filename || 'DOC-20260728-WA0091.adding'}</span></p>
+                    <p>• Ukuran: <span className="font-bold">{serverDumpInfo?.size || '~43.9 MB'}</span></p>
+                    <p className="mt-2 text-gray-600 dark:text-gray-300">
+                      Sistem akan menyaring seluruh santri yang berstatus <span className="font-bold">Boyong / Drop Out</span>, tanggal masuk, tanggal keluar, NIK, alamat lengkap, dan nomor HP wali langsung ke tabel alumni.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                    Pilih File Dump Database (.sql atau .adding):
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-6 text-center hover:border-emerald-500 transition-colors relative cursor-pointer">
+                    <input
+                      type="file"
+                      accept=".sql,.adding,.dump,.txt"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (files && files.length > 0) setDumpUploadFile(files[0]);
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <Upload size={28} className="mx-auto text-emerald-600 mb-2" />
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                      {dumpUploadFile ? dumpUploadFile.name : 'Pilih file dump (.sql / .adding)'}
+                    </span>
+                    <span className="text-[10px] text-gray-400 block mt-1">Mendukung format dump MySQL Smart Pesantren</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => { if (!syncing) setIsSyncModalOpen(false); }}
+                  disabled={syncing}
+                  className="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 transition-colors text-xs"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={syncing || (syncMode === 'upload' && !dumpUploadFile)}
+                  className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-xl shadow-lg shadow-emerald-600/20 transition-all text-xs flex items-center gap-2 disabled:opacity-50"
+                >
+                  {syncing ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Sedang Menyinkronkan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={14} />
+                      <span>Mulai Sinkronisasi Sekarang</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Hasil Sinkronisasi Mitra Dump */}
+      {isSyncResultModalOpen && syncResult && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white text-center">
+              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-md">
+                <CheckCircle2 size={32} className="text-white" />
+              </div>
+              <h2 className="text-xl font-black">Sinkronisasi Alumni Selesai!</h2>
+              <p className="text-xs text-emerald-100 mt-1">Database Mitra Smart Pesantren</p>
+            </div>
+            <div className="p-6 space-y-4 text-sm text-gray-700 dark:text-gray-200">
+              <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                {syncResult.message}
+              </p>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Alumni Ditemukan</span>
+                  <div className="text-lg font-extrabold text-blue-600 dark:text-blue-400 mt-1">
+                    {syncResult.stats?.total_alumni || 0}
+                  </div>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Ditambahkan</span>
+                  <div className="text-xl font-extrabold text-green-600 dark:text-green-400 mt-1">
+                    {syncResult.stats?.alumni_ditambahkan || 0}
+                  </div>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Diperbarui</span>
+                  <div className="text-xl font-extrabold text-purple-600 dark:text-purple-400 mt-1">
+                    {syncResult.stats?.alumni_diperbarui || 0}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSyncResultModalOpen(false);
+                  fetchAlumni();
+                }}
+                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-100 mt-2"
+              >
+                Tutup &amp; Muat Data Alumni
+              </button>
+            </div>
           </div>
         </div>
       )}
