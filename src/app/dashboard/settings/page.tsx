@@ -23,6 +23,7 @@ export default function SettingsPage() {
     lat_pesantren: '',
     lng_pesantren: '',
     radius_absen: 50,
+    gps_scan_absen_wajib: true,
     rutinitas_sinkronisasi: 'manual',
     terakhir_sinkronisasi: '',
     nomor_cs: '+628133129223',
@@ -146,6 +147,7 @@ export default function SettingsPage() {
           lat_pesantren: json.data.lat_pesantren || '',
           lng_pesantren: json.data.lng_pesantren || '',
           radius_absen: parseInt(json.data.radius_absen) || 50,
+          gps_scan_absen_wajib: json.data.gps_scan_absen_wajib !== '0',
           rutinitas_sinkronisasi: json.data.rutinitas_sinkronisasi || 'manual',
           terakhir_sinkronisasi: json.data.terakhir_sinkronisasi || '',
           nomor_cs: json.data.nomor_cs || '+628133129223',
@@ -863,6 +865,26 @@ export default function SettingsPage() {
                 className="w-24 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-4 py-2 rounded-xl text-center font-bold focus:ring-2 focus:ring-red-500"
               />
               <span className="text-sm font-bold text-gray-500">Meter</span>
+            </div>
+          </div>
+
+          <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">Kunci Lokasi GPS pada Scan Kamera (QR &amp; Face AI)</label>
+              <p className="text-xs text-gray-500 mt-1 max-w-md">
+                Wajibkan perangkat yang digunakan untuk scan kamera terverifikasi berada di dalam radius pesantren saat memindai kartu atau wajah santri.
+              </p>
+            </div>
+            <div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={settings.gps_scan_absen_wajib} 
+                  onChange={(e) => setSettings({ ...settings, gps_scan_absen_wajib: e.target.checked })} 
+                  className="sr-only peer" 
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"></div>
+              </label>
             </div>
           </div>
         </div>

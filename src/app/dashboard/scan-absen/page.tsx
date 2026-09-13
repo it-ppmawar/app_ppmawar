@@ -5,9 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Camera, CheckCircle, XCircle, QrCode, Shield, Wifi, RefreshCw,
-  ChevronDown, FlipHorizontal, Layers, Sparkles, Brain, ScanFace,
+  ChevronDown, FlipHorizontal, SwitchCamera, Layers, Sparkles, Brain, ScanFace,
   Loader2, Users, Zap, Info, Link2, Search, UserPlus, CheckCircle2,
-  AlertTriangle, Settings, Upload, Image, HelpCircle
+  AlertTriangle, Settings, Upload, Image, HelpCircle, MapPin
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 
@@ -41,6 +41,20 @@ function euclideanDistance(a: number[], b: number[]): number {
   let sum = 0;
   for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; sum += d * d; }
   return Math.sqrt(sum);
+}
+
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3;
+  const rad = Math.PI / 180;
+  const phi1 = lat1 * rad;
+  const phi2 = lat2 * rad;
+  const deltaPhi = (lat2 - lat1) * rad;
+  const deltaLambda = (lon2 - lon1) * rad;
+  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+            Math.cos(phi1) * Math.cos(phi2) *
+            Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 // =====================================================
@@ -301,6 +315,51 @@ function ScanAbsenInner() {
   const [userRole, setUserRole] = useState<string>('');
   const [availableTargets, setAvailableTargets] = useState<string[]>(['kegiatan', 'madin', 'quran']);
 
+  // Smart GPS state
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'checking' | 'verified' | 'out_of_radius' | 'denied' | 'disabled'>('idle');
+  const [gpsDistance, setGpsDistance] = useState<number | null>(null);
+  const [gpsMaxRadius, setGpsMaxRadius] = useState<number>(50);
+  const [isGpsRequired, setIsGpsRequired] = useState<boolean>(false);
+  const [pesantrenCoords, setPesantrenCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  const checkGpsLocation = useCallback((targetLat?: number, targetLng?: number, maxRadius?: number) => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setGpsStatus('denied');
+      return;
+    }
+    setGpsStatus('checking');
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const uLat = pos.coords.latitude;
+        const uLng = pos.coords.longitude;
+        setGpsCoords({ lat: uLat, lng: uLng });
+
+        const pLat = targetLat ?? pesantrenCoords?.lat;
+        const pLng = targetLng ?? pesantrenCoords?.lng;
+        const radius = maxRadius ?? gpsMaxRadius;
+
+        if (pLat !== undefined && pLng !== undefined && !isNaN(pLat) && !isNaN(pLng)) {
+          const dist = calculateDistanceMeters(uLat, uLng, pLat, pLng);
+          setGpsDistance(dist);
+          if (radius > 0 && dist > radius) {
+            setGpsStatus('out_of_radius');
+          } else {
+            setGpsStatus('verified');
+          }
+        } else {
+          setGpsStatus('verified');
+        }
+      },
+      (err) => {
+        console.warn('GPS location error:', err);
+        setGpsStatus('denied');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }, [pesantrenCoords, gpsMaxRadius]);
+
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -356,6 +415,38 @@ function ScanAbsenInner() {
     };
     initRoleAndTargets();
   }, []);
+
+  // Memuat pengaturan titik koordinat pesantren dan memvalidasi Smart GPS
+  useEffect(() => {
+    const fetchSettingsAndGps = async () => {
+      try {
+        const res = await fetch('/api/settings?public=1');
+        const json = await res.json();
+        if (json.success && json.data) {
+          const targetLat = parseFloat((json.data.lat_pesantren || '').replace(',', '.'));
+          const targetLng = parseFloat((json.data.lng_pesantren || '').replace(',', '.'));
+          const radius = parseFloat((json.data.radius_absen || '50').replace(',', '.'));
+          const required = json.data.gps_scan_absen_wajib === '1' ||
+            (json.data.gps_scan_absen_wajib !== '0' && !isNaN(targetLat) && !isNaN(targetLng));
+
+          setGpsMaxRadius(radius || 50);
+          if (!isNaN(targetLat) && !isNaN(targetLng)) {
+            setPesantrenCoords({ lat: targetLat, lng: targetLng });
+          }
+          setIsGpsRequired(required);
+
+          if (required) {
+            checkGpsLocation(targetLat, targetLng, radius || 50);
+          } else {
+            setGpsStatus('disabled');
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal memuat setting GPS:', err);
+      }
+    };
+    fetchSettingsAndGps();
+  }, [checkGpsLocation]);
 
   // Auto-switch mode dari URL param saat mount
   useEffect(() => {
@@ -426,7 +517,12 @@ function ScanAbsenInner() {
       const res = await fetch('/api/scan-absen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barcodeData, selectedSchedule })
+        body: JSON.stringify({
+          barcodeData,
+          selectedSchedule,
+          userLat: gpsCoords?.lat,
+          userLng: gpsCoords?.lng
+        })
       });
       const data = await res.json();
       const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -442,6 +538,12 @@ function ScanAbsenInner() {
           title: 'Kartu Tidak Dikenal',
           text: data.message,
           unknownCode: barcodeData
+        });
+      } else if (data.message?.includes('radius pesantren') || data.message?.includes('GPS')) {
+        setPopup({
+          type: 'warning',
+          title: 'Lokasi Di Luar Radius 📍',
+          text: data.message
         });
       } else {
         // Kesalahan server atau status lainnya
@@ -511,6 +613,26 @@ function ScanAbsenInner() {
     }, 800);
   }, []);
 
+  // Auto-scroll ke posisi kamera agar area kamera terlihat utuh di layar HP (seperti foto 2)
+  const scrollToCamera = useCallback(() => {
+    const doScroll = () => {
+      if (!cameraContainerRef.current) return;
+      const rect = cameraContainerRef.current.getBoundingClientRect();
+      // Hitung posisi scroll agar bagian atas kartu kamera berada tepat ~12px di bawah header browser.
+      // Ini memberi ruang vertikal maksimal sehingga seluruh video frame, panduan wajah,
+      // dan tombol/keterangan di bawahnya terlihat sempurna tanpa tertutup navbar bawah.
+      const targetScrollY = window.scrollY + rect.top - 12;
+      window.scrollTo({
+        top: Math.max(0, targetScrollY),
+        behavior: 'smooth',
+      });
+    };
+
+    // Jalankan segera dan ulangi setelah video stream ter-render penuh oleh browser
+    setTimeout(doScroll, 120);
+    setTimeout(doScroll, 450);
+  }, []);
+
   const startFaceScanner = useCallback(async (overrideFacingMode?: 'environment' | 'user') => {
     if (typeof window === 'undefined') return;
     const targetFacing = overrideFacingMode || facingMode;
@@ -545,13 +667,14 @@ function ScanAbsenInner() {
       setFaceStatus('scanning');
       setFaceStatusMsg(`${db.length} santri ter-enroll. Arahkan wajah ke kamera...`);
       runDetectionLoop(faceapi, db);
+      scrollToCamera();
     } catch (err: any) {
       console.error('Face scanner error:', err);
       setFaceStatus('error');
       setFaceStatusMsg('Gagal membuka kamera: ' + err.message);
       setIsScanning(false);
     }
-  }, [facingMode, loadFaceDb, runDetectionLoop]);
+  }, [facingMode, loadFaceDb, runDetectionLoop, scrollToCamera]);
 
   const confirmFaceAbsen = async () => {
     if (!detectResult || confirmPending) return;
@@ -560,7 +683,12 @@ function ScanAbsenInner() {
       const res = await fetch('/api/scan-absen/face', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ murid_id: detectResult.murid_id, selectedSchedule })
+        body: JSON.stringify({
+          murid_id: detectResult.murid_id,
+          selectedSchedule,
+          userLat: gpsCoords?.lat,
+          userLng: gpsCoords?.lng
+        })
       });
       const data = await res.json();
       const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -568,6 +696,8 @@ function ScanAbsenInner() {
       if (data.success) {
         setLastScan({ nama: detectResult.nama, waktu: now, foto: data.foto || null });
         setPopup({ type: 'success', title: 'Absen Wajah Berhasil! ✅', text: data.message, foto: data.foto || null });
+      } else if (data.message?.includes('radius pesantren') || data.message?.includes('GPS')) {
+        setPopup({ type: 'warning', title: 'Lokasi Di Luar Radius 📍', text: data.message });
       } else {
         setPopup({ type: 'warning', title: 'Gagal Absen', text: data.message || 'Terjadi kesalahan.' });
       }
@@ -606,10 +736,18 @@ function ScanAbsenInner() {
     setFacingMode(newFacing);
     if (scanMode === 'qr' && isScanning) {
       await stopQrScanner();
-      setTimeout(async () => { await startQrScanner(newFacing); setIsSwitchingCamera(false); }, 400);
+      setTimeout(async () => {
+        await startQrScanner(newFacing);
+        setIsSwitchingCamera(false);
+        scrollToCamera();
+      }, 400);
     } else if (scanMode === 'face' && isScanning) {
       stopFaceScanner();
-      setTimeout(async () => { await startFaceScanner(newFacing); setIsSwitchingCamera(false); }, 400);
+      setTimeout(async () => {
+        await startFaceScanner(newFacing);
+        setIsSwitchingCamera(false);
+        scrollToCamera();
+      }, 400);
     } else { setIsSwitchingCamera(false); }
   };
 
@@ -625,10 +763,21 @@ function ScanAbsenInner() {
   };
 
   const startScanner = () => {
-    if (scanMode === 'qr') setIsScanning(true);
-    else startFaceScanner();
-    setTimeout(() => cameraContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    if (scanMode === 'qr') {
+      setIsScanning(true);
+      scrollToCamera();
+    } else {
+      startFaceScanner();
+      scrollToCamera();
+    }
   };
+
+  // Pastikan auto-scroll berjalan tepat saat Face AI status menjadi scanning
+  useEffect(() => {
+    if (faceStatus === 'scanning') {
+      scrollToCamera();
+    }
+  }, [faceStatus, scrollToCamera]);
 
   useEffect(() => { return () => { stopQrScanner(); stopFaceScanner(); }; }, []);
 
@@ -784,6 +933,42 @@ function ScanAbsenInner() {
         </button>
       </div>
 
+      {/* ====== SMART GPS BADGE ====== */}
+      {isGpsRequired && (
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm text-xs transition-all">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+              gpsStatus === 'verified' ? 'bg-emerald-500 animate-pulse' :
+              gpsStatus === 'checking' ? 'bg-amber-400 animate-ping' :
+              gpsStatus === 'out_of_radius' ? 'bg-rose-500' : 'bg-amber-500'
+            }`} />
+            <div className="truncate">
+              <span className="font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1.5">
+                <MapPin size={13} className={gpsStatus === 'verified' ? 'text-emerald-500' : gpsStatus === 'out_of_radius' ? 'text-rose-500' : 'text-amber-500'} />
+                {gpsStatus === 'verified' && `Area Pesantren (${gpsDistance !== null ? (gpsDistance >= 1000 ? `${(gpsDistance/1000).toFixed(1)} km` : `${Math.round(gpsDistance)}m`) : 'OK'})`}
+                {gpsStatus === 'checking' && 'Menghubungkan GPS satelit...'}
+                {gpsStatus === 'out_of_radius' && `Di Luar Radius Pesantren (${gpsDistance !== null ? (gpsDistance >= 1000 ? `${(gpsDistance/1000).toFixed(1)} km` : `${Math.round(gpsDistance)}m`) : ''} / maks ${gpsMaxRadius}m)`}
+                {gpsStatus === 'denied' && 'Izin Lokasi (GPS) Belum Aktif'}
+                {gpsStatus === 'idle' && 'Smart GPS Siap'}
+              </span>
+            </div>
+          </div>
+          {(gpsStatus === 'denied' || gpsStatus === 'out_of_radius') && (
+            <button
+              onClick={() => checkGpsLocation()}
+              className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 active:scale-95 flex-shrink-0 ml-2 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-1 rounded-lg"
+            >
+              <RefreshCw size={11} /> Cek Ulang
+            </button>
+          )}
+          {gpsStatus === 'verified' && (
+            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex-shrink-0 ml-2">
+              Valid &amp; Sinkron ✅
+            </span>
+          )}
+        </div>
+      )}
+
       {/* ====== HTTP WARNING ====== */}
       {isHttpWarning && (
         <div className="bg-amber-50 dark:bg-amber-900/30 border-2 border-amber-200 rounded-2xl p-4 flex gap-3">
@@ -837,8 +1022,10 @@ function ScanAbsenInner() {
                   </span>
                   <div className="flex items-center gap-2">
                     <button onClick={switchCamera} disabled={isSwitchingCamera}
-                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all ${isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
-                      <FlipHorizontal size={14} className={isSwitchingCamera ? 'animate-spin' : ''} />
+                      title={facingMode === 'environment' ? 'Ganti ke Kamera Depan' : 'Ganti ke Kamera Belakang'}
+                      aria-label="Ganti Kamera Depan/Belakang"
+                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all active:scale-95 ${isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-sm'}`}>
+                      <SwitchCamera size={16} className={isSwitchingCamera ? 'animate-spin' : ''} />
                       <span className="hidden sm:inline">{isSwitchingCamera ? 'Mengganti...' : facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
                     </button>
                     <button onClick={stopAll} className="bg-red-500 hover:bg-red-600 p-1.5 rounded-lg"><XCircle size={18} /></button>
@@ -886,8 +1073,10 @@ function ScanAbsenInner() {
                       {faceStatus === 'scanning' && '🟢 Aktif'}{faceStatus === 'detected' && '✅ Terdeteksi!'}{faceStatus === 'error' && '❌ Error'}
                     </span>
                     <button onClick={switchCamera} disabled={isSwitchingCamera}
-                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all ${isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
-                      <FlipHorizontal size={14} className={isSwitchingCamera ? 'animate-spin' : ''} />
+                      title={facingMode === 'environment' ? 'Ganti ke Kamera Depan' : 'Ganti ke Kamera Belakang'}
+                      aria-label="Ganti Kamera Depan/Belakang"
+                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all active:scale-95 ${isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-sm'}`}>
+                      <SwitchCamera size={16} className={isSwitchingCamera ? 'animate-spin' : ''} />
                       <span className="hidden sm:inline">{isSwitchingCamera ? 'Mengganti...' : facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
                     </button>
                     <button onClick={stopAll} className="bg-red-500 hover:bg-red-600 p-1.5 rounded-lg"><XCircle size={18} /></button>
@@ -929,16 +1118,18 @@ function ScanAbsenInner() {
                 </div>
 
                 {faceStatus === 'scanning' && faceDbCount > 0 && (
-                  <div className="flex items-center justify-between">
+                  <div className="space-y-1.5 pt-1">
                     <div className="flex items-center gap-2 text-xs text-gray-400">
-                      <Users size={13} />
+                      <Users size={13} className="flex-shrink-0 text-violet-400" />
                       <span>Mencocokkan dengan <strong className="text-violet-400">{faceDbCount} santri</strong></span>
                     </div>
-                    {/* Tombol "Wajah Tidak Cocok" saat scanning cukup lama */}
-                    <button onClick={handleFaceNotFound}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 underline flex items-center gap-1">
-                      <UserPlus size={12} /> Daftarkan Wajah Baru
-                    </button>
+                    <div className="flex justify-end">
+                      {/* Tombol "Wajah Tidak Cocok" saat scanning cukup lama */}
+                      <button onClick={handleFaceNotFound}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 underline flex items-center gap-1.5 font-medium transition active:scale-95">
+                        <UserPlus size={12} /> Daftarkan Wajah Baru
+                      </button>
+                    </div>
                   </div>
                 )}
 

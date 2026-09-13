@@ -3,9 +3,23 @@ import { NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3;
+  const rad = Math.PI / 180;
+  const phi1 = lat1 * rad;
+  const phi2 = lat2 * rad;
+  const deltaPhi = (lat2 - lat1) * rad;
+  const deltaLambda = (lon2 - lon1) * rad;
+  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+            Math.cos(phi1) * Math.cos(phi2) *
+            Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { barcodeData, selectedSchedule } = await request.json();
+    const { barcodeData, selectedSchedule, userLat, userLng } = await request.json();
 
     if (!barcodeData) {
       return NextResponse.json({ success: false, message: 'Barcode tidak boleh kosong.' }, { status: 400 });
@@ -48,13 +62,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ambil waktu tenggang dan waktu mulai dari pengaturan (default: tenggang 2 jam, mulai 30 menit)
+    // Ambil pengaturan sistem (waktu tenggang, mulai, dan lokasi GPS)
     const [settingRows] = await db.query<RowDataPacket[]>(
       `SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis
-       WHERE nama_pengaturan IN ('waktu_tenggang_absensi', 'waktu_mulai_absensi')`
+       WHERE nama_pengaturan IN ('waktu_tenggang_absensi', 'waktu_mulai_absensi', 'lat_pesantren', 'lng_pesantren', 'radius_absen', 'gps_scan_absen_wajib')`
     );
     const settingMap: Record<string, string> = {};
     for (const row of settingRows) settingMap[row.nama_pengaturan] = row.nilai;
+
+    // Validasi Smart GPS jika diwajibkan
+    const isGpsRequired = settingMap['gps_scan_absen_wajib'] === '1' ||
+      (settingMap['gps_scan_absen_wajib'] !== '0' && !!settingMap['lat_pesantren'] && !!settingMap['lng_pesantren']);
+    const targetLat = parseFloat((settingMap['lat_pesantren'] || '').toString().replace(',', '.').trim());
+    const targetLng = parseFloat((settingMap['lng_pesantren'] || '').toString().replace(',', '.').trim());
+    const maxRadius = parseFloat((settingMap['radius_absen'] || '').toString().replace(',', '.').trim());
+
+    if (isGpsRequired && !isNaN(targetLat) && !isNaN(targetLng) && !isNaN(maxRadius) && maxRadius > 0) {
+      const uLat = parseFloat((userLat ?? '').toString().replace(',', '.').trim());
+      const uLng = parseFloat((userLng ?? '').toString().replace(',', '.').trim());
+
+      if (isNaN(uLat) || isNaN(uLng)) {
+        return NextResponse.json({
+          success: false,
+          message: 'Absensi Ditolak: Lokasi GPS perangkat Anda belum terdeteksi atau izin belum diberikan. Aktifkan GPS untuk melakukan scan.'
+        }, { status: 400 });
+      }
+
+      const distanceMeters = calculateDistanceMeters(uLat, uLng, targetLat, targetLng);
+      if (distanceMeters > maxRadius) {
+        const distText = distanceMeters >= 1000 
+          ? `${(distanceMeters / 1000).toFixed(2)} km` 
+          : `${Math.round(distanceMeters)} meter`;
+        const radiusText = maxRadius >= 1000 
+          ? `${(maxRadius / 1000).toFixed(1)} km` 
+          : `${Math.round(maxRadius)} meter`;
+        return NextResponse.json({
+          success: false,
+          message: `Absensi Ditolak: Perangkat terdeteksi di luar radius pesantren (${distText} dari pesantren, batas: ${radiusText}).`
+        }, { status: 403 });
+      }
+    }
     const waktuTenggangJam = !isNaN(parseFloat(settingMap['waktu_tenggang_absensi']))
       ? parseFloat(settingMap['waktu_tenggang_absensi'])
       : 2;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy, Search, Key, Link as LinkIcon } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, SwitchCamera, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy, Search, Key, Link as LinkIcon } from 'lucide-react';
 import Link from 'next/link';
 
 // Avatar & Photo helper
@@ -1698,7 +1698,7 @@ function QuickAbsenContent() {
                         disabled={isSwitchingCamera}
                         className="bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl transition"
                       >
-                        <FlipHorizontal size={14} className={isSwitchingCamera ? 'animate-spin' : ''} />
+                        <SwitchCamera size={15} className={isSwitchingCamera ? 'animate-spin' : ''} />
                         <span className="hidden sm:inline">Ganti</span>
                       </button>
                       <button

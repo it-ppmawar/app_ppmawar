@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     if (!isAdmin && publicOnly) {
       // Kembalikan setting panggilan & lokasi publik
       const [rows] = await pool.execute<RowDataPacket[]>(
-        "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('jeda_panggilan_wali', 'jeda_panggilan_pengurus', 'lat_pesantren', 'lng_pesantren', 'radius_absen', 'radius_panggilan_wali')"
+        "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('jeda_panggilan_wali', 'jeda_panggilan_pengurus', 'lat_pesantren', 'lng_pesantren', 'radius_absen', 'radius_panggilan_wali', 'gps_scan_absen_wajib')"
       );
       const settings: Record<string, string> = {};
       rows.forEach((row: any) => { settings[row.nama_pengaturan] = row.nilai; });
@@ -67,6 +67,7 @@ export async function PUT(request: Request) {
       lat_pesantren, 
       lng_pesantren, 
       radius_absen, 
+      gps_scan_absen_wajib,
       rutinitas_sinkronisasi, 
       nomor_cs, 
       mode_libur,
@@ -197,6 +198,13 @@ export async function PUT(request: Request) {
       await pool.execute(
         'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
         ['radius_absen', cleanRadius, cleanRadius]
+      );
+    }
+
+    if (gps_scan_absen_wajib !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
+        ['gps_scan_absen_wajib', gps_scan_absen_wajib ? '1' : '0', gps_scan_absen_wajib ? '1' : '0']
       );
     }
 

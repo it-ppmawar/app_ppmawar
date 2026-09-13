@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, X as XIcon, User, MapPin, QrCode, Brain, BookOpen, HeartPulse, Send, FileText, CheckCircle2, RefreshCw, HelpCircle, Loader2, AlertCircle, Copy, Check, Search, Key, Link as LinkIcon, Shield } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, SwitchCamera, X as XIcon, User, MapPin, QrCode, Brain, BookOpen, HeartPulse, Send, FileText, CheckCircle2, RefreshCw, HelpCircle, Loader2, AlertCircle, Copy, Check, Search, Key, Link as LinkIcon, Shield } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -805,7 +805,7 @@ function InputAbsenContent() {
                       isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 active:scale-95 text-white'
                     }`}
                   >
-                    <FlipHorizontal size={14} className={isSwitchingCamera ? 'animate-spin' : ''} />
+                    <SwitchCamera size={15} className={isSwitchingCamera ? 'animate-spin' : ''} />
                     <span className="hidden sm:inline">
                       {isSwitchingCamera ? 'Mengganti...' : facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}
                     </span>
