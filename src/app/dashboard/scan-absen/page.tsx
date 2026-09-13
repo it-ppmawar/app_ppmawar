@@ -475,6 +475,26 @@ function ScanAbsenInner() {
     }
   }, [scanMode]);
 
+  // Auto-scroll ke posisi kamera agar seluruh kotak kamera, tombol alihkan kamera, dan tombol tutup tetap terlihat jelas
+  const scrollToCamera = useCallback(() => {
+    const doScroll = () => {
+      if (!cameraContainerRef.current) return;
+      const rect = cameraContainerRef.current.getBoundingClientRect();
+      // Target scroll agar bagian atas kartu kamera berada ~28px di bawah batas atas layar.
+      // Ini menjamin tombol alih kamera (biru) dan tombol tutup kamera (merah) di header kartu
+      // selalu terlihat penuh dan mudah ditekan, tidak terpotong oleh browser bar / notch.
+      const targetScrollY = window.scrollY + rect.top - 28;
+      window.scrollTo({
+        top: Math.max(0, targetScrollY),
+        behavior: 'smooth',
+      });
+    };
+
+    // Jalankan segera dan ulangi setelah video stream ter-render penuh oleh browser
+    setTimeout(doScroll, 120);
+    setTimeout(doScroll, 450);
+  }, []);
+
   // ── QR SCANNER ────────────────────────────────────────────────────
   const stopQrScanner = async () => {
     if (html5QrCodeRef.current) {
@@ -507,10 +527,13 @@ function ScanAbsenInner() {
 
   useEffect(() => {
     if (scanMode === 'qr' && isScanning) {
-      const timer = setTimeout(() => startQrScanner(facingMode), 150);
+      const timer = setTimeout(() => {
+        startQrScanner(facingMode);
+        scrollToCamera();
+      }, 150);
       return () => clearTimeout(timer);
     }
-  }, [isScanning, scanMode]);
+  }, [isScanning, scanMode, facingMode, scrollToCamera]);
 
   const handleQrScan = async (barcodeData: string) => {
     try {
@@ -611,26 +634,6 @@ function ScanAbsenInner() {
         }
       } catch (e) { console.warn('Detection frame error:', e); }
     }, 800);
-  }, []);
-
-  // Auto-scroll ke posisi kamera agar area kamera terlihat utuh di layar HP (seperti foto 2)
-  const scrollToCamera = useCallback(() => {
-    const doScroll = () => {
-      if (!cameraContainerRef.current) return;
-      const rect = cameraContainerRef.current.getBoundingClientRect();
-      // Hitung posisi scroll agar bagian atas kartu kamera berada tepat ~12px di bawah header browser.
-      // Ini memberi ruang vertikal maksimal sehingga seluruh video frame, panduan wajah,
-      // dan tombol/keterangan di bawahnya terlihat sempurna tanpa tertutup navbar bawah.
-      const targetScrollY = window.scrollY + rect.top - 12;
-      window.scrollTo({
-        top: Math.max(0, targetScrollY),
-        behavior: 'smooth',
-      });
-    };
-
-    // Jalankan segera dan ulangi setelah video stream ter-render penuh oleh browser
-    setTimeout(doScroll, 120);
-    setTimeout(doScroll, 450);
   }, []);
 
   const startFaceScanner = useCallback(async (overrideFacingMode?: 'environment' | 'user') => {
@@ -1093,12 +1096,6 @@ function ScanAbsenInner() {
                     <span className="text-xs text-gray-300">{faceStatusMsg}</span>
                   </div>
                 )}
-                {faceStatus === 'scanning' && (
-                  <div className="flex items-center gap-3 bg-gray-800 p-3 -mt-3">
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-                    <span className="text-xs text-gray-300">{faceStatusMsg}</span>
-                  </div>
-                )}
                 {faceStatus === 'error' && (
                   <div className="flex items-center gap-3 bg-red-950 p-3 -mt-3">
                     <XCircle size={16} className="text-red-400 flex-shrink-0" />
@@ -1117,19 +1114,31 @@ function ScanAbsenInner() {
                   <canvas ref={canvasRef} className="hidden" />
                 </div>
 
-                {faceStatus === 'scanning' && faceDbCount > 0 && (
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                      <Users size={13} className="flex-shrink-0 text-violet-400" />
-                      <span>Mencocokkan dengan <strong className="text-violet-400">{faceDbCount} santri</strong></span>
+                {faceStatus === 'scanning' && (
+                  <div className="space-y-2 pt-1.5 text-center">
+                    {/* Teks panduan santri & arahkan wajah (dipindah ke bawah kamera, rata tengah) */}
+                    <div className="flex items-center justify-center gap-2 text-xs text-gray-300">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                      <span>{faceStatusMsg}</span>
                     </div>
-                    <div className="flex justify-end">
-                      {/* Tombol "Wajah Tidak Cocok" saat scanning cukup lama */}
-                      <button onClick={handleFaceNotFound}
-                        className="text-xs text-indigo-400 hover:text-indigo-300 underline flex items-center gap-1.5 font-medium transition active:scale-95">
-                        <UserPlus size={12} /> Daftarkan Wajah Baru
-                      </button>
-                    </div>
+
+                    {/* Info pencocokan database santri (rata tengah) */}
+                    {faceDbCount > 0 && (
+                      <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+                        <Users size={13} className="flex-shrink-0 text-violet-400" />
+                        <span>Mencocokkan dengan <strong className="text-violet-400">{faceDbCount} santri</strong></span>
+                      </div>
+                    )}
+
+                    {/* Tombol Daftarkan Wajah Baru (rata tengah) */}
+                    {faceDbCount > 0 && (
+                      <div className="flex items-center justify-center pt-0.5">
+                        <button onClick={handleFaceNotFound}
+                          className="text-xs text-indigo-400 hover:text-indigo-300 underline flex items-center justify-center gap-1.5 font-medium transition active:scale-95">
+                          <UserPlus size={13} /> Daftarkan Wajah Baru
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
