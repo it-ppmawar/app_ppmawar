@@ -58,6 +58,7 @@ function InputAbsenContent() {
   const [activeTab, setActiveTab] = useState<'absen' | 'izin'>(actionParam === 'izin' ? 'izin' : 'absen');
   const [murid, setMurid] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(12);
   const [saving, setSaving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -103,6 +104,20 @@ function InputAbsenContent() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  useEffect(() => {
+    let progressTimer: NodeJS.Timeout;
+    if (loading) {
+      setLoadProgress(15);
+      progressTimer = setInterval(() => {
+        setLoadProgress(prev => {
+          if (prev >= 90) return prev;
+          const inc = Math.floor(Math.random() * 10) + 7;
+          return Math.min(prev + inc, 92);
+        });
+      }, 150);
+    }
+    return () => clearInterval(progressTimer);
+  }, [loading]);
 
   const fetchData = useCallback(async () => {
     if (!tipe || !kelas_id || !jadwal_id) return;
@@ -121,7 +136,8 @@ function InputAbsenContent() {
     } catch (err) {
       setErrorMsg('Terjadi kesalahan jaringan');
     } finally {
-      setLoading(false);
+      setLoadProgress(100);
+      setTimeout(() => setLoading(false), 200);
     }
   }, [tipe, kelas_id, jadwal_id]);
 
@@ -701,26 +717,55 @@ function InputAbsenContent() {
     }
   };
 
-  if (loading) return <div className="text-center py-20 text-gray-500 font-bold animate-pulse">Memuat data santri...</div>;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 sm:p-7 w-full max-w-sm text-center space-y-4 border border-slate-200 dark:border-slate-800 animate-in fade-in duration-300">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto shadow-xs">
+            <Users size={24} className="animate-pulse" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base">
+              Memuat Data Santri...
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Menyiapkan daftar santri &amp; jadwal presensi</p>
+          </div>
+          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
+            <div
+              className="bg-indigo-600 h-full rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${loadProgress}%` }}
+            />
+          </div>
+          <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{loadProgress}%</p>
+          <p className="text-[11px] text-slate-400">Harap tunggu, proses sedang berlangsung...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isSuccess) {
     return (
       <div className="max-w-xl mx-auto p-8 text-center bg-white dark:bg-gray-800 rounded-3xl mt-10 shadow-lg border border-gray-100 dark:border-gray-700 animate-[slideDown_0.3s_ease-out]">
-        <div className="w-20 h-20 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="w-20 h-20 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle size={48} className="text-green-600 dark:text-green-400" />
         </div>
+        <p className="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 font-serif mb-2 select-none" dir="rtl">
+          الْحَمْدُ لِلَّهِ
+        </p>
         <h2 className="text-2xl font-extrabold text-gray-800 dark:text-gray-200 mb-2">Absensi Berhasil Disimpan!</h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">Data kehadiran santri telah berhasil masuk ke sistem.</p>
 
         {/* Section: Ambil/Upload Foto Kehadiran (Opsional - Diproses langsung di HP tanpa simpan di server) */}
         <div id="camera-section-container" className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-gray-150 dark:border-gray-750 mb-6 space-y-3 text-left">
-          <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center justify-between">
-            <span className="flex items-center gap-2">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
               <Camera size={18} className="text-indigo-600 dark:text-indigo-400 animate-pulse" />
-              Foto Kehadiran Kelas/Kamar (Opsional)
-            </span>
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">Tanpa Beban Server</span>
-          </label>
+              <span>Foto Kehadiran Kelas/Kamar (Opsional)</span>
+            </label>
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5 pl-6 flex items-center gap-1">
+              <span>⚡ Diproses langsung di HP (Tanpa Beban Server)</span>
+            </p>
+          </div>
 
           {/* Camera live view */}
           {showCamera && (
@@ -877,7 +922,7 @@ function InputAbsenContent() {
             }`}
           >
             {copiedWa ? <CheckCircle2 size={15} className="text-emerald-600" /> : <Copy size={15} />}
-            {copiedWa ? '✅ Teks Berhasil Disalin! (Tinggal Paste di WA)' : '📋 Salin Teks Laporan (Untuk Pengguna iPhone / Cadangan)'}
+            {copiedWa ? '✅ Teks Berhasil Disalin! (Tinggal Paste di WA)' : 'Salin Teks Laporan (Untuk Pengguna iPhone / Cadangan)'}
           </button>
 
           <Link href={`/dashboard/notifikasi?kegiatan=${tipe}&kelas=${kelas_id}`} className="block w-full bg-[#25D366] hover:bg-[#1DA851] text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md flex items-center justify-center gap-2 text-center">
@@ -1035,7 +1080,7 @@ function InputAbsenContent() {
   const isMultiClass = classNames.length > 1;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-24">
+    <div className="space-y-6 max-w-4xl mx-auto pb-36">
       {/* Header */}
       <div className="bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-indigo-900/40 dark:to-blue-900/40 rounded-3xl p-5 sm:p-6 shadow-sm border border-indigo-200 dark:border-indigo-800/50 relative overflow-hidden transition-colors">
         <div className="absolute top-0 right-0 -mt-4 -mr-4 text-indigo-200/50 dark:text-indigo-800/30 pointer-events-none">
@@ -1877,7 +1922,7 @@ function InputAbsenContent() {
             })()}
           </div>
 
-          <div className="fixed bottom-16 sm:bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 p-4 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] z-40">
+          <div className="fixed bottom-16 left-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 p-4 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] z-40">
             <div className="max-w-4xl mx-auto flex items-center justify-between">
               <div className="text-sm font-bold text-gray-600 dark:text-gray-300">
                 Total Hadir: <span className="text-green-600 dark:text-green-400">{murid.filter(m => m.status === 'Hadir').length}</span> / {murid.length}

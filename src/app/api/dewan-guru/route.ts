@@ -69,6 +69,9 @@ export async function GET(request: Request) {
         return str.replace(/([a-z])\1+/g, '$1');
       };
 
+      // Daftar token umum yang kurang spesifik jika berdiri sendiri
+      const GENERIC_TOKENS = new Set(['bin', 'binti', 'nur', 'siti', 'agus', 'muhammad', 'muhamad', 'mohammad', 'ahmad', 'achmad', 'm']);
+
       // Ambil seluruh dewan guru aktif untuk scoring komprehensif
       const [allDewan]: any = await pool.execute('SELECT * FROM dewan_guru WHERE aktif = 1');
       const dewanList: any[] = allDewan || [];
@@ -129,16 +132,34 @@ export async function GET(request: Request) {
             // d. Token containment match (seluruh token penting terdapat di nama target)
             else if (candTokens.length > 0 && dgTokens.length > 0) {
               const matchedTokens = collapsedCandTokens.filter(t => collapsedDgTokens.some(dgt => dgt === t || dgt.includes(t) || t.includes(dgt)));
+              
+              // Semua token candidate cocok (misal 2 token atau lebih)
               if (matchedTokens.length === collapsedCandTokens.length && matchedTokens.length >= 2) {
                 score = 700 + matchedTokens.length * 10;
-              } else if (matchedTokens.length >= 2) {
+              }
+              // Single distinctive token (misal: "fuad" -> "muhammad fuad", "solihin" -> "ahmad solihin")
+              else if (matchedTokens.length === 1 && collapsedCandTokens.length === 1) {
+                const singleToken = matchedTokens[0];
+                if (singleToken.length >= 3) {
+                  if (!GENERIC_TOKENS.has(singleToken)) {
+                    score = 650; // Token unik/khas
+                  } else {
+                    score = 300; // Token umum
+                  }
+                }
+              }
+              // Sebagian token cocok (minimal 2 token)
+              else if (matchedTokens.length >= 2) {
                 const ratio = matchedTokens.length / Math.max(collapsedCandTokens.length, collapsedDgTokens.length);
                 if (ratio >= 0.5) score = Math.round(500 * ratio);
               }
             }
-            // e. Substring match
-            else if (collapsedCand.length >= 5 && (collapsedDgName.includes(collapsedCand) || collapsedCand.includes(collapsedDgName))) {
-              score = 400;
+
+            // e. Substring / Infix match fallback jika belum mencapai score cukup
+            if (score < 400 && collapsedCand.length >= 3) {
+              if (collapsedDgName.includes(collapsedCand) || collapsedCand.includes(collapsedDgName)) {
+                score = Math.max(score, collapsedCand.length >= 4 ? 500 : 350);
+              }
             }
 
             if (score > highestScore) {
@@ -150,6 +171,22 @@ export async function GET(request: Request) {
 
         if (bestMatch && highestScore >= 250) {
           matchedRows = [bestMatch];
+        }
+
+        // Fallback: pencarian token khas langsung pada daftar Dewan Guru jika hanya 1 yang cocok
+        if (matchedRows.length === 0) {
+          for (const cand of candidateNames) {
+            const normCand = normalizeTeacherName(cand);
+            const tokens = normCand.split(' ').filter(w => w.length >= 3 && !GENERIC_TOKENS.has(w));
+            for (const tok of tokens) {
+              const found = dewanList.filter(d => (d.nama || '').toLowerCase().includes(tok));
+              if (found.length === 1) {
+                matchedRows = found;
+                break;
+              }
+            }
+            if (matchedRows.length > 0) break;
+          }
         }
       }
 

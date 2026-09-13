@@ -1815,7 +1815,7 @@ function QuickAbsenContent() {
                 }`}
               >
                 {copiedWa ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                {copiedWa ? '✅ Teks Berhasil Disalin! (Tinggal Paste di WA)' : '📋 Salin Teks Laporan (Untuk iPhone / Cadangan)'}
+                {copiedWa ? '✅ Teks Berhasil Disalin! (Tinggal Paste di WA)' : 'Salin Teks Laporan (Untuk iPhone / Cadangan)'}
               </button>
 
               <Link
