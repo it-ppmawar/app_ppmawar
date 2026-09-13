@@ -148,14 +148,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     fetch('/api/auth/me')
       .then(async res => {
         const data = await res.json();
-        if (data.success) {
+        if (data.success && data.user) {
+          if (data.user.role !== 'tamu') {
+            try { localStorage.setItem('was_logged_in', 'true'); } catch (_) {}
+          }
           setUser(data.user);
         } else {
-          // Tidak ada token / expired → auto-login tamu
+          // Cek apakah pengguna sebelumnya login dengan akun asli
+          const wasLoggedIn = typeof window !== 'undefined' && localStorage.getItem('was_logged_in') === 'true';
+          if (wasLoggedIn) {
+            try { localStorage.removeItem('was_logged_in'); } catch (_) {}
+            window.location.href = '/?expired=1';
+            return;
+          }
+          // Pengunjung murni tanpa riwayat login → auto-login tamu
           await tryAutoGuestLogin();
         }
       })
       .catch(async () => {
+        const wasLoggedIn = typeof window !== 'undefined' && localStorage.getItem('was_logged_in') === 'true';
+        if (wasLoggedIn) {
+          try { localStorage.removeItem('was_logged_in'); } catch (_) {}
+          window.location.href = '/?expired=1';
+          return;
+        }
         await tryAutoGuestLogin();
       });
 
@@ -419,7 +435,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1">Mode Tamu</h5>
                       <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-tight">Anda masuk sebagai tamu. Hanya dapat melihat struktur menu tanpa akses data.</p>
                       <button
-                        onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/'; }}
+                        onClick={async () => {
+                          try { localStorage.removeItem('was_logged_in'); } catch (_) {}
+                          await fetch('/api/auth/logout', { method: 'POST' });
+                          window.location.href = '/';
+                        }}
                         className="mt-2 inline-block bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors"
                       >
                         Masuk dengan Akun
@@ -1048,6 +1068,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </a>
           <button 
             onClick={async () => {
+              try { localStorage.removeItem('was_logged_in'); } catch (_) {}
               await fetch('/api/auth/logout', { method: 'POST' });
               window.location.href = '/';
             }}
@@ -1069,7 +1090,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <UserRound size={16} className="shrink-0" />
             <span className="text-xs font-semibold">Mode Tamu — Anda hanya dapat melihat tampilan aplikasi. Tidak ada data yang ditampilkan.</span>
             <button
-              onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/'; }}
+              onClick={async () => {
+                try { localStorage.removeItem('was_logged_in'); } catch (_) {}
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/';
+              }}
               className="ml-auto shrink-0 text-[10px] font-bold bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-colors"
             >
               Login

@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = verifyToken(token) as any;
-    if (!payload || payload.role === 'wali_murid') {
+    if (!payload || payload.role === 'wali_murid' || payload.role === 'tamu') {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
 
@@ -426,7 +426,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!payload || payload.role === 'wali_murid') {
+    if (!payload || payload.role === 'wali_murid' || payload.role === 'tamu') {
       return NextResponse.json({ error: 'Akses tidak sah atau sesi telah berakhir' }, { status: 401 });
     }
 

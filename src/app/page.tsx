@@ -20,8 +20,14 @@ export default function LoginPage() {
     setMounted(true);
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     // Check if WebAuthn is supported
-    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-      setWebAuthnSupported(true);
+    if (typeof window !== 'undefined') {
+      if (window.PublicKeyCredential) {
+        setWebAuthnSupported(true);
+      }
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('expired') === '1') {
+        setError('Sesi akun Anda telah berakhir. Silakan masuk kembali untuk melanjutkan.');
+      }
     }
     return () => clearInterval(timer);
   }, []);
@@ -64,6 +70,7 @@ export default function LoginPage() {
         throw new Error(data.error || 'Terjadi kesalahan saat login');
       }
 
+      try { localStorage.setItem('was_logged_in', 'true'); } catch (_) {}
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message);
@@ -83,6 +90,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal masuk sebagai tamu');
+      try { localStorage.removeItem('was_logged_in'); } catch (_) {}
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message);
@@ -123,6 +131,7 @@ export default function LoginPage() {
       if (!verifyResp.ok) throw new Error(verification.error || 'Verifikasi biometrik gagal');
       
       // Sukses!
+      try { localStorage.setItem('was_logged_in', 'true'); } catch (_) {}
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message);

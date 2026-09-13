@@ -438,7 +438,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between px-1">
               <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                 <Activity size={16} className="text-green-600 dark:text-green-400" />
-                Statistik Absensi Dewan Guru & Pembina Hari Ini
+                Statistik Absensi Dewan Guru & Pembina Terbaru
               </h3>
             </div>
 
@@ -608,7 +608,7 @@ export default function DashboardPage() {
                     className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 transition-colors duration-300 w-full"
                   >
                     <h4 className="text-xs font-bold text-green-700 dark:text-green-400 mb-3 border-b dark:border-gray-700 pb-2 flex justify-between items-center">
-                      <span>Statistik Absensi {tipeName} Hari Ini</span>
+                      <span>Statistik Absensi {tipeName} Terbaru</span>
                       {stat.total > 0 && <span className="text-[10px] bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 px-2 py-0.5 rounded-full font-bold">{stat.total} Santri</span>}
                     </h4>
                     <div className="space-y-2">

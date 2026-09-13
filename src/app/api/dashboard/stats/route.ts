@@ -167,7 +167,110 @@ export async function GET() {
       alpha: guruMadin.alpha + guruQuran.alpha + guruKegiatan.alpha,
     };
 
-    // 3. STATISTIK ABSENSI SANTRI HARI INI (Safe try/catch)
+    // Resolve guruId if null for role guru
+    let resolvedGuruId = payload.guruId;
+    if (payload.role === 'guru' && !resolvedGuruId && payload.userId) {
+      try {
+        const [uRows]: any = await pool.execute('SELECT guru_id FROM users WHERE id = ? LIMIT 1', [payload.userId]);
+        if (uRows && uRows[0]?.guru_id) resolvedGuruId = uRows[0].guru_id;
+      } catch (_) {}
+    }
+
+    // Filter berbasis role untuk membatasi santri yang tampil di statistik dan kartu terbaru
+    let roleConditionMadin = '';
+    let roleParamsMadin: any[] = [];
+    let roleConditionQuran = '';
+    let roleParamsQuran: any[] = [];
+    let roleConditionKegiatan = '';
+    let roleParamsKegiatan: any[] = [];
+    let roleMuridCondition = '';
+    let roleMuridParams: any[] = [];
+
+    if (payload.role === 'guru') {
+      if (resolvedGuruId) {
+        roleConditionMadin = ` AND (
+          m.kelas_madin_id IN (SELECT kelas_id FROM kelas_madin WHERE guru_id = ?)
+          OR m.kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?)
+        )`;
+        roleParamsMadin = [resolvedGuruId, resolvedGuruId];
+
+        roleConditionQuran = ` AND (
+          m.kelas_quran_id IN (SELECT id FROM kelas_quran WHERE guru_id = ?)
+          OR m.kelas_quran_id IN (SELECT kelas_quran_id FROM jadwal_quran WHERE guru_id = ?)
+        )`;
+        roleParamsQuran = [resolvedGuruId, resolvedGuruId];
+
+        roleConditionKegiatan = ` AND m.kamar_id IN (SELECT kamar_id FROM kamar WHERE guru_id = ?)`;
+        roleParamsKegiatan = [resolvedGuruId];
+
+        roleMuridCondition = ` AND (
+          m.kelas_madin_id IN (SELECT kelas_id FROM kelas_madin WHERE guru_id = ?)
+          OR m.kelas_quran_id IN (SELECT id FROM kelas_quran WHERE guru_id = ?)
+          OR m.kamar_id IN (SELECT kamar_id FROM kamar WHERE guru_id = ?)
+          OR m.kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?)
+          OR m.kelas_quran_id IN (SELECT kelas_quran_id FROM jadwal_quran WHERE guru_id = ?)
+        )`;
+        roleMuridParams = [resolvedGuruId, resolvedGuruId, resolvedGuruId, resolvedGuruId, resolvedGuruId];
+      } else {
+        roleConditionMadin = ' AND 0=1';
+        roleConditionQuran = ' AND 0=1';
+        roleConditionKegiatan = ' AND 0=1';
+        roleMuridCondition = ' AND 0=1';
+      }
+    } else if (payload.role === 'pengurus_asrama' || payload.role === 'pengasuh') {
+      if (resolvedAsrama) {
+        const asrCond = ` AND m.kamar_id IN (SELECT kamar_id FROM kamar WHERE nama_asrama = ?)`;
+        roleConditionMadin = asrCond;
+        roleParamsMadin = [resolvedAsrama];
+        roleConditionQuran = asrCond;
+        roleParamsQuran = [resolvedAsrama];
+        roleConditionKegiatan = asrCond;
+        roleParamsKegiatan = [resolvedAsrama];
+        roleMuridCondition = asrCond;
+        roleMuridParams = [resolvedAsrama];
+      } else {
+        roleConditionMadin = ' AND 0=1';
+        roleConditionQuran = ' AND 0=1';
+        roleConditionKegiatan = ' AND 0=1';
+        roleMuridCondition = ' AND 0=1';
+      }
+    } else if (payload.role === 'staff') {
+      if (genderFilter) {
+        const gCond = ` AND m.jenis_kelamin = ?`;
+        roleConditionMadin = gCond;
+        roleParamsMadin = [genderFilter];
+        roleConditionQuran = gCond;
+        roleParamsQuran = [genderFilter];
+        roleConditionKegiatan = gCond;
+        roleParamsKegiatan = [genderFilter];
+        roleMuridCondition = gCond;
+        roleMuridParams = [genderFilter];
+      }
+    } else if (payload.role === 'tamu') {
+      roleConditionMadin = ' AND 0=1';
+      roleConditionQuran = ' AND 0=1';
+      roleConditionKegiatan = ' AND 0=1';
+      roleMuridCondition = ' AND 0=1';
+    } else if (payload.role !== 'admin') {
+      if (payload.muridId) {
+        const mCond = ` AND m.murid_id = ?`;
+        roleConditionMadin = mCond;
+        roleParamsMadin = [payload.muridId];
+        roleConditionQuran = mCond;
+        roleParamsQuran = [payload.muridId];
+        roleConditionKegiatan = mCond;
+        roleParamsKegiatan = [payload.muridId];
+        roleMuridCondition = mCond;
+        roleMuridParams = [payload.muridId];
+      } else {
+        roleConditionMadin = ' AND 0=1';
+        roleConditionQuran = ' AND 0=1';
+        roleConditionKegiatan = ' AND 0=1';
+        roleMuridCondition = ' AND 0=1';
+      }
+    }
+
+    // 3. STATISTIK ABSENSI SANTRI HARI INI (Sinkron dengan hak akses role)
     let madinStatsRow: any = {};
     try {
       const [rows] = await pool.execute<RowDataPacket[]>(`
@@ -177,9 +280,10 @@ export async function GET() {
           SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
           COUNT(*) as total
-        FROM absensi a${genderWhereJoin}
-        WHERE a.tanggal = ?
-      `, [todayStr]);
+        FROM absensi a
+        JOIN murid m ON a.murid_id = m.murid_id
+        WHERE a.tanggal = ?${roleConditionMadin}
+      `, [todayStr, ...roleParamsMadin]);
       madinStatsRow = rows[0] || {};
     } catch (e) {
       console.warn('madinStats error:', e);
@@ -194,9 +298,10 @@ export async function GET() {
           SUM(CASE WHEN LOWER(aq.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN LOWER(aq.status) IN ('alpha', 'alpa') OR aq.status = '' OR aq.status IS NULL THEN 1 ELSE 0 END) as alpha,
           COUNT(*) as total
-        FROM absensi_quran aq${genderWhereJoinAq}
-        WHERE aq.tanggal = ?
-      `, [todayStr]);
+        FROM absensi_quran aq
+        JOIN murid m ON aq.murid_id = m.murid_id
+        WHERE aq.tanggal = ?${roleConditionQuran}
+      `, [todayStr, ...roleParamsQuran]);
       quranStatsRow = rows[0] || {};
     } catch (e) {
       console.warn('quranStats error:', e);
@@ -211,9 +316,10 @@ export async function GET() {
           SUM(CASE WHEN LOWER(ak.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
           SUM(CASE WHEN LOWER(ak.status) IN ('alpha', 'alpa') OR ak.status = '' OR ak.status IS NULL THEN 1 ELSE 0 END) as alpha,
           COUNT(*) as total
-        FROM absensi_kegiatan ak${genderWhereJoinAk}
-        WHERE ak.tanggal = ?
-      `, [todayStr]);
+        FROM absensi_kegiatan ak
+        JOIN murid m ON ak.murid_id = m.murid_id
+        WHERE ak.tanggal = ?${roleConditionKegiatan}
+      `, [todayStr, ...roleParamsKegiatan]);
       kegiatanStatsRow = rows[0] || {};
     } catch (e) {
       console.warn('kegiatanStats error:', e);
@@ -281,44 +387,6 @@ export async function GET() {
 
     const targetDates = [todayStr, yesterdayStr];
     const datePlaceholders = targetDates.map(() => '?').join(', ');
-    // Filter berbasis role untuk membatasi santri yang tampil di kartu perizinan & pelanggaran terbaru (sesuai kelas/kamar aksesnya)
-    let roleMuridCondition = '';
-    let roleMuridParams: any[] = [];
-
-    if (payload.role === 'guru') {
-      if (payload.guruId) {
-        roleMuridCondition = ` AND (
-          m.kelas_madin_id IN (SELECT kelas_id FROM kelas_madin WHERE guru_id = ?)
-          OR m.kelas_quran_id IN (SELECT id FROM kelas_quran WHERE guru_id = ?)
-          OR m.kamar_id IN (SELECT kamar_id FROM kamar WHERE guru_id = ?)
-          OR m.kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?)
-          OR m.kelas_quran_id IN (SELECT kelas_quran_id FROM jadwal_quran WHERE guru_id = ?)
-        )`;
-        roleMuridParams = [payload.guruId, payload.guruId, payload.guruId, payload.guruId, payload.guruId];
-      } else {
-        roleMuridCondition = ' AND 0=1';
-      }
-    } else if (payload.role === 'pengurus_asrama' || payload.role === 'pengasuh') {
-      if (resolvedAsrama) {
-        roleMuridCondition = ` AND m.kamar_id IN (SELECT kamar_id FROM kamar WHERE nama_asrama = ?)`;
-        roleMuridParams = [resolvedAsrama];
-      } else {
-        roleMuridCondition = ' AND 0=1';
-      }
-    } else if (payload.role === 'staff') {
-      if (genderFilter) {
-        roleMuridCondition = ` AND m.jenis_kelamin = ?`;
-        roleMuridParams = [genderFilter];
-      }
-    } else if (payload.role !== 'admin') {
-      if (payload.muridId) {
-        roleMuridCondition = ` AND m.murid_id = ?`;
-        roleMuridParams = [payload.muridId];
-      } else {
-        roleMuridCondition = ' AND 0=1';
-      }
-    }
-
     const queryTargetParams = [...targetDates, ...roleMuridParams];
 
     let perizinanRows: any[] = [];

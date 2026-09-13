@@ -152,7 +152,7 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 // 1 hari
+      maxAge: 60 * 60 * 24 * 30 // 30 hari
     });
 
     // Catat aksi login ke audit log
