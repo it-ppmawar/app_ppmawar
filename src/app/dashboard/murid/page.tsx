@@ -55,6 +55,12 @@ export default function DataMuridPage() {
   const [classOptions, setClassOptions] = useState<any[]>([]);
   const [savingBulk, setSavingBulk] = useState(false);
 
+  // State untuk modal Luluskan (dengan pilihan status)
+  const [isLulusModalOpen, setIsLulusModalOpen] = useState(false);
+  const [lulusTargetId, setLulusTargetId] = useState<number | null>(null); // null = bulk
+  const [lulusStatusKeluar, setLulusStatusKeluar] = useState('Lulus');
+  const [savingLulus, setSavingLulus] = useState(false);
+
   // State untuk Detail & Edit
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [viewingMurid, setViewingMurid] = useState<any>(null);
@@ -305,24 +311,11 @@ export default function DataMuridPage() {
     fetchOptions();
   }, [isBulkModalOpen, bulkType]);
 
-  const handleLuluskan = async (id: number) => {
-    if (!confirm('Pindahkan santri ini ke daftar Alumni? Data santri akan dipindahkan ke tabel Alumni dan Akun User terkait akan dikonversi menjadi role Alumni (tidak dihapus).')) return;
-    try {
-      const res = await fetch('/api/murid/lulus', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert(data.message);
-        setMurid(murid.filter(m => m.murid_id !== id));
-      } else {
-        alert(data.error || 'Gagal memproses data');
-      }
-    } catch (err) {
-      alert('Terjadi kesalahan sistem');
-    }
+  // Buka modal luluskan (single santri)
+  const handleLuluskan = (id: number) => {
+    setLulusTargetId(id);
+    setLulusStatusKeluar('Lulus');
+    setIsLulusModalOpen(true);
   };
 
   const handleConvertUserBulk = async () => {
@@ -345,24 +338,43 @@ export default function DataMuridPage() {
     }
   };
 
-  const handleLuluskanBulk = async () => {
-    if (!confirm(`Pindahkan ${selectedMurid.length} santri ini ke daftar Alumni? Data santri akan dipindahkan ke tabel Alumni dan Akun User terkait akan dikonversi menjadi role Alumni (tidak dihapus).`)) return;
+  // Buka modal luluskan (bulk santri)
+  const handleLuluskanBulk = () => {
+    setLulusTargetId(null);
+    setLulusStatusKeluar('Lulus');
+    setIsLulusModalOpen(true);
+  };
+
+  // Eksekusi luluskan setelah user pilih status di modal
+  const handleKonfirmasiLulus = async () => {
+    setSavingLulus(true);
     try {
+      const body = lulusTargetId !== null
+        ? { id: lulusTargetId, status_keluar: lulusStatusKeluar }
+        : { ids: selectedMurid, status_keluar: lulusStatusKeluar };
+
       const res = await fetch('/api/murid/lulus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: selectedMurid })
+        body: JSON.stringify(body)
       });
       const data = await res.json();
       if (res.ok) {
         alert(data.message);
-        setMurid(murid.filter(m => !selectedMurid.includes(m.murid_id)));
-        setSelectedMurid([]);
+        if (lulusTargetId !== null) {
+          setMurid(murid.filter(m => m.murid_id !== lulusTargetId));
+        } else {
+          setMurid(murid.filter(m => !selectedMurid.includes(m.murid_id)));
+          setSelectedMurid([]);
+        }
+        setIsLulusModalOpen(false);
       } else {
         alert(data.error || 'Gagal memproses data');
       }
     } catch (err) {
       alert('Terjadi kesalahan sistem');
+    } finally {
+      setSavingLulus(false);
     }
   };
 
@@ -2036,6 +2048,92 @@ export default function DataMuridPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}\r\n\r\n      {/* ===== MODAL LULUSKAN / PINDAH KE ALUMNI ===== */}
+      {isLulusModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex justify-between items-center text-white rounded-t-3xl">
+              <div>
+                <h3 className="font-extrabold text-base">Pindahkan ke Alumni</h3>
+                <p className="text-green-100 text-xs mt-0.5">
+                  {lulusTargetId !== null ? '1 santri' : `${selectedMurid.length} santri`} akan dipindahkan ke daftar Alumni
+                </p>
+              </div>
+              <button type="button" onClick={() => setIsLulusModalOpen(false)} className="text-white/70 hover:text-white p-1 rounded-lg transition-colors">✕</button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Pilihan Status */}
+              <div>
+                <label className="block text-sm font-extrabold text-gray-700 dark:text-gray-200 mb-3">
+                  Status Keluar
+                </label>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    { value: 'Lulus', emoji: '🎓', color: 'green', desc: 'Selesai masa pendidikan' },
+                    { value: 'Berhenti', emoji: '🚪', color: 'amber', desc: 'Keluar atas kemauan sendiri' },
+                    { value: 'Dikeluarkan', emoji: '⛔', color: 'red', desc: 'Dikeluarkan oleh pesantren' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setLulusStatusKeluar(opt.value)}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 transition-all text-center ${
+                        lulusStatusKeluar === opt.value
+                          ? opt.color === 'green'
+                            ? 'border-green-500 bg-green-50 dark:bg-green-900/30 shadow-md shadow-green-200/50'
+                            : opt.color === 'amber'
+                            ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 shadow-md shadow-amber-200/50'
+                            : 'border-red-500 bg-red-50 dark:bg-red-900/30 shadow-md shadow-red-200/50'
+                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <span className="text-2xl">{opt.emoji}</span>
+                      <span className={`text-xs font-extrabold ${
+                        lulusStatusKeluar === opt.value
+                          ? opt.color === 'green' ? 'text-green-700 dark:text-green-300'
+                            : opt.color === 'amber' ? 'text-amber-700 dark:text-amber-300'
+                            : 'text-red-700 dark:text-red-300'
+                          : 'text-gray-700 dark:text-gray-300'
+                      }`}>{opt.value}</span>
+                      <span className="text-[10px] text-gray-400 leading-tight">{opt.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Peringatan */}
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                ⚠️ Data santri akan dipindah ke tabel Alumni dengan status <strong>{lulusStatusKeluar}</strong>. Akun User terkait akan dikonversi menjadi role Alumni (tidak dihapus).
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsLulusModalOpen(false)}
+                  disabled={savingLulus}
+                  className="flex-1 py-3 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleKonfirmasiLulus}
+                  disabled={savingLulus}
+                  className="flex-1 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-extrabold rounded-2xl shadow-md transition-all disabled:opacity-60 text-sm flex items-center justify-center gap-2"
+                >
+                  {savingLulus ? (
+                    <><RefreshCw size={14} className="animate-spin" /> Memproses...</>
+                  ) : (
+                    <><CheckSquare size={14} /> Konfirmasi Pindah</>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

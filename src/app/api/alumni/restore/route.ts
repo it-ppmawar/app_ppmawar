@@ -49,10 +49,10 @@ export async function POST(request: Request) {
 
       const alumni = alumniRows[0];
 
-      // 2. Masukkan kembali ke tabel murid (termasuk kelas/kamar terakhir)
+      // 2. Masukkan kembali ke tabel murid (termasuk kelas/kamar terakhir dan data wali)
       const insertSql = `
-        INSERT INTO murid (nama, nis, nik, no_hp, alamat, foto, jenis_kelamin, nama_panggilan, barcode_id, kamar_id, kelas_madin_id, kelas_quran_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO murid (nama, nis, nik, no_hp, alamat, foto, jenis_kelamin, nama_panggilan, barcode_id, kamar_id, kelas_madin_id, kelas_quran_id, nama_wali, no_hp_wali)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const insertParams = [
         alumni.nama,
@@ -66,7 +66,9 @@ export async function POST(request: Request) {
         alumni.barcode_id || null,
         alumni.last_kamar_id || null,
         alumni.last_kelas_madin_id || null,
-        alumni.last_kelas_quran_id || null
+        alumni.last_kelas_quran_id || null,
+        alumni.nama_wali || null,
+        alumni.no_hp_wali || null
       ];
 
       const [insertResult] = await connection.execute<ResultSetHeader>(insertSql, insertParams);

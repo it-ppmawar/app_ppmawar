@@ -145,7 +145,9 @@ export default function AlumniManagementPage() {
     keterangan: '',
     kamar: '',
     madin: '',
-    quran: ''
+    quran: '',
+    nama_wali: '',
+    no_hp_wali: ''
   });
 
   const fetchAlumni = async () => {
@@ -215,15 +217,19 @@ export default function AlumniManagementPage() {
     const subtitle = `Total Alumni: ${sortedAlumni.length} | Pencarian: ${search || 'Semua'}`;
     const filename = `Data_Alumni_${new Date().getFullYear()}`;
 
-    const tableColumn = ["NO", "NAMA LENGKAP", "NIS", "J. KELAMIN", "TAHUN MASUK", "TAHUN KELUAR", "STATUS"];
+    const tableColumn = ["NO", "NAMA LENGKAP", "NIS", "J. KELAMIN", "WALI", "KONTAK & ALAMAT", "TAHUN MASUK", "TAHUN KELUAR", "STATUS"];
     const tableRows: any[] = [];
 
     sortedAlumni.forEach((item, idx) => {
+      const waliStr = [item.nama_wali, item.no_hp_wali].filter(Boolean).join(' - ') || '-';
+      const kontakStr = [item.no_hp, item.alamat].filter(Boolean).join(' | ') || '-';
       tableRows.push([
         idx + 1,
         item.nama || 'Tanpa Nama',
         item.nis || '-',
         item.jenis_kelamin || '-',
+        waliStr,
+        kontakStr,
         item.tahun_masuk || '-',
         item.tahun_keluar || '-',
         item.status_keluar || 'Lulus'
@@ -260,7 +266,9 @@ export default function AlumniManagementPage() {
       keterangan: '',
       kamar: '',
       madin: '',
-      quran: ''
+      quran: '',
+      nama_wali: '',
+      no_hp_wali: ''
     });
     setShowModal(true);
   };
@@ -296,7 +304,9 @@ export default function AlumniManagementPage() {
       keterangan: item.keterangan || '',
       kamar,
       madin,
-      quran
+      quran,
+      nama_wali: item.nama_wali || '',
+      no_hp_wali: item.no_hp_wali || ''
     });
     setShowModal(true);
   };
@@ -451,7 +461,7 @@ export default function AlumniManagementPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="text"
-                  placeholder="Cari nama atau NIS alumni..."
+                  placeholder="Cari nama, NIS, NIK, no. HP, alamat, wali, status, tahun..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-green-500 transition-all"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -486,15 +496,16 @@ export default function AlumniManagementPage() {
                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none" onClick={() => requestSort('tahun_masuk')}>TAHUN MASUK{getSortIcon('tahun_masuk')}</th>
                   <th className="px-5 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none text-center" onClick={() => requestSort('tahun_keluar')}>TAHUN KELUAR{getSortIcon('tahun_keluar')}</th>
                   <th className="px-5 py-4">KONTAK & ALAMAT</th>
+                  <th className="px-5 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama_wali')}>WALI</th>
                   <th className="px-5 py-4 text-center">STATUS</th>
                   <th className="px-5 py-4 text-center">AKSI</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {loading ? (
-                  <tr><td colSpan={9} className="text-center py-10 animate-pulse text-green-600 font-bold">Memuat data alumni...</td></tr>
+                  <tr><td colSpan={10} className="text-center py-10 animate-pulse text-green-600 font-bold">Memuat data alumni...</td></tr>
                 ) : sortedAlumni.length === 0 ? (
-                  <tr><td colSpan={9} className="text-center py-10 text-gray-500 font-medium">Tidak ada data alumni</td></tr>
+                  <tr><td colSpan={10} className="text-center py-10 text-gray-500 font-medium">Tidak ada data alumni</td></tr>
                 ) : (
                   sortedAlumni.map((item, idx) => (
                     <tr key={item.alumni_id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
@@ -546,7 +557,11 @@ export default function AlumniManagementPage() {
                         <div className="text-gray-800 dark:text-gray-300 font-medium">{item.no_hp || '-'}</div>
                         {item.alamat && <div className="text-xs text-gray-400 truncate max-w-xs">{item.alamat}</div>}
                       </td>
-                      <td className="px-5 py-4 text-center">
+                      <td className="px-5 py-4">
+                          <div className="text-gray-800 dark:text-gray-300 font-medium text-xs">{item.nama_wali || '-'}</div>
+                          {item.no_hp_wali && <div className="text-xs text-gray-400 mt-0.5">{item.no_hp_wali}</div>}
+                        </td>
+                       <td className="px-5 py-4 text-center">
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 uppercase tracking-wider">
                           {item.status_keluar || 'Lulus'}
                         </span>
@@ -630,6 +645,21 @@ export default function AlumniManagementPage() {
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Alamat Rumah</label>
                 <textarea rows={2} value={formData.alamat} onChange={e => setFormData({...formData, alamat: e.target.value})} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none resize-none" />
+              </div>
+
+              {/* Data Wali */}
+              <div className="p-4 border border-green-100 dark:border-green-900/40 rounded-xl bg-green-50/40 dark:bg-green-900/10">
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">Data Wali / Orang Tua</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Nama Wali</label>
+                    <input type="text" value={formData.nama_wali} onChange={e => setFormData({...formData, nama_wali: e.target.value})} placeholder="Contoh: Bapak Ahmad" className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">No. HP Wali</label>
+                    <input type="text" value={formData.no_hp_wali} onChange={e => setFormData({...formData, no_hp_wali: e.target.value})} placeholder="Contoh: 0812xxxxxxxx" className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none" />
+                  </div>
+                </div>
               </div>
 
               <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-900/50">

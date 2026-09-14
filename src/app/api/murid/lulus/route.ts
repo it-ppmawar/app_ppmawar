@@ -16,8 +16,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { id, ids } = body; 
+    const { id, ids, status_keluar } = body; 
     const targetIds = ids && Array.isArray(ids) ? ids : (id ? [id] : []);
+    const finalStatusKeluar = ['Lulus', 'Berhenti', 'Dikeluarkan'].includes(status_keluar) ? status_keluar : 'Lulus';
 
     if (targetIds.length === 0) {
       return NextResponse.json({ error: 'ID Murid tidak valid' }, { status: 400 });
@@ -69,7 +70,9 @@ export async function POST(request: Request) {
       { name: 'alamat', type: 'TEXT NULL' },
       { name: 'status_keluar', type: "VARCHAR(50) DEFAULT 'Lulus'" },
       { name: 'keterangan', type: 'TEXT NULL' },
-      { name: 'foto', type: 'VARCHAR(255) NULL' }
+      { name: 'foto', type: 'VARCHAR(255) NULL' },
+      { name: 'nama_wali', type: 'VARCHAR(255) NULL' },
+      { name: 'no_hp_wali', type: 'VARCHAR(50) NULL' },
     ];
 
     for (const col of neededCols) {
@@ -121,7 +124,7 @@ export async function POST(request: Request) {
           alamat: murid.alamat || null,
           tahun_masuk: tahunMasuk,
           tahun_keluar: tahunKeluar,
-          status_keluar: 'Lulus',
+          status_keluar: finalStatusKeluar,
           foto: murid.foto || null,
           jenis_kelamin: murid.jenis_kelamin || null,
           kategori_mukim: 'PPM',
@@ -130,7 +133,9 @@ export async function POST(request: Request) {
           last_kelas_madin_id: murid.kelas_madin_id || null,
           last_kelas_quran_id: murid.kelas_quran_id || null,
           nama_panggilan: murid.nama_panggilan || null,
-          barcode_id: murid.barcode_id || null
+          barcode_id: murid.barcode_id || null,
+          nama_wali: murid.nama_wali || null,
+          no_hp_wali: murid.no_hp_wali || murid.no_wali || null,
         };
 
         // Filter hanya field yang benar-benar ada di tabel alumni

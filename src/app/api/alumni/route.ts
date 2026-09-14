@@ -35,8 +35,22 @@ export async function GET(request: Request) {
     let params: any[] = [];
 
     if (search) {
-      sql += ' AND (nama LIKE ? OR nis LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`);
+      sql += ` AND (
+        nama LIKE ? OR 
+        nis LIKE ? OR 
+        nik LIKE ? OR 
+        no_hp LIKE ? OR
+        alamat LIKE ? OR
+        kategori_mukim LIKE ? OR
+        status_keluar LIKE ? OR
+        keterangan LIKE ? OR
+        nama_wali LIKE ? OR
+        no_hp_wali LIKE ? OR
+        CAST(tahun_masuk AS CHAR) LIKE ? OR
+        CAST(tahun_keluar AS CHAR) LIKE ?
+      )`;
+      const likeVal = `%${search}%`;
+      params.push(likeVal, likeVal, likeVal, likeVal, likeVal, likeVal, likeVal, likeVal, likeVal, likeVal, likeVal, likeVal);
     }
 
     if (kategori === 'PPM' || kategori === 'LPPM') {
@@ -54,11 +68,29 @@ export async function GET(request: Request) {
   }
 }
 
+// Helper untuk memastikan kolom-kolom baru (seperti nama_wali, no_hp_wali) tersedia di tabel alumni
+async function ensureAlumniColumns() {
+  try {
+    const [colRows]: any = await pool.execute('SHOW COLUMNS FROM alumni');
+    const existingCols = new Set<string>(colRows.map((c: any) => c.Field.toLowerCase()));
+    if (!existingCols.has('nama_wali')) {
+      await pool.execute('ALTER TABLE alumni ADD COLUMN nama_wali VARCHAR(255) NULL');
+    }
+    if (!existingCols.has('no_hp_wali')) {
+      await pool.execute('ALTER TABLE alumni ADD COLUMN no_hp_wali VARCHAR(50) NULL');
+    }
+  } catch (err) {
+    // Abaikan jika error
+  }
+}
+
 // PUT: Update alumni data
 export async function PUT(request: Request) {
   try {
     const auth = await checkAuth();
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    await ensureAlumniColumns();
 
     const body = await request.json();
     const {
@@ -73,7 +105,9 @@ export async function PUT(request: Request) {
       status_keluar,
       jenis_kelamin,
       kategori_mukim,
-      keterangan
+      keterangan,
+      nama_wali,
+      no_hp_wali
     } = body;
 
     if (!alumni_id || !nama || !nis) {
@@ -84,7 +118,8 @@ export async function PUT(request: Request) {
       UPDATE alumni 
       SET nama = ?, nis = ?, nik = ?, no_hp = ?, alamat = ?, 
           tahun_masuk = ?, tahun_keluar = ?, status_keluar = ?,
-          jenis_kelamin = ?, kategori_mukim = ?, keterangan = ?
+          jenis_kelamin = ?, kategori_mukim = ?, keterangan = ?,
+          nama_wali = ?, no_hp_wali = ?
       WHERE alumni_id = ?
     `;
     const params = [
@@ -99,6 +134,8 @@ export async function PUT(request: Request) {
       jenis_kelamin || null,
       kategori_mukim || 'PPM',
       keterangan || null,
+      nama_wali || null,
+      no_hp_wali || null,
       alumni_id
     ];
 
@@ -121,11 +158,14 @@ export async function POST(request: Request) {
     const auth = await checkAuth();
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    await ensureAlumniColumns();
+
     const body = await request.json();
     const {
       nama, nis, nik, no_hp, alamat,
       tahun_masuk, tahun_keluar, status_keluar,
-      jenis_kelamin, kategori_mukim, keterangan
+      jenis_kelamin, kategori_mukim, keterangan,
+      nama_wali, no_hp_wali
     } = body;
 
     if (!nama) {
@@ -134,8 +174,8 @@ export async function POST(request: Request) {
 
     const sql = `
       INSERT INTO alumni 
-      (nama, nis, nik, no_hp, alamat, tahun_masuk, tahun_keluar, status_keluar, jenis_kelamin, kategori_mukim, keterangan)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (nama, nis, nik, no_hp, alamat, tahun_masuk, tahun_keluar, status_keluar, jenis_kelamin, kategori_mukim, keterangan, nama_wali, no_hp_wali)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       nama,
@@ -148,7 +188,9 @@ export async function POST(request: Request) {
       status_keluar || 'Lulus',
       jenis_kelamin || null,
       kategori_mukim || 'PPM',
-      keterangan || null
+      keterangan || null,
+      nama_wali || null,
+      no_hp_wali || null
     ];
 
     const [result] = await pool.execute<ResultSetHeader>(sql, params);
