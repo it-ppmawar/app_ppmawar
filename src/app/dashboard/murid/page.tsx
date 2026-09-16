@@ -29,10 +29,27 @@ const getAvatarColor = (nama: string): string => {
 export default function DataMuridPage() {
   const [murid, setMurid] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(12);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
+
+  // Animasi progress bar interaktif saat memuat data santri
+  useEffect(() => {
+    let progressTimer: NodeJS.Timeout;
+    if (loading) {
+      setLoadProgress(12);
+      progressTimer = setInterval(() => {
+        setLoadProgress(prev => {
+          if (prev >= 90) return prev;
+          const inc = Math.floor(Math.random() * 10) + 7;
+          return Math.min(prev + inc, 92);
+        });
+      }, 150);
+    }
+    return () => clearInterval(progressTimer);
+  }, [loading]);
 
   // Debounce search agar pengetikan & penghapusan 100% responsif tanpa jeda/lag
   useEffect(() => {
@@ -271,7 +288,8 @@ export default function DataMuridPage() {
       } catch (err) {
         console.error('Failed to fetch murid:', err);
       } finally {
-        setLoading(false);
+        setLoadProgress(100);
+        setTimeout(() => setLoading(false), 200);
       }
     };
     fetchData();
@@ -731,6 +749,32 @@ export default function DataMuridPage() {
       setSyncingMadin(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 sm:p-7 w-full max-w-sm text-center space-y-4 border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto shadow-xs">
+            <Users size={24} className="animate-pulse" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base">
+              Memuat Data Santri...
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Menghubungkan ke server database santri PPMA</p>
+          </div>
+          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
+            <div
+              className="bg-blue-600 h-full rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${loadProgress}%` }}
+            />
+          </div>
+          <p className="text-2xl font-black text-blue-600 dark:text-blue-400">{loadProgress}%</p>
+          <p className="text-[11px] text-slate-400">Harap tunggu, proses sedang berlangsung...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20">
