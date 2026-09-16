@@ -2050,7 +2050,9 @@ export default function DataMuridPage() {
             </form>
           </div>
         </div>
-      )}\r\n\r\n      {/* ===== MODAL LULUSKAN / PINDAH KE ALUMNI ===== */}
+      )}
+
+      {/* ===== MODAL LULUSKAN / PINDAH KE ALUMNI ===== */}
       {isLulusModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 flex flex-col">

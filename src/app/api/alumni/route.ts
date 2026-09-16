@@ -27,6 +27,8 @@ export async function GET(request: Request) {
     const auth = await checkAuth();
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    await ensureAlumniColumns();
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const kategori = searchParams.get('kategori') || '';

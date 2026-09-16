@@ -1,4 +1,4 @@
-﻿name: Deploy Next.js to cPanel
+name: Deploy Next.js to cPanel
 
 on:
   workflow_dispatch:
@@ -74,10 +74,12 @@ jobs:
 
       - name: Trigger Instant Server Extraction and Restart
         run: |
-          echo Triggering PHP ZipArchive extraction on server...
-          RESPONSE=$(curl -s -k --retry 3 --retry-delay 3 -m 60 https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026 || true)
-          echo $RESPONSE
-          echo Server extraction webhook executed!
+          echo "Triggering PHP ZipArchive extraction on server..."
+          RESPONSE=$(curl -sSL -k --retry 5 --retry-delay 5 -m 90 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" "https://app.ppmawar.or.id/unzip.php?key=ppmawar_deploy_2026" 2>&1 || true)
+          echo "=== SERVER UNZIP RESPONSE ==="
+          echo "$RESPONSE"
+          echo "============================="
+          echo "Server extraction webhook executed!"
 
       - name: Deploy Status
         run: |
