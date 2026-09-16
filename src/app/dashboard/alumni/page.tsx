@@ -510,35 +510,42 @@ export default function AlumniManagementPage() {
                   sortedAlumni.map((item, idx) => (
                     <tr key={item.alumni_id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="px-3 py-3 text-center text-gray-400 font-medium text-xs">{idx + 1}</td>
-                      <td className="px-4 py-3 max-w-[210px] whitespace-normal">
-                        <div className="font-bold text-gray-900 dark:text-white flex items-start gap-2">
-                          <div className="w-8 h-8 rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 flex items-center justify-center text-xs font-bold overflow-hidden relative shrink-0 mt-0.5">
-                            <span className="absolute inset-0 flex items-center justify-center">
-                              {(item.nama || 'AL').substring(0,2).toUpperCase()}
-                            </span>
-                            {item.foto && item.foto !== '-' && (
-                              <img
-                                src={getFotoUrl(item.foto)}
-                                alt={item.nama}
-                                className="absolute inset-0 w-full h-full object-cover z-10 cursor-pointer hover:scale-110 transition-transform duration-300"
-                                onClick={() => setSelectedPhoto(getFotoUrl(item.foto))}
-                                onError={(e) => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.display = 'none'; }}
-                              />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="line-clamp-2 leading-snug break-words text-sm" title={item.nama}>
-                              {item.nama}
+                      <td className="px-4 py-3 max-w-[220px] whitespace-normal">
+                        <div className="flex flex-col gap-1">
+                          {/* Baris Atas: Avatar + Nama & NIS */}
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 flex items-center justify-center text-xs font-bold overflow-hidden relative shrink-0">
+                              <span className="absolute inset-0 flex items-center justify-center">
+                                {(item.nama || 'AL').substring(0,2).toUpperCase()}
+                              </span>
+                              {item.foto && item.foto !== '-' && (
+                                <img
+                                  src={getFotoUrl(item.foto)}
+                                  alt={item.nama}
+                                  className="absolute inset-0 w-full h-full object-cover z-10 cursor-pointer hover:scale-110 transition-transform duration-300"
+                                  onClick={() => setSelectedPhoto(getFotoUrl(item.foto))}
+                                  onError={(e) => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.display = 'none'; }}
+                                />
+                              )}
                             </div>
-                            <div className="text-[11px] text-gray-400 font-mono mt-0.5 flex flex-col gap-0.5">
-                              {item.nis && <span>NIS: {item.nis}</span>}
-                              {item.keterangan && (
-                                <span className="text-[10px] text-gray-500 font-sans italic line-clamp-2 leading-tight break-words" title={item.keterangan}>
-                                  Riwayat: {item.keterangan}
-                                </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-bold text-gray-900 dark:text-white line-clamp-2 leading-snug break-words text-sm" title={item.nama}>
+                                {item.nama}
+                              </div>
+                              {item.nis && (
+                                <div className="text-[11px] text-gray-400 font-mono mt-0.5">
+                                  NIS: {item.nis}
+                                </div>
                               )}
                             </div>
                           </div>
+
+                          {/* Baris Bawah: Riwayat sejajar dengan ujung kiri avatar */}
+                          {item.keterangan && (
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 font-sans italic line-clamp-2 leading-tight break-words" title={item.keterangan}>
+                              Riwayat: {item.keterangan}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-600 dark:text-gray-300 text-center">
