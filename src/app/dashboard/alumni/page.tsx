@@ -7,9 +7,36 @@ import { downloadTemplate } from '@/lib/downloadTemplate';
 export default function AlumniManagementPage() {
   const [alumni, setAlumni] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(12);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterKategori, setFilterKategori] = useState(''); // '' means All, 'PPM', 'LPPM'
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Animasi progress bar interaktif saat memuat data alumni
+  useEffect(() => {
+    let progressTimer: NodeJS.Timeout;
+    if (initialLoading) {
+      setLoadProgress(12);
+      progressTimer = setInterval(() => {
+        setLoadProgress(prev => {
+          if (prev >= 90) return prev;
+          const inc = Math.floor(Math.random() * 10) + 7;
+          return Math.min(prev + inc, 92);
+        });
+      }, 150);
+    }
+    return () => clearInterval(progressTimer);
+  }, [initialLoading]);
+
+  // Debounce search agar responsif tanpa lag saat mengetik
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 150);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   // Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -153,7 +180,7 @@ export default function AlumniManagementPage() {
   const fetchAlumni = async () => {
     setLoading(true);
     try {
-      let url = `/api/alumni?search=${encodeURIComponent(search)}`;
+      let url = `/api/alumni?search=${encodeURIComponent(debouncedSearch)}`;
       if (filterKategori) url += `&kategori=${encodeURIComponent(filterKategori)}`;
       const res = await fetch(url);
       const data = await res.json();
@@ -165,13 +192,17 @@ export default function AlumniManagementPage() {
     } catch (e) {
       setErrorMsg('Gagal memuat data alumni due to network error');
     } finally {
-      setLoading(false);
+      setLoadProgress(100);
+      setTimeout(() => {
+        setInitialLoading(false);
+        setLoading(false);
+      }, 200);
     }
   };
 
   useEffect(() => {
     fetchAlumni();
-  }, [search, filterKategori]);
+  }, [debouncedSearch, filterKategori]);
 
   // Sorting
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
@@ -382,6 +413,32 @@ export default function AlumniManagementPage() {
       alert('Terjadi kesalahan jaringan saat memulihkan data');
     }
   };
+
+  if (initialLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 sm:p-7 w-full max-w-sm text-center space-y-4 border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs">
+            <GraduationCap size={24} className="animate-pulse" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base">
+              Memuat Data Alumni...
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Menghubungkan ke server database alumni PPMA</p>
+          </div>
+          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
+            <div
+              className="bg-emerald-600 h-full rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${loadProgress}%` }}
+            />
+          </div>
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{loadProgress}%</p>
+          <p className="text-[11px] text-slate-400">Harap tunggu, proses sedang berlangsung...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20">
