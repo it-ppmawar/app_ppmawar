@@ -384,8 +384,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {showSidebar && (
         <>
           <div className="fixed inset-0 bg-black/50 z-[60]" onClick={() => setShowSidebar(false)}></div>
-          <aside className="fixed top-0 right-0 h-full w-72 bg-white dark:bg-gray-900 shadow-2xl z-[70] flex flex-col">
-            <div className="p-5 border-b dark:border-gray-800 flex justify-between items-center bg-gradient-to-r from-green-800 to-green-900 text-white">
+          <aside className="fixed top-0 right-0 h-full w-72 bg-white dark:bg-gray-900 shadow-2xl z-[70] flex flex-col rounded-l-3xl overflow-hidden">
+            <div className="p-5 border-b border-green-700/30 dark:border-gray-800 flex justify-between items-center bg-gradient-to-r from-green-800 to-green-900 text-white rounded-b-2xl shadow-md relative z-10">
               <div className="flex items-center gap-3">
                 <div
                   className={`${sidebarAvatar ? 'w-10 h-10 rounded-full overflow-hidden border-2 border-white/40 flex-shrink-0' : 'bg-white p-1.5 rounded-full'} ${sidebarAvatar ? 'cursor-pointer hover:ring-2 hover:ring-white/60 transition-all' : ''}`}
@@ -1054,7 +1054,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         </div>
         
-        <div className="p-4 border-t dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 flex flex-col gap-2">
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/90 flex flex-col gap-2 rounded-t-3xl shadow-[0_-5px_15px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_15px_rgba(0,0,0,0.3)] relative z-10">
           <a 
             href={`https://wa.me/${nomorCs.replace(/\D/g, '')}?text=${encodeURIComponent('Assalamu\'alaikum, Admin PPMA. Saya butuh bantuan terkait sistem absensi.')}`}
             target="_blank"
