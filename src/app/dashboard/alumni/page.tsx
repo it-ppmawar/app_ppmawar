@@ -485,20 +485,20 @@ export default function AlumniManagementPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700 text-xs">
                 <tr>
-                  <th className="px-5 py-4 w-10 text-center">NO</th>
-                  <th className="px-5 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>NAMA ALUMNI{getSortIcon('nama')}</th>
-                  <th className="px-5 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. KELAMIN{getSortIcon('jenis_kelamin')}</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none" onClick={() => requestSort('kategori_mukim')}>
-                    Kategori{getSortIcon('kategori_mukim')}
+                  <th className="px-3 py-3 w-10 text-center">NO</th>
+                  <th className="px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>NAMA ALUMNI{getSortIcon('nama')}</th>
+                  <th className="px-3 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none text-center" onClick={() => requestSort('jenis_kelamin')}>J. KELAMIN{getSortIcon('jenis_kelamin')}</th>
+                  <th className="px-3 py-3 text-center cursor-pointer select-none" onClick={() => requestSort('kategori_mukim')}>
+                    KATEGORI{getSortIcon('kategori_mukim')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none" onClick={() => requestSort('tahun_masuk')}>TAHUN MASUK{getSortIcon('tahun_masuk')}</th>
-                  <th className="px-5 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none text-center" onClick={() => requestSort('tahun_keluar')}>TAHUN KELUAR{getSortIcon('tahun_keluar')}</th>
-                  <th className="px-5 py-4">KONTAK & ALAMAT</th>
-                  <th className="px-5 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama_wali')}>WALI</th>
-                  <th className="px-5 py-4 text-center">STATUS</th>
-                  <th className="px-5 py-4 text-center">AKSI</th>
+                  <th className="px-3 py-3 text-center cursor-pointer select-none" onClick={() => requestSort('tahun_masuk')}>TH. MASUK{getSortIcon('tahun_masuk')}</th>
+                  <th className="px-3 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none text-center" onClick={() => requestSort('tahun_keluar')}>TH. KELUAR{getSortIcon('tahun_keluar')}</th>
+                  <th className="px-4 py-3">KONTAK & ALAMAT</th>
+                  <th className="px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama_wali')}>WALI{getSortIcon('nama_wali')}</th>
+                  <th className="px-3 py-3 text-center">STATUS</th>
+                  <th className="px-3 py-3 text-center">AKSI</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -509,10 +509,10 @@ export default function AlumniManagementPage() {
                 ) : (
                   sortedAlumni.map((item, idx) => (
                     <tr key={item.alumni_id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="px-5 py-4 text-center text-gray-400 font-medium">{idx + 1}</td>
-                      <td className="px-5 py-4">
-                        <div className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 flex items-center justify-center text-xs font-bold overflow-hidden relative shrink-0">
+                      <td className="px-3 py-3 text-center text-gray-400 font-medium text-xs">{idx + 1}</td>
+                      <td className="px-4 py-3 max-w-[210px] whitespace-normal">
+                        <div className="font-bold text-gray-900 dark:text-white flex items-start gap-2">
+                          <div className="w-8 h-8 rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 flex items-center justify-center text-xs font-bold overflow-hidden relative shrink-0 mt-0.5">
                             <span className="absolute inset-0 flex items-center justify-center">
                               {(item.nama || 'AL').substring(0,2).toUpperCase()}
                             </span>
@@ -526,48 +526,60 @@ export default function AlumniManagementPage() {
                               />
                             )}
                           </div>
-                          {item.nama}
-                        </div>
-                        <div className="text-[11px] text-gray-400 font-mono mt-1 ml-10 flex flex-col gap-0.5">
-                          {item.nis && <span>NIS: {item.nis}</span>}
-                          {item.keterangan && (
-                            <span className="text-[10px] text-gray-500 font-sans italic">
-                              Riwayat: {item.keterangan}
-                            </span>
-                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="line-clamp-2 leading-snug break-words text-sm" title={item.nama}>
+                              {item.nama}
+                            </div>
+                            <div className="text-[11px] text-gray-400 font-mono mt-0.5 flex flex-col gap-0.5">
+                              {item.nis && <span>NIS: {item.nis}</span>}
+                              {item.keterangan && (
+                                <span className="text-[10px] text-gray-500 font-sans italic line-clamp-2 leading-tight break-words" title={item.keterangan}>
+                                  Riwayat: {item.keterangan}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-600 dark:text-gray-300 text-center">
                         {item.jenis_kelamin || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-600 dark:text-gray-300 text-center">
                         {item.kategori_mukim === 'PPM' ? (
-                          <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 rounded-md text-xs font-medium">PPM</span>
+                          <span className="px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 rounded-md text-[11px] font-medium">PPM</span>
                         ) : item.kategori_mukim === 'LPPM' ? (
-                          <span className="px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 rounded-md text-xs font-medium">LPPM</span>
+                          <span className="px-2 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 rounded-md text-[11px] font-medium">LPPM</span>
                         ) : '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-600 dark:text-gray-300 text-center">
                         {item.tahun_masuk || '-'}
                       </td>
-                      <td className="px-5 py-4 text-center font-bold text-green-600 dark:text-green-400">
+                      <td className="px-3 py-3 text-center font-bold text-green-600 dark:text-green-400 text-xs">
                         {item.tahun_keluar || '-'}
                       </td>
-                      <td className="px-5 py-4">
-                        <div className="text-gray-800 dark:text-gray-300 font-medium">{item.no_hp || '-'}</div>
-                        {item.alamat && <div className="text-xs text-gray-400 truncate max-w-xs">{item.alamat}</div>}
+                      <td className="px-4 py-3 max-w-[190px] whitespace-normal">
+                        <div className="text-gray-800 dark:text-gray-300 font-medium text-xs font-mono">{item.no_hp || '-'}</div>
+                        {item.alamat && (
+                          <div className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-3 leading-tight break-words mt-0.5" title={item.alamat}>
+                            {item.alamat}
+                          </div>
+                        )}
                       </td>
-                      <td className="px-5 py-4">
-                          <div className="text-gray-800 dark:text-gray-300 font-medium text-xs">{item.nama_wali || '-'}</div>
-                          {item.no_hp_wali && <div className="text-xs text-gray-400 mt-0.5">{item.no_hp_wali}</div>}
-                        </td>
-                       <td className="px-5 py-4 text-center">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 uppercase tracking-wider">
+                      <td className="px-4 py-3 max-w-[160px] whitespace-normal">
+                        <div className="text-gray-800 dark:text-gray-300 font-medium text-xs line-clamp-2 break-words" title={item.nama_wali}>
+                          {item.nama_wali || '-'}
+                        </div>
+                        {item.no_hp_wali && (
+                          <div className="text-[11px] text-gray-400 mt-0.5 font-mono">{item.no_hp_wali}</div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 uppercase tracking-wider">
                           {item.status_keluar || 'Lulus'}
                         </span>
                       </td>
-                      <td className="px-5 py-4">
-                        <div className="flex justify-center items-center gap-2">
+                      <td className="px-3 py-3">
+                        <div className="flex justify-center items-center gap-1.5">
                           <button
                             onClick={() => handleRestore(item.alumni_id, item.nama)}
                             className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 rounded-lg transition-colors"
