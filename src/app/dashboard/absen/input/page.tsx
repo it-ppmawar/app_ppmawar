@@ -1933,7 +1933,7 @@ function InputAbsenContent() {
             })()}
           </div>
 
-          <div className="fixed bottom-16 left-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 p-4 shadow-[0_-10px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.4)] z-40 rounded-t-3xl">
+          <div className="fixed bottom-16 left-0 w-full bg-white dark:bg-gray-800 border-t border-b border-gray-100 dark:border-gray-700 p-4 shadow-[0_0_25px_rgba(0,0,0,0.08)] dark:shadow-[0_0_25px_rgba(0,0,0,0.4)] z-40 rounded-3xl">
             <div className="max-w-4xl mx-auto flex items-center justify-between">
               <div className="text-sm font-bold text-gray-600 dark:text-gray-300">
                 Total Hadir: <span className="text-green-600 dark:text-green-400">{murid.filter(m => m.status === 'Hadir').length}</span> / {murid.length}
