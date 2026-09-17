@@ -750,7 +750,7 @@ function QuickAbsenContent() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-md">
+      <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-md rounded-b-2xl">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-emerald-400" />
@@ -1061,11 +1061,11 @@ function QuickAbsenContent() {
                       onClick={() => setIzinStatus('Izin')}
                       className={`p-3.5 rounded-xl border text-center transition flex flex-col items-center gap-1.5 ${
                         izinStatus === 'Izin'
-                          ? 'bg-amber-950/60 border-amber-500 text-amber-300 shadow-md ring-2 ring-amber-500/30'
-                          : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700'
+                          ? 'bg-blue-950/60 border-blue-500 text-blue-300 shadow-md ring-2 ring-blue-500/30'
+                          : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-blue-700'
                       }`}
                     >
-                      <span className="text-xl">🟡</span>
+                      <span className="text-xl">🔵</span>
                       <span className="font-bold text-sm">Izin Mengajar</span>
                       <span className="text-[10px] text-slate-400">Ada Keperluan / Udzur</span>
                     </button>
@@ -1075,11 +1075,11 @@ function QuickAbsenContent() {
                       onClick={() => setIzinStatus('Sakit')}
                       className={`p-3.5 rounded-xl border text-center transition flex flex-col items-center gap-1.5 ${
                         izinStatus === 'Sakit'
-                          ? 'bg-blue-950/60 border-blue-500 text-blue-300 shadow-md ring-2 ring-blue-500/30'
-                          : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700'
+                          ? 'bg-amber-950/60 border-amber-500 text-amber-300 shadow-md ring-2 ring-amber-500/30'
+                          : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-amber-700'
                       }`}
                     >
-                      <span className="text-xl">🔵</span>
+                      <span className="text-xl">🟡</span>
                       <span className="font-bold text-sm">Sakit</span>
                       <span className="text-[10px] text-slate-400">Kondisi Badan Tidak Fit</span>
                     </button>
@@ -1096,7 +1096,9 @@ function QuickAbsenContent() {
                     value={izinKeterangan}
                     onChange={(e) => setIzinKeterangan(e.target.value)}
                     placeholder={izinStatus === 'Sakit' ? 'Contoh: Sakit demam tinggi sejak semalam...' : 'Contoh: Ada keperluan mendesak keluarga di luar kota...'}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition ${
+                      izinStatus === 'Izin' ? 'focus:border-blue-500' : 'focus:border-amber-500'
+                    }`}
                   />
                   {/* Quick Reason Chips (Rata Tengah) */}
                   <div className="flex flex-wrap justify-center gap-1.5 mt-2 text-center">
@@ -1330,7 +1332,11 @@ function QuickAbsenContent() {
                   type="button"
                   onClick={handleIzinSubmit}
                   disabled={submittingIzin}
-                  className="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition shadow-lg flex items-center justify-center gap-2 active:scale-95"
+                  className={`w-full py-3 ${
+                    izinStatus === 'Izin'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500'
+                      : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500'
+                  } disabled:opacity-50 text-white font-bold text-sm rounded-xl transition shadow-lg flex items-center justify-center gap-2 active:scale-95`}
                 >
                   {submittingIzin ? (
                     <>
@@ -1544,7 +1550,7 @@ function QuickAbsenContent() {
         </div>
 
         {/* Floating Submit Button (Khusus Mode Masuk/Absen Santri) */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 z-30">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 z-30 rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
           <div className="max-w-2xl mx-auto">
             <button
               onClick={handleSubmit}

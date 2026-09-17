@@ -1355,11 +1355,11 @@ function InputAbsenContent() {
                   onClick={() => setIzinStatus('Izin')}
                   className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-1.5 text-center ${
                     izinStatus === 'Izin'
-                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 shadow-sm ring-2 ring-amber-400/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-amber-300 text-gray-600 dark:text-gray-400'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 shadow-sm ring-2 ring-blue-400/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 text-gray-600 dark:text-gray-400'
                   }`}
                 >
-                  <span className="w-4 h-4 rounded-full bg-amber-500 mb-1" />
+                  <span className="w-4 h-4 rounded-full bg-blue-500 mb-1" />
                   <span className="font-bold text-sm">Izin Mengajar</span>
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">Ada Keperluan / Udzur</span>
                 </button>
@@ -1369,11 +1369,11 @@ function InputAbsenContent() {
                   onClick={() => setIzinStatus('Sakit')}
                   className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-1.5 text-center ${
                     izinStatus === 'Sakit'
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 shadow-sm ring-2 ring-blue-400/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 text-gray-600 dark:text-gray-400'
+                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 shadow-sm ring-2 ring-amber-400/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-amber-300 text-gray-600 dark:text-gray-400'
                   }`}
                 >
-                  <span className="w-4 h-4 rounded-full bg-blue-500 mb-1" />
+                  <span className="w-4 h-4 rounded-full bg-amber-500 mb-1" />
                   <span className="font-bold text-sm">Sakit</span>
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">Kondisi Badan Tidak Fit</span>
                 </button>
@@ -1390,7 +1390,9 @@ function InputAbsenContent() {
                 value={izinKeterangan}
                 onChange={(e) => setIzinKeterangan(e.target.value)}
                 placeholder={izinStatus === 'Sakit' ? 'Contoh: Sakit demam tinggi sejak semalam...' : 'Contoh: Ada keperluan mendesak keluarga di luar kota...'}
-                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-amber-500 transition"
+                className={`w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none transition ${
+                  izinStatus === 'Izin' ? 'focus:border-blue-500' : 'focus:border-amber-500'
+                }`}
               />
               {/* Quick Reason Chips (Rata Tengah) */}
               <div className="flex flex-wrap justify-center gap-1.5 mt-2 text-center">
@@ -1619,6 +1621,8 @@ function InputAbsenContent() {
               className={`w-full py-3.5 px-6 rounded-2xl font-bold text-sm text-white transition-all shadow-md flex items-center justify-center gap-2 active:scale-98 ${
                 submittingIzin
                   ? 'bg-gray-400 cursor-not-allowed'
+                  : izinStatus === 'Izin'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
                   : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700'
               }`}
             >
@@ -1929,7 +1933,7 @@ function InputAbsenContent() {
             })()}
           </div>
 
-          <div className="fixed bottom-16 left-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 p-4 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] z-40">
+          <div className="fixed bottom-16 left-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 p-4 shadow-[0_-10px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.4)] z-40 rounded-t-3xl">
             <div className="max-w-4xl mx-auto flex items-center justify-between">
               <div className="text-sm font-bold text-gray-600 dark:text-gray-300">
                 Total Hadir: <span className="text-green-600 dark:text-green-400">{murid.filter(m => m.status === 'Hadir').length}</span> / {murid.length}
