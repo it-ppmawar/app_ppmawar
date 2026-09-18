@@ -248,7 +248,7 @@ export default function AlumniManagementPage() {
     const subtitle = `Total Alumni: ${sortedAlumni.length} | Pencarian: ${search || 'Semua'}`;
     const filename = `Data_Alumni_${new Date().getFullYear()}`;
 
-    const tableColumn = ["NO", "NAMA LENGKAP", "NIS", "JENIS KELAMIN", "WALI", "KONTAK & ALAMAT", "TAHUN MASUK", "TAHUN KELUAR", "STATUS"];
+    const tableColumn = ["NO", "NAMA LENGKAP", "NIS", "GENDER", "WALI", "KONTAK & ALAMAT", "TAHUN MASUK", "TAHUN KELUAR", "STATUS"];
     const tableRows: any[] = [];
 
     sortedAlumni.forEach((item, idx) => {
@@ -546,7 +546,7 @@ export default function AlumniManagementPage() {
                 <tr>
                   <th className="px-3 py-3 w-10 text-center">NO</th>
                   <th className="px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>NAMA ALUMNI{getSortIcon('nama')}</th>
-                  <th className="px-3 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none text-center" onClick={() => requestSort('jenis_kelamin')}>JENIS KELAMIN{getSortIcon('jenis_kelamin')}</th>
+                  <th className="px-3 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none text-center" onClick={() => requestSort('jenis_kelamin')}>GENDER{getSortIcon('jenis_kelamin')}</th>
                   <th className="px-3 py-3 text-center cursor-pointer select-none" onClick={() => requestSort('kategori_mukim')}>
                     KATEGORI{getSortIcon('kategori_mukim')}
                   </th>

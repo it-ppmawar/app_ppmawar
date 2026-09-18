@@ -209,7 +209,7 @@ async function importAlumni(rows: any[][], headers: string[]) {
   const colNIS = findCol(headers, ['NIS']);
   const colNama = findCol(headers, ['NAMA LENGKAP', 'NAMA']);
   const colNIK = findCol(headers, ['NIK']);
-  const colJK = findCol(headers, ['JENIS KELAMIN', 'J. KELAMIN', 'JK']);
+  const colJK = findCol(headers, ['JENIS KELAMIN', 'J. KELAMIN', 'JK', 'GENDER']);
   const colHP = findCol(headers, ['NO HP', 'NO. HP', 'WHATSAPP']);
   const colAlamat = findCol(headers, ['ALAMAT']);
   const colTahunMasuk = findCol(headers, ['TAHUN MASUK', 'THN MASUK']);

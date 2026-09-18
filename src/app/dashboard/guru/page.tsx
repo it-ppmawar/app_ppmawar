@@ -351,7 +351,7 @@ export default function GuruPage() {
     const subtitle = `Filter: ${filterMadin || 'Semua Madin'} | ${filterQuran || "Semua Qur'an"} | ${filterKamar || 'Semua Kamar'}`;
     const filename = `Data_Guru_Pembina`;
 
-    const tableColumn = ["NO", "NIP", "NAMA LENGKAP", "JENIS KELAMIN", "JABATAN / TUGAS", "NO. HP", "ALAMAT"];
+    const tableColumn = ["NO", "NIP", "NAMA LENGKAP", "GENDER", "JABATAN / TUGAS", "NO. HP", "ALAMAT"];
     const tableRows: any[] = [];
 
     exportData.forEach((item, idx) => {
@@ -528,7 +528,7 @@ export default function GuruPage() {
                 <th className="px-4 py-4 w-12 text-center">FOTO</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('nip')}>NIP{getSortIcon('nip')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('nama')}>NAMA LENGKAP{getSortIcon('nama')}</th>
-                <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('jenis_kelamin')}>JENIS KELAMIN{getSortIcon('jenis_kelamin')}</th>
+                <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('jenis_kelamin')}>GENDER{getSortIcon('jenis_kelamin')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('jabatan')}>TUGAS & KELAS{getSortIcon('jabatan')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-green-700 select-none" onClick={() => requestSort('alamat')}>KONTAK & ALAMAT{getSortIcon('alamat')}</th>
                 <th className="px-4 py-4 text-center">AKSI</th>

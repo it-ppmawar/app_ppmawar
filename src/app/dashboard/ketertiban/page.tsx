@@ -442,8 +442,8 @@ export default function KetertibanPage() {
     const filename = `Data_Ketertiban_${activeTab}_${kategoriFilter}`;
 
     const tableColumn = activeTab === 'pelanggaran'
-      ? ["NO", "TANGGAL", "NAMA SANTRI", "JENIS KELAMIN", "KELAS / KAMAR", "JENIS PELANGGARAN", "CATATAN"]
-      : ["NO", "TANGGAL", "NAMA SANTRI", "JENIS KELAMIN", "KELAS / KAMAR", activeTab === 'izin' ? 'KETERANGAN IZIN' : activeTab === 'sakit' ? 'KETERANGAN SAKIT' : 'KETERANGAN ALPA'];
+      ? ["NO", "TANGGAL", "NAMA SANTRI", "GENDER", "KELAS / KAMAR", "JENIS PELANGGARAN", "CATATAN"]
+      : ["NO", "TANGGAL", "NAMA SANTRI", "GENDER", "KELAS / KAMAR", activeTab === 'izin' ? 'KETERANGAN IZIN' : activeTab === 'sakit' ? 'KETERANGAN SAKIT' : 'KETERANGAN ALPA'];
 
     const tableRows: any[] = [];
     exportData.forEach((item: RowItem, idx: number) => {
@@ -777,7 +777,7 @@ export default function KetertibanPage() {
                 <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
                   <tr>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>Jenis Kelamin{getSortIcon('jenis_kelamin')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>Gender{getSortIcon('jenis_kelamin')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas')}>Kelas / Kamar{getSortIcon('kelas')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis')}>Jenis Pelanggaran{getSortIcon('jenis')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Catatan / Deskripsi{getSortIcon('keterangan')}</th>
@@ -847,7 +847,7 @@ export default function KetertibanPage() {
                 <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
                   <tr>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>Nama Santri{getSortIcon('nama')}</th>
-                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>Jenis Kelamin{getSortIcon('jenis_kelamin')}</th>
+                    <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>Gender{getSortIcon('jenis_kelamin')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas')}>Kelas / Kamar{getSortIcon('kelas')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('keterangan')}>Keterangan / Sumber{getSortIcon('keterangan')}</th>
                     <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('tanggal')}>Tanggal{getSortIcon('tanggal')}</th>
