@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, SwitchCamera, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy, Search, Key, Link as LinkIcon } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, SwitchCamera, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy, Search, Key, Link as LinkIcon, Sun, Moon } from 'lucide-react';
 import Link from 'next/link';
 
 // Avatar & Photo helper
@@ -54,6 +54,33 @@ function QuickAbsenContent() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [copiedWa, setCopiedWa] = useState(false);
+
+  // Dark/Light Theme State
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        setIsDark(true);
+        document.documentElement.classList.add('dark');
+      } else {
+        setIsDark(false);
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDark) {
+      document.documentElement.classList.remove('dark');
+      localStorage.theme = 'light';
+      setIsDark(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.theme = 'dark';
+      setIsDark(true);
+    }
+  };
 
   // Izin / Sakit States
   const [activeTab, setActiveTab] = useState<'absen' | 'izin'>(actionParam === 'izin' ? 'izin' : 'absen');
@@ -751,17 +778,31 @@ function QuickAbsenContent() {
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-24">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-md rounded-b-2xl">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-emerald-400" />
-            <div>
-              <h1 className="text-sm font-bold text-white leading-tight">Pintasan Salam Mawar</h1>
-              <p className="text-[11px] text-slate-400">{guru_nama}</p>
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-sm font-bold text-white leading-tight whitespace-nowrap">
+                  Pintasan Salam Mawar
+                </h1>
+                <span className="px-2 py-0.5 text-[9px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/60 rounded-full uppercase tracking-wider shrink-0">
+                  {tipe}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 truncate mt-0.5">{guru_nama}</p>
             </div>
           </div>
-          <span className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800/60 rounded-full uppercase">
-            {tipe}
-          </span>
+          {/* Tombol Mode Gelap / Terang di Pojok Kanan Atas */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-2 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700/60 shadow-xs shrink-0"
+            aria-label="Toggle Mode Gelap/Terang"
+            title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
+          >
+            {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-300" />}
+          </button>
         </div>
       </header>
 
@@ -855,31 +896,35 @@ function QuickAbsenContent() {
           </div>
         )}
 
-        {/* GPS Status Bar (Kecil & Informatif) */}
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs bg-slate-900/80 border border-slate-800">
+        {/* GPS Status Bar (1 Baris Ramping & Efisien) */}
+        <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs bg-slate-900/80 border border-slate-800 shadow-xs">
           <div className="flex items-center gap-2">
-            <MapPin size={14} className={userLocation ? "text-emerald-400" : "text-amber-400"} />
-            <span className="text-slate-300 text-[11px]">
-              Status GPS HP:<br />
-              {userLocation ? (
-                <strong className="text-emerald-400">Terdeteksi &amp; Siap</strong>
-              ) : detectingGps ? (
-                <strong className="text-cyan-400">Sedang Mendeteksi...</strong>
-              ) : (
-                <strong className="text-amber-400">Belum Terdeteksi</strong>
-              )}
+            <MapPin size={15} className={userLocation ? "text-emerald-400" : detectingGps ? "text-cyan-400" : "text-amber-400"} />
+            <span className="text-slate-300 font-medium text-xs">
+              Status GPS HP:
             </span>
+            {!userLocation && detectingGps && (
+              <span className="text-[11px] font-semibold text-cyan-400 flex items-center gap-1">
+                <Loader2 size={11} className="animate-spin" /> Mendeteksi...
+              </span>
+            )}
           </div>
-          {!userLocation && (
-            <div className="flex items-center gap-1.5">
+
+          {userLocation ? (
+            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 shrink-0">
+              <CheckCircle2 size={13} className="text-emerald-400" />
+              Terdeteksi &amp; Siap
+            </span>
+          ) : (
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={requestGpsPermission}
                 disabled={detectingGps}
-                className="px-2.5 py-1 bg-emerald-700/80 hover:bg-emerald-600 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-sm"
+                className="px-2.5 py-1 bg-emerald-700/80 hover:bg-emerald-600 active:scale-95 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-sm disabled:opacity-50"
               >
                 {detectingGps ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
-                Deteksi GPS
+                <span>Deteksi GPS</span>
               </button>
               <button
                 type="button"

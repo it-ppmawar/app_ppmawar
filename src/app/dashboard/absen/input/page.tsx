@@ -1133,23 +1133,27 @@ function InputAbsenContent() {
         </div>
       )}
 
-      {/* 2. GPS Status Bar (Kecil, Rapi & Informatif Sesuai Desain Foto 4) */}
+      {/* 2. GPS Status Bar (1 Baris Ramping & Efisien) */}
       <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs bg-white dark:bg-slate-900/80 border border-gray-200 dark:border-gray-700/80 shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <MapPin size={16} className={location ? "text-emerald-500 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"} />
-          <div className="text-gray-700 dark:text-gray-300 text-[11px] leading-tight">
-            <span className="text-gray-500 dark:text-gray-400">Status GPS HP:</span><br />
-            {location ? (
-              <strong className="text-emerald-600 dark:text-emerald-400 font-bold">Terdeteksi &amp; Siap</strong>
-            ) : detectingLocation ? (
-              <strong className="text-cyan-600 dark:text-cyan-400 font-bold">Sedang Mendeteksi...</strong>
-            ) : (
-              <strong className="text-amber-600 dark:text-amber-400 font-bold">Belum Terdeteksi</strong>
-            )}
-          </div>
+        <div className="flex items-center gap-2">
+          <MapPin size={16} className={location ? "text-emerald-500 dark:text-emerald-400" : detectingLocation ? "text-cyan-500 dark:text-cyan-400" : "text-amber-500 dark:text-amber-400"} />
+          <span className="text-gray-700 dark:text-gray-300 font-medium text-xs">
+            Status GPS HP:
+          </span>
+          {!location && detectingLocation && (
+            <span className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
+              <Loader2 size={11} className="animate-spin" /> Mendeteksi...
+            </span>
+          )}
         </div>
-        {!location && (
-          <div className="flex items-center gap-1.5">
+
+        {location ? (
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shrink-0">
+            <CheckCircle2 size={14} className="text-emerald-500 dark:text-emerald-400" />
+            Terdeteksi &amp; Siap
+          </span>
+        ) : (
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={requestGpsLocation}
