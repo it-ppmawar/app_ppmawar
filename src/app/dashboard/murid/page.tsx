@@ -617,7 +617,7 @@ export default function DataMuridPage() {
     const subtitle = `Filter: ${filterMadin || 'Semua Madin'} | ${filterQuran || "Semua Qur'an"} | ${filterKamar || 'Semua Kamar'}`;
     const filename = `Data_Santri`;
 
-    const tableColumn = ["NO", "NIS", "NAMA LENGKAP", "J. KELAMIN", "KELAS MADIN", "KELAS QUR'AN", "KAMAR"];
+    const tableColumn = ["NO", "NIS", "NAMA LENGKAP", "JENIS KELAMIN", "KELAS MADIN", "KELAS QUR'AN", "KAMAR"];
     const tableRows: any[] = [];
 
     exportData.forEach((item, idx) => {
@@ -1031,7 +1031,7 @@ export default function DataMuridPage() {
                 <th className="px-4 py-4 w-12 text-center">FOTO</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nis')}>NIS{getSortIcon('nis')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>NAMA LENGKAP{getSortIcon('nama')}</th>
-                <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>J. KELAMIN{getSortIcon('jenis_kelamin')}</th>
+                <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jenis_kelamin')}>JENIS KELAMIN{getSortIcon('jenis_kelamin')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kelas_madin')}>KELAS & KAMAR{getSortIcon('kelas_madin')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('alamat')}>ALAMAT{getSortIcon('alamat')}</th>
                 <th className="px-4 py-4 text-center">AKSI</th>

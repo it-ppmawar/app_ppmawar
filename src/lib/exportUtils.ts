@@ -31,22 +31,22 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
   const doc = new jsPDF();
   
   // Header
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(sanitizeTextForPDF(title), 105, 20, { align: 'center' });
+  doc.setFontSize(16);
+  doc.setFont('courier', 'bold');
+  doc.text(sanitizeTextForPDF(title), 105, 18, { align: 'center' });
   
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setFont('courier', 'normal');
   
   // Info
-  let startY = 30;
+  let startY = 26;
   if (subtitle) {
     const cleanSubtitle = sanitizeTextForPDF(subtitle);
     const subLines = cleanSubtitle.split('\n');
     subLines.forEach(line => {
       if (line.trim()) {
         doc.text(line.trim(), 14, startY);
-        startY += 6;
+        startY += 5;
       }
     });
   }
@@ -56,7 +56,7 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
     periodLines.forEach(line => {
       if (line.trim()) {
         doc.text(`Periode: ${line.trim()}`, 14, startY);
-        startY += 6;
+        startY += 5;
       }
     });
   }
@@ -69,8 +69,9 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
     body: cleanRows,
     startY: startY + 2,
     theme: 'grid',
-    styles: { fontSize: 9, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
-    headStyles: { fillColor: [255, 255, 255], fontStyle: 'bold' } // Formal white design
+    styles: { font: 'courier', fontSize: 8, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
+    headStyles: { font: 'courier', fillColor: [255, 255, 255], fontStyle: 'bold', textColor: [0, 0, 0] }, // Formal white design
+    bodyStyles: { font: 'courier' }
   });
 
   if (previewOnly) {
@@ -99,8 +100,27 @@ export const exportToExcel = (options: ExportOptions) => {
   const ws = XLSX.utils.aoa_to_sheet([...headerData, ...rows]);
   
   // Basic column width auto-adjustment
-  const colWidths = columns.map(c => ({ wch: Math.max(c.length, 10) }));
+  const colWidths = columns.map(c => ({ wch: Math.max(c.length, 12) }));
   ws['!cols'] = colWidths;
+
+  // Terapkan font Courier New untuk seluruh sel Excel
+  if (ws['!ref']) {
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+        if (ws[cellRef]) {
+          ws[cellRef].s = {
+            font: {
+              name: 'Courier New',
+              sz: R === 0 ? 12 : 10,
+              bold: R === 0 || R === headerData.length - 1
+            }
+          };
+        }
+      }
+    }
+  }
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Data");
@@ -151,7 +171,7 @@ export const exportMatrixPDF = (options: MatrixExportOptions): string | void => 
   // ── Header Institusi ────────────────────────────────────────────────────────
   if (institution) {
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('courier', 'normal');
     doc.setTextColor(80, 80, 80);
     doc.text(institution, pageWidth / 2, curY, { align: 'center' });
     curY += 5;
@@ -159,14 +179,14 @@ export const exportMatrixPDF = (options: MatrixExportOptions): string | void => 
 
   // ── Judul ───────────────────────────────────────────────────────────────────
   doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('courier', 'bold');
   doc.setTextColor(0, 80, 40);
   doc.text(title, pageWidth / 2, curY, { align: 'center' });
   curY += 5;
 
   if (subtitle) {
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('courier', 'normal');
     doc.setTextColor(60, 60, 60);
     doc.text(subtitle, pageWidth / 2, curY, { align: 'center' });
     curY += 5;
@@ -235,6 +255,7 @@ export const exportMatrixPDF = (options: MatrixExportOptions): string | void => 
     margin: { left: marginL, right: marginR },
     theme: 'grid',
     styles: {
+      font: 'courier',
       fontSize: 7,
       textColor: [20, 20, 20],
       lineColor: [180, 180, 180],
@@ -246,10 +267,11 @@ export const exportMatrixPDF = (options: MatrixExportOptions): string | void => 
       minCellHeight: 11,
     },
     headStyles: {
+      font: 'courier',
       fillColor: [0, 100, 50],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 8,
+      fontSize: 7.5,
       halign: 'center',
       valign: 'middle',
       minCellHeight: 9,
@@ -271,12 +293,12 @@ export const exportMatrixPDF = (options: MatrixExportOptions): string | void => 
   // ── Legenda Guru ─────────────────────────────────────────────────────────────
   if (teacherLegend.length > 0 && curY < pageHeight - 30) {
     doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('courier', 'bold');
     doc.setTextColor(0, 80, 40);
     doc.text('KODE GURU / ASATIDZAH:', marginL, curY);
     curY += 4;
 
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('courier', 'normal');
     doc.setTextColor(30, 30, 30);
     doc.setFontSize(6.5);
 
@@ -301,12 +323,12 @@ export const exportMatrixPDF = (options: MatrixExportOptions): string | void => 
     doc.setLineWidth(0.2);
     doc.line(marginL, curY - 1, pageWidth - marginR, curY - 1);
     doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('courier', 'bold');
     doc.setTextColor(100, 60, 0);
     doc.text('CATATAN:', marginL, curY + 2);
     curY += 5;
 
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('courier', 'normal');
     doc.setTextColor(60, 60, 60);
     doc.setFontSize(7);
     notes.forEach((note, i) => {
@@ -322,7 +344,7 @@ export const exportMatrixPDF = (options: MatrixExportOptions): string | void => 
 
   // ── Footer ───────────────────────────────────────────────────────────────────
   doc.setFontSize(7);
-  doc.setFont('helvetica', 'italic');
+  doc.setFont('courier', 'italic');
   doc.setTextColor(150, 150, 150);
   const printDate = new Date().toLocaleDateString('id-ID', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
@@ -395,6 +417,25 @@ export const exportMatrixExcel = (options: MatrixExportOptions) => {
   }
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Terapkan font Courier New untuk seluruh sel
+  if (ws['!ref']) {
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+        if (ws[cellRef]) {
+          ws[cellRef].s = {
+            font: {
+              name: 'Courier New',
+              sz: 9
+            }
+          };
+        }
+      }
+    }
+  }
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Jadwal");
   XLSX.writeFile(wb, `${filename}.xlsx`);

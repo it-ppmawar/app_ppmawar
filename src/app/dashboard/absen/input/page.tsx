@@ -1089,16 +1089,16 @@ function InputAbsenContent() {
 
       {/* 1. Error Alert Interaktif Lokasi (Dengan Bantuan GPS) */}
       {locationError && (
-        <div className="bg-rose-50 dark:bg-rose-950/90 border border-rose-200 dark:border-rose-500/60 text-rose-800 dark:text-rose-200 p-4 rounded-2xl space-y-3 shadow-sm animate-in fade-in duration-200">
-          <div className="flex items-start gap-2.5">
-            <AlertCircle className="w-5 h-5 text-rose-500 dark:text-rose-400 flex-shrink-0 mt-0.5" />
-            <div className="text-xs leading-relaxed flex-1">
-              <p className="font-bold text-rose-900 dark:text-rose-100 mb-0.5">
-                Perhatian: Izin Lokasi (GPS) Diperlukan
-              </p>
-              <p className="text-rose-700 dark:text-rose-200/90">{locationError}</p>
-            </div>
+        <div className="bg-rose-50 dark:bg-rose-950/90 border border-rose-200 dark:border-rose-500/60 text-rose-800 dark:text-rose-200 p-4 rounded-2xl space-y-2.5 shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-rose-500 dark:text-rose-400 flex-shrink-0" />
+            <p className="font-bold text-xs text-rose-900 dark:text-rose-100">
+              Perhatian: Izin Lokasi (GPS) Diperlukan
+            </p>
           </div>
+          <p className="text-xs text-rose-700 dark:text-rose-200/90 leading-relaxed">
+            {locationError}
+          </p>
 
           <div className="flex flex-col gap-2 pt-2 border-t border-rose-200 dark:border-rose-900/60">
             <button
