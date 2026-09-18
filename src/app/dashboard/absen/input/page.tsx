@@ -1018,16 +1018,16 @@ function InputAbsenContent() {
 
       {/* Info Card Jadwal (Pelajaran, Jam, Tanggal+Hari) */}
       {(jadwalInfo?.mata_pelajaran || tanggalAbsen) && (
-        <div className="bg-gradient-to-r from-indigo-900/40 to-blue-900/40 border border-indigo-700/50 dark:border-indigo-800/50 rounded-2xl p-4">
+        <div className="bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-indigo-900/40 dark:to-blue-900/40 border border-indigo-200 dark:border-indigo-800/50 rounded-2xl p-4 shadow-sm transition-colors">
           {jadwalInfo?.mata_pelajaran && (
-            <p className="text-base font-bold text-indigo-300 uppercase tracking-wide">
+            <p className="text-base font-extrabold text-indigo-900 dark:text-indigo-300 uppercase tracking-wide">
               {jadwalInfo.mata_pelajaran}
             </p>
           )}
-          <div className="flex items-center justify-between text-xs text-indigo-400 mt-2.5 pt-2 border-t border-indigo-800/40 flex-wrap gap-2">
+          <div className="flex items-center justify-between text-xs text-indigo-700 dark:text-indigo-300 mt-2.5 pt-2 border-t border-indigo-200 dark:border-indigo-800/40 flex-wrap gap-2 font-medium">
             {jadwalInfo?.jam_mulai && (
               <span className="flex items-center gap-1.5">
-                <Clock size={13} className="shrink-0" />
+                <Clock size={13} className="shrink-0 text-indigo-600 dark:text-indigo-400" />
                 {jadwalInfo.jam_mulai}{jadwalInfo.jam_selesai ? ` - ${jadwalInfo.jam_selesai}` : ''} WIB
               </span>
             )}

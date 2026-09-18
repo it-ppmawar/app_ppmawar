@@ -721,23 +721,23 @@ function QuickAbsenContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4">
-        <Loader2 className="w-12 h-12 text-emerald-400 animate-spin mb-4" />
-        <p className="text-emerald-200 font-medium">Memverifikasi Token Quick Absen...</p>
-        <p className="text-slate-400 text-xs mt-1">PP. Miftahul Anwar (PPMA)</p>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-white flex flex-col items-center justify-center p-4">
+        <Loader2 className="w-12 h-12 text-emerald-500 dark:text-emerald-400 animate-spin mb-4" />
+        <p className="text-emerald-800 dark:text-emerald-200 font-medium">Memverifikasi Token Quick Absen...</p>
+        <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">PP. Miftahul Anwar (PPMA)</p>
       </div>
     );
   }
 
   if (error && !data) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 text-center shadow-2xl">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-white flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 text-center shadow-2xl">
           <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-9 h-9 text-rose-400 animate-pulse" />
+            <AlertCircle className="w-9 h-9 text-rose-500 dark:text-rose-400 animate-pulse" />
           </div>
-          <h1 className="text-xl font-bold text-rose-300 mb-2">Tautan Tidak Valid / Expired</h1>
-          <p className="text-slate-300 text-sm mb-6 leading-relaxed">{error}</p>
+          <h1 className="text-xl font-bold text-rose-700 dark:text-rose-300 mb-2">Tautan Tidak Valid / Expired</h1>
+          <p className="text-slate-600 dark:text-slate-300 text-sm mb-6 leading-relaxed">{error}</p>
           
           <button
             onClick={async () => {
@@ -751,7 +751,7 @@ function QuickAbsenContent() {
             <LogIn className="w-4 h-4" /> Masuk / Login ke Akun
           </button>
 
-          <p className="text-slate-400 text-xs mt-4 leading-relaxed">
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-4 leading-relaxed">
             Untuk keamanan privasi akun, silakan masuk menggunakan nama pengguna dan kata sandi Anda sendiri.
           </p>
         </div>
@@ -775,33 +775,33 @@ function QuickAbsenContent() {
   const isAlreadyFilled = Object.keys(data?.existingAbsensi || {}).length > 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-24">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-28">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-md rounded-b-2xl">
+      <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 shadow-xs rounded-b-2xl transition-colors">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" />
+            <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-sm font-bold text-white leading-tight whitespace-nowrap">
+                <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight whitespace-nowrap">
                   Pintasan Salam Mawar
                 </h1>
-                <span className="px-2 py-0.5 text-[9px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/60 rounded-full uppercase tracking-wider shrink-0">
+                <span className="px-2 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800/60 rounded-full uppercase tracking-wider shrink-0">
                   {tipe}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 truncate mt-0.5">{guru_nama}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{guru_nama}</p>
             </div>
           </div>
           {/* Tombol Mode Gelap / Terang di Pojok Kanan Atas */}
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-2 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700/60 shadow-xs shrink-0"
+            className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-300 dark:hover:text-white transition-colors border border-slate-200 dark:border-slate-700/60 shadow-xs shrink-0"
             aria-label="Toggle Mode Gelap/Terang"
             title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
           >
-            {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-300" />}
+            {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-600" />}
           </button>
         </div>
       </header>
@@ -809,11 +809,11 @@ function QuickAbsenContent() {
       <main className="max-w-2xl mx-auto p-4 space-y-4">
         {/* Banner Mode Guru Badal */}
         {data?.badal_nama && (
-          <div className="bg-emerald-950/70 border border-emerald-500/50 rounded-2xl p-3.5 text-xs flex items-center gap-3 shadow-lg">
+          <div className="bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-500/50 rounded-2xl p-3.5 text-xs flex items-center gap-3 shadow-xs">
             <span className="text-2xl">🎖️</span>
             <div>
-              <p className="font-extrabold text-emerald-300 text-sm">Mode Guru Pengganti (Badal)</p>
-              <p className="text-emerald-200/90 text-[11px] leading-relaxed">
+              <p className="font-extrabold text-emerald-800 dark:text-emerald-300 text-sm">Mode Guru Pengganti (Badal)</p>
+              <p className="text-emerald-700 dark:text-emerald-200/90 text-[11px] leading-relaxed">
                 Anda masuk sebagai Ustadz <strong>{data.badal_nama}</strong> untuk membadali Ustadz <strong>{guru_nama}</strong>. Absensi Anda akan otomatis tercatat sebagai <strong>Hadir</strong> dalam sistem.
               </p>
             </div>
@@ -821,14 +821,14 @@ function QuickAbsenContent() {
         )}
 
         {/* Tab Switcher: Masuk (Absen Santri) vs Izin / Sakit */}
-        <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl shadow-inner">
+        <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-200/70 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-inner">
           <button
             type="button"
             onClick={() => { setActiveTab('absen'); setIzinSuccess(null); }}
             className={`py-2.5 px-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 ${
               activeTab === 'absen'
                 ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             <BookOpen size={15} /> Absensi Santri (Masuk)
@@ -839,7 +839,7 @@ function QuickAbsenContent() {
             className={`py-2.5 px-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 ${
               activeTab === 'izin'
                 ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             <HeartPulse size={15} /> Ajukan Izin / Sakit
@@ -848,24 +848,24 @@ function QuickAbsenContent() {
 
         {/* Error Alert Interaktif (Dengan Bantuan GPS) */}
         {error && (
-          <div className="bg-rose-950/90 border border-rose-500/60 text-rose-200 p-4 rounded-2xl space-y-3 shadow-xl animate-in fade-in duration-200">
+          <div className="bg-rose-50 dark:bg-rose-950/90 border border-rose-200 dark:border-rose-500/60 text-rose-800 dark:text-rose-200 p-4 rounded-2xl space-y-3 shadow-md animate-in fade-in duration-200">
             <div className="flex items-start gap-2.5">
-              <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
               <div className="text-xs leading-relaxed flex-1">
-                <p className="font-bold text-rose-100 mb-0.5">
+                <p className="font-bold text-rose-900 dark:text-rose-100 mb-0.5">
                   {error.toLowerCase().includes('gps') || error.toLowerCase().includes('lokasi') ? 'Perhatian: Izin Lokasi (GPS) Diperlukan' : 'Terjadi Kesalahan'}
                 </p>
-                <p className="text-rose-200/90">{error}</p>
+                <p className="text-rose-700 dark:text-rose-200/90">{error}</p>
               </div>
             </div>
 
             {(error.toLowerCase().includes('gps') || error.toLowerCase().includes('lokasi')) && (
-              <div className="flex flex-col gap-2 pt-2 border-t border-rose-900/60">
+              <div className="flex flex-col gap-2 pt-2 border-t border-rose-200 dark:border-rose-900/60">
                 {/* Baris 1: Panduan Buka Izin GPS — full width */}
                 <button
                   type="button"
                   onClick={() => setShowGpsModal(true)}
-                  className="w-full px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 border border-amber-500/40 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm"
+                  className="w-full px-3.5 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm"
                 >
                   <HelpCircle className="w-3.5 h-3.5" /> Panduan Buka Izin GPS
                 </button>
@@ -886,7 +886,7 @@ function QuickAbsenContent() {
                   <button
                     type="button"
                     onClick={() => window.location.reload()}
-                    className="flex-1 px-3 py-2 bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition"
+                    className="flex-1 px-3 py-2 bg-white dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-transparent rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition shadow-xs"
                   >
                     <RefreshCw className="w-3.5 h-3.5" /> Muat Ulang
                   </button>
@@ -897,22 +897,22 @@ function QuickAbsenContent() {
         )}
 
         {/* GPS Status Bar (1 Baris Ramping & Efisien) */}
-        <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs bg-slate-900/80 border border-slate-800 shadow-xs">
+        <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center gap-2">
-            <MapPin size={15} className={userLocation ? "text-emerald-400" : detectingGps ? "text-cyan-400" : "text-amber-400"} />
-            <span className="text-slate-300 font-medium text-xs">
+            <MapPin size={15} className={userLocation ? "text-emerald-600 dark:text-emerald-400" : detectingGps ? "text-cyan-600 dark:text-cyan-400" : "text-amber-600 dark:text-amber-400"} />
+            <span className="text-slate-700 dark:text-slate-300 font-medium text-xs">
               Status GPS HP:
             </span>
             {!userLocation && detectingGps && (
-              <span className="text-[11px] font-semibold text-cyan-400 flex items-center gap-1">
+              <span className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
                 <Loader2 size={11} className="animate-spin" /> Mendeteksi...
               </span>
             )}
           </div>
 
           {userLocation ? (
-            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 shrink-0">
-              <CheckCircle2 size={13} className="text-emerald-400" />
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shrink-0">
+              <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
               Terdeteksi &amp; Siap
             </span>
           ) : (
@@ -921,7 +921,7 @@ function QuickAbsenContent() {
                 type="button"
                 onClick={requestGpsPermission}
                 disabled={detectingGps}
-                className="px-2.5 py-1 bg-emerald-700/80 hover:bg-emerald-600 active:scale-95 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-sm disabled:opacity-50"
+                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-sm disabled:opacity-50"
               >
                 {detectingGps ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
                 <span>Deteksi GPS</span>
@@ -929,7 +929,7 @@ function QuickAbsenContent() {
               <button
                 type="button"
                 onClick={() => setShowGpsModal(true)}
-                className="p-1 text-slate-400 hover:text-amber-300 transition"
+                className="p-1 text-slate-400 hover:text-amber-500 transition"
                 title="Panduan Mengaktifkan GPS"
               >
                 <HelpCircle size={15} />
@@ -942,48 +942,48 @@ function QuickAbsenContent() {
         {activeTab === 'izin' ? (
           <div className="space-y-4">
             {izinSuccess ? (
-              <div className="bg-slate-900 border border-emerald-500/50 rounded-2xl p-6 text-center space-y-4 shadow-xl animate-in fade-in zoom-in duration-200">
-                <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/40">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-emerald-500/50 rounded-2xl p-6 text-center space-y-4 shadow-sm animate-in fade-in zoom-in duration-200">
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-300 dark:border-emerald-500/40">
                   <CheckCircle2 size={36} />
                 </div>
                 <div>
                   {/* Doa Teks Arab */}
-                  <div className="text-2xl sm:text-3xl font-bold text-amber-300 font-serif mb-1 tracking-wide select-none py-1" dir="rtl">
+                  <div className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-300 font-serif mb-1 tracking-wide select-none py-1" dir="rtl">
                     {izinStatus === 'Sakit' ? 'شَفَاكُمُ اللهُ وَعَافَاكُمْ' : 'أَعَانَكُمُ اللهُ بِالتَّيْسِيْرِ'}
                   </div>
-                  <p className="text-[11px] text-slate-400 italic mb-3 select-none">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 italic mb-3 select-none">
                     {izinStatus === 'Sakit' ? 'Semoga Allah memberikan kesembuhan dan keafiatan kepada Anda.' : 'Semoga Allah senantiasa menolong Anda dengan segala kemudahan.'}
                   </p>
-                  <h2 className="text-lg font-bold text-emerald-300">Permohonan Berhasil Dicatat</h2>
-                  <p className="text-xs text-slate-300 mt-2 leading-relaxed max-w-md mx-auto">
+                  <h2 className="text-lg font-bold text-emerald-800 dark:text-emerald-300">Permohonan Berhasil Dicatat</h2>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed max-w-md mx-auto">
                     {izinSuccess}
                   </p>
                 </div>
-                <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl text-[11px] text-emerald-200 text-left space-y-1">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-[11px] text-emerald-800 dark:text-emerald-200 text-left space-y-1">
                   <p className="font-bold flex items-center gap-1.5"><Sparkles size={13} /> Info Otomatisasi Kehadiran:</p>
                   <p>Status Anda telah tercatat sebagai <strong>{izinStatus}</strong> pada sistem. Anda <strong>tidak akan divonis Alpha otomatis</strong> saat waktu tenggang berakhir.</p>
                 </div>
 
                 {/* Informasi & Kirim Tautan ke Guru Badal */}
                 {izinResultData?.badal_info && (
-                  <div className="bg-emerald-950/50 border border-emerald-700/60 rounded-xl p-4 text-left space-y-3 shadow-sm">
+                  <div className="bg-emerald-50/70 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-700/60 rounded-xl p-4 text-left space-y-3 shadow-xs">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <span className="text-base shrink-0 leading-none">🎖️</span>
-                        <p className="text-[11px] text-emerald-400 font-bold uppercase tracking-wider">
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-wider">
                           Guru Pengganti (Badal) Ditunjuk {izinResultData.badal_info.id ? '' : '(Luar Dewan Guru)'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm font-extrabold text-emerald-200">
+                        <p className="text-sm font-extrabold text-emerald-950 dark:text-emerald-200">
                           {izinResultData.badal_info.nama}
                         </p>
                         {izinResultData.badal_info.no_hp ? (
-                          <p className="text-[11px] text-emerald-300 font-medium mt-0.5">
+                          <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium mt-0.5">
                             📱 WhatsApp: {izinResultData.badal_info.no_hp}
                           </p>
                         ) : (
-                          <p className="text-[11px] text-slate-400 italic mt-0.5">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 italic mt-0.5">
                             ℹ️ Nomor WA tidak tersimpan di sistem. Anda dapat menyalin tautan di bawah.
                           </p>
                         )}
@@ -991,7 +991,7 @@ function QuickAbsenContent() {
                     </div>
 
                     {/* Tombol Aksi WhatsApp & Salin Pesan */}
-                    <div className="pt-2 border-t border-emerald-800/60 flex flex-col sm:flex-row gap-2">
+                    <div className="pt-2 border-t border-emerald-200 dark:border-emerald-800/60 flex flex-col sm:flex-row gap-2">
                       <button
                         type="button"
                         onClick={handleSendBadalWa}
@@ -1019,27 +1019,27 @@ function QuickAbsenContent() {
                             setTimeout(() => setCopiedBadalWa(false), 3000);
                           } catch (_) {}
                         }}
-                        className="py-2.5 px-4 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
+                        className="py-2.5 px-4 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 dark:bg-emerald-900/60 dark:hover:bg-emerald-800 dark:text-emerald-200 dark:border-transparent font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
                       >
                         {copiedBadalWa ? <Check size={15} /> : <Copy size={15} />}
                         <span>{copiedBadalWa ? 'Pesan Tersalin!' : 'Salin Pesan WA'}</span>
                       </button>
                     </div>
 
-                    {/* Tombol Salin Tautan (Cukup 1 Tombol & 1 Ikon Rapi) */}
+                    {/* Tombol Salin Tautan */}
                     <div className="pt-1">
                       <button
                         type="button"
                         onClick={handleCopyBadalLink}
-                        className="w-full py-2.5 px-3 bg-slate-900 border border-emerald-700/80 hover:bg-slate-800 text-emerald-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow-sm"
+                        className="w-full py-2.5 px-3 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700/80 hover:bg-emerald-50 dark:hover:bg-slate-800 text-emerald-800 dark:text-emerald-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow-xs"
                       >
-                        {copiedBadalLink ? <Check size={15} className="text-emerald-400" /> : <LinkIcon size={15} />}
+                        {copiedBadalLink ? <Check size={15} className="text-emerald-600 dark:text-emerald-400" /> : <LinkIcon size={15} />}
                         <span>{copiedBadalLink ? 'Tautan Absensi Tersalin!' : 'Salin Tautan Absensi'}</span>
                       </button>
                     </div>
 
                     {copiedBadalWa && (
-                      <p className="text-[11px] text-emerald-400 text-center font-medium">
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 text-center font-medium">
                         ✅ Draft pesan dan tautan badal berhasil disalin ke clipboard!
                       </p>
                     )}
@@ -1050,54 +1050,54 @@ function QuickAbsenContent() {
                   <button
                     type="button"
                     onClick={() => setIzinSuccess(null)}
-                    className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition"
+                    className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition border border-slate-200 dark:border-transparent"
                   >
                     ✏️ Ubah Data Izin
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveTab('absen')}
-                    className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition"
+                    className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition shadow-xs"
                   >
                     📋 Buka Absensi Santri
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5 shadow-lg">
-                <div className="border-b border-slate-800 pb-3">
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <HeartPulse className="text-amber-400" size={18} />
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-5 shadow-xs">
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <HeartPulse className="text-amber-500" size={18} />
                     Formulir Izin / Sakit Mengajar
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Gunakan formulir ini jika Anda berhalangan hadir agar kehadiran tercatat resmi dan terhindar dari alpa otomatis.
                   </p>
                 </div>
 
                 {/* Info Guru & Jadwal */}
-                <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800/80 text-xs space-y-1.5">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-slate-800/50 gap-0.5 sm:gap-2">
-                    <span className="text-slate-400">Guru / Pembina:</span>
-                    <span className="font-bold text-slate-200 text-right">{guru_nama}</span>
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-slate-200 dark:border-slate-800/80 text-xs space-y-1.5">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-slate-200/80 dark:border-slate-800/50 gap-0.5 sm:gap-2">
+                    <span className="text-slate-500 dark:text-slate-400">Guru / Pembina:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 text-right">{guru_nama}</span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-slate-800/50 gap-0.5 sm:gap-2">
-                    <span className="text-slate-400">Kelas / Kamar:</span>
-                    <span className="font-bold text-emerald-400 text-right">{jadwal?.nama_kelas || '-'}</span>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-slate-200/80 dark:border-slate-800/50 gap-0.5 sm:gap-2">
+                    <span className="text-slate-500 dark:text-slate-400">Kelas / Kamar:</span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400 text-right">{jadwal?.nama_kelas || '-'}</span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-slate-800/50 gap-0.5 sm:gap-2">
-                    <span className="text-slate-400">Mata Pelajaran:</span>
-                    <span className="font-bold text-slate-200 text-right">{jadwal?.mata_pelajaran || '-'}</span>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-slate-200/80 dark:border-slate-800/50 gap-0.5 sm:gap-2">
+                    <span className="text-slate-500 dark:text-slate-400">Mata Pelajaran:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 text-right">{jadwal?.mata_pelajaran || '-'}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 gap-0.5 sm:gap-2">
-                    <span className="text-slate-400">Jadwal:</span>
-                    <span className="font-bold text-slate-200 text-right">{jadwal?.jam_mulai} - {jadwal?.jam_selesai} WIB</span>
+                    <span className="text-slate-500 dark:text-slate-400">Jadwal:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 text-right">{jadwal?.jam_mulai} - {jadwal?.jam_selesai} WIB</span>
                   </div>
                 </div>
 
                 {/* Status Selector */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-2">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
                     Pilih Status Berhalangan:
                   </label>
                   <div className="grid grid-cols-2 gap-3">
@@ -1106,13 +1106,13 @@ function QuickAbsenContent() {
                       onClick={() => setIzinStatus('Izin')}
                       className={`p-3.5 rounded-xl border text-center transition flex flex-col items-center gap-1.5 ${
                         izinStatus === 'Izin'
-                          ? 'bg-blue-950/60 border-blue-500 text-blue-300 shadow-md ring-2 ring-blue-500/30'
-                          : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-blue-700'
+                          ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 text-blue-800 dark:text-blue-300 shadow-xs ring-2 ring-blue-500/30'
+                          : 'bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-blue-400'
                       }`}
                     >
                       <span className="text-xl">🔵</span>
                       <span className="font-bold text-sm">Izin Mengajar</span>
-                      <span className="text-[10px] text-slate-400">Ada Keperluan / Udzur</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">Ada Keperluan / Udzur</span>
                     </button>
 
                     <button
@@ -1120,20 +1120,20 @@ function QuickAbsenContent() {
                       onClick={() => setIzinStatus('Sakit')}
                       className={`p-3.5 rounded-xl border text-center transition flex flex-col items-center gap-1.5 ${
                         izinStatus === 'Sakit'
-                          ? 'bg-amber-950/60 border-amber-500 text-amber-300 shadow-md ring-2 ring-amber-500/30'
-                          : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-amber-700'
+                          ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-500 text-amber-800 dark:text-amber-300 shadow-xs ring-2 ring-amber-500/30'
+                          : 'bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-amber-400'
                       }`}
                     >
                       <span className="text-xl">🟡</span>
                       <span className="font-bold text-sm">Sakit</span>
-                      <span className="text-[10px] text-slate-400">Kondisi Badan Tidak Fit</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">Kondisi Badan Tidak Fit</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Alasan / Keterangan */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                     Alasan / Keterangan:
                   </label>
                   <textarea
@@ -1141,7 +1141,7 @@ function QuickAbsenContent() {
                     value={izinKeterangan}
                     onChange={(e) => setIzinKeterangan(e.target.value)}
                     placeholder={izinStatus === 'Sakit' ? 'Contoh: Sakit demam tinggi sejak semalam...' : 'Contoh: Ada keperluan mendesak keluarga di luar kota...'}
-                    className={`w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition ${
+                    className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition ${
                       izinStatus === 'Izin' ? 'focus:border-blue-500' : 'focus:border-amber-500'
                     }`}
                   />
@@ -1155,7 +1155,7 @@ function QuickAbsenContent() {
                         key={chip}
                         type="button"
                         onClick={() => setIzinKeterangan(prev => prev ? `${prev}, ${chip}` : chip)}
-                        className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 text-[11px] text-slate-300 rounded-lg transition active:scale-95 text-center"
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-[11px] text-slate-700 dark:text-slate-300 rounded-lg transition active:scale-95 text-center border border-slate-200/60 dark:border-transparent"
                       >
                         + {chip}
                       </button>
@@ -1164,13 +1164,13 @@ function QuickAbsenContent() {
                 </div>
 
                 {/* Opsi Tunjuk Guru Pengganti (Badal) */}
-                <div className="bg-emerald-950/40 border border-emerald-800/60 rounded-xl p-4 space-y-3">
+                <div className="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl p-4 space-y-3">
                   <label className="flex items-center justify-between cursor-pointer">
                     <div className="flex items-center gap-2.5">
                       <span className="text-xl">🎖️</span>
                       <div>
-                        <span className="text-xs font-bold text-slate-200">Tunjuk Guru Pengganti (Badal)</span>
-                        <p className="text-[10px] text-slate-400">Pilih dewan guru atau ketik nama pengganti (luar dewan guru)</p>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Tunjuk Guru Pengganti (Badal)</span>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Pilih dewan guru atau ketik nama pengganti (luar dewan guru)</p>
                       </div>
                     </div>
                     <input
@@ -1186,33 +1186,33 @@ function QuickAbsenContent() {
                           setShowBadalDropdown(false);
                         }
                       }}
-                      className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-700 bg-slate-900 cursor-pointer"
+                      className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer"
                     />
                   </label>
 
                   {useBadal && (
-                    <div className="pt-2 border-t border-emerald-800/50 space-y-2 animate-in fade-in duration-200">
-                      <label className="block text-[11px] font-bold text-slate-300">
+                    <div className="pt-2 border-t border-emerald-200 dark:border-emerald-800/50 space-y-2 animate-in fade-in duration-200">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
                         Pilih atau Ketik Ustadz / Ustadzah Pengganti:
                       </label>
 
                       {/* Jika sudah ada yang dipilih */}
                       {selectedBadalNama ? (
-                        <div className="bg-slate-900 border border-emerald-700/80 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 shadow-sm">
+                        <div className="bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700/80 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 shadow-xs">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-full bg-emerald-900/60 text-emerald-300 flex items-center justify-center font-bold text-xs border border-emerald-700/50 shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 flex items-center justify-center font-bold text-xs border border-emerald-300 dark:border-emerald-700/50 shrink-0">
                               {selectedBadalNama.substring(0, 2).toUpperCase()}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-bold text-slate-100 truncate">
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
                                 {selectedBadalNama}
                               </p>
-                              <p className="text-[10px] text-emerald-400 font-medium">
+                              <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
                                 {isManualBadal ? '✏️ Badal Manual (Luar Data Dewan Guru)' : '🎖️ Dewan Guru Terdaftar'}
                               </p>
                             </div>
                           </div>
-                          <div className="flex justify-center sm:justify-end pt-1 sm:pt-0 border-t border-slate-800 sm:border-0">
+                          <div className="flex justify-center sm:justify-end pt-1 sm:pt-0 border-t border-slate-100 dark:border-slate-800 sm:border-0">
                             <button
                               type="button"
                               onClick={() => {
@@ -1222,7 +1222,7 @@ function QuickAbsenContent() {
                                 setBadalSearch('');
                                 setShowBadalDropdown(true);
                               }}
-                              className="w-full sm:w-auto text-center text-xs text-rose-400 hover:underline font-semibold px-3 py-1.5 bg-rose-950/40 rounded-lg transition active:scale-95 cursor-pointer"
+                              className="w-full sm:w-auto text-center text-xs text-rose-600 dark:text-rose-400 hover:underline font-semibold px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-transparent rounded-lg transition active:scale-95 cursor-pointer"
                             >
                               Ganti / Batal
                             </button>
@@ -1232,7 +1232,7 @@ function QuickAbsenContent() {
                         /* Searchable Input + Dropdown */
                         <div className="space-y-1.5 relative">
                           <div className="relative">
-                            <Search size={15} className="absolute left-3 top-3 text-slate-500" />
+                            <Search size={15} className="absolute left-3 top-3 text-slate-400 dark:text-slate-500" />
                             <input
                               type="text"
                               value={badalSearch}
@@ -1242,13 +1242,13 @@ function QuickAbsenContent() {
                               }}
                               onFocus={() => setShowBadalDropdown(true)}
                               placeholder="Ketik nama untuk mencari guru atau ketik nama baru..."
-                              className="w-full pl-9 pr-3 py-2.5 bg-slate-900 border border-emerald-700/80 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                              className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700/80 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium shadow-xs"
                             />
                           </div>
 
                           {/* Dropdown Hasil Pencarian & Opsi Manual */}
                           {showBadalDropdown && (
-                            <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-slate-800 z-20">
+                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 z-20">
                               {/* Opsi Gunakan Nama Manual */}
                               {badalSearch.trim().length > 0 && (
                                 <button
@@ -1259,14 +1259,14 @@ function QuickAbsenContent() {
                                     setIsManualBadal(true);
                                     setShowBadalDropdown(false);
                                   }}
-                                  className="w-full text-left p-2.5 hover:bg-amber-950/40 transition flex items-center gap-2 text-amber-300 bg-amber-950/20"
+                                  className="w-full text-left p-2.5 hover:bg-amber-100/70 dark:hover:bg-amber-950/40 transition flex items-center gap-2 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/20"
                                 >
                                   <span className="text-base shrink-0">✏️</span>
                                   <div>
                                     <p className="text-xs font-bold">
                                       Gunakan &quot;{badalSearch.trim()}&quot;
                                     </p>
-                                    <p className="text-[10px] text-amber-400/90">
+                                    <p className="text-[10px] text-amber-700 dark:text-amber-400/90">
                                       (Badal manual selain dewan guru: Santri Senior / Alumni / Ustadz Tamu)
                                     </p>
                                   </div>
@@ -1292,18 +1292,18 @@ function QuickAbsenContent() {
                                       setShowBadalDropdown(false);
                                       setBadalSearch('');
                                     }}
-                                    className="w-full text-left p-2.5 hover:bg-slate-800/80 transition flex items-center justify-between"
+                                    className="w-full text-left p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition flex items-center justify-between"
                                   >
                                     <div className="flex items-center gap-2">
-                                      <div className="w-6 h-6 rounded-full bg-emerald-900/60 text-emerald-300 flex items-center justify-center font-bold text-[10px]">
+                                      <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 flex items-center justify-center font-bold text-[10px]">
                                         {g.nama ? g.nama.substring(0, 2).toUpperCase() : 'U'}
                                       </div>
-                                      <span className="text-xs font-semibold text-slate-200">
+                                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                                         {g.nama}
                                       </span>
                                     </div>
                                     {g.no_hp && (
-                                      <span className="text-[11px] text-emerald-400 font-mono">
+                                      <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono">
                                         {g.no_hp}
                                       </span>
                                     )}
@@ -1316,7 +1316,7 @@ function QuickAbsenContent() {
                                 const q = badalSearch.toLowerCase();
                                 return (g.nama && g.nama.toLowerCase().includes(q)) || (g.no_hp && g.no_hp.includes(q));
                               }).length === 0 && !badalSearch.trim() && (
-                                <div className="p-3 text-center text-xs text-slate-400">
+                                <div className="p-3 text-center text-xs text-slate-500 dark:text-slate-400">
                                   Tidak ada data guru lain
                                 </div>
                               )}
@@ -1325,7 +1325,7 @@ function QuickAbsenContent() {
                         </div>
                       )}
 
-                      <p className="text-[10px] text-emerald-300">
+                      <p className="text-[10px] text-emerald-700 dark:text-emerald-300">
                         💡 Cari nama guru terdaftar, atau ketik nama santri senior/alumni jika dibadali pihak luar. Tautan absensi otomatis siap diteruskan ke badal.
                       </p>
                     </div>
@@ -1334,25 +1334,25 @@ function QuickAbsenContent() {
 
                 {/* Lampiran Foto Bukti (Opsional) */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                     Foto Surat Dokter / Bukti (Opsional):
                   </label>
                   {izinFoto ? (
-                    <div className="relative rounded-xl overflow-hidden border border-slate-700 max-w-xs mx-auto">
+                    <div className="relative rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 max-w-xs mx-auto shadow-xs">
                       <img src={izinFoto} alt="Bukti Izin" className="w-full h-40 object-cover" />
                       <button
                         type="button"
                         onClick={() => setIzinFoto('')}
-                        className="absolute top-2 right-2 p-1.5 bg-rose-600/90 text-white rounded-full text-xs shadow-md"
+                        className="absolute top-2 right-2 p-1.5 bg-rose-600/90 text-white rounded-full text-xs shadow-md hover:scale-105 transition-transform"
                       >
                         <X size={14} />
                       </button>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-800 hover:border-slate-700 rounded-xl cursor-pointer bg-slate-950/40 transition">
+                    <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 rounded-xl cursor-pointer bg-slate-50 dark:bg-slate-950/40 transition">
                       <Camera className="w-6 h-6 text-slate-400 mb-1" />
-                      <span className="text-xs font-medium text-slate-300">Pilih atau Ambil Foto Bukti</span>
-                      <span className="text-[10px] text-slate-500">JPG, PNG (Opsional)</span>
+                      <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Pilih atau Ambil Foto Bukti</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">JPG, PNG (Opsional)</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1403,22 +1403,22 @@ function QuickAbsenContent() {
           <>
             {/* Banner Notifikasi Mode Edit Absensi */}
             {isAlreadyFilled && (
-              <div className="bg-blue-950/80 border border-blue-500/50 text-blue-200 p-3.5 rounded-xl text-xs shadow-md space-y-1.5">
+              <div className="bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-500/50 text-blue-900 dark:text-blue-200 p-3.5 rounded-xl text-xs shadow-xs space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
-                  <p className="font-bold text-blue-300">Mode Edit / Perbarui Absensi</p>
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <p className="font-bold text-blue-800 dark:text-blue-300">Mode Edit / Perbarui Absensi</p>
                 </div>
-                <p className="text-[11px] text-blue-200/90 leading-relaxed">
+                <p className="text-[11px] text-blue-700 dark:text-blue-200/90 leading-relaxed">
                   Absensi kelas ini sudah pernah diisi sebelumnya. Status yang tersimpan telah dimuat otomatis dan dapat Anda sesuaikan kembali, lalu klik <strong>"Perbarui Absensi Kelas"</strong>.
                 </p>
               </div>
             )}
 
             {/* Info Card */}
-            <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border border-emerald-700/50 rounded-2xl p-4">
-              <h2 className="text-lg font-bold text-emerald-300">{jadwal.nama_kelas}</h2>
-              <p className="text-sm text-slate-300 font-medium">{jadwal.mata_pelajaran || 'Pengajaran Madin/Al-Qur\'an'}</p>
-              <div className="flex items-center justify-between text-xs text-slate-400 mt-3 pt-2 border-t border-emerald-800/40">
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/40 dark:to-teal-900/40 border border-emerald-200 dark:border-emerald-700/50 rounded-2xl p-4 shadow-xs">
+              <h2 className="text-lg font-extrabold text-emerald-900 dark:text-emerald-300">{jadwal.nama_kelas}</h2>
+              <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{jadwal.mata_pelajaran || 'Pengajaran Madin/Al-Qur\'an'}</p>
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mt-3 pt-2 border-t border-emerald-200 dark:border-emerald-800/40 font-medium">
                 <span>🕒 {jadwal.jam_mulai} - {jadwal.jam_selesai} WIB</span>
                 <span>📅 {new Date(date + 'T00:00:00+07:00').toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).replace(/^Minggu,/i, 'Ahad,').replace(/^Minggu /i, 'Ahad ')}</span>
               </div>
@@ -1441,34 +1441,34 @@ function QuickAbsenContent() {
             </div>
 
         {/* Quick Batch Select (Set Massal Sesuai Desain HP) */}
-        <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 space-y-2.5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
               ⚡ Set Massal ({murid?.length || 0} Santri)
             </span>
           </div>
           <div className="grid grid-cols-4 gap-1.5 w-full">
             <button
               onClick={() => setAllStatus('hadir')}
-              className="py-2 text-xs rounded-xl bg-emerald-900/70 hover:bg-emerald-800 text-emerald-300 border border-emerald-700/60 font-bold transition text-center active:scale-95"
+              className="py-2 text-xs rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/70 dark:hover:bg-emerald-800 dark:text-emerald-300 dark:border-emerald-700/60 font-bold transition text-center active:scale-95"
             >
               Hadir All
             </button>
             <button
               onClick={() => setAllStatus('izin')}
-              className="py-2 text-xs rounded-xl bg-amber-900/70 hover:bg-amber-800 text-amber-300 border border-amber-700/60 font-bold transition text-center active:scale-95"
+              className="py-2 text-xs rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 dark:bg-amber-900/70 dark:hover:bg-amber-800 dark:text-amber-300 dark:border-amber-700/60 font-bold transition text-center active:scale-95"
             >
               Izin All
             </button>
             <button
               onClick={() => setAllStatus('sakit')}
-              className="py-2 text-xs rounded-xl bg-blue-900/70 hover:bg-blue-800 text-blue-300 border border-blue-700/60 font-bold transition text-center active:scale-95"
+              className="py-2 text-xs rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-800 border border-blue-300 dark:bg-blue-900/70 dark:hover:bg-blue-800 dark:text-blue-300 dark:border-blue-700/60 font-bold transition text-center active:scale-95"
             >
               Sakit All
             </button>
             <button
               onClick={() => setAllStatus('alpha')}
-              className="py-2 text-xs rounded-xl bg-rose-900/70 hover:bg-rose-800 text-rose-300 border border-rose-700/60 font-bold transition text-center active:scale-95"
+              className="py-2 text-xs rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 dark:bg-rose-900/70 dark:hover:bg-rose-800 dark:text-rose-300 dark:border-rose-700/60 font-bold transition text-center active:scale-95"
             >
               Alpha All
             </button>
@@ -1482,9 +1482,9 @@ function QuickAbsenContent() {
             return (
               <div key={kelasNama} className="space-y-3">
                 {isMultiClass && (
-                  <div className="bg-slate-800/90 border border-emerald-500/30 rounded-xl px-4 py-2.5 flex items-center justify-between shadow-md sticky top-14 z-20 backdrop-blur-md">
-                    <span className="text-xs font-extrabold text-emerald-400 uppercase tracking-wide flex items-center gap-2">
-                      <BookOpen size={14} className="text-emerald-400 shrink-0" />
+                  <div className="bg-white/90 dark:bg-slate-800/90 border border-emerald-300 dark:border-emerald-500/30 rounded-xl px-4 py-2.5 flex items-center justify-between shadow-xs sticky top-14 z-20 backdrop-blur-md">
+                    <span className="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide flex items-center gap-2">
+                      <BookOpen size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                       --- KELAS {kelasNama.toUpperCase()} ({listSantri.length} Santri) ---
                     </span>
                   </div>
@@ -1496,13 +1496,13 @@ function QuickAbsenContent() {
                   const fotoUrl = getFotoUrl(m.foto, m.nis);
 
                   return (
-                    <div key={m.murid_id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-sm hover:border-slate-700 transition">
+                    <div key={m.murid_id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
                       {/* Header Row: Foto + Nama Lengkap */}
                       <div className="flex items-start gap-3">
                         {/* Avatar / Foto Santri (Klik untuk Zoom) */}
                         <div
                           onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
-                          className={`w-12 h-12 rounded-xl shrink-0 overflow-hidden border border-slate-700 flex items-center justify-center relative mt-0.5 ${fotoUrl ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''}`}
+                          className={`w-12 h-12 rounded-xl shrink-0 overflow-hidden border border-slate-200 dark:border-slate-700 flex items-center justify-center relative mt-0.5 ${fotoUrl ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''}`}
                           style={{ backgroundColor: getAvatarColor(m.nama) }}
                           title={fotoUrl ? 'Klik untuk memperbesar foto' : ''}
                         >
@@ -1520,8 +1520,8 @@ function QuickAbsenContent() {
 
                         {/* Nama Santri (Maksimal 2 Baris) */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-extrabold text-sm text-slate-100 leading-snug line-clamp-2">
-                            <span className="text-slate-400 font-semibold text-xs mr-1">{idx}.</span>
+                          <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100 leading-snug line-clamp-2">
+                            <span className="text-slate-500 dark:text-slate-400 font-semibold text-xs mr-1">{idx}.</span>
                             {m.nama}
                           </h3>
                         </div>
@@ -1529,7 +1529,7 @@ function QuickAbsenContent() {
 
                       {/* Input Nama Panggilan — Baris tersendiri, rata kiri sejajar NIS & Alamat */}
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-400 shrink-0 font-medium">Panggilan:</span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 shrink-0 font-medium">Panggilan:</span>
                         <input
                           type="text"
                           placeholder="Panggilan..."
@@ -1543,38 +1543,38 @@ function QuickAbsenContent() {
                               )
                             }));
                           }}
-                          className="flex-1 px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-300 placeholder:text-slate-500 transition"
+                          className="flex-1 px-2.5 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-emerald-700 dark:text-emerald-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition"
                         />
                       </div>
 
                       {/* Info Detail: NIS, Wali & Alamat */}
                       <div className="space-y-1 pt-0.5 text-xs">
                         {/* NIS & Wali dalam Satu Baris */}
-                        <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-300">
-                          <span className="font-mono text-slate-400">NIS: <strong className="text-slate-200">{m.nis || '-'}</strong></span>
-                          <span className="text-slate-600">•</span>
-                          <div className="flex items-center gap-1 text-slate-400 truncate">
-                            <User size={11} className="shrink-0 text-emerald-400" />
-                            <span>Wali: <strong className="text-slate-200">{m.nama_wali || '-'}</strong></span>
+                        <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-600 dark:text-slate-300">
+                          <span className="font-mono text-slate-500 dark:text-slate-400">NIS: <strong className="text-slate-800 dark:text-slate-200">{m.nis || '-'}</strong></span>
+                          <span className="text-slate-300 dark:text-slate-600">•</span>
+                          <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 truncate">
+                            <User size={11} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            <span>Wali: <strong className="text-slate-800 dark:text-slate-200">{m.nama_wali || '-'}</strong></span>
                           </div>
                         </div>
 
                         {/* Alamat Maksimal 2 Baris */}
-                        <div className="flex items-start gap-1 text-[11px] text-slate-400 leading-tight">
-                          <MapPin size={12} className="shrink-0 text-teal-400 mt-0.5" />
+                        <div className="flex items-start gap-1 text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
+                          <MapPin size={12} className="shrink-0 text-teal-600 dark:text-teal-400 mt-0.5" />
                           <span className="line-clamp-2" title={m.alamat}>
-                            Alamat: <span className="text-slate-300">{m.alamat || '-'}</span>
+                            Alamat: <span className="text-slate-700 dark:text-slate-300">{m.alamat || '-'}</span>
                           </span>
                         </div>
                       </div>
 
                       {/* Status Options Buttons */}
-                      <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-800/80">
+                      <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80">
                         {[
-                          { id: 'hadir', label: 'Hadir', bgActive: 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' },
-                          { id: 'izin', label: 'Izin', bgActive: 'bg-amber-600 text-white font-bold shadow-md shadow-amber-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' },
-                          { id: 'sakit', label: 'Sakit', bgActive: 'bg-blue-600 text-white font-bold shadow-md shadow-blue-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' },
-                          { id: 'alpha', label: 'Alpha', bgActive: 'bg-rose-600 text-white font-bold shadow-md shadow-rose-900/50', bgInactive: 'bg-slate-800/80 text-slate-400 hover:text-slate-200' }
+                          { id: 'hadir', label: 'Hadir', bgActive: 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/30', bgInactive: 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400 dark:hover:text-slate-200' },
+                          { id: 'izin', label: 'Izin', bgActive: 'bg-amber-600 text-white font-bold shadow-md shadow-amber-600/30', bgInactive: 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400 dark:hover:text-slate-200' },
+                          { id: 'sakit', label: 'Sakit', bgActive: 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30', bgInactive: 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400 dark:hover:text-slate-200' },
+                          { id: 'alpha', label: 'Alpha', bgActive: 'bg-rose-600 text-white font-bold shadow-md shadow-rose-600/30', bgInactive: 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400 dark:hover:text-slate-200' }
                         ].map(opt => (
                           <button
                             key={opt.id}
@@ -1595,7 +1595,7 @@ function QuickAbsenContent() {
         </div>
 
         {/* Floating Submit Button (Khusus Mode Masuk/Absen Santri) */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-slate-950/90 backdrop-blur-md border-t border-slate-800 z-30 rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 dark:bg-slate-950/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-30 rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-5px_20px_rgba(0,0,0,0.5)] transition-colors">
           <div className="max-w-2xl mx-auto">
             <button
               onClick={handleSubmit}
@@ -1633,21 +1633,21 @@ function QuickAbsenContent() {
       {/* Modal Pop-up Gagal Absensi / Peringatan Jarak & GPS */}
       {showErrorModal && error && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
-          <div className="bg-slate-900 border border-rose-500/70 rounded-3xl p-6 max-w-md w-full text-center shadow-2xl space-y-4 my-auto animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-500/70 rounded-3xl p-6 max-w-md w-full text-center shadow-2xl space-y-4 my-auto animate-in zoom-in-95 duration-200">
             {/* Alert Icon */}
-            <div className="w-16 h-16 bg-rose-500/20 text-rose-400 rounded-full flex items-center justify-center mx-auto border border-rose-500/40">
+            <div className="w-16 h-16 bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto border border-rose-300 dark:border-rose-500/40">
               <AlertCircle size={36} />
             </div>
 
             <div>
-              <h3 className="text-lg font-extrabold text-rose-300 mb-1.5">
+              <h3 className="text-lg font-extrabold text-rose-700 dark:text-rose-300 mb-1.5">
                 {error.toLowerCase().includes('jarak') || error.toLowerCase().includes('radius')
                   ? 'Absensi Ditolak (Di Luar Radius)'
                   : error.toLowerCase().includes('gps') || error.toLowerCase().includes('lokasi')
                   ? 'Izin Lokasi (GPS) Diperlukan'
                   : 'Gagal Menyimpan Absensi'}
               </h3>
-              <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm mx-auto">
                 {error}
               </p>
             </div>
@@ -1677,7 +1677,7 @@ function QuickAbsenContent() {
                       setShowErrorModal(false);
                       setShowGpsModal(true);
                     }}
-                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 font-bold text-xs rounded-xl border border-amber-500/40 transition flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 text-amber-700 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-300 dark:border-amber-500/40 transition flex items-center justify-center gap-1.5"
                   >
                     <HelpCircle size={14} /> Panduan Buka Izin GPS
                   </button>
@@ -1687,7 +1687,7 @@ function QuickAbsenContent() {
               <button
                 type="button"
                 onClick={() => setShowErrorModal(false)}
-                className="w-full py-2.5 bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 font-semibold text-xs rounded-xl transition"
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 active:scale-95 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition border border-slate-200 dark:border-transparent"
               >
                 Tutup Pemberitahuan
               </button>
@@ -1699,28 +1699,28 @@ function QuickAbsenContent() {
       {/* Modal Pemberitahuan Sukses & Form Notifikasi WA */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-5 max-w-md w-full text-center shadow-2xl space-y-4 my-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 max-w-md w-full text-center shadow-2xl space-y-4 my-auto">
             {/* Success Icon */}
-            <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/40 animate-bounce">
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-300 dark:border-emerald-500/40 animate-bounce">
               <CheckCircle2 size={36} />
             </div>
 
             {/* Arabic & Main Title */}
             <div>
-              <p className="text-2xl font-serif text-emerald-400 font-bold mb-1 tracking-wide">
+              <p className="text-2xl font-serif text-emerald-700 dark:text-emerald-400 font-bold mb-1 tracking-wide">
                 الحمد لله
               </p>
-              <h3 className="text-xl font-extrabold text-white">Absensi Berhasil Disimpan!</h3>
-              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Absensi Berhasil Disimpan!</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
                 Data presensi kelas <strong>{jadwal?.nama_kelas || 'Madin/Al-Qur\'an'}</strong> telah tersimpan di sistem.
               </p>
             </div>
-            <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 space-y-3 text-left">
-              <label className="block text-xs font-bold text-slate-200 flex items-center gap-2">
-                <Camera size={16} className="text-emerald-400 animate-pulse" />
+            <div className="bg-slate-50 dark:bg-slate-950/80 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3 text-left">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <Camera size={16} className="text-emerald-600 dark:text-emerald-400 animate-pulse" />
                 Foto Kehadiran Kelas/Kamar (Opsional)
               </label>
-              <p className="text-[10px] text-emerald-400/80 font-medium mt-0.5 pl-6 flex items-center gap-1">
+              <p className="text-[10px] text-emerald-700 dark:text-emerald-400/80 font-medium mt-0.5 pl-6 flex items-center gap-1">
                 ⚡ Diproses langsung di HP (Tanpa Beban Server)
               </p>
 
@@ -1793,7 +1793,7 @@ function QuickAbsenContent() {
                   <button
                     type="button"
                     onClick={openCamera}
-                    className="w-full bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 font-bold py-3 rounded-xl border border-emerald-700/50 text-xs transition flex items-center justify-center gap-2"
+                    className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 dark:text-emerald-300 font-bold py-3 rounded-xl border border-emerald-300 dark:border-emerald-700/50 text-xs transition flex items-center justify-center gap-2 shadow-xs"
                   >
                     <Camera size={16} />
                     {photoUrl ? 'Ambil Ulang' : 'Buka Kamera'}
@@ -1812,7 +1812,7 @@ function QuickAbsenContent() {
                   />
                   <label
                     htmlFor="quick-presence-photo-input"
-                    className="w-full cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 rounded-xl border border-slate-700 text-xs transition flex items-center justify-center gap-2 text-center block"
+                    className="w-full cursor-pointer bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-xs transition flex items-center justify-center gap-2 text-center block shadow-xs"
                   >
                     <ImageIcon size={16} /> Upload File
                   </label>
@@ -1832,7 +1832,7 @@ function QuickAbsenContent() {
                 </div>
               )}
 
-              <p className="text-[10px] text-slate-400 font-medium text-center">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium text-center">
                 {photoUrl
                   ? 'Foto siap dilampirkan langsung ke WhatsApp saat Anda menekan tombol kirim.'
                   : 'Ambil foto dari kamera atau pilih gambar dari galeri untuk dilampirkan ke pesan WhatsApp.'}
@@ -1841,8 +1841,8 @@ function QuickAbsenContent() {
 
             {/* Action Buttons */}
             {copiedWa && (
-              <div className="p-2.5 bg-emerald-950/70 border border-emerald-500/50 rounded-xl text-[11px] text-emerald-200 flex items-center gap-2 animate-in fade-in">
-                <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+              <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-500/50 rounded-xl text-[11px] text-emerald-800 dark:text-emerald-200 flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span><strong>Teks laporan otomatis tersalin!</strong> Jika di WhatsApp kolom chat belum terisi (misal di iPhone), silakan langsung <strong>Tempel / Paste</strong>.</span>
               </div>
             )}
@@ -1861,11 +1861,11 @@ function QuickAbsenContent() {
                 type="button"
                 className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 border ${
                   copiedWa
-                    ? 'bg-emerald-900/60 text-emerald-200 border-emerald-500/60'
-                    : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
+                    ? 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-500/60'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-750 dark:text-slate-300 dark:border-slate-700'
                 }`}
               >
-                {copiedWa ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                {copiedWa ? <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" /> : <Copy size={14} />}
                 {copiedWa ? '✅ Teks Berhasil Disalin! (Tinggal Paste di WA)' : 'Salin Teks Laporan (Untuk iPhone / Cadangan)'}
               </button>
 
@@ -1879,7 +1879,7 @@ function QuickAbsenContent() {
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   onClick={() => setShowSuccessModal(false)}
-                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs border border-slate-700 transition"
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs border border-slate-200 dark:border-slate-700 transition"
                 >
                   ✏️ Edit Absensi
                 </button>
@@ -1892,7 +1892,7 @@ function QuickAbsenContent() {
                       router.push('/dashboard/absen');
                     }
                   }}
-                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold rounded-xl text-xs border border-slate-700 transition"
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-400 font-bold rounded-xl text-xs border border-slate-200 dark:border-slate-700 transition"
                 >
                   Selesai
                 </button>
@@ -1905,40 +1905,40 @@ function QuickAbsenContent() {
       {/* Modal Panduan Mengaktifkan GPS */}
       {showGpsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700 text-slate-100 w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-emerald-400 font-bold text-base">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-base">
                 <MapPin className="w-5 h-5" />
                 <span>Panduan Mengaktifkan GPS &amp; Izin Lokasi</span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowGpsModal(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-full bg-slate-800 transition"
+                className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-full bg-slate-100 dark:bg-slate-800 transition"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-3.5 text-xs text-slate-300 leading-relaxed">
+            <div className="space-y-3.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               {/* Langkah 1 */}
-              <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-1.5">
-                <div className="flex items-center gap-2 font-bold text-amber-300">
-                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-[11px] border border-amber-500/40">1</span>
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-amber-700 dark:text-amber-300">
+                  <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 flex items-center justify-center text-[11px] border border-amber-300 dark:border-amber-500/40">1</span>
                   Nyalakan GPS di HP Anda
                 </div>
-                <p className="text-slate-300 pl-7 text-[11px]">
+                <p className="text-slate-600 dark:text-slate-300 pl-7 text-[11px]">
                   Tarik layar HP dari atas ke bawah (menu bar notifikasi). Pastikan ikon <strong>&quot;Lokasi&quot; / &quot;GPS&quot;</strong> dalam keadaan <strong>Menyala / Aktif (berwarna biru/hijau)</strong>.
                 </p>
               </div>
 
               {/* Langkah 2: Chrome Android */}
-              <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-1.5">
-                <div className="flex items-center gap-2 font-bold text-emerald-300">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-[11px] border border-emerald-500/40">2</span>
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-300">
+                  <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 flex items-center justify-center text-[11px] border border-emerald-300 dark:border-emerald-500/40">2</span>
                   Pengguna Google Chrome (HP Android)
                 </div>
-                <ul className="list-disc pl-11 space-y-1 text-slate-300 text-[11px]">
+                <ul className="list-disc pl-11 space-y-1 text-slate-600 dark:text-slate-300 text-[11px]">
                   <li>Lihat bilah alamat web paling atas tempat halaman ini dibuka (<code>app.ppmawar.or.id</code>).</li>
                   <li>Ketuk ikon <strong>Gembok 🔒 atau Setelan ⚙️ / Tombol Info</strong> di sebelah kiri alamat web.</li>
                   <li>Pilih menu <strong>Izin / Permissions</strong> ➔ aktifkan <strong>Lokasi (Location)</strong> ke <strong>Izinkan / Allow</strong>.</li>
@@ -1946,12 +1946,12 @@ function QuickAbsenContent() {
               </div>
 
               {/* Langkah 3: iPhone / Safari */}
-              <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-1.5">
-                <div className="flex items-center gap-2 font-bold text-cyan-300">
-                  <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[11px] border border-cyan-500/40">3</span>
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-cyan-700 dark:text-cyan-300">
+                  <span className="w-5 h-5 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 flex items-center justify-center text-[11px] border border-cyan-300 dark:border-cyan-500/40">3</span>
                   Pengguna iPhone (Safari)
                 </div>
-                <ul className="list-disc pl-11 space-y-1 text-slate-300 text-[11px]">
+                <ul className="list-disc pl-11 space-y-1 text-slate-600 dark:text-slate-300 text-[11px]">
                   <li>Buka <strong>Pengaturan HP (Settings)</strong> ➔ <strong>Privasi &amp; Keamanan</strong> ➔ <strong>Layanan Lokasi</strong> (pastikan Aktif).</li>
                   <li>Di Safari, ketuk tombol <strong>&apos;aA&apos;</strong> di bilah alamat ➔ <strong>Pengaturan Situs Web</strong> ➔ <strong>Lokasi</strong> ➔ Pilih <strong>Izinkan</strong>.</li>
                 </ul>
@@ -1973,7 +1973,7 @@ function QuickAbsenContent() {
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
+                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95 border border-slate-200 dark:border-transparent"
               >
                 <RefreshCw size={14} /> Muat Ulang Halaman
               </button>
@@ -1995,18 +1995,18 @@ function QuickAbsenFallback() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 gap-4">
-      <Loader2 className="w-12 h-12 text-emerald-400 animate-spin" />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-white flex flex-col items-center justify-center p-6 gap-4">
+      <Loader2 className="w-12 h-12 text-emerald-500 dark:text-emerald-400 animate-spin" />
       <div className="text-center">
-        <p className="text-emerald-200 font-semibold text-base">Memuat Halaman Absensi...</p>
+        <p className="text-emerald-800 dark:text-emerald-200 font-semibold text-base">Memuat Halaman Absensi...</p>
         <p className="text-slate-500 text-xs mt-1">PP. Matholi&apos;ul Anwar</p>
       </div>
       {showReload && (
         <div className="text-center mt-2">
-          <p className="text-slate-400 text-xs mb-3">Memuat terlalu lama? Coba muat ulang halaman.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mb-3">Memuat terlalu lama? Coba muat ulang halaman.</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl transition active:scale-95"
+            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition active:scale-95 shadow-xs"
           >
             🔄 Muat Ulang
           </button>
