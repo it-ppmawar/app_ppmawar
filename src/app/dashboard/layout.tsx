@@ -387,13 +387,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <aside className="fixed top-0 right-0 h-full w-72 bg-white dark:bg-gray-900 shadow-2xl z-[70] flex flex-col rounded-l-3xl overflow-hidden">
             {(() => {
               const userName = (user?.real_name || user?.username || '').trim();
-              const isLongName = userName.length > 15 || (userName.includes(' ') && userName.length > 12);
               return (
                 <div className="px-3.5 py-2.5 border-b border-green-700/30 dark:border-gray-800 flex flex-col bg-gradient-to-r from-green-900 via-green-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 text-white rounded-b-2xl shadow-md relative z-10">
                   {/* Baris Atas: Ikon/Foto (kiri), Nama Guru (tengah), Tombol Mode & Tutup (kanan) */}
-                  <div className={`flex ${isLongName ? 'items-start' : 'items-center'} justify-between gap-2 w-full`}>
+                  <div className="flex items-center justify-between gap-2 w-full">
                     <div
-                      className={`${sidebarAvatar ? 'w-8.5 h-8.5 rounded-full overflow-hidden border-2 border-white/40 flex-shrink-0' : 'bg-white p-1.5 rounded-full flex-shrink-0'} ${isLongName ? 'mt-0.5' : ''} ${sidebarAvatar ? 'cursor-pointer hover:ring-2 hover:ring-white/60 transition-all' : ''}`}
+                      className={`${sidebarAvatar ? 'w-8.5 h-8.5 rounded-full overflow-hidden border-2 border-white/40 flex-shrink-0' : 'bg-white p-1.5 rounded-full flex-shrink-0'} ${sidebarAvatar ? 'cursor-pointer hover:ring-2 hover:ring-white/60 transition-all' : ''}`}
                       onClick={() => sidebarAvatar && setShowAvatarFull(true)}
                       title={sidebarAvatar ? 'Lihat foto profil' : ''}
                     >
@@ -404,13 +403,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       )}
                     </div>
 
-                    <div className={`flex-1 min-w-0 px-1 text-center ${isLongName ? 'pt-0.5' : ''}`}>
+                    <div className="flex-1 min-w-0 px-1 text-center">
                       <p className="font-bold text-[13.5px] sm:text-sm leading-snug capitalize break-words">
                         {userName || 'Memuat...'}
                       </p>
                     </div>
 
-                    <div className={`flex items-center gap-0.5 flex-shrink-0 ${isLongName ? 'mt-0.5' : ''}`}>
+                    <div className="flex items-center gap-0.5 flex-shrink-0">
                       <button onClick={toggleTheme} className="p-1.5 hover:bg-white/20 rounded-full transition-colors sm:hidden" aria-label="Toggle Mode Gelap">
                         {isDark ? <Sun size={18} /> : <Moon size={18} />}
                       </button>
@@ -421,7 +420,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
 
                   {/* Baris Bawah: Role Pengguna melebar rata tengah dari ujung kiri ke kanan dengan pemisah tipis */}
-                  <div className={`w-full border-t border-white/15 dark:border-white/10 pt-1.5 ${isLongName ? 'mt-2' : 'mt-1.5'} text-center`}>
+                  <div className="w-full border-t border-white/15 dark:border-white/10 pt-1.5 mt-1.5 text-center">
                     <p className="text-[10px] text-green-200/90 uppercase tracking-wider font-semibold leading-tight">
                       {[
                         user?.role === 'staff'
