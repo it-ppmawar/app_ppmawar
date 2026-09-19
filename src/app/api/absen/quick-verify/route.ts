@@ -282,10 +282,11 @@ export async function POST(request: Request) {
     const placeholdersJadwal = siblingJadwalIds.map(() => '?').join(',');
 
     let existingQuery = '';
-    if (tipe === 'madin') existingQuery = `SELECT murid_id, status FROM absensi WHERE jadwal_madin_id IN (${placeholdersJadwal}) AND tanggal = ?`;
-    else if (tipe === 'quran') existingQuery = `SELECT murid_id, status FROM absensi_quran WHERE jadwal_quran_id IN (${placeholdersJadwal}) AND tanggal = ?`;
-    else if (tipe === 'kamar' || tipe === 'kegiatan') existingQuery = `SELECT murid_id, status FROM absensi_kegiatan WHERE kegiatan_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    if (tipe === 'madin') existingQuery = `SELECT murid_id, status, keterangan FROM absensi WHERE jadwal_madin_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    else if (tipe === 'quran') existingQuery = `SELECT murid_id, status, keterangan FROM absensi_quran WHERE jadwal_quran_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    else if (tipe === 'kamar' || tipe === 'kegiatan') existingQuery = `SELECT murid_id, status, keterangan FROM absensi_kegiatan WHERE kegiatan_id IN (${placeholdersJadwal}) AND tanggal = ?`;
 
+    const existingKeteranganMap: { [id: number]: string } = {};
     if (existingQuery) {
       const [existingRows] = await pool.execute<RowDataPacket[]>(existingQuery, [...siblingJadwalIds, targetDate]);
       (existingRows || []).forEach(r => {
@@ -294,6 +295,10 @@ export async function POST(request: Request) {
         else if (rawSt === 'sakit') existingMap[r.murid_id] = 'sakit';
         else if (rawSt === 'alpha' || rawSt === 'alpa' || rawSt === '') existingMap[r.murid_id] = 'alpha';
         else existingMap[r.murid_id] = 'hadir';
+
+        if (r.keterangan) {
+          existingKeteranganMap[r.murid_id] = r.keterangan;
+        }
       });
     }
 
@@ -332,6 +337,7 @@ export async function POST(request: Request) {
         jadwal: jadwalDetail,
         murid: muridList,
         existingAbsensi: existingMap,
+        existingKeterangan: existingKeteranganMap,
         lokasiTarget
       }
     });

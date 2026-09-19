@@ -290,7 +290,8 @@ function QuickAbsenContent() {
       msg += `🤒 *Sakit (${sakit.length}):*\n`;
       sakit.forEach((m, idx) => {
         const name = m.nama_panggilan || m.nama;
-        msg += `  ${idx + 1}. ${name}\n`;
+        const ket = (m.keterangan || '').trim();
+        msg += `  ${idx + 1}. ${name}${ket ? ` (${ket})` : ''}\n`;
       });
       msg += `\n`;
     }
@@ -299,7 +300,8 @@ function QuickAbsenContent() {
       msg += `✉️ *Izin (${izin.length}):*\n`;
       izin.forEach((m, idx) => {
         const name = m.nama_panggilan || m.nama;
-        msg += `  ${idx + 1}. ${name}\n`;
+        const ket = (m.keterangan || '').trim();
+        msg += `  ${idx + 1}. ${name}${ket ? ` (${ket})` : ''}\n`;
       });
       msg += `\n`;
     }
@@ -308,7 +310,8 @@ function QuickAbsenContent() {
       msg += `❌ *Alpha/Tanpa Keterangan (${alpha.length}):*\n`;
       alpha.forEach((m, idx) => {
         const name = m.nama_panggilan || m.nama;
-        msg += `  ${idx + 1}. ${name}\n`;
+        const ket = (m.keterangan || '').trim();
+        msg += `  ${idx + 1}. ${name}${ket ? ` (${ket})` : ''}\n`;
       });
       msg += `\n`;
     }
@@ -523,12 +526,17 @@ function QuickAbsenContent() {
             fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
           } catch (_) {}
         } else {
-          setData(res.data);
           const initialMap: { [id: number]: string } = {};
           const existing = res.data.existingAbsensi || {};
-          (res.data.murid || []).forEach((m: any) => {
+          const existingKet = res.data.existingKeterangan || {};
+          const updatedMurid = (res.data.murid || []).map((m: any) => {
             initialMap[m.murid_id] = existing[m.murid_id] || 'hadir';
+            return {
+              ...m,
+              keterangan: m.keterangan || existingKet[m.murid_id] || ''
+            };
           });
+          setData({ ...res.data, murid: updatedMurid });
           setKehadiran(initialMap);
           if (res.data.lokasiTarget) setLokasiTarget(res.data.lokasiTarget);
         }
@@ -689,7 +697,8 @@ function QuickAbsenContent() {
     const listAbsensi = (murid || []).map((m: any) => ({
       murid_id: m.murid_id,
       status: kehadiran[m.murid_id] || 'hadir',
-      nama_panggilan: m.nama_panggilan || ''
+      nama_panggilan: m.nama_panggilan || '',
+      keterangan: m.keterangan || ''
     }));
 
     const payload = {
@@ -1675,7 +1684,27 @@ function QuickAbsenContent() {
                           </button>
                         ))}
                       </div>
+
+                      {/* Catatan / Keterangan (hanya jika bukan Hadir) */}
+                      {st !== 'hadir' && (
+                        <input
+                          type="text"
+                          placeholder="Catatan (alasan izin/sakit/keterangan)..."
+                          value={m.keterangan || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setData((prev: any) => ({
+                              ...prev,
+                              murid: (prev.murid || []).map((item: any) =>
+                                item.murid_id === m.murid_id ? { ...item, keterangan: val } : item
+                              )
+                            }));
+                          }}
+                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition"
+                        />
+                      )}
                     </div>
+
                   );
                 })}
               </div>
