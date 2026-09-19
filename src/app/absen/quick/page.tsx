@@ -967,7 +967,7 @@ function QuickAbsenContent() {
 
         {/* GPS Status Bar (1 Baris Ramping & Efisien) */}
         <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-xs gap-2">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             <MapPin size={15} className={userLocation ? "text-emerald-600 dark:text-emerald-400 shrink-0" : detectingGps ? "text-cyan-600 dark:text-cyan-400 shrink-0" : "text-amber-600 dark:text-amber-400 shrink-0"} />
             <span className="text-slate-700 dark:text-slate-300 font-medium text-xs whitespace-nowrap">
               Status GPS HP:
@@ -978,11 +978,11 @@ function QuickAbsenContent() {
                   ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60'
                   : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
               }`}>
-                Jarak: ~{gpsDistance >= 1000 ? `${(gpsDistance / 1000).toFixed(1)} km` : `${Math.round(gpsDistance)} m`}
+                ~{gpsDistance >= 1000 ? `${(gpsDistance / 1000).toFixed(1)} km` : `${Math.round(gpsDistance)} m`}
               </span>
             )}
             {!userLocation && detectingGps && (
-              <span className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
+              <span className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 flex items-center gap-1 whitespace-nowrap">
                 <Loader2 size={11} className="animate-spin" /> Mendeteksi...
               </span>
             )}
