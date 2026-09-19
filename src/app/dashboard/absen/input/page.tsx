@@ -156,6 +156,31 @@ function InputAbsenContent() {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }, []);
 
+  // Muat lokasiTarget pesantren dari settings sedini mungkin
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(json => {
+        if (json.success && json.data) {
+          const lat = parseFloat((json.data.lat_pesantren || '').toString().replace(',', '.').trim());
+          const lng = parseFloat((json.data.lng_pesantren || '').toString().replace(',', '.').trim());
+          const radius = parseFloat((json.data.radius_absen || '').toString().replace(',', '.').trim());
+          if (!isNaN(lat) && !isNaN(lng)) {
+            setLokasiTarget({ lat, lng, radius: !isNaN(radius) ? radius : 50 });
+          }
+        }
+      })
+      .catch(e => console.warn('Gagal memuat setting lokasi:', e));
+  }, []);
+
+  // Hitung jarak realtime segera saat lokasi dan lokasiTarget sudah tersedia
+  useEffect(() => {
+    if (location && lokasiTarget) {
+      const dist = calcHaversineMeters(location.lat, location.lng, lokasiTarget.lat, lokasiTarget.lng);
+      setGpsDistance(dist);
+    }
+  }, [location, lokasiTarget, calcHaversineMeters]);
+
   // Mulai watchPosition untuk jarak realtime segera setelah lokasiTarget tersedia
   useEffect(() => {
     if (!lokasiTarget || typeof window === 'undefined' || !('geolocation' in navigator)) return;
@@ -165,12 +190,14 @@ function InputAbsenContent() {
     }
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        const dist = calcHaversineMeters(pos.coords.latitude, pos.coords.longitude, lokasiTarget.lat, lokasiTarget.lng);
+        const userLat = pos.coords.latitude;
+        const userLng = pos.coords.longitude;
+        const dist = calcHaversineMeters(userLat, userLng, lokasiTarget.lat, lokasiTarget.lng);
         setGpsDistance(dist);
-        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocation({ lat: userLat, lng: userLng });
       },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 5000 }
+      (err) => console.warn('watchPosition error:', err),
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
     );
     return () => {
       if (watchIdRef.current !== null) {
@@ -191,10 +218,16 @@ function InputAbsenContent() {
     setLocationError('');
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
         setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
+          lat: userLat,
+          lng: userLng
         });
+        if (lokasiTarget) {
+          const dist = calcHaversineMeters(userLat, userLng, lokasiTarget.lat, lokasiTarget.lng);
+          setGpsDistance(dist);
+        }
         setLocationError('');
         setDetectingLocation(false);
         fetchData();
@@ -215,7 +248,7 @@ function InputAbsenContent() {
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, [fetchData]);
+  }, [fetchData, lokasiTarget, calcHaversineMeters]);
 
   useEffect(() => {
     if (!tipe || !kelas_id || !jadwal_id) {
@@ -1173,12 +1206,21 @@ function InputAbsenContent() {
       )}
 
       {/* 2. GPS Status Bar (1 Baris Ramping & Efisien) */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs bg-white dark:bg-slate-900/80 border border-gray-200 dark:border-gray-700/80 shadow-xs">
-        <div className="flex items-center gap-2">
-          <MapPin size={16} className={location ? "text-emerald-500 dark:text-emerald-400" : detectingLocation ? "text-cyan-500 dark:text-cyan-400" : "text-amber-500 dark:text-amber-400"} />
-          <span className="text-gray-700 dark:text-gray-300 font-medium text-xs">
+      <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs bg-white dark:bg-slate-900/80 border border-gray-200 dark:border-gray-700/80 shadow-xs gap-2">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <MapPin size={16} className={location ? "text-emerald-500 dark:text-emerald-400 shrink-0" : detectingLocation ? "text-cyan-500 dark:text-cyan-400 shrink-0" : "text-amber-500 dark:text-amber-400 shrink-0"} />
+          <span className="text-gray-700 dark:text-gray-300 font-medium text-xs whitespace-nowrap">
             Status GPS HP:
           </span>
+          {gpsDistance !== null && (
+            <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border whitespace-nowrap transition-colors ${
+              lokasiTarget && gpsDistance > lokasiTarget.radius
+                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60'
+                : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+            }`}>
+              Jarak: ~{gpsDistance >= 1000 ? `${(gpsDistance / 1000).toFixed(1)} km` : `${Math.round(gpsDistance)} m`}
+            </span>
+          )}
           {!location && detectingLocation && (
             <span className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
               <Loader2 size={11} className="animate-spin" /> Mendeteksi...
@@ -1198,8 +1240,8 @@ function InputAbsenContent() {
                 : 'text-emerald-500 dark:text-emerald-400'
             } />
             {lokasiTarget && gpsDistance !== null && gpsDistance > lokasiTarget.radius
-              ? `Di Luar Radius ~${gpsDistance >= 1000 ? `${(gpsDistance / 1000).toFixed(1)} km` : `${Math.round(gpsDistance)} m`}`
-              : `Terdeteksi & Siap${gpsDistance !== null ? ` ~${gpsDistance >= 1000 ? `${(gpsDistance / 1000).toFixed(1)} km` : `${Math.round(gpsDistance)} m`}` : ''}`
+              ? 'Di Luar Radius'
+              : 'Terdeteksi & Siap'
             }
           </span>
         ) : (
