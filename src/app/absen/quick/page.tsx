@@ -970,7 +970,7 @@ function QuickAbsenContent() {
           <div className="flex items-center gap-2 min-w-0">
             <MapPin size={15} className={userLocation ? "text-emerald-600 dark:text-emerald-400 shrink-0" : detectingGps ? "text-cyan-600 dark:text-cyan-400 shrink-0" : "text-amber-600 dark:text-amber-400 shrink-0"} />
             <span className="text-slate-700 dark:text-slate-300 font-medium text-xs whitespace-nowrap">
-              Status GPS HP:
+              {userLocation ? 'Jarak GPS HP:' : 'Status GPS HP:'}
             </span>
             {gpsDistance !== null && (
               <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border whitespace-nowrap transition-colors ${

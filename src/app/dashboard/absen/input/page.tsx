@@ -1210,7 +1210,7 @@ function InputAbsenContent() {
         <div className="flex items-center gap-2 min-w-0">
           <MapPin size={16} className={location ? "text-emerald-500 dark:text-emerald-400 shrink-0" : detectingLocation ? "text-cyan-500 dark:text-cyan-400 shrink-0" : "text-amber-500 dark:text-amber-400 shrink-0"} />
           <span className="text-gray-700 dark:text-gray-300 font-medium text-xs whitespace-nowrap">
-            Status GPS HP:
+            {location ? 'Jarak GPS HP:' : 'Status GPS HP:'}
           </span>
           {gpsDistance !== null && (
             <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border whitespace-nowrap transition-colors ${
