@@ -368,7 +368,30 @@ export async function GET(request: Request) {
       console.error('Error fetching jadwal info:', e);
     }
 
-    return NextResponse.json({ success: true, data: mappedMurid, namaTarget, sudah_absen, jadwalInfo, tanggal: localISOTime });
+    let lokasiTarget: { lat: number; lng: number; radius: number } | null = null;
+    try {
+      const [settingRows] = await pool.execute<RowDataPacket[]>(
+        'SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ("lat_pesantren", "lng_pesantren", "radius_absen")'
+      );
+      const settingsMap: Record<string, string> = {};
+      settingRows.forEach(r => { settingsMap[r.nama_pengaturan] = r.nilai; });
+
+      const targetLat = parseFloat((settingsMap['lat_pesantren'] || '').toString().replace(',', '.').trim());
+      const targetLng = parseFloat((settingsMap['lng_pesantren'] || '').toString().replace(',', '.').trim());
+      const maxRadius = parseFloat((settingsMap['radius_absen'] || '').toString().replace(',', '.').trim());
+
+      if (!isNaN(targetLat) && !isNaN(targetLng)) {
+        lokasiTarget = {
+          lat: targetLat,
+          lng: targetLng,
+          radius: !isNaN(maxRadius) ? maxRadius : 50
+        };
+      }
+    } catch (e) {
+      console.warn('Error fetching pesantren location settings in input route:', e);
+    }
+
+    return NextResponse.json({ success: true, data: mappedMurid, namaTarget, sudah_absen, jadwalInfo, tanggal: localISOTime, lokasiTarget });
   } catch (err: any) {
     return NextResponse.json({ error: 'Server error: ' + err.message }, { status: 500 });
   }

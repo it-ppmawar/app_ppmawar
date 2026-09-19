@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, SwitchCamera, X as XIcon, User, MapPin, QrCode, Brain, BookOpen, HeartPulse, Send, FileText, CheckCircle2, RefreshCw, HelpCircle, Loader2, AlertCircle, Copy, Check, Search, Key, Link as LinkIcon, Shield } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -68,6 +68,9 @@ function InputAbsenContent() {
   const [locationError, setLocationError] = useState('');
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [showGpsModal, setShowGpsModal] = useState(false);
+  const [lokasiTarget, setLokasiTarget] = useState<{lat: number; lng: number; radius: number} | null>(null);
+  const [gpsDistance, setGpsDistance] = useState<number | null>(null);
+  const watchIdRef = useRef<number | null>(null);
   const [namaTarget, setNamaTarget] = useState('Kelas/Kamar');
   const [photoUrl, setPhotoUrl] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -131,6 +134,7 @@ function InputAbsenContent() {
         if (json.sudah_absen !== undefined) setSudahAbsen(json.sudah_absen);
         if (json.jadwalInfo) setJadwalInfo(json.jadwalInfo);
         if (json.tanggal) setTanggalAbsen(json.tanggal);
+        if (json.lokasiTarget) setLokasiTarget(json.lokasiTarget);
       } else {
         setErrorMsg(json.error || 'Gagal memuat data santri');
       }
@@ -141,6 +145,41 @@ function InputAbsenContent() {
       setTimeout(() => setLoading(false), 200);
     }
   }, [tipe, kelas_id, jadwal_id]);
+
+  // Haversine: hitung jarak dalam meter antara 2 koordinat
+  const calcHaversineMeters = useCallback((lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371e3;
+    const rad = Math.PI / 180;
+    const dLat = (lat2 - lat1) * rad;
+    const dLng = (lng2 - lng1) * rad;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }, []);
+
+  // Mulai watchPosition untuk jarak realtime segera setelah lokasiTarget tersedia
+  useEffect(() => {
+    if (!lokasiTarget || typeof window === 'undefined' || !('geolocation' in navigator)) return;
+    // Hentikan watcher sebelumnya jika ada
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+    }
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const dist = calcHaversineMeters(pos.coords.latitude, pos.coords.longitude, lokasiTarget.lat, lokasiTarget.lng);
+        setGpsDistance(dist);
+        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [lokasiTarget, calcHaversineMeters]);
+
 
   const requestGpsLocation = useCallback(() => {
     if (typeof window === 'undefined' || !('geolocation' in navigator)) {
@@ -1148,9 +1187,20 @@ function InputAbsenContent() {
         </div>
 
         {location ? (
-          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shrink-0">
-            <CheckCircle2 size={14} className="text-emerald-500 dark:text-emerald-400" />
-            Terdeteksi &amp; Siap
+          <span className={`text-xs font-bold flex items-center gap-1.5 shrink-0 ${
+            lokasiTarget && gpsDistance !== null && gpsDistance > lokasiTarget.radius
+              ? 'text-rose-600 dark:text-rose-400'
+              : 'text-emerald-600 dark:text-emerald-400'
+          }`}>
+            <CheckCircle2 size={14} className={
+              lokasiTarget && gpsDistance !== null && gpsDistance > lokasiTarget.radius
+                ? 'text-rose-500 dark:text-rose-400'
+                : 'text-emerald-500 dark:text-emerald-400'
+            } />
+            {lokasiTarget && gpsDistance !== null && gpsDistance > lokasiTarget.radius
+              ? `Di Luar Radius ~${gpsDistance >= 1000 ? `${(gpsDistance / 1000).toFixed(1)} km` : `${Math.round(gpsDistance)} m`}`
+              : `Terdeteksi & Siap${gpsDistance !== null ? ` ~${gpsDistance >= 1000 ? `${(gpsDistance / 1000).toFixed(1)} km` : `${Math.round(gpsDistance)} m`}` : ''}`
+            }
           </span>
         ) : (
           <div className="flex items-center gap-1.5 shrink-0">

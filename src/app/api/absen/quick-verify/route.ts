@@ -297,6 +297,29 @@ export async function POST(request: Request) {
       });
     }
 
+    let lokasiTarget: { lat: number; lng: number; radius: number } | null = null;
+    try {
+      const [settingRows] = await pool.execute<RowDataPacket[]>(
+        'SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ("lat_pesantren", "lng_pesantren", "radius_absen")'
+      );
+      const settingsMap: Record<string, string> = {};
+      settingRows.forEach(r => { settingsMap[r.nama_pengaturan] = r.nilai; });
+
+      const targetLat = parseFloat((settingsMap['lat_pesantren'] || '').toString().replace(',', '.').trim());
+      const targetLng = parseFloat((settingsMap['lng_pesantren'] || '').toString().replace(',', '.').trim());
+      const maxRadius = parseFloat((settingsMap['radius_absen'] || '').toString().replace(',', '.').trim());
+
+      if (!isNaN(targetLat) && !isNaN(targetLng)) {
+        lokasiTarget = {
+          lat: targetLat,
+          lng: targetLng,
+          radius: !isNaN(maxRadius) ? maxRadius : 50
+        };
+      }
+    } catch (e) {
+      console.warn('Error fetching pesantren location settings in quick verify:', e);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -308,7 +331,8 @@ export async function POST(request: Request) {
         date: targetDate,
         jadwal: jadwalDetail,
         murid: muridList,
-        existingAbsensi: existingMap
+        existingAbsensi: existingMap,
+        lokasiTarget
       }
     });
   } catch (error: any) {
