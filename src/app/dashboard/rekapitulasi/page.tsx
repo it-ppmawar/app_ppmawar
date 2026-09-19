@@ -718,9 +718,35 @@ export default function RekapitulasiPage() {
       {/* Filter Panel */}
       <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 transition-colors duration-300 space-y-3">
 
-        {/* ── Baris 1: Dropdown filter — semua kolom sama lebar ── */}
+        {/* ── Baris 1: Dropdown filter — urutan: Cari Nama | Pilih Tipe | Pilih Guru/Kelas | Pilih Mapel ── */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          {/* Pilih Tipe */}
+
+          {/* Kolom 1: Pencarian Nama / NIS / NIP */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1">
+              Cari Nama / {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'NIP' : 'NIS'}
+            </label>
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder={filter.tipe === 'dewan_guru' ? 'Cari Nama / NIP / Unit...' : 'Ketik untuk mencari...'}
+                value={searchNama}
+                onChange={e => setSearchNama(e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all placeholder:font-normal placeholder:text-gray-400"
+              />
+              {searchNama && (
+                <button
+                  onClick={() => setSearchNama('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Kolom 2: Pilih Tipe */}
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">Pilih Tipe</label>
             <select value={filter.tipe} onChange={handleTipeChange} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all">
@@ -742,7 +768,7 @@ export default function RekapitulasiPage() {
             </select>
           </div>
 
-          {/* Pilih Kelas / Guru / Homebase */}
+          {/* Kolom 3: Pilih Guru / Kelas / Homebase */}
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">
               {filter.tipe === 'guru' ? 'Pilih Guru' : filter.tipe === 'dewan_guru' ? 'Pilih Unit / Homebase' : 'Pilih Kelas / Kamar'}
@@ -774,7 +800,7 @@ export default function RekapitulasiPage() {
             </select>
           </div>
 
-          {/* Sub-filter: Majlis / Mapel / Kegiatan — hanya untuk madin/quran/kegiatan, jika tidak ada tetap 1 kolom kosong */}
+          {/* Kolom 4: Sub-filter Mapel / Majlis / Kegiatan — hanya tampil jika relevan, selalu di ujung kanan */}
           <div>
             {['madin', 'quran', 'kegiatan'].includes(filter.tipe) ? (
               <>
@@ -795,32 +821,10 @@ export default function RekapitulasiPage() {
                   ))}
                 </select>
               </>
-            ) : null}
-          </div>
-
-          {/* Pencarian Manual */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1">
-              Cari Nama / {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'NIP' : 'NIS'}
-            </label>
-            <div className="relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder={filter.tipe === 'dewan_guru' ? 'Cari Nama / NIP / Unit...' : 'Ketik untuk mencari...'}
-                value={searchNama}
-                onChange={e => setSearchNama(e.target.value)}
-                className="w-full pl-9 pr-8 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all placeholder:font-normal placeholder:text-gray-400"
-              />
-              {searchNama && (
-                <button
-                  onClick={() => setSearchNama('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+            ) : (
+              /* Kolom kosong untuk tipe Guru/Dewan Guru — tetap mengisi grid agar Cari Nama tidak bergeser */
+              <div className="hidden md:block" aria-hidden="true" />
+            )}
           </div>
         </div>
 
