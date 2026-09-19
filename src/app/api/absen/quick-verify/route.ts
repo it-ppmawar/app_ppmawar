@@ -180,8 +180,14 @@ export async function POST(request: Request) {
 
     // ====== VALIDASI WAKTU KETAT: cek window akses berdasarkan jadwal ======
     try {
-      const nowWIB = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-      const todayWIB = nowWIB.toISOString().slice(0, 10); // YYYY-MM-DD
+      // Ambil tanggal & waktu WIB secara akurat
+      const nowDate = new Date();
+      // todayWIB: format YYYY-MM-DD dalam zona WIB (en-CA menghasilkan format ISO date langsung)
+      const todayWIB = nowDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+
+      // nowWIB dipakai untuk pengecekan jam (getHours/getMinutes dalam WIB)
+      const nowWIBStr = nowDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta', hour12: false });
+      const nowWIBParsed = new Date(nowWIBStr);
 
       // Validasi tanggal: token harus untuk hari ini
       if (targetDate !== todayWIB) {
@@ -197,7 +203,7 @@ export async function POST(request: Request) {
         return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
       };
 
-      const nowSecs = nowWIB.getHours() * 3600 + nowWIB.getMinutes() * 60 + nowWIB.getSeconds();
+      const nowSecs = nowWIBParsed.getHours() * 3600 + nowWIBParsed.getMinutes() * 60 + nowWIBParsed.getSeconds();
       const mulaiSecs = parseTimeSecs(jadwalDetail.jam_mulai);
       const selesaiSecs = parseTimeSecs(jadwalDetail.jam_selesai);
 
