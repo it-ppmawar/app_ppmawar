@@ -422,7 +422,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                   {/* Baris Bawah: Role Pengguna melebar rata tengah dari ujung kiri ke kanan dengan pemisah tipis */}
                   <div className={`w-full border-t border-white/15 dark:border-white/10 pt-1.5 ${isLongName ? 'mt-2' : 'mt-1.5'} text-center`}>
-                    <p className="text-[11px] sm:text-xs text-green-200 uppercase tracking-wider font-semibold leading-tight">
+                    <p className="text-[10px] text-green-200/90 uppercase tracking-wider font-semibold leading-tight">
                       {[
                         user?.role === 'staff'
                           ? (user?.asrama === 'Putra' ? '👳‍♂️ Staff Putra' : user?.asrama === 'Putri' ? '🧕 Staff Putri' : '🌐 Staff Umum')
@@ -1074,7 +1074,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             href={`https://wa.me/${nomorCs.replace(/\D/g, '')}?text=${encodeURIComponent('Assalamu\'alaikum, Admin PPMA. Saya butuh bantuan terkait sistem absensi.')}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex w-full items-center gap-2.5 px-3 py-2 rounded-xl bg-[#25D366] hover:bg-[#1DA851] text-white transition-colors font-bold shadow-xs text-[13.5px] sm:text-sm"
+            className="flex w-full items-center gap-3 px-4 py-3 rounded-xl bg-[#25D366] hover:bg-[#1DA851] text-white transition-colors font-bold shadow-xs text-sm"
             aria-label="Hubungi Layanan Pengguna"
             onClick={() => setShowSidebar(false)}
           >
@@ -1087,7 +1087,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               await fetch('/api/auth/logout', { method: 'POST' });
               window.location.href = '/';
             }}
-            className="flex w-full items-center gap-2.5 px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors font-bold text-[13.5px] sm:text-sm"
+            className="flex w-full items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors font-bold text-sm"
           >
             <LogOut size={18} />
             <span>Keluar</span>
