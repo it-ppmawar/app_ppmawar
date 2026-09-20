@@ -634,7 +634,7 @@ function InputAbsenContent() {
     if (sakit.length > 0) {
       msg += `🤒 *Sakit (${sakit.length}):*\n`;
       sakit.forEach((m, idx) => {
-        const name = m.nama_panggilan || m.nama;
+        const name = m.nama_panggilan ? `${m.nama} [${m.nama_panggilan}]` : m.nama;
         msg += `  ${idx + 1}. ${name}${m.keterangan ? ` (${m.keterangan})` : ''}\n`;
       });
       msg += `\n`;
@@ -643,7 +643,7 @@ function InputAbsenContent() {
     if (izin.length > 0) {
       msg += `✉️ *Izin (${izin.length}):*\n`;
       izin.forEach((m, idx) => {
-        const name = m.nama_panggilan || m.nama;
+        const name = m.nama_panggilan ? `${m.nama} [${m.nama_panggilan}]` : m.nama;
         msg += `  ${idx + 1}. ${name}${m.keterangan ? ` (${m.keterangan})` : ''}\n`;
       });
       msg += `\n`;
@@ -652,7 +652,7 @@ function InputAbsenContent() {
     if (alpha.length > 0) {
       msg += `❌ *Alpha/Tanpa Keterangan (${alpha.length}):*\n`;
       alpha.forEach((m, idx) => {
-        const name = m.nama_panggilan || m.nama;
+        const name = m.nama_panggilan ? `${m.nama} [${m.nama_panggilan}]` : m.nama;
         msg += `  ${idx + 1}. ${name}${m.keterangan ? ` (${m.keterangan})` : ''}\n`;
       });
       msg += `\n`;

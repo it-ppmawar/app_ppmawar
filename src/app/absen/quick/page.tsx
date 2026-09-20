@@ -289,7 +289,7 @@ function QuickAbsenContent() {
     if (sakit.length > 0) {
       msg += `🤒 *Sakit (${sakit.length}):*\n`;
       sakit.forEach((m, idx) => {
-        const name = m.nama_panggilan || m.nama;
+        const name = m.nama_panggilan ? `${m.nama} [${m.nama_panggilan}]` : m.nama;
         const ket = (m.keterangan || '').trim();
         msg += `  ${idx + 1}. ${name}${ket ? ` (${ket})` : ''}\n`;
       });
@@ -299,7 +299,7 @@ function QuickAbsenContent() {
     if (izin.length > 0) {
       msg += `✉️ *Izin (${izin.length}):*\n`;
       izin.forEach((m, idx) => {
-        const name = m.nama_panggilan || m.nama;
+        const name = m.nama_panggilan ? `${m.nama} [${m.nama_panggilan}]` : m.nama;
         const ket = (m.keterangan || '').trim();
         msg += `  ${idx + 1}. ${name}${ket ? ` (${ket})` : ''}\n`;
       });
@@ -309,7 +309,7 @@ function QuickAbsenContent() {
     if (alpha.length > 0) {
       msg += `❌ *Alpha/Tanpa Keterangan (${alpha.length}):*\n`;
       alpha.forEach((m, idx) => {
-        const name = m.nama_panggilan || m.nama;
+        const name = m.nama_panggilan ? `${m.nama} [${m.nama_panggilan}]` : m.nama;
         const ket = (m.keterangan || '').trim();
         msg += `  ${idx + 1}. ${name}${ket ? ` (${ket})` : ''}\n`;
       });
