@@ -686,35 +686,47 @@ export async function POST(request: Request) {
       }
 
       // 3. Mark guru as Hadir (atau jika ada Guru Badal, catat kehadiran Badal dan izin Guru Utama)
+      const schedCol = tipe === 'madin' ? 'jadwal_madin_id' : tipe === 'quran' ? 'jadwal_quran_id' : 'kegiatan_id';
+
       if (badalId) {
         try {
           // A. Catat Guru Badal sebagai Hadir
           const [badalAbsen] = await connection.execute<RowDataPacket[]>(
-            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ?`,
-            [badalId, localISOTime]
+            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND ${schedCol} = ?`,
+            [badalId, localISOTime, jId]
           );
           const badalKet = `Mengajar sebagai Badal ${payload.nama || 'Guru'}`;
           if (badalAbsen.length === 0) {
             let insertBadal = '';
-            if (tipe === 'madin') insertBadal = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, "Hadir", ?, 0, ?, ?) ON DUPLICATE KEY UPDATE status="Hadir"';
-            else if (tipe === 'quran') insertBadal = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, "Hadir", ?, 0, ?, ?) ON DUPLICATE KEY UPDATE status="Hadir"';
-            else if (tipe === 'kegiatan') insertBadal = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) VALUES (?, ?, "Hadir", ?, 0, ?, ?) ON DUPLICATE KEY UPDATE status="Hadir"';
+            if (tipe === 'madin') insertBadal = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, "Hadir", ?, 0, ?, ?)';
+            else if (tipe === 'quran') insertBadal = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, "Hadir", ?, 0, ?, ?)';
+            else if (tipe === 'kegiatan') insertBadal = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) VALUES (?, ?, "Hadir", ?, 0, ?, ?)';
             await connection.execute(insertBadal, [badalId, localISOTime, badalKet, currentTime, jId]);
+          } else {
+            await connection.execute(
+              `UPDATE absensi_guru SET status = "Hadir", keterangan = ?, waktu_absensi = ?, is_otomatis = 0 WHERE absensi_id = ?`,
+              [badalKet, currentTime, badalAbsen[0].absensi_id]
+            );
           }
 
           // B. Pastikan Guru Utama tercatat Izin/Sakit dengan keterangan dibadal
           if (payload.guruId) {
             const [guruUtamaAbsen] = await connection.execute<RowDataPacket[]>(
-              `SELECT absensi_id, status FROM absensi_guru WHERE guru_id = ? AND tanggal = ?`,
-              [payload.guruId, localISOTime]
+              `SELECT absensi_id, status FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND ${schedCol} = ?`,
+              [payload.guruId, localISOTime, jId]
             );
+            const utamaKet = `Izin (Dibadal oleh ${badalNama || 'Guru Pengganti'})`;
             if (guruUtamaAbsen.length === 0) {
-              const utamaKet = `Izin (Dibadal oleh ${badalNama || 'Guru Pengganti'})`;
               let insertUtama = '';
               if (tipe === 'madin') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id, guru_badal_id) VALUES (?, ?, "Izin", ?, 0, ?, ?, ?)';
               else if (tipe === 'quran') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id, guru_badal_id) VALUES (?, ?, "Izin", ?, 0, ?, ?, ?)';
               else if (tipe === 'kegiatan') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id, guru_badal_id) VALUES (?, ?, "Izin", ?, 0, ?, ?, ?)';
               await connection.execute(insertUtama, [payload.guruId, localISOTime, utamaKet, currentTime, jId, badalId]);
+            } else {
+              await connection.execute(
+                `UPDATE absensi_guru SET status = "Izin", keterangan = ?, guru_badal_id = ?, waktu_absensi = ?, is_otomatis = 0 WHERE absensi_id = ?`,
+                [utamaKet, badalId, currentTime, guruUtamaAbsen[0].absensi_id]
+              );
             }
           }
         } catch (badalErr) {
@@ -725,16 +737,21 @@ export async function POST(request: Request) {
         try {
           if (payload.guruId) {
             const [guruUtamaAbsen] = await connection.execute<RowDataPacket[]>(
-              `SELECT absensi_id, status FROM absensi_guru WHERE guru_id = ? AND tanggal = ?`,
-              [payload.guruId, localISOTime]
+              `SELECT absensi_id, status FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND ${schedCol} = ?`,
+              [payload.guruId, localISOTime, jId]
             );
+            const utamaKet = `Izin (Dibadal oleh ${badalNama})`;
             if (guruUtamaAbsen.length === 0) {
-              const utamaKet = `Izin (Dibadal oleh ${badalNama})`;
               let insertUtama = '';
               if (tipe === 'madin') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, "Izin", ?, 0, ?, ?)';
               else if (tipe === 'quran') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, "Izin", ?, 0, ?, ?)';
               else if (tipe === 'kegiatan') insertUtama = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) VALUES (?, ?, "Izin", ?, 0, ?, ?)';
               await connection.execute(insertUtama, [payload.guruId, localISOTime, utamaKet, currentTime, jId]);
+            } else {
+              await connection.execute(
+                `UPDATE absensi_guru SET status = "Izin", keterangan = ?, waktu_absensi = ?, is_otomatis = 0 WHERE absensi_id = ?`,
+                [utamaKet, currentTime, guruUtamaAbsen[0].absensi_id]
+              );
             }
           }
         } catch (manualBadalErr) {
@@ -743,16 +760,21 @@ export async function POST(request: Request) {
       } else if (payload.role === 'guru' && payload.guruId) {
         try {
           const [guruAbsen] = await connection.execute<RowDataPacket[]>(
-            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ?`,
-            [payload.guruId, localISOTime]
+            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND ${schedCol} = ?`,
+            [payload.guruId, localISOTime, jId]
           );
           if (guruAbsen.length === 0) {
             let insertGuru = '';
-            if (tipe === 'madin') insertGuru = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, "Hadir", "Menginput Absensi", 0, ?, ?) ON DUPLICATE KEY UPDATE status="Hadir"';
-            else if (tipe === 'quran') insertGuru = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, "Hadir", "Menginput Absensi", 0, ?, ?) ON DUPLICATE KEY UPDATE status="Hadir"';
-            else if (tipe === 'kegiatan') insertGuru = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) VALUES (?, ?, "Hadir", "Menginput Absensi", 0, ?, ?) ON DUPLICATE KEY UPDATE status="Hadir"';
+            if (tipe === 'madin') insertGuru = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, "Hadir", "Menginput Absensi", 0, ?, ?)';
+            else if (tipe === 'quran') insertGuru = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, "Hadir", "Menginput Absensi", 0, ?, ?)';
+            else if (tipe === 'kegiatan') insertGuru = 'INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) VALUES (?, ?, "Hadir", "Menginput Absensi", 0, ?, ?)';
             
             await connection.execute(insertGuru, [payload.guruId, localISOTime, currentTime, jId]);
+          } else {
+            await connection.execute(
+              `UPDATE absensi_guru SET status = "Hadir", keterangan = "Menginput Absensi", waktu_absensi = ?, is_otomatis = 0 WHERE absensi_id = ?`,
+              [currentTime, guruAbsen[0].absensi_id]
+            );
           }
         } catch (guruErr) {
           console.warn('absensi_guru non-fatal notice:', guruErr);

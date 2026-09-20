@@ -179,10 +179,28 @@ export async function PUT(request: Request) {
     if (telegram_chat_id !== undefined) { updates.push('telegram_chat_id = ?'); params.push(telegram_chat_id || null); }
     if (telegram_username !== undefined) { updates.push('telegram_username = ?'); params.push(telegram_username || null); }
     if (foto !== undefined) { updates.push('foto = ?'); params.push(foto); }
+    // Ambil nama lama sebelum update jika nama diubah untuk sinkronisasi dewan_guru
+    let oldNama: string | null = null;
+    if (nama !== undefined && nama.trim() !== '') {
+      try {
+        const [oldRows]: any = await pool.execute('SELECT nama FROM guru WHERE guru_id = ? LIMIT 1', [guru_id]);
+        if (oldRows && oldRows[0]) oldNama = oldRows[0].nama;
+      } catch (_) {}
+    }
 
     if (updates.length > 0) {
       params.push(guru_id);
       await pool.execute(`UPDATE guru SET ${updates.join(', ')} WHERE guru_id = ?`, params);
+    }
+
+    // Sinkronkan juga ke dewan_guru jika ada
+    if (nama !== undefined && nama.trim() !== '' && oldNama) {
+      try {
+        await pool.execute(
+          'UPDATE dewan_guru SET nama = ? WHERE LOWER(TRIM(nama)) = LOWER(TRIM(?))',
+          [nama.trim(), oldNama]
+        );
+      } catch (_) {}
     }
 
     return NextResponse.json({ success: true, message: 'Data berhasil diperbarui' });

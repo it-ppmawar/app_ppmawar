@@ -36,14 +36,50 @@ export async function GET() {
     // Retrieve real name — wrapped in separate try-catch so failure is non-fatal
     let realName = payload.username;
     try {
-      if (payload.role === 'guru' && payload.guruId) {
+      let guruNama: string | null = null;
+
+      // 1. Cek tabel guru berdasarkan guruId dari token
+      if (payload.guruId) {
         const [gurus] = await pool.execute<RowDataPacket[]>(
           'SELECT nama FROM guru WHERE guru_id = ? LIMIT 1',
           [payload.guruId]
         );
-        if (gurus.length > 0) {
-          realName = gurus[0].nama;
-        }
+        if (gurus.length > 0 && gurus[0].nama) guruNama = gurus[0].nama;
+      }
+
+      // 2. Cek tabel guru berdasarkan user_id akun login
+      if (!guruNama && userId) {
+        const [gurus] = await pool.execute<RowDataPacket[]>(
+          'SELECT nama FROM guru WHERE user_id = ? LIMIT 1',
+          [userId]
+        );
+        if (gurus.length > 0 && gurus[0].nama) guruNama = gurus[0].nama;
+      }
+
+      // 3. Cek tabel guru berdasarkan NIP di tabel users
+      if (!guruNama && userId) {
+        try {
+          const [gurus] = await pool.execute<RowDataPacket[]>(
+            'SELECT g.nama FROM guru g JOIN users u ON (u.nip IS NOT NULL AND u.nip != "" AND g.nip = u.nip) WHERE u.id = ? LIMIT 1',
+            [userId]
+          );
+          if (gurus.length > 0 && gurus[0].nama) guruNama = gurus[0].nama;
+        } catch (_) {}
+      }
+
+      // 4. Cek tabel guru berdasarkan kecocokan nama dengan akun users
+      if (!guruNama && userId) {
+        try {
+          const [gurus] = await pool.execute<RowDataPacket[]>(
+            'SELECT g.nama FROM guru g JOIN users u ON LOWER(TRIM(g.nama)) = LOWER(TRIM(u.nama)) WHERE u.id = ? LIMIT 1',
+            [userId]
+          );
+          if (gurus.length > 0 && gurus[0].nama) guruNama = gurus[0].nama;
+        } catch (_) {}
+      }
+
+      if (guruNama) {
+        realName = guruNama;
       } else if (payload.role === 'wali_murid' && payload.muridId) {
         // Khusus wali murid: ambil nama_wali dari tabel murid
         const [murids] = await pool.execute<RowDataPacket[]>(

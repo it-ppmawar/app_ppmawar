@@ -115,15 +115,24 @@ export async function GET() {
       else if (categoryKey === 'kegiatan') isCatAutoActive = isAutoAbsenKegiatan;
 
       distinctIds.forEach(gId => {
-        const guruAbsens = absenGuruRows.filter(a => a.guru_id === gId);
-        const specificAbsen = guruAbsens.find(a => {
+        // HANYA ambil data absensi yang benar-benar terkait dengan kategori jadwal ini
+        const guruAbsens = absenGuruRows.filter(a => {
+          if (a.guru_id !== gId) return false;
           if (categoryKey === 'madin') return a.jadwal_madin_id !== null && a.jadwal_madin_id !== undefined;
           if (categoryKey === 'quran') return a.jadwal_quran_id !== null && a.jadwal_quran_id !== undefined;
           if (categoryKey === 'kegiatan') return a.kegiatan_id !== null && a.kegiatan_id !== undefined;
-          return true;
-        }) || guruAbsens[0];
+          return false;
+        });
 
-        const recordedStatus = specificAbsen?.status;
+        let recordedStatus: string | undefined = undefined;
+        if (guruAbsens.length > 0) {
+          if (guruAbsens.some(a => a.status === 'Hadir')) recordedStatus = 'Hadir';
+          else if (guruAbsens.some(a => a.status === 'Izin')) recordedStatus = 'Izin';
+          else if (guruAbsens.some(a => a.status === 'Sakit')) recordedStatus = 'Sakit';
+          else if (guruAbsens.some(a => a.status === 'Alpha')) recordedStatus = 'Alpha';
+          else recordedStatus = guruAbsens[0].status;
+        }
+
         if (recordedStatus === 'Hadir') hadir++;
         else if (recordedStatus === 'Izin') izin++;
         else if (recordedStatus === 'Sakit') sakit++;
@@ -159,12 +168,20 @@ export async function GET() {
     const guruKegiatan = calcCategoryGuruStats(kegiatanGuruSchedules, 'kegiatan');
 
     const allGuruDistinctIds = Array.from(new Set(jadwalGuruRows.map(j => j.guru_id)));
+    let overallHadir = 0, overallIzin = 0, overallSakit = 0, overallAlpha = 0;
+    allGuruDistinctIds.forEach(gId => {
+      const gAbs = absenGuruRows.filter(a => a.guru_id === gId);
+      if (gAbs.some(a => a.status === 'Hadir')) overallHadir++;
+      else if (gAbs.some(a => a.status === 'Izin')) overallIzin++;
+      else if (gAbs.some(a => a.status === 'Sakit')) overallSakit++;
+      else if (gAbs.some(a => a.status === 'Alpha')) overallAlpha++;
+    });
     const guruOverall = {
       total: allGuruDistinctIds.length,
-      hadir: guruMadin.hadir + guruQuran.hadir + guruKegiatan.hadir,
-      izin: guruMadin.izin + guruQuran.izin + guruKegiatan.izin,
-      sakit: guruMadin.sakit + guruQuran.sakit + guruKegiatan.sakit,
-      alpha: guruMadin.alpha + guruQuran.alpha + guruKegiatan.alpha,
+      hadir: overallHadir,
+      izin: overallIzin,
+      sakit: overallSakit,
+      alpha: overallAlpha,
     };
 
     // Resolve guruId if null for role guru
