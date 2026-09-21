@@ -1110,13 +1110,13 @@ function NotifikasiContent() {
                 <QrCode size={22} />
               </div>
               <div>
-                <h4 className="font-extrabold text-xs sm:text-sm text-teal-950 dark:text-teal-200 flex flex-wrap items-center gap-1.5 leading-snug">
-                  <span>Kirim &amp; Bagikan Kartu QR Dewan Guru YPMA</span>
-                  <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 font-black whitespace-nowrap shrink-0">
+                <h4 className="font-extrabold text-sm sm:text-base text-teal-950 dark:text-teal-200 leading-snug">
+                  Kirim &amp; Bagikan Kartu QR Dewan Guru YPMA{' '}
+                  <span className="inline-flex items-center text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 font-bold whitespace-nowrap align-middle ml-1">
                     441 Guru
                   </span>
                 </h4>
-                <p className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                   Bagikan tautan presensi mandiri dan kartu QR ke 441 Dewan Guru via WhatsApp atau unduh secara massal (ZIP/PDF).
                 </p>
               </div>
