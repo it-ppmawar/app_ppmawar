@@ -347,7 +347,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           onClick={() => {
                             setShowNotif(false);
                             if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard/notifikasi')) {
-                              const el = document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
+                              const el = document.getElementById('tab-pilihan-pengingat') || document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
                               if (el) {
                                 el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                               }
@@ -551,7 +551,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     onClick={() => {
                       setShowSidebar(false);
                       if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard/notifikasi')) {
-                        const el = document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
+                        const el = document.getElementById('tab-pilihan-pengingat') || document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
                         if (el) {
                           el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }

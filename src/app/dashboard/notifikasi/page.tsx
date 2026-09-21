@@ -432,15 +432,21 @@ function NotifikasiContent() {
   useEffect(() => {
     if (isRemindParam && (role === 'admin' || role === 'staff')) {
       setGuruCardTab('auto');
-      const timer = setTimeout(() => {
-        const el = document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
+      const performScroll = () => {
+        const el = document.getElementById('tab-pilihan-pengingat') || document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-      }, 700);
-      return () => clearTimeout(timer);
+      };
+
+      const timer1 = setTimeout(performScroll, 500);
+      const timer2 = setTimeout(performScroll, 900);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
     }
-  }, [isRemindParam, role, searchParams]);
+  }, [isRemindParam, role, searchParams, loadingReminders]);
 
   const fetchActiveReminders = () => {
     setLoadingReminders(true);
@@ -2182,8 +2188,8 @@ function NotifikasiContent() {
                     <AlertTriangle size={13} className="animate-pulse" />
                     {activeReminders.length} guru/pengurus belum mengisi absensi pada jadwal aktif saat ini.
                   </p>
-                  {/* Sub-tab Switcher */}
-                  <div className="flex flex-col gap-2 mb-4">
+                  {/* Sub-tab Switcher: Pilihan tab Semua, Kelas Qur'an, Kelas Madin, Kamar/Asrama */}
+                  <div id="tab-pilihan-pengingat" className="flex flex-col gap-2 mb-4 scroll-mt-20">
                     {/* Semua — Baris tersendiri di atas, memanjang secara penuh */}
                     <div className="bg-gray-50 dark:bg-gray-900/50 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700/50 w-full">
                       <button
