@@ -342,7 +342,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <p className="text-gray-500 dark:text-gray-400 text-xs mb-4">
                           Ustadz/Ustadzah atau pengurus asrama belum mengisi daftar kehadiran.
                         </p>
-                        <Link href="/dashboard/notifikasi?remind=true" onClick={() => setShowNotif(false)} className="block w-full text-center bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2.5 rounded-xl transition-colors shadow-sm">
+                        <Link 
+                          href="/dashboard/notifikasi?remind=true" 
+                          onClick={() => {
+                            setShowNotif(false);
+                            if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard/notifikasi')) {
+                              const el = document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
+                              if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              }
+                            }
+                          }} 
+                          className="block w-full text-center bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2.5 rounded-xl transition-colors shadow-sm"
+                        >
                           Ingatkan Pengajar via WA
                         </Link>
                       </div>
@@ -534,7 +546,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-2 leading-tight">
                     Segera ingatkan guru/pengurus asrama lewat WhatsApp.
                   </p>
-                  <Link href="/dashboard/notifikasi?remind=true" onClick={() => setShowSidebar(false)} className="block w-full text-center bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold py-2 rounded-xl transition-colors shadow-sm">
+                  <Link 
+                    href="/dashboard/notifikasi?remind=true" 
+                    onClick={() => {
+                      setShowSidebar(false);
+                      if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard/notifikasi')) {
+                        const el = document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }
+                    }} 
+                    className="block w-full text-center bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold py-2 rounded-xl transition-colors shadow-sm"
+                  >
                     Kirim Pengingat WA
                   </Link>
                 </div>
