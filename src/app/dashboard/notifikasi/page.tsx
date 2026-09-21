@@ -1104,13 +1104,13 @@ function NotifikasiContent() {
                 <QrCode size={22} />
               </div>
               <div>
-                <h4 className="font-extrabold text-sm sm:text-base text-teal-950 dark:text-teal-200 flex items-center gap-2">
+                <h4 className="font-extrabold text-xs sm:text-sm text-teal-950 dark:text-teal-200 flex flex-wrap items-center gap-1.5 leading-snug">
                   <span>Kirim &amp; Bagikan Kartu QR Dewan Guru YPMA</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 font-black">
+                  <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 font-black whitespace-nowrap shrink-0">
                     441 Guru
                   </span>
                 </h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                <p className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                   Bagikan tautan presensi mandiri dan kartu QR ke 441 Dewan Guru via WhatsApp atau unduh secara massal (ZIP/PDF).
                 </p>
               </div>
@@ -1946,14 +1946,14 @@ function NotifikasiContent() {
                   <button
                     type="button"
                     onClick={() => setGuruCardTab('auto')}
-                    className={`py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                    className={`min-h-[52px] sm:min-h-[56px] py-3 px-2 sm:px-3 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
                       guruCardTab === 'auto'
                         ? 'bg-amber-500 text-white shadow-md font-extrabold'
                         : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
                     }`}
                   >
-                    <AlertTriangle size={15} className={`shrink-0 ${guruCardTab === 'auto' ? 'text-white' : 'text-amber-500'}`} />
-                    <span className="truncate">Pengingat Otomatis</span>
+                    <AlertTriangle size={16} className={`shrink-0 ${guruCardTab === 'auto' ? 'text-white' : 'text-amber-500'}`} />
+                    <span className="leading-tight font-extrabold text-[11px] sm:text-xs">Pengingat Otomatis</span>
                     {loadingReminders ? (
                       <span className="shrink-0 w-4 h-4 flex items-center justify-center"><RefreshCw size={11} className="animate-spin text-amber-300" /></span>
                     ) : activeReminders.length > 0 ? (
@@ -1974,14 +1974,14 @@ function NotifikasiContent() {
                   <button
                     type="button"
                     onClick={() => setGuruCardTab('manual')}
-                    className={`py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                    className={`min-h-[52px] sm:min-h-[56px] py-3 px-2 sm:px-3 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
                       guruCardTab === 'manual'
                         ? 'bg-blue-600 text-white shadow-md font-extrabold'
                         : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
                     }`}
                   >
-                    <Settings2 size={15} className={`shrink-0 ${guruCardTab === 'manual' ? 'text-white' : 'text-blue-500'}`} />
-                    <span className="truncate">Pilih Manual</span>
+                    <Settings2 size={16} className={`shrink-0 ${guruCardTab === 'manual' ? 'text-white' : 'text-blue-500'}`} />
+                    <span className="leading-tight font-extrabold text-[11px] sm:text-xs">Pilih Manual</span>
                   </button>
                 </div>
               </div>
@@ -1998,27 +1998,27 @@ function NotifikasiContent() {
                   <button
                     type="button"
                     onClick={() => setGuruCardTab('rekap')}
-                    className={`py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                    className={`min-h-[52px] sm:min-h-[56px] py-3 px-2 sm:px-3 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
                       guruCardTab === 'rekap'
                         ? 'bg-purple-600 text-white shadow-md font-extrabold'
                         : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
                     }`}
                   >
-                    <Calendar size={15} className={`shrink-0 ${guruCardTab === 'rekap' ? 'text-white' : 'text-purple-500'}`} />
-                    <span className="truncate">Rekap Bulanan Guru</span>
+                    <Calendar size={16} className={`shrink-0 ${guruCardTab === 'rekap' ? 'text-white' : 'text-purple-500'}`} />
+                    <span className="leading-tight font-extrabold text-[11px] sm:text-xs">Rekap Bulanan Guru</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setGuruCardTab('info_akun')}
-                    className={`py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                    className={`min-h-[52px] sm:min-h-[56px] py-3 px-2 sm:px-3 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
                       guruCardTab === 'info_akun'
                         ? 'bg-emerald-600 text-white shadow-md font-extrabold'
                         : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
                     }`}
                   >
-                    <Smartphone size={15} className={`shrink-0 ${guruCardTab === 'info_akun' ? 'text-white' : 'text-emerald-500'}`} />
-                    <span className="truncate">Info Akun Guru</span>
+                    <Smartphone size={16} className={`shrink-0 ${guruCardTab === 'info_akun' ? 'text-white' : 'text-emerald-500'}`} />
+                    <span className="leading-tight font-extrabold text-[11px] sm:text-xs">Info Akun Guru</span>
                   </button>
                 </div>
               </div>
