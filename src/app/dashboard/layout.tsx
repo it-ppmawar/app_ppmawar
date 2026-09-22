@@ -1,9 +1,10 @@
 'use client';
 
-import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2, Megaphone, Shield, ChevronDown, Database, Layers, Sparkles, Send, ExternalLink, Globe, Smartphone } from 'lucide-react';
+import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2, Megaphone, Shield, ChevronDown, Database, Layers, Sparkles, Send, ExternalLink, Globe, Smartphone, Search } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import CommandPalette from '@/components/CommandPalette';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -16,6 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [webAuthnSupported, setWebAuthnSupported] = useState(false);
   const [sidebarAvatar, setSidebarAvatar] = useState<string | null>(null);
   const [showAvatarFull, setShowAvatarFull] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   
   // State accordion grup menu sidebar (default SEMUANYA TERTUTUP sesuai permintaan user)
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
@@ -216,12 +218,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     window.addEventListener('pwa-available', checkPwa);
     window.addEventListener('pwa-closed', checkPwa); // Even if closed on screen, we want it in sidebar
 
+    // Global Ctrl+K / Cmd+K shortcut untuk Command Palette
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+
     return () => {
       window.removeEventListener('fingerprint-registered', handleFingerprintRegistered);
       window.removeEventListener('avatar-updated', handleAvatarUpdated);
       window.removeEventListener('storage', handleAvatarUpdated);
       window.removeEventListener('pwa-available', checkPwa);
       window.removeEventListener('pwa-closed', checkPwa);
+      window.removeEventListener('keydown', handleGlobalKeyDown);
     };
   }, []);
 
@@ -365,6 +377,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           )}
 
+          {/* Tombol Search (Ctrl+K) */}
+          <button
+            onClick={() => setShowSearch(true)}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            aria-label="Cari halaman atau fitur"
+            title="Cari halaman atau fitur (Ctrl+K)"
+          >
+            <Search size={20} />
+          </button>
           {/* Tombol Mode Gelap (Sembunyikan di HP) */}
           <button 
             onClick={toggleTheme} 
@@ -401,7 +422,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               const userName = (user?.real_name || user?.username || '').trim();
               return (
                 <div className="px-3.5 py-2.5 border-b border-green-700/30 dark:border-gray-800 flex flex-col bg-gradient-to-r from-green-900 via-green-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 text-white rounded-b-2xl shadow-md relative z-10">
-                  {/* Baris Atas: Ikon/Foto (kiri), Nama Guru (tengah), Tombol Mode & Tutup (kanan) */}
+                  {/* Baris Atas: Ikon/Foto (kiri), Nama Guru (tengah), Tombol Tutup (kanan) */}
                   <div className="flex items-center justify-between gap-2 w-full">
                     <div
                       className={`${sidebarAvatar ? 'w-8.5 h-8.5 rounded-full overflow-hidden border-2 border-white/40 flex-shrink-0' : 'bg-white p-1.5 rounded-full flex-shrink-0'} ${sidebarAvatar ? 'cursor-pointer hover:ring-2 hover:ring-white/60 transition-all' : ''}`}
@@ -421,27 +442,52 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-0.5 flex-shrink-0">
-                      <button onClick={toggleTheme} className="p-1.5 hover:bg-white/20 rounded-full transition-colors sm:hidden" aria-label="Toggle Mode Gelap">
-                        {isDark ? <Sun size={18} /> : <Moon size={18} />}
-                      </button>
+                    {/* Baris Atas Kanan: hanya tombol Tutup (X) */}
+                    <div className="flex items-center flex-shrink-0">
                       <button onClick={() => setShowSidebar(false)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors" aria-label="Tutup Menu">
                         <X size={19} />
                       </button>
                     </div>
                   </div>
 
-                  {/* Baris Bawah: Role Pengguna melebar rata tengah dari ujung kiri ke kanan dengan pemisah tipis */}
-                  <div className="w-full border-t border-white/15 dark:border-white/10 pt-1.5 mt-1.5 text-center">
-                    <p className="text-[10px] text-green-200/90 uppercase tracking-wider font-semibold leading-tight">
-                      {[
-                        user?.role === 'staff'
-                          ? (user?.asrama === 'Putra' ? '👳‍♂️ Staff Putra' : user?.asrama === 'Putri' ? '🧕 Staff Putri' : '🌐 Staff Umum')
-                          : user?.role,
-                        (user?.is_pengasuh || user?.isPengasuh) && user?.role !== 'pengasuh' ? 'Pengasuh' : null,
-                        (user?.is_pengurus_asrama || user?.isPengurusAsrama) && user?.role !== 'pengurus_asrama' ? 'Pengurus Asrama' : null
-                      ].filter(Boolean).join(' + ')}
-                    </p>
+                  {/* Baris Bawah: [🔍 Cari] (rata kiri di bawah foto) — [Role Pengguna] (tengah) — [☀/🌙 Mode] (rata kanan di bawah tombol X) */}
+                  <div className="w-full border-t border-white/15 dark:border-white/10 pt-1.5 mt-1.5 flex items-center justify-between gap-1">
+                    {/* Kiri: Tombol Search persis di bawah ikon/foto profil */}
+                    <div className="flex items-center justify-center flex-shrink-0 w-8.5">
+                      <button
+                        onClick={() => { setShowSidebar(false); setShowSearch(true); }}
+                        className="p-1.5 hover:bg-white/20 active:bg-white/30 rounded-full transition-colors flex items-center justify-center"
+                        aria-label="Buka Pencarian"
+                        title="Cari halaman atau fitur (Ctrl+K)"
+                      >
+                        <Search size={16} className="text-green-200/90 hover:text-white transition-colors" />
+                      </button>
+                    </div>
+
+                    {/* Tengah: Role Pengguna sebaris rata tengah */}
+                    <div className="flex-1 min-w-0 px-1 text-center">
+                      <p className="text-[10px] text-green-200/90 uppercase tracking-wider font-semibold leading-tight truncate">
+                        {[
+                          user?.role === 'staff'
+                            ? (user?.asrama === 'Putra' ? '👳‍♂️ Staff Putra' : user?.asrama === 'Putri' ? '🧕 Staff Putri' : '🌐 Staff Umum')
+                            : user?.role,
+                          (user?.is_pengasuh || user?.isPengasuh) && user?.role !== 'pengasuh' ? 'Pengasuh' : null,
+                          (user?.is_pengurus_asrama || user?.isPengurusAsrama) && user?.role !== 'pengurus_asrama' ? 'Pengurus Asrama' : null
+                        ].filter(Boolean).join(' + ')}
+                      </p>
+                    </div>
+
+                    {/* Kanan: Tombol Mode Gelap/Terang persis di bawah tombol Tutup (X) */}
+                    <div className="flex items-center justify-center flex-shrink-0 w-8.5">
+                      <button
+                        onClick={toggleTheme}
+                        className="p-1.5 hover:bg-white/20 active:bg-white/30 rounded-full transition-colors flex items-center justify-center"
+                        aria-label="Toggle Mode Gelap/Terang"
+                        title={isDark ? 'Aktifkan Mode Terang' : 'Aktifkan Mode Gelap'}
+                      >
+                        {isDark ? <Sun size={16} className="text-green-200/90 hover:text-white transition-colors" /> : <Moon size={16} className="text-green-200/90 hover:text-white transition-colors" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -1187,6 +1233,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       )}
+
+      {/* Command Palette / Spotlight Search */}
+      <CommandPalette
+        open={showSearch}
+        onClose={() => setShowSearch(false)}
+        userRole={user?.role || 'tamu'}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
+        nomorCs={nomorCs}
+      />
 
     </div>
   );
