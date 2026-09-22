@@ -821,31 +821,35 @@ function QuickAbsenContent() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-28">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 shadow-xs rounded-b-2xl transition-colors">
-        <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight whitespace-nowrap">
-                  Pintasan Salam Mawar
-                </h1>
-                <span className="px-2 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800/60 rounded-full uppercase tracking-wider shrink-0">
-                  {tipe}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{guru_nama}</p>
-            </div>
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
+          <div className="w-8 flex items-center justify-start shrink-0">
+            <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           </div>
-          {/* Tombol Mode Gelap / Terang di Pojok Kanan Atas */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-300 dark:hover:text-white transition-colors border border-slate-200 dark:border-slate-700/60 shadow-xs shrink-0"
-            aria-label="Toggle Mode Gelap/Terang"
-            title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
-          >
-            {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-600" />}
-          </button>
+          <div className="min-w-0 flex-1 flex flex-col items-center justify-center text-center">
+            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+              <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight whitespace-nowrap">
+                Pintasan Salam Mawar
+              </h1>
+              <span className="px-2 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800/60 rounded-full uppercase tracking-wider shrink-0">
+                {tipe}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 text-center font-medium">
+              {guru_nama}
+            </p>
+          </div>
+          <div className="w-8 flex items-center justify-end shrink-0">
+            {/* Tombol Mode Gelap / Terang di Pojok Kanan Atas */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-300 dark:hover:text-white transition-colors border border-slate-200 dark:border-slate-700/60 shadow-xs"
+              aria-label="Toggle Mode Gelap/Terang"
+              title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
+            >
+              {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-600" />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1478,12 +1482,20 @@ function QuickAbsenContent() {
             )}
 
             {/* Info Card */}
-            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/40 dark:to-teal-900/40 border border-emerald-200 dark:border-emerald-700/50 rounded-2xl p-4 shadow-xs">
-              <h2 className="text-lg font-extrabold text-emerald-900 dark:text-emerald-300">{jadwal.nama_kelas}</h2>
-              <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{jadwal.mata_pelajaran || 'Pengajaran Madin/Al-Qur\'an'}</p>
-              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mt-3 pt-2 border-t border-emerald-200 dark:border-emerald-800/40 font-medium">
-                <span>🕒 {jadwal.jam_mulai} - {jadwal.jam_selesai} WIB</span>
-                <span>📅 {new Date(date + 'T00:00:00+07:00').toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).replace(/^Minggu,/i, 'Ahad,').replace(/^Minggu /i, 'Ahad ')}</span>
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/40 dark:to-teal-900/40 border border-emerald-200 dark:border-emerald-700/50 rounded-2xl p-4 shadow-xs text-center">
+              <h2 className="text-lg font-extrabold text-emerald-900 dark:text-emerald-300 text-center">
+                {jadwal.nama_kelas}
+              </h2>
+              <p className="text-sm text-slate-700 dark:text-slate-300 font-medium text-center mt-0.5">
+                {jadwal.mata_pelajaran || 'Pengajaran Madin/Al-Qur\'an'}
+              </p>
+              <div className="flex flex-col items-center justify-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 mt-3 pt-2.5 border-t border-emerald-200 dark:border-emerald-800/40 font-medium text-center">
+                <span className="flex items-center justify-center gap-1.5">
+                  🕒 {jadwal.jam_mulai} - {jadwal.jam_selesai} WIB
+                </span>
+                <span className="flex items-center justify-center gap-1.5">
+                  📅 {formatHariTanggalPesantren(date, jadwal.jam_mulai)}
+                </span>
               </div>
             </div>
 

@@ -435,7 +435,9 @@ export async function POST(request: Request) {
           badalId = Number(qPayload.badal_id);
           badalNama = qPayload.badal_nama || null;
         }
-        if (!payload || payload.role === 'wali_murid') {
+        // Pastikan token quick_absen yang sah selalu mengotentikasi sesi absensi guru ini,
+        // terutama jika user belum login, sesi kedaluwarsa, atau berstatus 'tamu' / 'wali_murid'
+        if (!payload || payload.role === 'wali_murid' || payload.role === 'tamu' || payload.role === 'guru') {
           payload = {
             userId: qPayload.user_id || 0,
             username: `guru_${qPayload.guru_id}`,
