@@ -411,18 +411,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <aside className="fixed top-0 right-0 h-full w-72 bg-white dark:bg-gray-900 shadow-2xl z-[70] flex flex-col rounded-l-3xl overflow-hidden">
             {(() => {
               const userName = (user?.real_name || user?.username || '').trim();
-              const roleList = [
+              const rawRoleList = [
                 user?.role === 'staff'
-                  ? (user?.asrama === 'Putra' ? '👳‍♂️ Staff Putra' : user?.asrama === 'Putri' ? '🧕 Staff Putri' : '🌐 Staff Umum')
+                  ? (user?.asrama === 'Putra' ? 'Staff Putra' : user?.asrama === 'Putri' ? 'Staff Putri' : 'Staff Umum')
                   : user?.role,
                 (user?.is_pengasuh || user?.isPengasuh) && user?.role !== 'pengasuh' ? 'Pengasuh' : null,
                 (user?.is_pengurus_asrama || user?.isPengurusAsrama) && user?.role !== 'pengurus_asrama' ? 'Pengurus Asrama' : null
               ].filter(Boolean) as string[];
 
+              // Format role agar maksimal 2 baris dan tidak bertumpuk terlalu banyak
+              const formatRoles = (roles: string[]): string[] => {
+                if (roles.length <= 1) return roles;
+                if (roles.length === 2) {
+                  const combined = roles.join(' + ');
+                  if (combined.length <= 22) return [combined];
+                  return roles;
+                }
+                // 3 role atau lebih: bagi menjadi maksimal 2 baris
+                const line1 = `${roles[0]} + ${roles[1]}`;
+                const line2 = roles.slice(2).join(' + ');
+                return [line1, line2];
+              };
+
+              const roleList = formatRoles(rawRoleList);
+
               return (
-                <div className="px-3 py-1.5 sm:py-2 border-b border-green-700/30 dark:border-gray-800 flex flex-col bg-gradient-to-r from-green-900 via-green-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 text-white rounded-b-2xl shadow-md relative z-10">
+                <div className="px-3 pt-2 pb-1.5 border-b border-green-700/30 dark:border-gray-800 flex flex-col bg-gradient-to-r from-green-900 via-green-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 text-white rounded-b-2xl shadow-md relative z-10">
                   {/* Baris Atas: Ikon/Foto (kiri), Nama Pengguna (tengah), Tombol Tutup (kanan) */}
-                  <div className="flex items-center justify-between gap-2 w-full">
+                  <div className="flex items-center justify-between gap-2 w-full pb-0.5">
                     <div
                       className={`${sidebarAvatar ? 'w-8 h-8 rounded-full overflow-hidden border-2 border-white/40 flex-shrink-0' : 'bg-white p-1 rounded-full flex-shrink-0'} ${sidebarAvatar ? 'cursor-pointer hover:ring-2 hover:ring-white/60 transition-all' : ''}`}
                       onClick={() => sidebarAvatar && setShowAvatarFull(true)}
@@ -449,41 +465,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                   </div>
 
-                  {/* Baris Bawah: [🔍 Cari] (rata kiri di bawah foto) — [Role Pengguna] (tengah bertumpuk) — [☀/🌙 Mode] (rata kanan di bawah tombol X) */}
-                  <div className="w-full border-t border-white/15 dark:border-white/10 pt-1 mt-1 flex items-center justify-between gap-1">
-                    {/* Kiri: Tombol Search persis di bawah ikon/foto profil */}
+                  {/* Baris Bawah: [🔍 Cari] (rata kiri di bawah foto) — [Role Pengguna] (tengah lebih ramping & pendek) — [☀/🌙 Mode] (rata kanan di bawah tombol X) */}
+                  <div className="w-full border-t border-white/15 dark:border-white/10 pt-1 mt-0.5 flex items-center justify-between gap-1">
+                    {/* Kiri: Tombol Search persis di bawah ikon/foto profil (lebih ramping) */}
                     <div className="flex items-center justify-center flex-shrink-0 w-8">
                       <button
                         onClick={() => { setShowSidebar(false); setShowSearch(true); }}
-                        className="p-1 hover:bg-white/20 active:bg-white/30 rounded-full transition-colors flex items-center justify-center"
+                        className="p-0.5 hover:bg-white/20 active:bg-white/30 rounded-full transition-colors flex items-center justify-center"
                         aria-label="Buka Pencarian"
                         title="Cari halaman atau fitur (Ctrl+K)"
                       >
-                        <Search size={14} className="text-green-200/90 hover:text-white transition-colors" />
+                        <Search size={13} className="text-green-200/80 hover:text-white transition-colors" />
                       </button>
                     </div>
 
-                    {/* Tengah: Role Pengguna bertumpuk rata tengah */}
+                    {/* Tengah: Role Pengguna maksimal 2 baris, font 8.5px, lebih pendek dari baris atas */}
                     <div className="flex-1 min-w-0 px-1 flex flex-col items-center justify-center text-center">
                       {roleList.map((r, idx) => (
                         <span
                           key={idx}
-                          className="text-[9px] text-green-200/90 uppercase tracking-wider font-semibold leading-[1.15] text-center"
+                          className="text-[8.5px] text-green-200/80 uppercase tracking-wider font-medium leading-tight text-center"
                         >
                           {r}
                         </span>
                       ))}
                     </div>
 
-                    {/* Kanan: Tombol Mode Gelap/Terang persis di bawah tombol Tutup (X) */}
+                    {/* Kanan: Tombol Mode Gelap/Terang persis di bawah tombol Tutup (X) (lebih ramping) */}
                     <div className="flex items-center justify-center flex-shrink-0 w-8">
                       <button
                         onClick={toggleTheme}
-                        className="p-1 hover:bg-white/20 active:bg-white/30 rounded-full transition-colors flex items-center justify-center"
+                        className="p-0.5 hover:bg-white/20 active:bg-white/30 rounded-full transition-colors flex items-center justify-center"
                         aria-label="Toggle Mode Gelap/Terang"
                         title={isDark ? 'Aktifkan Mode Terang' : 'Aktifkan Mode Gelap'}
                       >
-                        {isDark ? <Sun size={14} className="text-green-200/90 hover:text-white transition-colors" /> : <Moon size={14} className="text-green-200/90 hover:text-white transition-colors" />}
+                        {isDark ? <Sun size={13} className="text-green-200/80 hover:text-white transition-colors" /> : <Moon size={13} className="text-green-200/80 hover:text-white transition-colors" />}
                       </button>
                     </div>
                   </div>
