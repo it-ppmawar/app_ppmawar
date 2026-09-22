@@ -411,29 +411,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <aside className="fixed top-0 right-0 h-full w-72 bg-white dark:bg-gray-900 shadow-2xl z-[70] flex flex-col rounded-l-3xl overflow-hidden">
             {(() => {
               const userName = (user?.real_name || user?.username || '').trim();
-              const rawRoleList = [
-                user?.role === 'staff'
-                  ? (user?.asrama === 'Putra' ? 'Staff Putra' : user?.asrama === 'Putri' ? 'Staff Putri' : 'Staff Umum')
-                  : user?.role,
-                (user?.is_pengasuh || user?.isPengasuh) && user?.role !== 'pengasuh' ? 'Pengasuh' : null,
-                (user?.is_pengurus_asrama || user?.isPengurusAsrama) && user?.role !== 'pengurus_asrama' ? 'Pengurus Asrama' : null
-              ].filter(Boolean) as string[];
+              const asramaName = user?.asrama || null;
+              const isPengasuh = !!(user?.is_pengasuh || user?.isPengasuh || user?.role === 'pengasuh');
+              const isPengurusAsrama = !!(user?.is_pengurus_asrama || user?.isPengurusAsrama || user?.role === 'pengurus_asrama');
 
-              // Format role agar maksimal 2 baris dan tidak bertumpuk terlalu banyak
-              const formatRoles = (roles: string[]): string[] => {
-                if (roles.length <= 1) return roles;
-                if (roles.length === 2) {
-                  const combined = roles.join(' + ');
-                  if (combined.length <= 22) return [combined];
-                  return roles;
-                }
-                // 3 role atau lebih: bagi menjadi maksimal 2 baris
-                const line1 = `${roles[0]} + ${roles[1]}`;
-                const line2 = roles.slice(2).join(' + ');
-                return [line1, line2];
-              };
+              const primaryRole = user?.role === 'staff'
+                ? (user?.asrama === 'Putra' ? 'Staff Putra' : user?.asrama === 'Putri' ? 'Staff Putri' : 'Staff Umum')
+                : (user?.role || '');
 
-              const roleList = formatRoles(rawRoleList);
+              const roleBadges: string[] = [];
+              if (primaryRole) {
+                roleBadges.push(primaryRole);
+              }
+              if (isPengasuh && user?.role !== 'pengasuh') {
+                roleBadges.push(`+ PENGASUH ${asramaName ? `(${asramaName})` : ''}`.trim());
+              }
+              if (isPengurusAsrama && user?.role !== 'pengurus_asrama') {
+                roleBadges.push(`+ PENGURUS ${asramaName ? `(${asramaName})` : ''}`.trim());
+              }
 
               return (
                 <div className="px-3 pt-2 pb-1.5 border-b border-green-700/30 dark:border-gray-800 flex flex-col bg-gradient-to-r from-green-900 via-green-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 text-white rounded-b-2xl shadow-md relative z-10">
@@ -479,12 +474,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </button>
                     </div>
 
-                    {/* Tengah: Role Pengguna dalam badge pill, ramping */}
+                    {/* Tengah: Tiap Role Pengguna dalam badge pill terpisah, diawali '+' untuk role tambahan */}
                     <div className="flex-1 min-w-0 px-1 flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
-                      {roleList.map((r, idx) => (
+                      {roleBadges.map((r, idx) => (
                         <span
                           key={idx}
-                          className="inline-flex items-center bg-white/15 text-white text-[7.5px] px-1.5 py-[2px] rounded-full font-bold border border-white/25 uppercase tracking-wide leading-none"
+                          className="inline-flex items-center bg-white/15 text-white text-[7.5px] px-1.5 py-[2px] rounded-full font-bold border border-white/25 uppercase tracking-wide leading-none whitespace-nowrap"
                         >
                           {r}
                         </span>
