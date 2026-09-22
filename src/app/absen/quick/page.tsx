@@ -822,8 +822,10 @@ function QuickAbsenContent() {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 shadow-xs rounded-b-2xl transition-colors">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
-          <div className="w-8 flex items-center justify-start shrink-0">
-            <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex items-center justify-start shrink-0">
+            <div className="bg-white rounded-xl flex items-center justify-center shadow-xs h-9 px-1.5 py-0.5 border border-slate-200 dark:border-slate-700/60">
+              <img src="/logo.png" alt="Logo Lembaga" className="h-full w-auto object-contain" />
+            </div>
           </div>
           <div className="min-w-0 flex-1 flex flex-col items-center justify-center text-center">
             <div className="flex items-center justify-center gap-1.5 flex-wrap">
