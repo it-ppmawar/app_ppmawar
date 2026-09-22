@@ -503,14 +503,14 @@ export default function CommandPalette({ open, onClose, userRole, isDark, onTogg
   // Filter role-based items sekali saja
   const roleItems = filterByRole(ALL_SEARCH_ITEMS, userRole);
 
-  // Filter + sort berdasarkan query
+  // Filter + sort berdasarkan query (diurutkan abjad A-Z)
   const results = query.trim()
     ? roleItems
         .map(item => ({ item, score: scoreItem(item, query) }))
         .filter(({ score }) => score > 0)
-        .sort((a, b) => b.score - a.score)
+        .sort((a, b) => b.score - a.score || a.item.label.localeCompare(b.item.label, 'id'))
         .map(({ item }) => item)
-    : roleItems; // Tampilkan semua saat query kosong
+    : [...roleItems].sort((a, b) => a.label.localeCompare(b.label, 'id')); // Urutkan sesuai abjad A-Z
 
   // Kelompokkan
   const pages = results.filter(r => r.type === 'page');
