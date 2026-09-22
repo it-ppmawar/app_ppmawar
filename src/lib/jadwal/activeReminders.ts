@@ -109,7 +109,7 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
             date: localISOTime,
             waktu_tenggang: waktuTenggang
           };
-          const quick_token = signToken(quickPayload, '7d');
+          const quick_token = signToken(quickPayload, `${waktuTenggang}h`);
           const quick_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}`;
           const quick_izin_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}&action=izin`;
 
