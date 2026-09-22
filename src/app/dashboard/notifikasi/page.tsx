@@ -6,6 +6,7 @@ import {
   Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar, Trash2, Award, Power, QrCode 
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import { formatHariTanggalPesantren, formatHariPesantren } from '@/lib/formatHariPesantren';
 
 function NotifikasiContent() {
   const [showSettingsGuide, setShowSettingsGuide] = useState(false);
@@ -827,16 +828,12 @@ function NotifikasiContent() {
     let tempatLabel = selectedJadwalGuru || 'Belum ditentukan';
     const linkAbsen = guruQuickUrl || 'https://app.ppmawar.or.id/dashboard/absen';
 
-    const hariTanggal = new Intl.DateTimeFormat('id-ID', {
-      weekday: 'long',
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      timeZone: 'Asia/Jakarta'
-    }).format(new Date());
+    const hariTanggal = formatHariTanggalPesantren(undefined, undefined);
+    const hariPesantren = formatHariPesantren(undefined, undefined);
 
     let text = pesanGuruTemplate
       .replace(/{nama_guru}/g, guru.nama)
+      .replace(/{hari}/g, hariPesantren)
       .replace(/{hari_tanggal}/g, hariTanggal)
       .replace(/{kegiatan}/g, tipeLabel)
       .replace(/{kelas}/g, tempatLabel)
@@ -890,18 +887,12 @@ function NotifikasiContent() {
 
     const linkAbsen = reminder.quick_url || 'https://app.ppmawar.or.id/dashboard/absen';
 
-    const rawHariTanggal = new Intl.DateTimeFormat('id-ID', {
-      weekday: 'long',
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      timeZone: 'Asia/Jakarta'
-    }).format(new Date());
-
-    const hariTanggal = rawHariTanggal.replace(/^Minggu,/i, 'Ahad,').replace(/^Minggu /i, 'Ahad ');
+    const hariTanggal = formatHariTanggalPesantren(reminder.target_date, reminder.jam_mulai);
+    const hariPesantren = formatHariPesantren(reminder.target_date, reminder.jam_mulai);
 
     let text = pesanGuruTemplate
       .replace(/{nama_guru}/g, reminder.guru_nama)
+      .replace(/{hari}/g, hariPesantren)
       .replace(/{hari_tanggal}/g, hariTanggal)
       .replace(/{kegiatan}/g, tipeLabel)
       .replace(/{label_mapel}/g, labelMapel)

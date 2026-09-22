@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, SwitchCamera, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy, Search, Key, Link as LinkIcon, Sun, Moon } from 'lucide-react';
 import Link from 'next/link';
+import { formatHariTanggalPesantren } from '@/lib/formatHariPesantren';
 
 // Avatar & Photo helper
 const AVATAR_COLORS = [
@@ -219,42 +220,6 @@ function QuickAbsenContent() {
       .catch(err => console.warn('Gagal memuat daftar guru:', err));
   }, []);
 
-  const formatHariTanggalPesantren = (rawDate?: string, rawTime?: string) => {
-    try {
-      if (!rawDate) return '';
-      const [thnStr, blnStr, tglStr] = rawDate.split('-');
-      const thnNum = parseInt(thnStr, 10);
-      const blnNum = parseInt(blnStr, 10);
-      const tglNum = parseInt(tglStr, 10);
-      if (isNaN(thnNum) || isNaN(blnNum) || isNaN(tglNum)) return rawDate;
-
-      const d = new Date(thnNum, blnNum - 1, tglNum);
-      const namaHari = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-      const namaBulan = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-      ];
-
-      const dayIdx = d.getDay();
-      const hariIni = namaHari[dayIdx];
-      const hariBesok = namaHari[(dayIdx + 1) % 7];
-      const blnName = namaBulan[blnNum - 1];
-
-      let isMalam = false;
-      if (rawTime) {
-        const timeParts = rawTime.split(':');
-        const jam = parseInt(timeParts[0], 10);
-        if (!isNaN(jam) && jam >= 18) {
-          isMalam = true;
-        }
-      }
-
-      const hariLabel = isMalam ? `${hariIni} malam ${hariBesok}` : hariIni;
-      return `${hariLabel}, ${tglNum} ${blnName} ${thnNum}`;
-    } catch {
-      return rawDate || new Date().toLocaleDateString('id-ID');
-    }
-  };
 
   const generateWaGroupMessage = () => {
     if (!data) return '';

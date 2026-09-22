@@ -14,6 +14,7 @@ import {
   getTelegramConfig, 
   sendTeacherReminderTelegram 
 } from '@/lib/services/telegramBot';
+import { formatHariTanggalPesantren, formatHariPesantren } from '@/lib/formatHariPesantren';
 
 export const dynamic = 'force-dynamic';
 
@@ -415,10 +416,13 @@ export async function POST(request: Request) {
       const quickUrl = item.quick_url || 'https://app.ppmawar.or.id/';
       const quickIzinUrl = item.quick_izin_url || (quickUrl.includes('?') ? `${quickUrl}&action=izin` : `${quickUrl}?action=izin`);
 
+      const hariTanggalPesantren = formatHariTanggalPesantren(itemTargetDate, item.jam_mulai);
+      const hariPesantren = formatHariPesantren(itemTargetDate, item.jam_mulai);
+
       let messageText = templateToUse
         .replace(/{nama_guru}/g, item.guru_nama || 'Ustadz/Ustadzah')
-        .replace(/{hari}/g, item.hari || currentDay)
-        .replace(/{hari_tanggal}/g, `${item.hari || currentDay}, ${itemTargetDate}`)
+        .replace(/{hari}/g, hariPesantren)
+        .replace(/{hari_tanggal}/g, hariTanggalPesantren)
         .replace(/{kegiatan}/g, kegiatanLabel)
         .replace(/{label_mapel}/g, labelMapel)
         .replace(/{mapel}/g, valMapel)

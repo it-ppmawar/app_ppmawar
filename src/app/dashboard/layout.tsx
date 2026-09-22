@@ -479,12 +479,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </button>
                     </div>
 
-                    {/* Tengah: Role Pengguna maksimal 2 baris, font 8.5px, lebih pendek dari baris atas */}
-                    <div className="flex-1 min-w-0 px-1 flex flex-col items-center justify-center text-center">
+                    {/* Tengah: Role Pengguna dalam badge pill, ramping */}
+                    <div className="flex-1 min-w-0 px-1 flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
                       {roleList.map((r, idx) => (
                         <span
                           key={idx}
-                          className="text-[8.5px] text-green-200/80 uppercase tracking-wider font-medium leading-tight text-center"
+                          className="inline-flex items-center bg-white/15 text-white text-[7.5px] px-1.5 py-[2px] rounded-full font-bold border border-white/25 uppercase tracking-wide leading-none"
                         >
                           {r}
                         </span>

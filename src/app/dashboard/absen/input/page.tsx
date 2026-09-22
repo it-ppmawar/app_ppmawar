@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Users, CheckCircle, XCircle, Clock, AlertTriangle, ArrowLeft, Save, Camera, Image, FlipHorizontal, SwitchCamera, X as XIcon, User, MapPin, QrCode, Brain, BookOpen, HeartPulse, Send, FileText, CheckCircle2, RefreshCw, HelpCircle, Loader2, AlertCircle, Copy, Check, Search, Key, Link as LinkIcon, Shield } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { formatHariTanggalPesantren } from '@/lib/formatHariPesantren';
 
 import { Suspense } from 'react';
 
@@ -568,42 +569,6 @@ function InputAbsenContent() {
   // Cleanup on unmount
   useEffect(() => { return () => stopCameraStream(); }, [stopCameraStream]);
 
-  const formatHariTanggalPesantren = (rawDate?: string, rawTime?: string) => {
-    try {
-      const d = rawDate ? new Date(rawDate.includes('T') ? rawDate : `${rawDate}T12:00:00+07:00`) : new Date();
-      const hariArr = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-      const nextHariArr = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
-      const bulanArr = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-      ];
-
-      const dayIdx = d.getDay();
-      const hariIni = hariArr[dayIdx];
-      const hariBesok = nextHariArr[dayIdx];
-      const tglNum = d.getDate();
-      const blnName = bulanArr[d.getMonth()];
-      const thnNum = d.getFullYear();
-
-      let isMalam = false;
-      if (rawTime) {
-        const hour = parseInt(rawTime.split(':')[0], 10);
-        if (!isNaN(hour) && (hour >= 18 || hour < 4)) {
-          isMalam = true;
-        }
-      } else {
-        const nowHour = new Date().getHours();
-        if (nowHour >= 18 || nowHour < 4) {
-          isMalam = true;
-        }
-      }
-
-      const hariLabel = isMalam ? `${hariIni} malam ${hariBesok}` : hariIni;
-      return `${hariLabel}, ${tglNum} ${blnName} ${thnNum}`;
-    } catch {
-      return rawDate || new Date().toLocaleDateString('id-ID');
-    }
-  };
 
   const generateWaGroupMessage = () => {
     const dateStr = formatHariTanggalPesantren(tanggalAbsen || undefined, jadwalInfo?.jam_mulai);
