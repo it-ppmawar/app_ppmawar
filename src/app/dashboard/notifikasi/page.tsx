@@ -1103,23 +1103,23 @@ function NotifikasiContent() {
 
       {/* ===== CARD PENGIRIMAN QR DEWAN GURU ===== */}
       {(role === 'admin' || role === 'staff' || isPengasuh) && (
-        <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-indigo-500/10 border border-teal-200/80 dark:border-teal-800/50 shadow-xs space-y-3">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-teal-600 text-white rounded-2xl shadow-sm shrink-0">
-                <QrCode size={22} />
-              </div>
-              <div>
+        <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-indigo-500/10 border border-teal-200/80 dark:border-teal-800/50 shadow-xs">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex-1 space-y-2 w-full">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="p-2 sm:p-2.5 bg-teal-600 text-white rounded-xl shadow-sm shrink-0">
+                  <QrCode size={20} />
+                </div>
                 <h4 className="font-extrabold text-sm sm:text-base text-teal-950 dark:text-teal-200 leading-snug">
                   Kirim &amp; Bagikan Kartu QR Dewan Guru YPMA{' '}
                   <span className="inline-flex items-center text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 font-bold whitespace-nowrap align-middle ml-1">
                     441 Guru
                   </span>
                 </h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                  Bagikan tautan presensi mandiri dan kartu QR ke 441 Dewan Guru via WhatsApp atau unduh secara massal (ZIP/PDF).
-                </p>
               </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                Bagikan tautan presensi mandiri dan kartu QR ke 441 Dewan Guru via WhatsApp atau unduh secara massal (ZIP/PDF).
+              </p>
             </div>
             <a
               href="/dashboard/qr-dewan-guru"
