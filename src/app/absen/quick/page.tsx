@@ -247,6 +247,16 @@ function QuickAbsenContent() {
     if (mapel) {
       msg += `📖 *${labelCategory}:* ${mapel}\n`;
     }
+
+    // Nama pengajar: guru utama atau pengganti (badal) jika ada
+    const namaGuruUtama = data.jadwal?.guru_nama || '';
+    const namaBadal = data.badal_nama || izinResultData?.badal_info?.nama || '';
+    if (namaBadal) {
+      msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama ? `~~${namaGuruUtama}~~ → ` : ''}*Pengganti:* ${namaBadal}\n`;
+    } else if (namaGuruUtama) {
+      msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama}\n`;
+    }
+
     msg += `📅 *Hari/Tanggal:* ${dateStr}\n`;
     msg += `👥 *Total Santri:* ${total}\n`;
     msg += `✅ *Hadir:* ${hadir} anak\n\n`;

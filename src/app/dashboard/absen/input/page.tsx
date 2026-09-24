@@ -72,6 +72,7 @@ function InputAbsenContent() {
   const [lokasiTarget, setLokasiTarget] = useState<{lat: number; lng: number; radius: number} | null>(null);
   const [gpsDistance, setGpsDistance] = useState<number | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const hasFetchedRef = useRef(false); // Guard: pastikan fetchData hanya dipanggil SEKALI saat mount
   const [namaTarget, setNamaTarget] = useState('Kelas/Kamar');
   const [photoUrl, setPhotoUrl] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -126,6 +127,9 @@ function InputAbsenContent() {
 
   const fetchData = useCallback(async () => {
     if (!tipe || !kelas_id || !jadwal_id) return;
+    // Guard: jangan fetch ulang jika sudah pernah fetch (mencegah overwrite perubahan lokal guru)
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     try {
       const res = await fetch(`/api/absen/input?tipe=${tipe}&kelas_id=${kelas_id}&jadwal_id=${jadwal_id}`);
       const json = await res.json();
@@ -592,6 +596,16 @@ function InputAbsenContent() {
     if (mapel) {
       msg += `📖 *${labelCategory}:* ${mapel}\n`;
     }
+
+    // Nama pengajar: tampilkan guru utama, atau pengganti (badal) jika ada
+    const namaGuruUtama = jadwalInfo?.guru_nama || '';
+    const namaBadal = izinResultData?.badal_info?.nama || '';
+    if (namaBadal) {
+      msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama ? `~~${namaGuruUtama}~~ → ` : ''}*Pengganti:* ${namaBadal}\n`;
+    } else if (namaGuruUtama) {
+      msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama}\n`;
+    }
+
     msg += `📅 *Hari/Tanggal:* ${dateStr}\n`;
     msg += `👥 *Total Santri:* ${total}\n`;
     msg += `✅ *Hadir:* ${hadir} anak\n\n`;

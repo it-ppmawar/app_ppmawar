@@ -39,9 +39,11 @@ export async function POST(request: Request) {
     if (tipe === 'madin') {
       const [primaryRows] = await pool.execute<RowDataPacket[]>(
         `SELECT j.jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari, j.guru_id,
-                j.kelas_madin_id as kelas_id, k.nama_kelas
+                j.kelas_madin_id as kelas_id, k.nama_kelas,
+                g.nama AS guru_nama
          FROM jadwal_madin j
          JOIN kelas_madin k ON j.kelas_madin_id = k.kelas_id
+         LEFT JOIN guru g ON j.guru_id = g.guru_id
          WHERE j.jadwal_id = ?`,
         [jadwal_id]
       );
@@ -66,6 +68,7 @@ export async function POST(request: Request) {
           ...primary,
           nama_kelas: combinedKelasNama,
           mata_pelajaran: combinedMapel || primary.mata_pelajaran,
+          guru_nama: primary.guru_nama || '',
           jadwal_ids: combinedJadwalIds,
           kelas_ids: combinedKelasIds,
         };
@@ -85,9 +88,11 @@ export async function POST(request: Request) {
     } else if (tipe === 'quran') {
       const [primaryRows] = await pool.execute<RowDataPacket[]>(
         `SELECT j.id as jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.hari, j.guru_id,
-                j.kelas_quran_id as kelas_id, k.nama_kelas
+                j.kelas_quran_id as kelas_id, k.nama_kelas,
+                g.nama AS guru_nama
          FROM jadwal_quran j
          JOIN kelas_quran k ON j.kelas_quran_id = k.id
+         LEFT JOIN guru g ON j.guru_id = g.guru_id
          WHERE j.id = ?`,
         [jadwal_id]
       );
@@ -111,6 +116,7 @@ export async function POST(request: Request) {
           ...primary,
           nama_kelas: combinedKelasNama,
           mata_pelajaran: combinedMapel || primary.mata_pelajaran,
+          guru_nama: primary.guru_nama || '',
           jadwal_ids: combinedJadwalIds,
           kelas_ids: combinedKelasIds,
         };
@@ -130,9 +136,11 @@ export async function POST(request: Request) {
     } else if (tipe === 'kamar' || tipe === 'kegiatan') {
       const [primaryRows] = await pool.execute<RowDataPacket[]>(
         `SELECT j.kegiatan_id as jadwal_id, j.jam_mulai, j.jam_selesai, j.nama_kegiatan as mata_pelajaran, j.hari, j.guru_id,
-                j.kamar_id as kelas_id, k.nama_kamar as nama_kelas
+                j.kamar_id as kelas_id, k.nama_kamar as nama_kelas,
+                g.nama AS guru_nama
          FROM jadwal_kegiatan j
          JOIN kamar k ON j.kamar_id = k.kamar_id
+         LEFT JOIN guru g ON j.guru_id = g.guru_id
          WHERE j.kegiatan_id = ?`,
         [jadwal_id]
       );
@@ -156,6 +164,7 @@ export async function POST(request: Request) {
           ...primary,
           nama_kelas: combinedKelasNama,
           mata_pelajaran: combinedMapel || primary.mata_pelajaran,
+          guru_nama: primary.guru_nama || '',
           jadwal_ids: combinedJadwalIds,
           kelas_ids: combinedKelasIds,
         };
