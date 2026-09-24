@@ -251,8 +251,11 @@ function QuickAbsenContent() {
     // Nama pengajar: guru utama atau pengganti (badal) jika ada
     const namaGuruUtama = data.jadwal?.guru_nama || '';
     const namaBadal = data.badal_nama || izinResultData?.badal_info?.nama || '';
-    if (namaBadal) {
-      msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama ? `~~${namaGuruUtama}~~ → ` : ''}*Pengganti:* ${namaBadal}\n`;
+    if (namaGuruUtama && namaBadal) {
+      msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama}\n`;
+      msg += `🔄 *Badal / Pengganti:* ${namaBadal}\n`;
+    } else if (namaBadal) {
+      msg += `👨‍🏫 *Pengajar (Badal):* ${namaBadal}\n`;
     } else if (namaGuruUtama) {
       msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama}\n`;
     }

@@ -70,6 +70,10 @@ function InputAbsenContent() {
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [showGpsModal, setShowGpsModal] = useState(false);
   const [lokasiTarget, setLokasiTarget] = useState<{lat: number; lng: number; radius: number} | null>(null);
+  const lokasiTargetRef = useRef(lokasiTarget);
+  useEffect(() => {
+    lokasiTargetRef.current = lokasiTarget;
+  }, [lokasiTarget]);
   const [gpsDistance, setGpsDistance] = useState<number | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const hasFetchedRef = useRef(false); // Guard: pastikan fetchData hanya dipanggil SEKALI saat mount
@@ -216,7 +220,6 @@ function InputAbsenContent() {
   const requestGpsLocation = useCallback(() => {
     if (typeof window === 'undefined' || !('geolocation' in navigator)) {
       setLocationError('Browser Anda tidak mendukung deteksi lokasi.');
-      setLoading(false);
       return;
     }
     setDetectingLocation(true);
@@ -229,13 +232,13 @@ function InputAbsenContent() {
           lat: userLat,
           lng: userLng
         });
-        if (lokasiTarget) {
-          const dist = calcHaversineMeters(userLat, userLng, lokasiTarget.lat, lokasiTarget.lng);
+        const target = lokasiTargetRef.current;
+        if (target) {
+          const dist = calcHaversineMeters(userLat, userLng, target.lat, target.lng);
           setGpsDistance(dist);
         }
         setLocationError('');
         setDetectingLocation(false);
-        fetchData();
       },
       (err) => {
         console.error(err);
@@ -249,11 +252,10 @@ function InputAbsenContent() {
         } else {
           setLocationError('Akses lokasi ditolak atau tidak tersedia. Anda wajib mengaktifkan GPS/Lokasi untuk melakukan absensi.');
         }
-        setLoading(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, [fetchData, lokasiTarget, calcHaversineMeters]);
+  }, [calcHaversineMeters]);
 
   useEffect(() => {
     if (!tipe || !kelas_id || !jadwal_id) {
@@ -261,8 +263,9 @@ function InputAbsenContent() {
       setLoading(false);
       return;
     }
+    fetchData();
     requestGpsLocation();
-  }, [tipe, kelas_id, jadwal_id, requestGpsLocation]);
+  }, [tipe, kelas_id, jadwal_id, fetchData, requestGpsLocation]);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -599,9 +602,12 @@ function InputAbsenContent() {
 
     // Nama pengajar: tampilkan guru utama, atau pengganti (badal) jika ada
     const namaGuruUtama = jadwalInfo?.guru_nama || '';
-    const namaBadal = izinResultData?.badal_info?.nama || '';
-    if (namaBadal) {
-      msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama ? `~~${namaGuruUtama}~~ → ` : ''}*Pengganti:* ${namaBadal}\n`;
+    const namaBadal = (jadwalInfo as any)?.badal_nama || izinResultData?.badal_info?.nama || '';
+    if (namaGuruUtama && namaBadal) {
+      msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama}\n`;
+      msg += `🔄 *Badal / Pengganti:* ${namaBadal}\n`;
+    } else if (namaBadal) {
+      msg += `👨‍🏫 *Pengajar (Badal):* ${namaBadal}\n`;
     } else if (namaGuruUtama) {
       msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama}\n`;
     }

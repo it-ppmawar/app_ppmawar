@@ -368,6 +368,26 @@ export async function GET(request: Request) {
       console.error('Error fetching jadwal info:', e);
     }
 
+    if (jadwalInfo) {
+      try {
+        const schedCol = tipe === 'madin' ? 'jadwal_madin_id' : tipe === 'quran' ? 'jadwal_quran_id' : 'kegiatan_id';
+        const [agRows]: any = await pool.execute(
+          `SELECT ag.guru_id, ag.guru_badal_id, ag.status, ag.keterangan,
+                  gb.nama AS badal_nama
+           FROM absensi_guru ag
+           LEFT JOIN guru gb ON ag.guru_badal_id = gb.guru_id
+           WHERE ag.tanggal = ? AND ag.${schedCol} = ?
+           LIMIT 1`,
+          [localISOTime, jadwal_id || 0]
+        );
+        if (agRows.length > 0 && agRows[0].badal_nama) {
+          (jadwalInfo as any).badal_nama = agRows[0].badal_nama;
+        }
+      } catch (errAg) {
+        console.warn('Notice checking absensi_guru for badal in input route:', errAg);
+      }
+    }
+
     let lokasiTarget: { lat: number; lng: number; radius: number } | null = null;
     try {
       const [settingRows] = await pool.execute<RowDataPacket[]>(
