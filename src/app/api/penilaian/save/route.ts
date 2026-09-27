@@ -24,6 +24,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Data penilaian tidak lengkap' }, { status: 400 });
     }
 
+    if (mata_pelajaran === 'SEMUA' || mata_pelajaran === 'Semua Mapel') {
+      return NextResponse.json({ error: 'Silakan pilih salah satu mata pelajaran spesifik untuk menyimpan nilai.' }, { status: 400 });
+    }
+
     const calcPredikat = (score: number) => {
       if (score >= 90) return 'A';
       if (score >= 80) return 'B';
