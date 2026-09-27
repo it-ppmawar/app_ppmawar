@@ -72,7 +72,7 @@ export default function PenilaianRaportPage() {
     }
   };
 
-  // 1. Load Data Master (Kelas & Kurikulum)
+  // 1. Load Data Master (Daftar Kelas)
   useEffect(() => {
     const fetchMaster = async () => {
       try {
@@ -80,16 +80,9 @@ export default function PenilaianRaportPage() {
         const json = await res.json();
         if (json.success) {
           const kList = json.kelas || [];
-          const mList = json.kurikulum || [];
           setKelasList(kList);
-          setKurikulumList(mList);
-
           if (kList.length > 0) {
             setSelectedKelas(String(kList[0].kelas_id));
-          }
-          if (mList.length > 0) {
-            setSelectedMapel(mList[0].mata_pelajaran);
-            setSelectedKitab(mList[0].kitab || '');
           }
         }
       } catch (err) {
@@ -98,6 +91,33 @@ export default function PenilaianRaportPage() {
     };
     fetchMaster();
   }, []);
+
+  // 1b. Reload daftar Mata Pelajaran tiap kali kelas berubah (tersinkronisasi jadwal_madin)
+  useEffect(() => {
+    if (!selectedKelas) return;
+    const fetchMapel = async () => {
+      try {
+        const res = await fetch(`/api/penilaian/data?kelas_id=${selectedKelas}`);
+        const json = await res.json();
+        if (json.success) {
+          const mList = json.kurikulum || [];
+          setKurikulumList(mList);
+          if (!isCustomMapel) {
+            if (mList.length > 0) {
+              setSelectedMapel(mList[0].mata_pelajaran);
+              setSelectedKitab(mList[0].kitab || '');
+            } else {
+              setSelectedMapel('');
+              setSelectedKitab('');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to reload mapel list', err);
+      }
+    };
+    fetchMapel();
+  }, [selectedKelas]);
 
   // 2. Load Murid & Nilai saat Kelas / Mapel / Semester / Tahun berubah
   useEffect(() => {
@@ -580,11 +600,23 @@ export default function PenilaianRaportPage() {
                       return (
                         <tr key={m.murid_id} className="hover:bg-amber-50/40 dark:hover:bg-gray-700/40 transition-colors">
                           <td className="py-3 px-3 text-center text-gray-500 font-semibold">{idx + 1}</td>
-                          <td className="py-3 px-4 font-bold text-gray-800 dark:text-gray-100">
+                          <td className="py-3 px-4 font-bold text-gray-800 dark:text-gray-100 min-w-[160px]">
                             {m.nama}
-                            <span className="block text-[10px] text-gray-400 font-normal">
-                              {m.jenis_kelamin === 'Perempuan' ? 'Santri Putri' : 'Santri Putra'}
-                            </span>
+                            {(m.nama_kamar || m.nama_asrama) ? (
+                              <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold leading-tight mt-0.5">
+                                🛏 {[m.nama_kamar, m.nama_asrama].filter(Boolean).join(' — ')}
+                              </span>
+                            ) : null}
+                            {m.alamat ? (
+                              <span className="block text-[10px] text-gray-400 font-normal leading-tight">
+                                📍 {m.alamat}
+                              </span>
+                            ) : null}
+                            {!m.nama_kamar && !m.nama_asrama && !m.alamat && (
+                              <span className="block text-[10px] text-gray-400 font-normal">
+                                {m.jenis_kelamin === 'Perempuan' ? 'Santri Putri' : 'Santri Putra'}
+                              </span>
+                            )}
                           </td>
                           <td className="py-3 px-3 text-center text-gray-500 font-mono text-xs">{m.nis || '-'}</td>
                           
