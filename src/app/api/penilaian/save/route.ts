@@ -56,10 +56,14 @@ export async function POST(request: Request) {
       // Predikat: gunakan predikat yang diubah manual guru jika ada, atau hitung otomatis
       const predikat = item.predikat ? String(item.predikat).trim().toUpperCase() : calcPredikat(nilaiAkhir);
 
+      const targetKelasId = (kelas_id === 'SEMUA' || kelas_id === 'all')
+        ? (item.kelas_madin_id || null)
+        : kelas_id;
+
       await pool.execute(`
         INSERT INTO nilai_santri 
           (murid_id, kelas_madin_id, kurikulum_id, mata_pelajaran, kitab, semester, tahun_ajaran, nilai_harian, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan, guru_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, COALESCE(?, (SELECT kelas_madin_id FROM murid WHERE murid_id = ? LIMIT 1)), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           kelas_madin_id = VALUES(kelas_madin_id),
           kurikulum_id = VALUES(kurikulum_id),
@@ -74,7 +78,8 @@ export async function POST(request: Request) {
           updated_at = CURRENT_TIMESTAMP
       `, [
         item.murid_id,
-        kelas_id,
+        targetKelasId,
+        item.murid_id,
         kurikulum_id || null,
         mata_pelajaran,
         kitab || null,

@@ -33,11 +33,12 @@ export async function GET(request: Request) {
     const namaAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
 
     const { searchParams } = new URL(request.url);
-    const kelasId = searchParams.get('kelas_id');
+    const kelasId = searchParams.get('kelas_id') || 'SEMUA';
     const mapelName = searchParams.get('mapel');
     const semester = searchParams.get('semester') || '1';
     const tahunAjaran = searchParams.get('tahun_ajaran') || '2025/2026';
 
+    const isSemuaKelas = !kelasId || kelasId === 'SEMUA' || kelasId === 'all';
     const isSemuaMapel = !mapelName || mapelName === 'SEMUA' || mapelName === 'Semua Mapel';
 
     // 1. RBAC: Filter daftar kelas madin sesuai wewenang pengguna (seperti halaman rekapitulasi)
@@ -79,19 +80,33 @@ export async function GET(request: Request) {
          ORDER BY k.nama_kelas ASC`,
         paramsKelas
       );
-      kelasList = rows.map(k => {
+      const individualClasses = rows.map(k => {
         const match = (k.nama_kelas || '').match(/\d+/);
         return {
-          kelas_id: k.kelas_id,
+          kelas_id: String(k.kelas_id),
           nama_kelas: k.nama_kelas,
           tingkat: match ? match[0] : '1',
         };
       });
+
+      // Tambahkan opsi "Semua Kelas" di posisi teratas
+      if (individualClasses.length > 0) {
+        kelasList = [
+          {
+            kelas_id: 'SEMUA',
+            nama_kelas: '✨ Semua Kelas' + (role === 'guru' ? ' (Kelas Ajar Saya)' : ''),
+            tingkat: 'All',
+          },
+          ...individualClasses,
+        ];
+      } else {
+        kelasList = [];
+      }
     } catch (err) {
       console.warn('Error fetching kelas_madin with RBAC:', err);
     }
 
-    // 2. Ambil daftar mata pelajaran dari jadwal_madin untuk kelas terpilih
+    // 2. Ambil daftar mata pelajaran dari jadwal_madin
     //    RBAC: Jika guru, hanya tampilkan mapel yang diajarkan guru tersebut
     let kurikulumList: any[] = [];
     try {
@@ -99,14 +114,21 @@ export async function GET(request: Request) {
                    FROM jadwal_madin
                    WHERE mata_pelajaran IS NOT NULL AND mata_pelajaran != ''`;
       const params: any[] = [];
-      if (kelasId) {
+
+      if (!isSemuaKelas) {
         query += ` AND kelas_madin_id = ?`;
         params.push(kelasId);
+      } else if (role === 'guru' && guruId) {
+        // Jika Semua Kelas dan user adalah Guru: ambil mapel dari seluruh kelas ajar guru ini
+        query += ` AND kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?)`;
+        params.push(guruId);
       }
+
       if (role === 'guru' && guruId) {
         query += ` AND guru_id = ?`;
         params.push(guruId);
       }
+
       query += ` ORDER BY mata_pelajaran ASC`;
       const [rows] = await pool.execute<RowDataPacket[]>(query, params);
       
@@ -128,163 +150,215 @@ export async function GET(request: Request) {
 
     let muridWithScores: any[] = [];
 
-    if (kelasId) {
-      try {
-        // 3. Ambil daftar murid beserta info kamar/asrama/alamat
-        const [muridRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT m.murid_id, m.nama, m.nis, m.jenis_kelamin,
-                  COALESCE(m.alamat, '') as alamat,
-                  COALESCE(k.nama_kamar, '') as nama_kamar,
-                  COALESCE(k.nama_asrama, '') as nama_asrama
-           FROM murid m
-           LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
-           WHERE (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?)
-           ORDER BY m.nama ASC`,
-          [kelasId, kelasId]
-        );
+    try {
+      // 3. Ambil daftar murid beserta info kamar/asrama/alamat/nama_kelas
+      let whereMurid = '';
+      let paramsMurid: any[] = [];
 
-        if (muridRows.length > 0) {
-          const muridIds = muridRows.map(m => m.murid_id);
-          const placeholders = muridIds.map(() => '?').join(',');
-
-          // 4. Ambil rekap kehadiran dari tabel absensi
-          const attendanceMap: Record<number, { persen: number; hadir: number; total: number }> = {};
-          try {
-            let attQuery: string;
-            let attParams: any[];
-
-            if (!isSemuaMapel) {
-              // Kehadiran khusus mapel tertentu
-              attQuery = `SELECT a.murid_id,
-                            SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir_count,
-                            COUNT(*) as total_sesi
-                          FROM absensi a
-                          JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
-                          WHERE a.murid_id IN (${placeholders})
-                            AND jm.mata_pelajaran = ?
-                          GROUP BY a.murid_id`;
-              attParams = [...muridIds, mapelName];
-            } else {
-              // Kehadiran seluruh sesi kelas madin
-              attQuery = `SELECT a.murid_id,
-                            SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir_count,
-                            COUNT(*) as total_sesi
-                          FROM absensi a
-                          WHERE a.murid_id IN (${placeholders})
-                          GROUP BY a.murid_id`;
-              attParams = muridIds;
-            }
-
-            const [attRows] = await pool.execute<RowDataPacket[]>(attQuery, attParams);
-            attRows.forEach((r: any) => {
-              const hadir = Number(r.hadir_count || 0);
-              const total = Number(r.total_sesi || 0);
-              const persen = total > 0 ? Math.round((hadir / total) * 100) : 100;
-              attendanceMap[r.murid_id] = { persen, hadir, total };
-            });
-          } catch (attErr) {
-            console.warn('Error fetching attendance:', attErr);
-          }
-
-          // 5. Ambil data nilai
-          if (isSemuaMapel) {
-            // MODE LEGER KOLEKTIF: Ambil rata-rata nilai dari seluruh mata pelajaran yang sudah dinilai
-            const [avgRows] = await pool.execute<RowDataPacket[]>(
-              `SELECT 
-                murid_id,
-                AVG(CASE WHEN nilai_harian IS NOT NULL AND nilai_harian != '' THEN CAST(nilai_harian AS DECIMAL(5,2)) END) as avg_harian,
-                AVG(CASE WHEN nilai_uts IS NOT NULL AND nilai_uts != '' THEN CAST(nilai_uts AS DECIMAL(5,2)) END) as avg_uts,
-                AVG(CASE WHEN nilai_uas IS NOT NULL AND nilai_uas != '' THEN CAST(nilai_uas AS DECIMAL(5,2)) END) as avg_uas,
-                AVG(CASE WHEN nilai_akhir IS NOT NULL AND nilai_akhir != '' THEN CAST(nilai_akhir AS DECIMAL(5,2)) END) as avg_akhir,
-                COUNT(DISTINCT mata_pelajaran) as total_mapel_dinilai
-               FROM nilai_santri
-               WHERE kelas_madin_id = ? AND semester = ? AND tahun_ajaran = ? AND murid_id IN (${placeholders})
-               GROUP BY murid_id`,
-              [kelasId, semester, tahunAjaran, ...muridIds]
-            );
-
-            const avgMap: Record<number, any> = {};
-            avgRows.forEach((r: any) => {
-              avgMap[r.murid_id] = r;
-            });
-
-            muridWithScores = muridRows.map(m => {
-              const r = avgMap[m.murid_id];
-              const att = attendanceMap[m.murid_id] || { persen: 100, hadir: 0, total: 0 };
-              const totalMapel = r ? Number(r.total_mapel_dinilai || 0) : 0;
-              const harian = r && r.avg_harian !== null ? Number(r.avg_harian).toFixed(1) : '';
-              const uts = r && r.avg_uts !== null ? Number(r.avg_uts).toFixed(1) : '';
-              const uas = r && r.avg_uas !== null ? Number(r.avg_uas).toFixed(1) : '';
-              const akhir = r && r.avg_akhir !== null ? Number(r.avg_akhir).toFixed(1) : '';
-              const predikat = akhir !== '' ? calcPredikat(parseFloat(akhir)) : '-';
-
-              return {
-                murid_id: m.murid_id,
-                nama: m.nama,
-                nis: m.nis,
-                jenis_kelamin: m.jenis_kelamin,
-                alamat: m.alamat || '',
-                nama_kamar: m.nama_kamar || '',
-                nama_asrama: m.nama_asrama || '',
-                kehadiran_persen: att.total > 0 ? att.persen : 100,
-                kehadiran_total: att.total,
-                kehadiran_hadir: att.hadir,
-                nilai_harian: harian,
-                nilai_uts: uts,
-                nilai_uas: uas,
-                nilai_akhir: akhir,
-                predikat: predikat,
-                catatan: totalMapel > 0 ? `${totalMapel} Mapel Dinilai` : 'Belum Ada Nilai',
-                total_mapel_dinilai: totalMapel,
-                is_leger: true,
-              };
-            });
+      if (!isSemuaKelas) {
+        whereMurid = `WHERE (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?)`;
+        paramsMurid = [kelasId, kelasId];
+      } else {
+        // Semua Kelas: batasi sesuai RBAC role pengguna
+        if (role === 'guru' && guruId) {
+          whereMurid = `WHERE (m.kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?) 
+                         OR m.kelas_madin_2_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?)
+                         OR km.guru_id = ?)`;
+          paramsMurid = [guruId, guruId, guruId];
+        } else if (role === 'staff') {
+          const asr = (namaAsrama || payload.asrama || '').toLowerCase();
+          const isPutra = asr === 'putra' || asr.includes('putra') || asr.includes('asrama a') || asr === 'a';
+          const isPutri = asr === 'putri' || asr.includes('putri') || asr.includes('asrama b') || asr.includes('asrama c') || asr.includes('asrama d') || asr.includes('asrama e') || asr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f'].includes(asr.trim());
+          if (isPutra) {
+            whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL) AND LOWER(km.nama_kelas) LIKE '%putra%'`;
+          } else if (isPutri) {
+            whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL) AND LOWER(km.nama_kelas) LIKE '%putri%'`;
           } else {
-            // MODE INPUT MAPEL SPESIFIK: Ambil nilai spesifik mapel tersebut
-            let existingScoresMap: Record<number, any> = {};
-            try {
-              const [scoreRows] = await pool.execute<RowDataPacket[]>(
-                `SELECT murid_id, nilai_harian, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
-                 FROM nilai_santri
-                 WHERE kelas_madin_id = ? AND mata_pelajaran = ? AND semester = ? AND tahun_ajaran = ?`,
-                [kelasId, mapelName, semester, tahunAjaran]
-              );
-              scoreRows.forEach((r: any) => {
-                existingScoresMap[r.murid_id] = r;
-              });
-            } catch (scoreErr) {
-              console.warn('Error fetching existing scores:', scoreErr);
+            whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL)`;
+          }
+        } else if (role === 'wali_murid' || role === 'santri') {
+          if (muridId) {
+            whereMurid = `WHERE m.murid_id = ?`;
+            paramsMurid = [muridId];
+          } else {
+            whereMurid = `WHERE 0=1`;
+          }
+        } else {
+          // Admin: semua kelas
+          whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL)`;
+        }
+      }
+
+      const [muridRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT m.murid_id, m.nama, m.nis, m.jenis_kelamin,
+                COALESCE(m.alamat, '') as alamat,
+                COALESCE(k.nama_kamar, '') as nama_kamar,
+                COALESCE(k.nama_asrama, '') as nama_asrama,
+                COALESCE(km.nama_kelas, '') as nama_kelas,
+                COALESCE(m.kelas_madin_id, 0) as kelas_madin_id
+         FROM murid m
+         LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
+         LEFT JOIN kelas_madin km ON (m.kelas_madin_id = km.kelas_id OR m.kelas_madin_2_id = km.kelas_id)
+         ${whereMurid}
+         ORDER BY km.nama_kelas ASC, m.nama ASC`,
+        paramsMurid
+      );
+
+      if (muridRows.length > 0) {
+        const muridIds = muridRows.map(m => m.murid_id);
+        const placeholders = muridIds.map(() => '?').join(',');
+
+        // 4. Ambil rekap kehadiran dari tabel absensi
+        const attendanceMap: Record<number, { persen: number; hadir: number; total: number }> = {};
+        try {
+          let attQuery: string;
+          let attParams: any[];
+
+          if (!isSemuaMapel) {
+            // Kehadiran khusus mapel tertentu
+            attQuery = `SELECT a.murid_id,
+                          SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir_count,
+                          COUNT(*) as total_sesi
+                        FROM absensi a
+                        JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
+                        WHERE a.murid_id IN (${placeholders})
+                          AND jm.mata_pelajaran = ?
+                        GROUP BY a.murid_id`;
+            attParams = [...muridIds, mapelName];
+          } else {
+            // Kehadiran seluruh sesi
+            attQuery = `SELECT a.murid_id,
+                          SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir_count,
+                          COUNT(*) as total_sesi
+                        FROM absensi a
+                        WHERE a.murid_id IN (${placeholders})
+                        GROUP BY a.murid_id`;
+            attParams = muridIds;
+          }
+
+          const [attRows] = await pool.execute<RowDataPacket[]>(attQuery, attParams);
+          attRows.forEach((r: any) => {
+            const hadir = Number(r.hadir_count || 0);
+            const total = Number(r.total_sesi || 0);
+            const persen = total > 0 ? Math.round((hadir / total) * 100) : 100;
+            attendanceMap[r.murid_id] = { persen, hadir, total };
+          });
+        } catch (attErr) {
+          console.warn('Error fetching attendance:', attErr);
+        }
+
+        // 5. Ambil data nilai
+        if (isSemuaMapel) {
+          // MODE LEGER KOLEKTIF: Ambil rata-rata nilai dari seluruh mata pelajaran yang sudah dinilai
+          let avgQuery = `SELECT 
+              murid_id,
+              AVG(CASE WHEN nilai_harian IS NOT NULL AND nilai_harian != '' THEN CAST(nilai_harian AS DECIMAL(5,2)) END) as avg_harian,
+              AVG(CASE WHEN nilai_uts IS NOT NULL AND nilai_uts != '' THEN CAST(nilai_uts AS DECIMAL(5,2)) END) as avg_uts,
+              AVG(CASE WHEN nilai_uas IS NOT NULL AND nilai_uas != '' THEN CAST(nilai_uas AS DECIMAL(5,2)) END) as avg_uas,
+              AVG(CASE WHEN nilai_akhir IS NOT NULL AND nilai_akhir != '' THEN CAST(nilai_akhir AS DECIMAL(5,2)) END) as avg_akhir,
+              COUNT(DISTINCT mata_pelajaran) as total_mapel_dinilai
+             FROM nilai_santri
+             WHERE semester = ? AND tahun_ajaran = ? AND murid_id IN (${placeholders})`;
+          let avgParams = [semester, tahunAjaran, ...muridIds];
+
+          if (!isSemuaKelas) {
+            avgQuery += ` AND kelas_madin_id = ?`;
+            avgParams.push(kelasId);
+          }
+          avgQuery += ` GROUP BY murid_id`;
+
+          const [avgRows] = await pool.execute<RowDataPacket[]>(avgQuery, avgParams);
+
+          const avgMap: Record<number, any> = {};
+          avgRows.forEach((r: any) => {
+            avgMap[r.murid_id] = r;
+          });
+
+          muridWithScores = muridRows.map(m => {
+            const r = avgMap[m.murid_id];
+            const att = attendanceMap[m.murid_id] || { persen: 100, hadir: 0, total: 0 };
+            const totalMapel = r ? Number(r.total_mapel_dinilai || 0) : 0;
+            const harian = r && r.avg_harian !== null ? Number(r.avg_harian).toFixed(1) : '';
+            const uts = r && r.avg_uts !== null ? Number(r.avg_uts).toFixed(1) : '';
+            const uas = r && r.avg_uas !== null ? Number(r.avg_uas).toFixed(1) : '';
+            const akhir = r && r.avg_akhir !== null ? Number(r.avg_akhir).toFixed(1) : '';
+            const predikat = akhir !== '' ? calcPredikat(parseFloat(akhir)) : '-';
+
+            return {
+              murid_id: m.murid_id,
+              nama: m.nama,
+              nis: m.nis,
+              jenis_kelamin: m.jenis_kelamin,
+              alamat: m.alamat || '',
+              nama_kamar: m.nama_kamar || '',
+              nama_asrama: m.nama_asrama || '',
+              nama_kelas: m.nama_kelas || '',
+              kelas_madin_id: m.kelas_madin_id,
+              kehadiran_persen: att.total > 0 ? att.persen : 100,
+              kehadiran_total: att.total,
+              kehadiran_hadir: att.hadir,
+              nilai_harian: harian,
+              nilai_uts: uts,
+              nilai_uas: uas,
+              nilai_akhir: akhir,
+              predikat: predikat,
+              catatan: totalMapel > 0 ? `${totalMapel} Mapel Dinilai` : 'Belum Ada Nilai',
+              total_mapel_dinilai: totalMapel,
+              is_leger: true,
+            };
+          });
+        } else {
+          // MODE INPUT MAPEL SPESIFIK: Ambil nilai spesifik mapel tersebut
+          let existingScoresMap: Record<number, any> = {};
+          try {
+            let scoreQuery = `SELECT murid_id, nilai_harian, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
+               FROM nilai_santri
+               WHERE mata_pelajaran = ? AND semester = ? AND tahun_ajaran = ? AND murid_id IN (${placeholders})`;
+            let scoreParams = [mapelName, semester, tahunAjaran, ...muridIds];
+
+            if (!isSemuaKelas) {
+              scoreQuery += ` AND kelas_madin_id = ?`;
+              scoreParams.push(kelasId);
             }
 
-            muridWithScores = muridRows.map(m => {
-              const score = existingScoresMap[m.murid_id] || {};
-              const att = attendanceMap[m.murid_id] || { persen: 100, hadir: 0, total: 0 };
-              return {
-                murid_id: m.murid_id,
-                nama: m.nama,
-                nis: m.nis,
-                jenis_kelamin: m.jenis_kelamin,
-                alamat: m.alamat || '',
-                nama_kamar: m.nama_kamar || '',
-                nama_asrama: m.nama_asrama || '',
-                kehadiran_persen: att.total > 0 ? att.persen : 100,
-                kehadiran_total: att.total,
-                kehadiran_hadir: att.hadir,
-                nilai_harian: score.nilai_harian !== undefined && score.nilai_harian !== null ? Number(score.nilai_harian) : '',
-                nilai_uts: score.nilai_uts !== undefined && score.nilai_uts !== null ? Number(score.nilai_uts) : '',
-                nilai_uas: score.nilai_uas !== undefined && score.nilai_uas !== null ? Number(score.nilai_uas) : '',
-                nilai_akhir: score.nilai_akhir !== undefined && score.nilai_akhir !== null ? Number(score.nilai_akhir) : '',
-                predikat: score.predikat || '',
-                catatan: score.catatan || '',
-                total_mapel_dinilai: 1,
-                is_leger: false,
-              };
+            const [scoreRows] = await pool.execute<RowDataPacket[]>(scoreQuery, scoreParams);
+            scoreRows.forEach((r: any) => {
+              existingScoresMap[r.murid_id] = r;
             });
+          } catch (scoreErr) {
+            console.warn('Error fetching existing scores:', scoreErr);
           }
+
+          muridWithScores = muridRows.map(m => {
+            const score = existingScoresMap[m.murid_id] || {};
+            const att = attendanceMap[m.murid_id] || { persen: 100, hadir: 0, total: 0 };
+            return {
+              murid_id: m.murid_id,
+              nama: m.nama,
+              nis: m.nis,
+              jenis_kelamin: m.jenis_kelamin,
+              alamat: m.alamat || '',
+              nama_kamar: m.nama_kamar || '',
+              nama_asrama: m.nama_asrama || '',
+              nama_kelas: m.nama_kelas || '',
+              kelas_madin_id: m.kelas_madin_id,
+              kehadiran_persen: att.total > 0 ? att.persen : 100,
+              kehadiran_total: att.total,
+              kehadiran_hadir: att.hadir,
+              nilai_harian: score.nilai_harian !== undefined && score.nilai_harian !== null ? Number(score.nilai_harian) : '',
+              nilai_uts: score.nilai_uts !== undefined && score.nilai_uts !== null ? Number(score.nilai_uts) : '',
+              nilai_uas: score.nilai_uas !== undefined && score.nilai_uas !== null ? Number(score.nilai_uas) : '',
+              nilai_akhir: score.nilai_akhir !== undefined && score.nilai_akhir !== null ? Number(score.nilai_akhir) : '',
+              predikat: score.predikat || '',
+              catatan: score.catatan || '',
+              total_mapel_dinilai: 1,
+              is_leger: false,
+            };
+          });
         }
-      } catch (mErr) {
-        console.error('Error fetching murid for kelas:', mErr);
       }
+    } catch (mErr) {
+      console.error('Error fetching murid for kelas:', mErr);
     }
 
     return NextResponse.json({
@@ -292,6 +366,7 @@ export async function GET(request: Request) {
       kelas: kelasList,
       kurikulum: kurikulumList,
       muridList: muridWithScores,
+      is_semua_kelas: isSemuaKelas,
       is_semua_mapel: isSemuaMapel,
     });
   } catch (error: any) {

@@ -25,6 +25,7 @@ export default function PenilaianRaportPage() {
   const [isCustomMapel, setIsCustomMapel] = useState(false);
   const customMapelInputRef = useRef<HTMLInputElement>(null);
   const isLegerMode = !selectedMapel || selectedMapel === 'SEMUA' || selectedMapel === 'Semua Mapel';
+  const isSemuaKelasMode = !selectedKelas || selectedKelas === 'SEMUA' || selectedKelas === 'all';
 
   // State Tabel Input Nilai
   const [muridList, setMuridList] = useState<any[]>([]);
@@ -559,6 +560,11 @@ export default function PenilaianRaportPage() {
                       ({selectedKitab})
                     </span>
                   )}
+                  {isSemuaKelasMode && (
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-300 dark:border-blue-800/60 inline-flex items-center gap-1 mx-auto sm:mx-0">
+                      ✨ Semua Kelas
+                    </span>
+                  )}
                   {isLegerMode && (
                     <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60 inline-flex items-center gap-1 mx-auto sm:mx-0">
                       <Sparkles size={12} /> Leger Kolektif Kelas
@@ -643,7 +649,14 @@ export default function PenilaianRaportPage() {
                         <tr key={m.murid_id} className="hover:bg-amber-50/40 dark:hover:bg-gray-700/40 transition-colors">
                           <td className="py-3 px-3 text-center text-gray-500 font-semibold">{idx + 1}</td>
                           <td className="py-3 px-4 font-bold text-gray-800 dark:text-gray-100 min-w-[160px]">
-                            {m.nama}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span>{m.nama}</span>
+                              {isSemuaKelasMode && m.nama_kelas && (
+                                <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
+                                  🏷️ {m.nama_kelas}
+                                </span>
+                              )}
+                            </div>
                             {(m.nama_kamar || m.nama_asrama) ? (
                               <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold leading-tight mt-0.5">
                                 🛏 {[m.nama_kamar, m.nama_asrama].filter(Boolean).join(' — ')}

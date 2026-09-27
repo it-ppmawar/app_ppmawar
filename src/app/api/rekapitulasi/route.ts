@@ -123,8 +123,13 @@ export async function GET(request: Request) {
       let whereParams: any[] = [target_id, target_id];
 
       if (target_id === 'all') {
-        whereCond = 'WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL)';
-        whereParams = [];
+        if (payload.role === 'guru' && payload.guruId) {
+          whereCond = 'WHERE (m.kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?) OR m.kelas_madin_2_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?) OR km.guru_id = ?)';
+          whereParams = [payload.guruId, payload.guruId, payload.guruId];
+        } else {
+          whereCond = 'WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL)';
+          whereParams = [];
+        }
       } else if (target_id === 'putra') {
         whereCond = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL) AND (km.nama_kelas LIKE '%PUTRA%' OR km.nama_kelas LIKE '%PA%' OR m.jenis_kelamin = 'Laki-laki' OR m.jenis_kelamin = 'L')`;
         whereParams = [];
@@ -175,8 +180,13 @@ export async function GET(request: Request) {
       let whereParams: any[] = [target_id];
 
       if (target_id === 'all') {
-        whereCond = 'WHERE m.kelas_quran_id IS NOT NULL';
-        whereParams = [];
+        if (payload.role === 'guru' && payload.guruId) {
+          whereCond = 'WHERE (m.kelas_quran_id IN (SELECT kelas_quran_id FROM jadwal_quran WHERE guru_id = ?) OR kq.guru_id = ?)';
+          whereParams = [payload.guruId, payload.guruId];
+        } else {
+          whereCond = 'WHERE m.kelas_quran_id IS NOT NULL';
+          whereParams = [];
+        }
       } else if (target_id === 'putra') {
         whereCond = `WHERE m.kelas_quran_id IS NOT NULL AND (kq.nama_kelas LIKE '%PUTRA%' OR kq.nama_kelas LIKE '%PA%' OR m.jenis_kelamin = 'Laki-laki' OR m.jenis_kelamin = 'L')`;
         whereParams = [];

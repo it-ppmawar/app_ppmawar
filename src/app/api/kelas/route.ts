@@ -255,6 +255,8 @@ export async function GET(request: Request) {
           extraOptions.push({ id: 'all', nama: '✨ Semua Kelas' });
           extraOptions.push({ id: 'putra', nama: '👳 Semua Kelas Putra' });
           extraOptions.push({ id: 'putri', nama: '🧕 Semua Kelas Putri' });
+        } else if (role === 'guru') {
+          extraOptions.push({ id: 'all', nama: '✨ Semua Kelas (Kelas Ajar Saya)' });
         } else if ((role === 'pengurus_asrama' || role === 'pengasuh') && namaAsrama) {
           extraOptions.push({ id: 'all', nama: `✨ Semua Kelas (${namaAsrama})` });
         }
