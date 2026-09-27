@@ -589,15 +589,26 @@ export default function DashboardPage() {
           if (statTypes.length === 0) return null;
 
           return (
-            <div
-              className={`grid gap-4 ${
-                statTypes.length === 1
-                  ? 'grid-cols-1 max-w-md mx-auto w-full'
-                  : statTypes.length === 2
-                  ? 'grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto w-full'
-                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto w-full'
-              }`}
-            >
+            <div className="space-y-3 max-w-5xl mx-auto w-full">
+              {/* Section heading santri stats */}
+              <div className="px-1">
+                <h3 className="text-sm font-bold text-green-700 dark:text-green-400 leading-snug">
+                  <Activity size={16} className="text-green-600 dark:text-green-400 inline-block mr-1.5 align-middle -mt-0.5" />
+                  Statistik Absensi Santri Terbaru{' '}
+                  <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/60 text-green-800 dark:text-green-300 font-bold whitespace-nowrap align-middle">
+                    Hari ini
+                  </span>
+                </h3>
+              </div>
+              <div
+                className={`grid gap-4 ${
+                  statTypes.length === 1
+                    ? 'grid-cols-1 max-w-md mx-auto w-full'
+                    : statTypes.length === 2
+                    ? 'grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto w-full'
+                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto w-full'
+                }`}
+              >
               {statTypes.map((tipe) => {
                 const tipeName = tipe === 'quran' ? "Qur'an" : tipe === 'madin' ? 'Madin' : 'Kegiatan Asrama';
                 const stat = dashboardStats?.santri?.[tipe as 'madin' | 'quran' | 'kegiatan'] || {
@@ -658,6 +669,7 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
+              </div>
             </div>
           );
         })()}
