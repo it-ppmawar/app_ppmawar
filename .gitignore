@@ -66,3 +66,9 @@ DOC-*.adding
 
 # User uploaded photos (deployed separately via FTP/cPanel)
 public/uploads/
+
+# Kartu EMAAL photos (berat ~130MB+, cukup simpan di lokal & ZIP backup)
+/KARTU EMAAL 2026 2027/
+
+# Data kerja manual (migrasi, Excel, SQL — data sensitif bukan bagian kode)
+/data_madin/

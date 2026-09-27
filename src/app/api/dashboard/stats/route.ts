@@ -92,13 +92,17 @@ export async function GET() {
       console.warn('jadwalGuruRows error:', e);
     }
 
+    // Hitung yesterday untuk statistik guru (hari ini + kemarin, seragam dengan statistik santri)
+    const yesterdayGuruDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const yesterdayGuruStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(yesterdayGuruDate);
+
     let absenGuruRows: RowDataPacket[] = [];
     try {
       const [rows] = await pool.execute<RowDataPacket[]>(`
-        SELECT ag.guru_id, ag.status, ag.jadwal_madin_id, ag.jadwal_quran_id, ag.kegiatan_id
+        SELECT ag.guru_id, ag.status, ag.jadwal_madin_id, ag.jadwal_quran_id, ag.kegiatan_id, ag.tanggal
         FROM absensi_guru ag
-        WHERE ag.tanggal = ?
-      `, [todayStr]);
+        WHERE ag.tanggal IN (?, ?)
+      `, [todayStr, yesterdayGuruStr]);
       absenGuruRows = rows;
     } catch (e) {
       console.warn('absenGuruRows error:', e);
@@ -567,6 +571,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       tanggal: todayStr,
+      tanggal_kemarin: yesterdayGuruStr,
       hari: currentDay,
       guru: {
         total: guruOverall,

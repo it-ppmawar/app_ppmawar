@@ -551,6 +551,37 @@ function NotifikasiContent() {
     }
   };
 
+  // Aktifkan kembali & jadwalkan ulang pengiriman otomatis (sinkron dengan Settings)
+  const [isReschedulingNotif, setIsReschedulingNotif] = useState(false);
+  const handleRescheduleNotif = async () => {
+    if (!window.confirm('Aktifkan & jadwalkan ulang seluruh pengingat mengajar otomatis ke dewan guru?')) return;
+    setIsReschedulingNotif(true);
+    setSchedulerStatusMsg(null);
+    try {
+      const res = await fetch('/api/wa-scheduler/bulk-reminder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'all_schedules',
+          categories: schedulerCategories,
+          leadTimeMinutes: schedulerLeadTime,
+          isLoop: schedulerIsLoop ? 1 : 0,
+          customTemplate: pesanGuruTemplate,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSchedulerStatusMsg({ type: 'success', text: data.message || 'Pengiriman otomatis berhasil diaktifkan & dijadwalkan ulang!' });
+      } else {
+        setSchedulerStatusMsg({ type: 'error', text: data.error || 'Gagal menjadwalkan ulang pengiriman.' });
+      }
+    } catch {
+      setSchedulerStatusMsg({ type: 'error', text: 'Kesalahan jaringan saat menjadwalkan ulang.' });
+    } finally {
+      setIsReschedulingNotif(false);
+    }
+  };
+
   const cleanPhoneStr = (p: string | null | undefined) => {
     if (!p) return '';
     let c = p.toString().trim().replace(/[^0-9+]/g, '');
@@ -1066,6 +1097,17 @@ function NotifikasiContent() {
             >
               {isClearingPending ? <Loader2 size={14} className="animate-spin shrink-0" /> : <Power size={14} className="shrink-0" />}
               <span>{isClearingPending ? 'Membatalkan...' : 'Batalkan Semua Antrean (Libur)'}</span>
+            </button>
+            {/* Tombol Aktifkan Kembali / Jadwalkan Ulang (Normal) — Sinkron dengan Halaman Settings */}
+            <button
+              type="button"
+              disabled={isReschedulingNotif}
+              onClick={handleRescheduleNotif}
+              title="Aktifkan kembali & jadwalkan ulang seluruh pengingat mengajar otomatis saat pondok masuk kembali"
+              className="col-span-2 sm:col-span-auto sm:w-auto px-4 py-2.5 min-h-[44px] text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 border border-emerald-300 dark:border-emerald-800 rounded-xl transition-all flex items-center justify-center gap-2 text-center disabled:opacity-50 shadow-sm active:scale-95"
+            >
+              {isReschedulingNotif ? <Loader2 size={14} className="animate-spin shrink-0" /> : <RefreshCw size={14} className="shrink-0" />}
+              <span>{isReschedulingNotif ? 'Menjadwalkan...' : 'Aktifkan & Jadwalkan Ulang (Normal)'}</span>
             </button>
           </div>
 
