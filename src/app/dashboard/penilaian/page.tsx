@@ -382,7 +382,7 @@ export default function PenilaianRaportPage() {
                 className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 px-3.5 py-1.5 rounded-full border border-amber-200/70 dark:border-amber-800/50 transition-all shadow-xs"
               >
                 <Edit3 size={13} />
-                <span>{isCustomMapel ? 'Kembali ke Pilihan Kurikulum' : '+ Ketik Mapel Khusus'}</span>
+                <span>{isCustomMapel ? 'Kembali ke Pilihan Kurikulum' : 'Ketik Mapel Khusus'}</span>
               </button>
             </div>
 
