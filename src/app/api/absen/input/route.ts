@@ -307,7 +307,7 @@ export async function GET(request: Request) {
     const sudah_absen = existing.length > 0;
 
     // Query info jadwal (mata pelajaran, jam, guru) untuk ditampilkan di header halaman
-    let jadwalInfo: { mata_pelajaran: string; jam_mulai: string; jam_selesai: string; guru_id?: number; guru_nama?: string } | null = null;
+    let jadwalInfo: { mata_pelajaran: string; jam_mulai: string; jam_selesai: string; guru_id?: number; guru_nama?: string; semua_guru?: string } | null = null;
     try {
       if (tipe === 'madin') {
         const [rows]: any = await pool.execute(
@@ -319,12 +319,33 @@ export async function GET(request: Request) {
           [jadwal_id || 0, kelas_id, jadwal_id || 0]
         );
         if (rows.length > 0) {
+          const mainRow = rows[0];
+          // Cari semua guru kelompok yang mengajar mapel yang sama di kelas & hari & jam yang sama
+          let semuaGuru = mainRow.guru_nama || 'Guru Madin';
+          try {
+            const [coTeacherRows]: any = await pool.execute(
+              `SELECT DISTINCT g.nama 
+               FROM jadwal_madin j 
+               JOIN guru g ON j.guru_id = g.guru_id
+               WHERE j.kelas_madin_id = ? 
+                 AND j.mata_pelajaran = ?
+                 AND j.jam_mulai = ?
+                 AND j.guru_id != ?
+               ORDER BY g.nama ASC`,
+              [kelas_id, mainRow.mata_pelajaran, mainRow.jam_mulai, mainRow.guru_id || 0]
+            );
+            if (coTeacherRows.length > 0) {
+              const coNames = coTeacherRows.map((r: any) => r.nama).join(', ');
+              semuaGuru = `${mainRow.guru_nama}, ${coNames}`;
+            }
+          } catch (_) {}
           jadwalInfo = {
-            mata_pelajaran: rows[0].mata_pelajaran || '',
-            jam_mulai: rows[0].jam_mulai || '',
-            jam_selesai: rows[0].jam_selesai || '',
-            guru_id: rows[0].guru_id,
-            guru_nama: rows[0].guru_nama || 'Guru Madin'
+            mata_pelajaran: mainRow.mata_pelajaran || '',
+            jam_mulai: mainRow.jam_mulai || '',
+            jam_selesai: mainRow.jam_selesai || '',
+            guru_id: mainRow.guru_id,
+            guru_nama: mainRow.guru_nama || 'Guru Madin',
+            semua_guru: semuaGuru,
           };
         }
       } else if (tipe === 'quran') {

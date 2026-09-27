@@ -82,7 +82,7 @@ function InputAbsenContent() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [sudahAbsen, setSudahAbsen] = useState(false);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
-  const [jadwalInfo, setJadwalInfo] = useState<{ mata_pelajaran: string; jam_mulai: string; jam_selesai: string; guru_nama?: string } | null>(null);
+  const [jadwalInfo, setJadwalInfo] = useState<{ mata_pelajaran: string; jam_mulai: string; jam_selesai: string; guru_nama?: string; semua_guru?: string } | null>(null);
   const [tanggalAbsen, setTanggalAbsen] = useState('');
   const [copiedWa, setCopiedWa] = useState(false);
 
@@ -600,8 +600,8 @@ function InputAbsenContent() {
       msg += `📖 *${labelCategory}:* ${mapel}\n`;
     }
 
-    // Nama pengajar: tampilkan guru utama, atau pengganti (badal) jika ada
-    const namaGuruUtama = jadwalInfo?.guru_nama || '';
+    // Nama pengajar: tampilkan semua guru kelompok, atau pengganti (badal) jika ada
+    const namaGuruUtama = jadwalInfo?.semua_guru || jadwalInfo?.guru_nama || '';
     const namaBadal = (jadwalInfo as any)?.badal_nama || izinResultData?.badal_info?.nama || '';
     if (namaGuruUtama && namaBadal) {
       msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama}\n`;

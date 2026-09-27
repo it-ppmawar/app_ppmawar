@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, Printer, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
-  ShieldCheck, AlertTriangle, FileText, ChevronRight, Sparkles, Download,
+  ShieldCheck, AlertTriangle, FileText, ChevronRight, ChevronDown, Sparkles, Download,
   Edit3
 } from 'lucide-react';
 
 export default function PenilaianRaportPage() {
   const [activeTab, setActiveTab] = useState<'input' | 'raport'>('input');
+  const [showPetunjuk, setShowPetunjuk] = useState(false);
   
   // Data Master
   const [kelasList, setKelasList] = useState<any[]>([]);
@@ -517,18 +518,32 @@ export default function PenilaianRaportPage() {
             </div>
           )}
 
-          {/* Petunjuk Penggunaan Singkat & Informatif */}
-          <div className="bg-amber-50/60 dark:bg-amber-950/20 rounded-2xl p-4 border border-amber-200/60 dark:border-amber-800/40 text-xs sm:text-sm text-amber-900 dark:text-amber-200 space-y-2">
-            <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
-              <Sparkles size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
-              <span>Cara Menggunakan Halaman Penilaian:</span>
-            </div>
-            <ol className="list-decimal list-inside space-y-1 text-xs text-amber-800/90 dark:text-amber-300/90 pl-1 leading-relaxed">
-              <li>Pilih <strong>Kelas Madin</strong> dan <strong>Mata Pelajaran</strong> pada filter di atas (daftar santri akan langsung muncul di tabel bawah).</li>
-              <li>Ketik nilai pada kolom <strong>Harian (30%)</strong>, <strong>UTS (30%)</strong>, dan <strong>UAS (40%)</strong>. Nilai Akhir &amp; Predikat terhitung otomatis seketika, dan dapat diedit manual bila diperlukan.</li>
-              <li>Klik tombol <strong>&quot;Simpan Semua Nilai&quot;</strong> di kanan atas tabel untuk menyimpan seluruh nilai santri sekelas sekaligus.</li>
-              <li>Beralih ke tab <strong>&quot;Raport Santri&quot;</strong> untuk melihat atau mencetak lembar raport resmi yang telah terintegrasi dengan data presensi dan kedisiplinan santri.</li>
-            </ol>
+          {/* Petunjuk Penggunaan — Collapsible, default tutup */}
+          <div className="bg-amber-50/60 dark:bg-amber-950/20 rounded-2xl border border-amber-200/60 dark:border-amber-800/40 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowPetunjuk(p => !p)}
+              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles size={15} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>Cara Menggunakan Halaman Penilaian</span>
+              </div>
+              <ChevronDown
+                size={16}
+                className={`shrink-0 text-amber-600 dark:text-amber-400 transition-transform duration-200 ${showPetunjuk ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {showPetunjuk && (
+              <div className="px-4 pb-4 text-xs text-amber-900 dark:text-amber-200">
+                <ol className="list-decimal list-inside space-y-1 text-amber-800/90 dark:text-amber-300/90 pl-1 leading-relaxed">
+                  <li>Pilih <strong>Kelas Madin</strong> dan <strong>Mata Pelajaran</strong> pada filter di atas (daftar santri akan langsung muncul di tabel bawah).</li>
+                  <li>Ketik nilai pada kolom <strong>Harian (30%)</strong>, <strong>UTS (30%)</strong>, dan <strong>UAS (40%)</strong>. Nilai Akhir &amp; Predikat terhitung otomatis seketika, dan dapat diedit manual bila diperlukan.</li>
+                  <li>Klik tombol <strong>&quot;Simpan Semua Nilai&quot;</strong> di kanan atas tabel untuk menyimpan seluruh nilai santri sekelas sekaligus.</li>
+                  <li>Beralih ke tab <strong>&quot;Raport Santri&quot;</strong> untuk melihat atau mencetak lembar raport resmi yang telah terintegrasi dengan data presensi dan kedisiplinan santri.</li>
+                </ol>
+              </div>
+            )}
           </div>
 
           {/* Tabel Input Nilai Santri */}

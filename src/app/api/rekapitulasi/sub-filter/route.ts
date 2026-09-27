@@ -22,6 +22,9 @@ export async function GET(request: Request) {
     const payload = verifyToken(token) as any;
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401, headers: noCacheHeaders });
 
+    const { role, guruId } = payload;
+    const isGuru = role === 'guru' && !!guruId;
+
     const { searchParams } = new URL(request.url);
     const tipe = searchParams.get('tipe');
     const target_id = searchParams.get('target_id') || '';
@@ -33,9 +36,17 @@ export async function GET(request: Request) {
     let rows: RowDataPacket[] = [];
 
     if (tipe === 'madin') {
+      // RBAC: guru hanya melihat mapel yang diajarkannya (sesuai jadwal_madin)
       let query = `SELECT DISTINCT j.mata_pelajaran as nama FROM jadwal_madin j WHERE j.mata_pelajaran IS NOT NULL AND j.mata_pelajaran != ''`;
       const params: any[] = [];
-      if (target_id && !['all','putra','putri'].includes(target_id)) {
+
+      if (isGuru) {
+        // Filter mapel yang benar-benar diajarkan guru ini
+        query += ` AND j.guru_id = ?`;
+        params.push(guruId);
+      }
+
+      if (target_id && !['all', 'putra', 'putri'].includes(target_id)) {
         query += ` AND j.kelas_madin_id = ?`;
         params.push(target_id);
       }
@@ -44,7 +55,13 @@ export async function GET(request: Request) {
     } else if (tipe === 'quran') {
       let query = `SELECT DISTINCT j.mata_pelajaran as nama FROM jadwal_quran j WHERE j.mata_pelajaran IS NOT NULL AND j.mata_pelajaran != ''`;
       const params: any[] = [];
-      if (target_id && !['all','putra','putri'].includes(target_id)) {
+
+      if (isGuru) {
+        query += ` AND j.guru_id = ?`;
+        params.push(guruId);
+      }
+
+      if (target_id && !['all', 'putra', 'putri'].includes(target_id)) {
         query += ` AND j.kelas_quran_id = ?`;
         params.push(target_id);
       }
@@ -53,6 +70,12 @@ export async function GET(request: Request) {
     } else if (tipe === 'kegiatan') {
       let query = `SELECT DISTINCT j.nama_kegiatan as nama FROM jadwal_kegiatan j WHERE j.nama_kegiatan IS NOT NULL AND j.nama_kegiatan != ''`;
       const params: any[] = [];
+
+      if (isGuru) {
+        query += ` AND j.guru_id = ?`;
+        params.push(guruId);
+      }
+
       if (target_id && !['all'].includes(target_id) && !target_id.startsWith('asrama_')) {
         query += ` AND j.kamar_id = ?`;
         params.push(target_id);

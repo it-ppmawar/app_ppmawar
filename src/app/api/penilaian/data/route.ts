@@ -92,6 +92,7 @@ export async function GET(request: Request) {
     }
 
     // 2. Ambil daftar mata pelajaran dari jadwal_madin untuk kelas terpilih
+    //    RBAC: Jika guru, hanya tampilkan mapel yang diajarkan guru tersebut
     let kurikulumList: any[] = [];
     try {
       let query = `SELECT DISTINCT mata_pelajaran as mata_pelajaran
@@ -101,6 +102,10 @@ export async function GET(request: Request) {
       if (kelasId) {
         query += ` AND kelas_madin_id = ?`;
         params.push(kelasId);
+      }
+      if (role === 'guru' && guruId) {
+        query += ` AND guru_id = ?`;
+        params.push(guruId);
       }
       query += ` ORDER BY mata_pelajaran ASC`;
       const [rows] = await pool.execute<RowDataPacket[]>(query, params);
