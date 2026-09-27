@@ -436,13 +436,15 @@ export default function DashboardPage() {
         {(role === 'admin' || role === 'staff') && (
           <div className="space-y-3 max-w-5xl mx-auto w-full">
             <div className="px-1">
-              <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-snug">
-                <Activity size={16} className="text-green-600 dark:text-green-400 inline-block mr-1.5 align-middle -mt-0.5" />
-                Statistik Absensi Dewan Guru &amp; Pembina Terbaru{' '}
-                <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-bold whitespace-nowrap align-middle">
-                  Hari ini &amp; Kemarin
-                </span>
-              </h3>
+              <div className="flex items-start gap-2">
+                <Activity size={16} className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+                <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-snug">
+                  <span>Statistik Absensi Dewan Guru &amp; Pembina Terbaru</span>{' '}
+                  <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-bold whitespace-nowrap align-middle">
+                    Hari ini &amp; Kemarin
+                  </span>
+                </h3>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -592,13 +594,15 @@ export default function DashboardPage() {
             <div className="space-y-3 max-w-5xl mx-auto w-full">
               {/* Section heading santri stats */}
               <div className="px-1">
-                <h3 className="text-sm font-bold text-green-700 dark:text-green-400 leading-snug">
-                  <Activity size={16} className="text-green-600 dark:text-green-400 inline-block mr-1.5 align-middle -mt-0.5" />
-                  Statistik Absensi Santri Terbaru{' '}
-                  <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/60 text-green-800 dark:text-green-300 font-bold whitespace-nowrap align-middle">
-                    Hari ini
-                  </span>
-                </h3>
+                <div className="flex items-start gap-2">
+                  <Activity size={16} className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+                  <h3 className="text-sm font-bold text-green-700 dark:text-green-400 leading-snug">
+                    <span>Statistik Absensi Santri Terbaru</span>{' '}
+                    <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/60 text-green-800 dark:text-green-300 font-bold whitespace-nowrap align-middle">
+                      Hari ini
+                    </span>
+                  </h3>
+                </div>
               </div>
               <div
                 className={`grid gap-4 ${

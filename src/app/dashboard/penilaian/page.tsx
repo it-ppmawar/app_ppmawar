@@ -353,17 +353,17 @@ export default function PenilaianRaportPage() {
         <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
           {/* Baris Filter & Pemilihan Mapel */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                <Filter size={14} /> Filter Kelas &amp; Mata Pelajaran
+            <div className="flex flex-col items-center justify-center text-center gap-1.5 pb-0.5">
+              <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                <Filter size={14} className="text-amber-600 dark:text-amber-400" /> Filter Kelas &amp; Mata Pelajaran
               </div>
               <button
                 type="button"
                 onClick={() => setIsCustomMapel(!isCustomMapel)}
-                className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 px-3.5 py-1.5 rounded-full border border-amber-200/70 dark:border-amber-800/50 transition-all shadow-xs"
               >
                 <Edit3 size={13} />
-                <span>{isCustomMapel ? 'Pilih dari Kurikulum' : '+ Ketik Mapel Khusus'}</span>
+                <span>{isCustomMapel ? 'Kembali ke Pilihan Kurikulum' : '+ Ketik Mapel Khusus'}</span>
               </button>
             </div>
 
@@ -468,6 +468,20 @@ export default function PenilaianRaportPage() {
               <span>{saveSuccessMsg}</span>
             </div>
           )}
+
+          {/* Petunjuk Penggunaan Singkat & Informatif */}
+          <div className="bg-amber-50/60 dark:bg-amber-950/20 rounded-2xl p-4 border border-amber-200/60 dark:border-amber-800/40 text-xs sm:text-sm text-amber-900 dark:text-amber-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
+              <Sparkles size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>Cara Menggunakan Halaman Penilaian:</span>
+            </div>
+            <ol className="list-decimal list-inside space-y-1 text-xs text-amber-800/90 dark:text-amber-300/90 pl-1 leading-relaxed">
+              <li>Pilih <strong>Kelas Madin</strong> dan <strong>Mata Pelajaran</strong> pada filter di atas (daftar santri akan langsung muncul di tabel bawah).</li>
+              <li>Ketik nilai pada kolom <strong>Harian (30%)</strong>, <strong>UTS (30%)</strong>, dan <strong>UAS (40%)</strong>. Nilai Akhir &amp; Predikat terhitung otomatis seketika, dan dapat diedit manual bila diperlukan.</li>
+              <li>Klik tombol <strong>&quot;Simpan Semua Nilai&quot;</strong> di kanan atas tabel untuk menyimpan seluruh nilai santri sekelas sekaligus.</li>
+              <li>Beralih ke tab <strong>&quot;Raport Santri&quot;</strong> untuk melihat atau mencetak lembar raport resmi yang telah terintegrasi dengan data presensi dan kedisiplinan santri.</li>
+            </ol>
+          </div>
 
           {/* Tabel Input Nilai Santri */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">

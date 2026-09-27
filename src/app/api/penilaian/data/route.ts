@@ -75,44 +75,52 @@ export async function GET(request: Request) {
     let muridWithScores: any[] = [];
 
     if (kelasId) {
-      // 3. Ambil daftar murid di kelas tersebut
-      const [muridRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT murid_id, nama, nis, jenis_kelamin
-         FROM murid
-         WHERE (kelas_madin_id = ? OR kelas_madin_2_id = ?) AND (status IS NULL OR status = 'aktif')
-         ORDER BY nama ASC`,
-        [kelasId, kelasId]
-      );
-
-      // 4. Jika ada mata pelajaran yang dipilih, ambil nilai yang sudah ada
-      let existingScoresMap: Record<number, any> = {};
-      if (mapelName) {
-        const [scoreRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT murid_id, nilai_harian, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
-           FROM nilai_santri
-           WHERE kelas_madin_id = ? AND mata_pelajaran = ? AND semester = ? AND tahun_ajaran = ?`,
-          [kelasId, mapelName, semester, tahunAjaran]
+      try {
+        // 3. Ambil daftar murid di kelas tersebut (tanpa kolom status yang tidak ada)
+        const [muridRows] = await pool.execute<RowDataPacket[]>(
+          `SELECT murid_id, nama, nis, jenis_kelamin
+           FROM murid
+           WHERE (kelas_madin_id = ? OR kelas_madin_2_id = ?)
+           ORDER BY nama ASC`,
+          [kelasId, kelasId]
         );
-        scoreRows.forEach((r: any) => {
-          existingScoresMap[r.murid_id] = r;
-        });
-      }
 
-      muridWithScores = muridRows.map(m => {
-        const score = existingScoresMap[m.murid_id] || {};
-        return {
-          murid_id: m.murid_id,
-          nama: m.nama,
-          nis: m.nis,
-          jenis_kelamin: m.jenis_kelamin,
-          nilai_harian: score.nilai_harian !== undefined && score.nilai_harian !== null ? Number(score.nilai_harian) : '',
-          nilai_uts: score.nilai_uts !== undefined && score.nilai_uts !== null ? Number(score.nilai_uts) : '',
-          nilai_uas: score.nilai_uas !== undefined && score.nilai_uas !== null ? Number(score.nilai_uas) : '',
-          nilai_akhir: score.nilai_akhir !== undefined && score.nilai_akhir !== null ? Number(score.nilai_akhir) : '',
-          predikat: score.predikat || '',
-          catatan: score.catatan || '',
-        };
-      });
+        // 4. Jika ada mata pelajaran yang dipilih, ambil nilai yang sudah ada
+        let existingScoresMap: Record<number, any> = {};
+        if (mapelName) {
+          try {
+            const [scoreRows] = await pool.execute<RowDataPacket[]>(
+              `SELECT murid_id, nilai_harian, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
+               FROM nilai_santri
+               WHERE kelas_madin_id = ? AND mata_pelajaran = ? AND semester = ? AND tahun_ajaran = ?`,
+              [kelasId, mapelName, semester, tahunAjaran]
+            );
+            scoreRows.forEach((r: any) => {
+              existingScoresMap[r.murid_id] = r;
+            });
+          } catch (scoreErr) {
+            console.warn('Error fetching existing scores:', scoreErr);
+          }
+        }
+
+        muridWithScores = muridRows.map(m => {
+          const score = existingScoresMap[m.murid_id] || {};
+          return {
+            murid_id: m.murid_id,
+            nama: m.nama,
+            nis: m.nis,
+            jenis_kelamin: m.jenis_kelamin,
+            nilai_harian: score.nilai_harian !== undefined && score.nilai_harian !== null ? Number(score.nilai_harian) : '',
+            nilai_uts: score.nilai_uts !== undefined && score.nilai_uts !== null ? Number(score.nilai_uts) : '',
+            nilai_uas: score.nilai_uas !== undefined && score.nilai_uas !== null ? Number(score.nilai_uas) : '',
+            nilai_akhir: score.nilai_akhir !== undefined && score.nilai_akhir !== null ? Number(score.nilai_akhir) : '',
+            predikat: score.predikat || '',
+            catatan: score.catatan || '',
+          };
+        });
+      } catch (mErr) {
+        console.error('Error fetching murid for kelas:', mErr);
+      }
     }
 
     return NextResponse.json({
