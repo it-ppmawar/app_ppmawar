@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, Printer, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
-  ShieldCheck, AlertTriangle, FileText, ChevronRight, Sparkles, Download
+  ShieldCheck, AlertTriangle, FileText, ChevronRight, Sparkles, Download,
+  Edit3
 } from 'lucide-react';
 
 export default function PenilaianRaportPage() {
@@ -20,10 +21,11 @@ export default function PenilaianRaportPage() {
   const [selectedKitab, setSelectedKitab] = useState<string>('');
   const [semester, setSemester] = useState<string>('1');
   const [tahunAjaran, setTahunAjaran] = useState<string>('2025/2026');
+  const [isCustomMapel, setIsCustomMapel] = useState(false);
 
   // State Tabel Input Nilai
   const [muridList, setMuridList] = useState<any[]>([]);
-  const [scores, setScores] = useState<Record<number, { harian: string; uts: string; uas: string; catatan: string }>>({});
+  const [scores, setScores] = useState<Record<number, { harian: string; uts: string; uas: string; akhir: string; predikat: string; catatan: string }>>({});
   const [loadingMurid, setLoadingMurid] = useState(false);
   const [savingScores, setSavingScores] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
@@ -42,17 +44,33 @@ export default function PenilaianRaportPage() {
     status_kelulusan: 'Naik Kelas',
   });
 
-  // Load Data Master Awal
+  // Helper kalkulasi predikat otomatis
+  const calcPredikat = (score: number) => {
+    if (score >= 90) return 'A';
+    if (score >= 80) return 'B';
+    if (score >= 70) return 'C';
+    if (score >= 60) return 'D';
+    return 'E';
+  };
+
+  // 1. Load Data Master (Kelas & Kurikulum)
   useEffect(() => {
     const fetchMaster = async () => {
       try {
         const res = await fetch('/api/penilaian/data');
         const json = await res.json();
         if (json.success) {
-          setKelasList(json.kelas || []);
-          setKurikulumList(json.kurikulum || []);
-          if (json.kelas && json.kelas.length > 0) {
-            setSelectedKelas(String(json.kelas[0].kelas_id));
+          const kList = json.kelas || [];
+          const mList = json.kurikulum || [];
+          setKelasList(kList);
+          setKurikulumList(mList);
+
+          if (kList.length > 0) {
+            setSelectedKelas(String(kList[0].kelas_id));
+          }
+          if (mList.length > 0) {
+            setSelectedMapel(mList[0].mata_pelajaran);
+            setSelectedKitab(mList[0].kitab || '');
           }
         }
       } catch (err) {
@@ -62,20 +80,7 @@ export default function PenilaianRaportPage() {
     fetchMaster();
   }, []);
 
-  // Update mapel pilihan saat kelas atau kurikulum berubah
-  useEffect(() => {
-    if (selectedKelas && kurikulumList.length > 0) {
-      const currentKls = kelasList.find(k => String(k.kelas_id) === String(selectedKelas));
-      const filtered = kurikulumList.filter(k => !currentKls || !k.tingkat || String(k.tingkat) === String(currentKls.tingkat));
-      const firstMapel = filtered[0] || kurikulumList[0];
-      if (firstMapel) {
-        setSelectedMapel(firstMapel.mata_pelajaran);
-        setSelectedKitab(firstMapel.kitab || '');
-      }
-    }
-  }, [selectedKelas, kurikulumList, kelasList]);
-
-  // Load Murid & Nilai saat filter berubah
+  // 2. Load Murid & Nilai saat Kelas / Mapel / Semester / Tahun berubah
   useEffect(() => {
     if (!selectedKelas) return;
 
@@ -94,17 +99,39 @@ export default function PenilaianRaportPage() {
           setMuridList(json.muridList);
           const initialScores: Record<number, any> = {};
           json.muridList.forEach((m: any) => {
+            const h = m.nilai_harian !== null && m.nilai_harian !== undefined && m.nilai_harian !== '' ? String(m.nilai_harian) : '';
+            const u = m.nilai_uts !== null && m.nilai_uts !== undefined && m.nilai_uts !== '' ? String(m.nilai_uts) : '';
+            const a = m.nilai_uas !== null && m.nilai_uas !== undefined && m.nilai_uas !== '' ? String(m.nilai_uas) : '';
+            let finalVal = m.nilai_akhir !== null && m.nilai_akhir !== undefined && m.nilai_akhir !== '' ? String(m.nilai_akhir) : '';
+            let pred = m.predikat || '';
+
+            // Jika belum ada nilai akhir tersimpan tetapi komponen terisi, hitung preview
+            if (!finalVal && (h || u || a)) {
+              const numH = parseFloat(h) || 0;
+              const numU = parseFloat(u) || 0;
+              const numA = parseFloat(a) || 0;
+              const autoFinal = Math.round((numH * 0.3 + numU * 0.3 + numA * 0.4) * 100) / 100;
+              finalVal = String(autoFinal);
+              pred = calcPredikat(autoFinal);
+            }
+
             initialScores[m.murid_id] = {
-              harian: m.nilai_harian !== null && m.nilai_harian !== undefined ? String(m.nilai_harian) : '',
-              uts: m.nilai_uts !== null && m.nilai_uts !== undefined ? String(m.nilai_uts) : '',
-              uas: m.nilai_uas !== null && m.nilai_uas !== undefined ? String(m.nilai_uas) : '',
+              harian: h,
+              uts: u,
+              uas: a,
+              akhir: finalVal,
+              predikat: pred,
               catatan: m.catatan || '',
             };
           });
           setScores(initialScores);
 
-          if (!selectedMuridId && json.muridList.length > 0) {
+          // Sinkronkan murid pertama untuk raport jika belum ada murid yang dipilih atau berpindah kelas
+          if (json.muridList.length > 0) {
             setSelectedMuridId(String(json.muridList[0].murid_id));
+          } else {
+            setSelectedMuridId('');
+            setRaportData(null);
           }
         }
       } catch (err) {
@@ -117,7 +144,7 @@ export default function PenilaianRaportPage() {
     fetchMuridDanNilai();
   }, [selectedKelas, selectedMapel, semester, tahunAjaran]);
 
-  // Load Raport Detail
+  // 3. Load Raport Detail Santri
   const fetchRaportDetail = async (mId: string) => {
     if (!mId) return;
     setLoadingRaport(true);
@@ -155,15 +182,44 @@ export default function PenilaianRaportPage() {
     }
   }, [activeTab, selectedMuridId, semester, tahunAjaran]);
 
-  // Handle Score Input
-  const handleScoreChange = (muridId: number, field: 'harian' | 'uts' | 'uas' | 'catatan', val: string) => {
-    setScores(prev => ({
-      ...prev,
-      [muridId]: {
-        ...(prev[muridId] || { harian: '', uts: '', uas: '', catatan: '' }),
-        [field]: val,
-      },
-    }));
+  // Handle Score Input dengan otomatisasi sekaligus fleksibilitas manual override
+  const handleScoreChange = (muridId: number, field: 'harian' | 'uts' | 'uas' | 'akhir' | 'predikat' | 'catatan', val: string) => {
+    setScores(prev => {
+      const existing = prev[muridId] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+      const updated = { ...existing, [field]: val };
+
+      // Jika yang diubah adalah komponen Harian, UTS, atau UAS, hitung otomatis nilai akhir & predikat jika belum dioverride manual
+      if (field === 'harian' || field === 'uts' || field === 'uas') {
+        const h = field === 'harian' ? val : existing.harian;
+        const u = field === 'uts' ? val : existing.uts;
+        const a = field === 'uas' ? val : existing.uas;
+
+        if (h !== '' || u !== '' || a !== '') {
+          const numH = parseFloat(h) || 0;
+          const numU = parseFloat(u) || 0;
+          const numA = parseFloat(a) || 0;
+          const autoFinal = Math.round((numH * 0.3 + numU * 0.3 + numA * 0.4) * 100) / 100;
+          updated.akhir = String(autoFinal);
+          updated.predikat = calcPredikat(autoFinal);
+        } else {
+          updated.akhir = '';
+          updated.predikat = '';
+        }
+      }
+
+      // Jika yang diubah langsung adalah nilai akhir secara manual, otomatis sesuaikan predikatnya
+      if (field === 'akhir') {
+        const numAkhir = parseFloat(val);
+        if (!isNaN(numAkhir)) {
+          updated.predikat = calcPredikat(numAkhir);
+        }
+      }
+
+      return {
+        ...prev,
+        [muridId]: updated,
+      };
+    });
   };
 
   // Simpan Nilai Masal
@@ -171,13 +227,18 @@ export default function PenilaianRaportPage() {
     setSavingScores(true);
     setSaveSuccessMsg('');
     try {
-      const payloadScores = muridList.map(m => ({
-        murid_id: m.murid_id,
-        nilai_harian: scores[m.murid_id]?.harian || null,
-        nilai_uts: scores[m.murid_id]?.uts || null,
-        nilai_uas: scores[m.murid_id]?.uas || null,
-        catatan: scores[m.murid_id]?.catatan || '',
-      }));
+      const payloadScores = muridList.map(m => {
+        const s = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+        return {
+          murid_id: m.murid_id,
+          nilai_harian: s.harian !== '' ? s.harian : null,
+          nilai_uts: s.uts !== '' ? s.uts : null,
+          nilai_uas: s.uas !== '' ? s.uas : null,
+          nilai_akhir: s.akhir !== '' ? s.akhir : null,
+          predikat: s.predikat || null,
+          catatan: s.catatan || '',
+        };
+      });
 
       const res = await fetch('/api/penilaian/save', {
         method: 'POST',
@@ -235,48 +296,33 @@ export default function PenilaianRaportPage() {
     }
   };
 
-  // Hitung Nilai Akhir & Predikat Preview
-  const computeScorePreview = (h: string, u: string, a: string) => {
-    const numH = parseFloat(h) || 0;
-    const numU = parseFloat(u) || 0;
-    const numA = parseFloat(a) || 0;
-    if (!h && !u && !a) return { final: '-', predikat: '-' };
-    const finalScore = Math.round((numH * 0.3 + numU * 0.3 + numA * 0.4) * 100) / 100;
-    let predikat = 'E';
-    if (finalScore >= 90) predikat = 'A';
-    else if (finalScore >= 80) predikat = 'B';
-    else if (finalScore >= 70) predikat = 'C';
-    else if (finalScore >= 60) predikat = 'D';
-    return { final: finalScore, predikat };
-  };
-
   const handlePrint = () => {
     window.print();
   };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-24 print:p-0 print:m-0 print:max-w-none">
-      {/* Header Utama (Hidden when printing) */}
+      {/* Header Utama (Hidden saat print) */}
       <div className="print:hidden bg-gradient-to-br from-amber-800 via-amber-900 to-yellow-950 text-white rounded-3xl p-6 sm:p-8 shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-6 -mt-6 w-48 h-48 bg-white/5 rounded-full blur-2xl"></div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 text-center md:text-left">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-200 text-xs font-bold uppercase tracking-wider mb-2">
               <Award size={14} /> Akademik &amp; Evaluasi Santri
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center justify-center md:justify-start gap-3">
               Penilaian &amp; Raport Digital
             </h1>
-            <p className="text-amber-100/80 text-xs sm:text-sm mt-1 max-w-xl">
+            <p className="text-amber-100/80 text-xs sm:text-sm mt-1 max-w-xl mx-auto md:mx-0">
               Pusat input nilai harian, UTS, UAS, otomatisasi rekap presensi &amp; kedisiplinan, serta cetak lembar raport resmi santri.
             </p>
           </div>
 
-          {/* Switcher Tab Antara Input Nilai vs Cetak Raport */}
-          <div className="flex bg-black/30 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0 self-start md:self-auto">
+          {/* Switcher Tab Symmetris & Rata Tengah Presisi di HP */}
+          <div className="w-full sm:w-auto max-w-md mx-auto md:mx-0 grid grid-cols-2 gap-2 bg-black/35 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0">
             <button
               onClick={() => setActiveTab('input')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+              className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all w-full text-center ${
                 activeTab === 'input'
                   ? 'bg-amber-500 text-white shadow-md'
                   : 'text-amber-200/80 hover:text-white hover:bg-white/10'
@@ -287,7 +333,7 @@ export default function PenilaianRaportPage() {
             </button>
             <button
               onClick={() => setActiveTab('raport')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+              className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all w-full text-center ${
                 activeTab === 'raport'
                   ? 'bg-amber-500 text-white shadow-md'
                   : 'text-amber-200/80 hover:text-white hover:bg-white/10'
@@ -307,8 +353,18 @@ export default function PenilaianRaportPage() {
         <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
           {/* Baris Filter & Pemilihan Mapel */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              <Filter size={14} /> Filter Kelas &amp; Mata Pelajaran
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                <Filter size={14} /> Filter Kelas &amp; Mata Pelajaran
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCustomMapel(!isCustomMapel)}
+                className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
+              >
+                <Edit3 size={13} />
+                <span>{isCustomMapel ? 'Pilih dari Kurikulum' : '+ Ketik Mapel Khusus'}</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -320,36 +376,56 @@ export default function PenilaianRaportPage() {
                 <select
                   value={selectedKelas}
                   onChange={(e) => setSelectedKelas(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
                 >
-                  {kelasList.map(k => (
-                    <option key={k.kelas_id} value={k.kelas_id}>
-                      {k.nama_kelas} (Tingkat {k.tingkat})
-                    </option>
-                  ))}
+                  {kelasList.length === 0 ? (
+                    <option value="">(Memuat kelas...)</option>
+                  ) : (
+                    kelasList.map(k => (
+                      <option key={k.kelas_id} value={k.kelas_id}>
+                        {k.nama_kelas}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
               {/* Pilih Mata Pelajaran / Kitab */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Mata Pelajaran (Kitab)
+                  Mata Pelajaran {selectedKitab ? `(${selectedKitab})` : ''}
                 </label>
-                <select
-                  value={selectedMapel}
-                  onChange={(e) => {
-                    setSelectedMapel(e.target.value);
-                    const found = kurikulumList.find(k => k.mata_pelajaran === e.target.value);
-                    if (found) setSelectedKitab(found.kitab || '');
-                  }}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                >
-                  {kurikulumList.map(k => (
-                    <option key={k.id} value={k.mata_pelajaran}>
-                      {k.mata_pelajaran} {k.kitab ? `— ${k.kitab}` : ''}
-                    </option>
-                  ))}
-                </select>
+                {isCustomMapel ? (
+                  <div className="space-y-1">
+                    <input
+                      type="text"
+                      value={selectedMapel}
+                      onChange={(e) => setSelectedMapel(e.target.value)}
+                      placeholder="Nama Mata Pelajaran..."
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                ) : (
+                  <select
+                    value={selectedMapel}
+                    onChange={(e) => {
+                      setSelectedMapel(e.target.value);
+                      const found = kurikulumList.find(k => k.mata_pelajaran === e.target.value);
+                      if (found) setSelectedKitab(found.kitab || '');
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                  >
+                    {kurikulumList.length === 0 ? (
+                      <option value="">(Memuat kurikulum...)</option>
+                    ) : (
+                      kurikulumList.map(k => (
+                        <option key={k.id || k.mata_pelajaran} value={k.mata_pelajaran}>
+                          {k.mata_pelajaran} {k.kitab ? `— ${k.kitab}` : ''}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                )}
               </div>
 
               {/* Semester */}
@@ -360,7 +436,7 @@ export default function PenilaianRaportPage() {
                 <select
                   value={semester}
                   onChange={(e) => setSemester(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
                 >
                   <option value="1">Semester 1 (Ganjil)</option>
                   <option value="2">Semester 2 (Genap)</option>
@@ -375,7 +451,7 @@ export default function PenilaianRaportPage() {
                 <select
                   value={tahunAjaran}
                   onChange={(e) => setTahunAjaran(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
                 >
                   <option value="2024/2025">2024/2025</option>
                   <option value="2025/2026">2025/2026</option>
@@ -397,18 +473,19 @@ export default function PenilaianRaportPage() {
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="font-extrabold text-gray-800 dark:text-gray-100 text-base">
-                  Daftar Santri — {selectedMapel} ({selectedKitab || 'Mata Pelajaran'})
+                <h3 className="font-extrabold text-gray-800 dark:text-gray-100 text-base flex items-center gap-2">
+                  <span>Daftar Santri — {selectedMapel || 'Mata Pelajaran'}</span>
+                  {selectedKitab && <span className="text-xs font-normal text-amber-600 dark:text-amber-400">({selectedKitab})</span>}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Bobot penilaian: Harian (30%) + UTS (30%) + UAS (40%). Predikat dihitung otomatis.
+                  Kalkulasi otomatis: Harian (30%) + UTS (30%) + UAS (40%). <strong>Nilai Akhir &amp; Predikat fleksibel dapat diubah manual</strong>.
                 </p>
               </div>
 
               <button
                 onClick={handleSaveScores}
                 disabled={savingScores || muridList.length === 0}
-                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all"
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all shrink-0"
               >
                 {savingScores ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
                 <span>{savingScores ? 'Menyimpan...' : 'Simpan Semua Nilai'}</span>
@@ -423,85 +500,106 @@ export default function PenilaianRaportPage() {
             ) : muridList.length === 0 ? (
               <div className="p-12 text-center text-gray-500 dark:text-gray-400">
                 <AlertCircle size={28} className="mx-auto text-gray-400 mb-2" />
-                <p className="text-sm font-semibold">Belum ada data murid di kelas ini.</p>
+                <p className="text-sm font-semibold">Belum ada santri terdaftar di kelas ini.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs sm:text-sm">
                   <thead>
                     <tr className="bg-gray-50 dark:bg-gray-750 text-gray-600 dark:text-gray-300 font-bold border-b border-gray-100 dark:border-gray-700">
-                      <th className="py-3 px-4 w-12 text-center">No</th>
-                      <th className="py-3 px-4 min-w-[180px]">Nama Santri</th>
-                      <th className="py-3 px-4 w-28 text-center">NIS</th>
-                      <th className="py-3 px-3 w-28 text-center">Harian (30%)</th>
-                      <th className="py-3 px-3 w-28 text-center">UTS (30%)</th>
-                      <th className="py-3 px-3 w-28 text-center">UAS (40%)</th>
-                      <th className="py-3 px-3 w-28 text-center">Nilai Akhir</th>
-                      <th className="py-3 px-3 w-24 text-center">Predikat</th>
-                      <th className="py-3 px-4 min-w-[160px]">Catatan / Evaluasi</th>
+                      <th className="py-3 px-3 w-10 text-center">No</th>
+                      <th className="py-3 px-4 min-w-[170px]">Nama Santri</th>
+                      <th className="py-3 px-3 w-24 text-center">NIS</th>
+                      <th className="py-3 px-2 w-24 text-center">Harian (30%)</th>
+                      <th className="py-3 px-2 w-24 text-center">UTS (30%)</th>
+                      <th className="py-3 px-2 w-24 text-center">UAS (40%)</th>
+                      <th className="py-3 px-2 w-28 text-center bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-300">
+                        Nilai Akhir (Auto/Manual)
+                      </th>
+                      <th className="py-3 px-2 w-24 text-center bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-300">
+                        Predikat
+                      </th>
+                      <th className="py-3 px-4 min-w-[160px]">Catatan Perkembangan</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {muridList.map((m, idx) => {
-                      const cur = scores[m.murid_id] || { harian: '', uts: '', uas: '', catatan: '' };
-                      const preview = computeScorePreview(cur.harian, cur.uts, cur.uas);
+                      const cur = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
 
                       return (
-                        <tr key={m.murid_id} className="hover:bg-amber-50/40 dark:hover:bg-gray-750/50 transition-colors">
-                          <td className="py-3 px-4 text-center text-gray-500 font-semibold">{idx + 1}</td>
+                        <tr key={m.murid_id} className="hover:bg-amber-50/30 dark:hover:bg-gray-750/50 transition-colors">
+                          <td className="py-3 px-3 text-center text-gray-500 font-semibold">{idx + 1}</td>
                           <td className="py-3 px-4 font-bold text-gray-800 dark:text-gray-100">
                             {m.nama}
                             <span className="block text-[10px] text-gray-400 font-normal">
                               {m.jenis_kelamin === 'Perempuan' ? 'Santri Putri' : 'Santri Putra'}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-center text-gray-500 font-mono text-xs">{m.nis || '-'}</td>
-                          <td className="py-2 px-3 text-center">
+                          <td className="py-3 px-3 text-center text-gray-500 font-mono text-xs">{m.nis || '-'}</td>
+                          <td className="py-2 px-2 text-center">
                             <input
                               type="number"
                               min="0"
                               max="100"
+                              step="any"
                               value={cur.harian}
                               onChange={(e) => handleScoreChange(m.murid_id, 'harian', e.target.value)}
                               placeholder="0"
-                              className="w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 font-bold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
                             />
                           </td>
-                          <td className="py-2 px-3 text-center">
+                          <td className="py-2 px-2 text-center">
                             <input
                               type="number"
                               min="0"
                               max="100"
+                              step="any"
                               value={cur.uts}
                               onChange={(e) => handleScoreChange(m.murid_id, 'uts', e.target.value)}
                               placeholder="0"
-                              className="w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 font-bold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
                             />
                           </td>
-                          <td className="py-2 px-3 text-center">
+                          <td className="py-2 px-2 text-center">
                             <input
                               type="number"
                               min="0"
                               max="100"
+                              step="any"
                               value={cur.uas}
                               onChange={(e) => handleScoreChange(m.murid_id, 'uas', e.target.value)}
                               placeholder="0"
-                              className="w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 font-bold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
                             />
                           </td>
-                          <td className="py-3 px-3 text-center font-black text-amber-700 dark:text-amber-400">
-                            {preview.final}
+                          {/* NILAI AKHIR (DAPAT DIUBAH MANUAL OLEH PENGGUNA/GURU) */}
+                          <td className="py-2 px-2 text-center bg-amber-50/30 dark:bg-amber-950/10">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="any"
+                              value={cur.akhir}
+                              onChange={(e) => handleScoreChange(m.murid_id, 'akhir', e.target.value)}
+                              placeholder="0"
+                              className="w-20 text-center py-1.5 px-2 bg-white dark:bg-gray-750 rounded-lg border-2 border-amber-300 dark:border-amber-600/70 font-black text-amber-800 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                              title="Nilai Akhir: Terhitung otomatis, dapat diedit langsung jika ingin override manual"
+                            />
                           </td>
-                          <td className="py-3 px-3 text-center">
-                            <span className={`inline-block font-extrabold px-2.5 py-0.5 rounded-full text-xs ${
-                              preview.predikat === 'A' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' :
-                              preview.predikat === 'B' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' :
-                              preview.predikat === 'C' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' :
-                              preview.predikat === 'D' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300' :
-                              'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                            }`}>
-                              {preview.predikat}
-                            </span>
+                          {/* PREDIKAT (DAPAT DIUBAH MANUAL OLEH PENGGUNA/GURU) */}
+                          <td className="py-2 px-2 text-center bg-amber-50/30 dark:bg-amber-950/10">
+                            <select
+                              value={cur.predikat}
+                              onChange={(e) => handleScoreChange(m.murid_id, 'predikat', e.target.value)}
+                              className="w-16 text-center py-1.5 px-1 bg-white dark:bg-gray-750 rounded-lg border border-amber-300 dark:border-amber-600/70 font-black text-xs text-amber-800 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                            >
+                              <option value="">-</option>
+                              <option value="A">A</option>
+                              <option value="B">B</option>
+                              <option value="C">C</option>
+                              <option value="D">D</option>
+                              <option value="E">E</option>
+                            </select>
                           </td>
                           <td className="py-2 px-4">
                             <input
@@ -528,25 +626,11 @@ export default function PenilaianRaportPage() {
       {/* ========================================================================= */}
       {activeTab === 'raport' && (
         <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
-          {/* Header Kontrol Raport (Hidden saat print) */}
-          <div className="print:hidden bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-              <div>
-                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                  Pilih Kelas
-                </label>
-                <select
-                  value={selectedKelas}
-                  onChange={(e) => setSelectedKelas(e.target.value)}
-                  className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-bold text-gray-800 dark:text-gray-100"
-                >
-                  {kelasList.map(k => (
-                    <option key={k.kelas_id} value={k.kelas_id}>{k.nama_kelas}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
+          {/* Header Kontrol Raport: Format Presisi HP (Pilih Santri di Atas Full-Width, Kelas & Semester Berdampingan 50%-50%, Tombol Print Rata Tengah) */}
+          <div className="print:hidden bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
+            <div className="flex flex-col gap-3 w-full">
+              {/* Baris 1: Filter Pilih Santri Memenuhi Ruang Kanan dan Kiri */}
+              <div className="w-full">
                 <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
                   Pilih Santri
                 </label>
@@ -556,33 +640,60 @@ export default function PenilaianRaportPage() {
                     setSelectedMuridId(e.target.value);
                     fetchRaportDetail(e.target.value);
                   }}
-                  className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-bold text-gray-800 dark:text-gray-100 max-w-xs truncate"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
                 >
-                  {muridList.map(m => (
-                    <option key={m.murid_id} value={m.murid_id}>{m.nama} ({m.nis || '-'})</option>
-                  ))}
+                  {muridList.length === 0 ? (
+                    <option value="">(Belum ada data santri)</option>
+                  ) : (
+                    muridList.map(m => (
+                      <option key={m.murid_id} value={m.murid_id}>
+                        {m.nama} {m.nis ? `(${m.nis})` : ''}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                  Semester
-                </label>
-                <select
-                  value={semester}
-                  onChange={(e) => setSemester(e.target.value)}
-                  className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-bold text-gray-800 dark:text-gray-100"
-                >
-                  <option value="1">Semester 1</option>
-                  <option value="2">Semester 2</option>
-                </select>
+              {/* Baris 2: Filter Pilih Kelas dan Pilih Semester Berdampingan Rata Tengah dengan Ukuran Presisi Sama */}
+              <div className="grid grid-cols-2 gap-3 w-full">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                    Pilih Kelas
+                  </label>
+                  <select
+                    value={selectedKelas}
+                    onChange={(e) => {
+                      setSelectedKelas(e.target.value);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                  >
+                    {kelasList.map(k => (
+                      <option key={k.kelas_id} value={k.kelas_id}>{k.nama_kelas}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                    Pilih Semester
+                  </label>
+                  <select
+                    value={semester}
+                    onChange={(e) => setSemester(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                  >
+                    <option value="1">Semester 1 (Ganjil)</option>
+                    <option value="2">Semester 2 (Genap)</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+            {/* Tombol Cetak / Download PDF: Rata Tengah Rapi */}
+            <div className="flex justify-center w-full pt-1">
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95"
+                className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
               >
                 <Printer size={16} />
                 <span>Cetak / Download PDF</span>
@@ -622,7 +733,7 @@ export default function PenilaianRaportPage() {
                 </div>
 
                 {/* IDENTITAS SANTRI */}
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs sm:text-sm mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-xs sm:text-sm mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
                   <div className="space-y-1.5">
                     <div className="flex">
                       <span className="w-32 font-bold text-gray-600">Nama Santri</span>
@@ -634,7 +745,7 @@ export default function PenilaianRaportPage() {
                     </div>
                     <div className="flex">
                       <span className="w-32 font-bold text-gray-600">Kelas Madin</span>
-                      <span>: {raportData.santri.nama_kelas_madin} (Tingkat {raportData.santri.tingkat_madin})</span>
+                      <span>: {raportData.santri.nama_kelas_madin}</span>
                     </div>
                   </div>
 

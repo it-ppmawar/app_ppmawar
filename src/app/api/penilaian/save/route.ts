@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       return 'E';
     };
 
-    // Upsert setiap nilai
+    // Upsert setiap nilai dengan dukungan manual override dari guru
     for (const item of scores) {
       if (!item.murid_id) continue;
 
@@ -40,13 +40,17 @@ export async function POST(request: Request) {
       const uts = item.nilai_uts !== null && item.nilai_uts !== '' ? Number(item.nilai_uts) : 0;
       const uas = item.nilai_uas !== null && item.nilai_uas !== '' ? Number(item.nilai_uas) : 0;
 
-      // Formula nilai akhir bobot pesantren: 30% Harian + 30% UTS + 40% UAS
-      // Jika salah satu kosong tapi ada yang terisi, gunakan rata-rata yang terisi
+      // Fleksibilitas: Jika pengguna/guru mengisi atau mengubah nilai_akhir secara manual, gunakan nilai manual tersebut.
+      // Jika tidak diisi manual, gunakan kalkulasi otomatis 30% Harian + 30% UTS + 40% UAS.
       let nilaiAkhir = 0;
-      if (item.nilai_harian !== null || item.nilai_uts !== null || item.nilai_uas !== null) {
+      if (item.nilai_akhir !== null && item.nilai_akhir !== undefined && item.nilai_akhir !== '') {
+        nilaiAkhir = Number(item.nilai_akhir);
+      } else if (item.nilai_harian !== null || item.nilai_uts !== null || item.nilai_uas !== null) {
         nilaiAkhir = Math.round((harian * 0.3 + uts * 0.3 + uas * 0.4) * 100) / 100;
       }
-      const predikat = calcPredikat(nilaiAkhir);
+
+      // Predikat: gunakan predikat yang diubah manual guru jika ada, atau hitung otomatis
+      const predikat = item.predikat ? String(item.predikat).trim().toUpperCase() : calcPredikat(nilaiAkhir);
 
       await pool.execute(`
         INSERT INTO nilai_santri 

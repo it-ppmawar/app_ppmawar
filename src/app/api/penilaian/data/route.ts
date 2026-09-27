@@ -24,15 +24,53 @@ export async function GET(request: Request) {
     const semester = searchParams.get('semester') || '1';
     const tahunAjaran = searchParams.get('tahun_ajaran') || '2025/2026';
 
-    // 1. Ambil daftar kelas madin yang tersedia
-    const [kelasList] = await pool.execute<RowDataPacket[]>(
-      'SELECT kelas_id, nama_kelas, tingkat FROM kelas_madin ORDER BY nama_kelas ASC'
-    );
+    // 1. Ambil daftar kelas madin yang tersedia (kolom aman: kelas_id, nama_kelas)
+    let kelasList: any[] = [];
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        'SELECT kelas_id, nama_kelas FROM kelas_madin ORDER BY nama_kelas ASC'
+      );
+      kelasList = rows.map(k => {
+        const match = (k.nama_kelas || '').match(/\d+/);
+        return {
+          kelas_id: k.kelas_id,
+          nama_kelas: k.nama_kelas,
+          tingkat: match ? match[0] : '1',
+        };
+      });
+    } catch (err) {
+      console.warn('Error fetching kelas_madin:', err);
+    }
 
-    // 2. Ambil daftar mata pelajaran dari kurikulum_madin
-    const [kurikulumList] = await pool.execute<RowDataPacket[]>(
-      'SELECT id, tingkat, mata_pelajaran, kitab FROM kurikulum_madin ORDER BY tingkat ASC, mata_pelajaran ASC'
-    );
+    // 2. Ambil daftar mata pelajaran dari kurikulum_madin (dengan fallback standar Madin)
+    let kurikulumList: any[] = [];
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        'SELECT id, tingkat, mata_pelajaran, kitab FROM kurikulum_madin ORDER BY tingkat ASC, mata_pelajaran ASC'
+      );
+      kurikulumList = rows;
+    } catch (err) {
+      console.warn('Error fetching kurikulum_madin:', err);
+    }
+
+    // Jika kurikulum di DB masih kosong, sediakan standar mata pelajaran & kitab pesantren
+    if (kurikulumList.length === 0) {
+      kurikulumList = [
+        { id: 1, tingkat: '1', mata_pelajaran: 'Fiqih', kitab: 'Safinatun Najah' },
+        { id: 2, tingkat: '1', mata_pelajaran: 'Nahwu', kitab: 'Al-Jurumiyah' },
+        { id: 3, tingkat: '1', mata_pelajaran: 'Shorof', kitab: 'Al-Amtsilah At-Tashrifiyyah' },
+        { id: 4, tingkat: '1', mata_pelajaran: 'Tauhid', kitab: 'Aqidatul Awam' },
+        { id: 5, tingkat: '1', mata_pelajaran: 'Akhlaq', kitab: 'Taisirul Kholaq' },
+        { id: 6, tingkat: '1', mata_pelajaran: 'Hadits', kitab: "Al-Arba'in An-Nawawiyyah" },
+        { id: 7, tingkat: '1', mata_pelajaran: 'Tarikh Islam', kitab: 'Khulashoh Nurul Yaqin' },
+        { id: 8, tingkat: '1', mata_pelajaran: 'Tajwid', kitab: 'Hidayatush Shibyan' },
+        { id: 9, tingkat: '1', mata_pelajaran: "Al-Qur'an & Tahfidz", kitab: "Juz 'Amma & Al-Qur'an" },
+        { id: 10, tingkat: '2', mata_pelajaran: 'Fiqih', kitab: 'Fathul Qorib' },
+        { id: 11, tingkat: '2', mata_pelajaran: 'Nahwu', kitab: "Nadhom Al-'Imrithi" },
+        { id: 12, tingkat: '2', mata_pelajaran: 'Tauhid', kitab: 'Tijan Ad-Darori' },
+        { id: 13, tingkat: '2', mata_pelajaran: 'Akhlaq', kitab: "Ta'limul Muta'allim" },
+      ];
+    }
 
     let muridWithScores: any[] = [];
 
@@ -41,9 +79,9 @@ export async function GET(request: Request) {
       const [muridRows] = await pool.execute<RowDataPacket[]>(
         `SELECT murid_id, nama, nis, jenis_kelamin
          FROM murid
-         WHERE kelas_madin_id = ? AND (status IS NULL OR status = 'aktif')
+         WHERE (kelas_madin_id = ? OR kelas_madin_2_id = ?) AND (status IS NULL OR status = 'aktif')
          ORDER BY nama ASC`,
-        [kelasId]
+        [kelasId, kelasId]
       );
 
       // 4. Jika ada mata pelajaran yang dipilih, ambil nilai yang sudah ada
@@ -67,10 +105,10 @@ export async function GET(request: Request) {
           nama: m.nama,
           nis: m.nis,
           jenis_kelamin: m.jenis_kelamin,
-          nilai_harian: score.nilai_harian !== undefined ? Number(score.nilai_harian) : null,
-          nilai_uts: score.nilai_uts !== undefined ? Number(score.nilai_uts) : null,
-          nilai_uas: score.nilai_uas !== undefined ? Number(score.nilai_uas) : null,
-          nilai_akhir: score.nilai_akhir !== undefined ? Number(score.nilai_akhir) : null,
+          nilai_harian: score.nilai_harian !== undefined && score.nilai_harian !== null ? Number(score.nilai_harian) : '',
+          nilai_uts: score.nilai_uts !== undefined && score.nilai_uts !== null ? Number(score.nilai_uts) : '',
+          nilai_uas: score.nilai_uas !== undefined && score.nilai_uas !== null ? Number(score.nilai_uas) : '',
+          nilai_akhir: score.nilai_akhir !== undefined && score.nilai_akhir !== null ? Number(score.nilai_akhir) : '',
           predikat: score.predikat || '',
           catatan: score.catatan || '',
         };

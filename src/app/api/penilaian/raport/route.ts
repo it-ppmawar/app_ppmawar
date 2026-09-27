@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       SELECT 
         m.murid_id, m.nama, m.nis, m.jenis_kelamin, m.nama_wali, m.no_hp_wali,
         COALESCE(km.nama_kelas, '-') as nama_kelas_madin,
-        COALESCE(km.tingkat, '-') as tingkat_madin,
+        COALESCE(km.nama_kelas, '-') as tingkat_madin,
         COALESCE(kq.nama_kelas, '-') as nama_kelas_quran,
         COALESCE(k.nama_kamar, '-') as nama_kamar,
         COALESCE(k.nama_asrama, '-') as nama_asrama,
