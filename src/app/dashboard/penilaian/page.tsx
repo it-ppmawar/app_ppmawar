@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, Printer, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
@@ -22,6 +22,7 @@ export default function PenilaianRaportPage() {
   const [semester, setSemester] = useState<string>('1');
   const [tahunAjaran, setTahunAjaran] = useState<string>('2025/2026');
   const [isCustomMapel, setIsCustomMapel] = useState(false);
+  const customMapelInputRef = useRef<HTMLInputElement>(null);
 
   // State Tabel Input Nilai
   const [muridList, setMuridList] = useState<any[]>([]);
@@ -51,6 +52,24 @@ export default function PenilaianRaportPage() {
     if (score >= 70) return 'C';
     if (score >= 60) return 'D';
     return 'E';
+  };
+
+  // Toggle Input Mapel Khusus (mengosongkan input dan mengarahkan kursor otomatis)
+  const handleToggleCustomMapel = () => {
+    if (!isCustomMapel) {
+      setIsCustomMapel(true);
+      setSelectedMapel('');
+      setSelectedKitab('');
+      setTimeout(() => {
+        customMapelInputRef.current?.focus();
+      }, 60);
+    } else {
+      setIsCustomMapel(false);
+      if (kurikulumList.length > 0) {
+        setSelectedMapel(kurikulumList[0].mata_pelajaran);
+        setSelectedKitab(kurikulumList[0].kitab || '');
+      }
+    }
   };
 
   // 1. Load Data Master (Kelas & Kurikulum)
@@ -359,7 +378,7 @@ export default function PenilaianRaportPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsCustomMapel(!isCustomMapel)}
+                onClick={handleToggleCustomMapel}
                 className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 px-3.5 py-1.5 rounded-full border border-amber-200/70 dark:border-amber-800/50 transition-all shadow-xs"
               >
                 <Edit3 size={13} />
@@ -396,13 +415,21 @@ export default function PenilaianRaportPage() {
                   Mata Pelajaran {selectedKitab ? `(${selectedKitab})` : ''}
                 </label>
                 {isCustomMapel ? (
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <input
+                      ref={customMapelInputRef}
                       type="text"
                       value={selectedMapel}
                       onChange={(e) => setSelectedMapel(e.target.value)}
-                      placeholder="Nama Mata Pelajaran..."
-                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="Nama Pelajaran / Fan (misal: Imla')"
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-amber-300 dark:border-amber-600 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                    />
+                    <input
+                      type="text"
+                      value={selectedKitab}
+                      onChange={(e) => setSelectedKitab(e.target.value)}
+                      placeholder="Nama Kitab / Rujukan (Opsional)"
+                      className="w-full px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                     />
                   </div>
                 ) : (
@@ -485,13 +512,17 @@ export default function PenilaianRaportPage() {
 
           {/* Tabel Input Nilai Santri */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="font-extrabold text-gray-800 dark:text-gray-100 text-base flex items-center gap-2">
+            <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-center sm:text-left">
+              <div className="w-full sm:w-auto">
+                <h3 className="font-extrabold text-gray-800 dark:text-gray-100 text-base sm:text-lg flex flex-col sm:flex-row sm:items-center justify-center sm:justify-start gap-1 sm:gap-2">
                   <span>Daftar Santri — {selectedMapel || 'Mata Pelajaran'}</span>
-                  {selectedKitab && <span className="text-xs font-normal text-amber-600 dark:text-amber-400">({selectedKitab})</span>}
+                  {selectedKitab && (
+                    <span className="text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400 block sm:inline">
+                      ({selectedKitab})
+                    </span>
+                  )}
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 sm:mt-0.5 max-w-xl mx-auto sm:mx-0">
                   Kalkulasi otomatis: Harian (30%) + UTS (30%) + UAS (40%). <strong>Nilai Akhir &amp; Predikat fleksibel dapat diubah manual</strong>.
                 </p>
               </div>
@@ -499,7 +530,7 @@ export default function PenilaianRaportPage() {
               <button
                 onClick={handleSaveScores}
                 disabled={savingScores || muridList.length === 0}
-                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all shrink-0"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all shrink-0"
               >
                 {savingScores ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
                 <span>{savingScores ? 'Menyimpan...' : 'Simpan Semua Nilai'}</span>
@@ -520,20 +551,26 @@ export default function PenilaianRaportPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs sm:text-sm">
                   <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-750 text-gray-600 dark:text-gray-300 font-bold border-b border-gray-100 dark:border-gray-700">
-                      <th className="py-3 px-3 w-10 text-center">No</th>
-                      <th className="py-3 px-4 min-w-[170px]">Nama Santri</th>
-                      <th className="py-3 px-3 w-24 text-center">NIS</th>
-                      <th className="py-3 px-2 w-24 text-center">Harian (30%)</th>
-                      <th className="py-3 px-2 w-24 text-center">UTS (30%)</th>
-                      <th className="py-3 px-2 w-24 text-center">UAS (40%)</th>
-                      <th className="py-3 px-2 w-28 text-center bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-300">
+                    <tr className="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-bold border-b border-gray-200 dark:border-gray-700 text-xs sm:text-sm">
+                      <th className="py-3.5 px-3 w-10 text-center">No</th>
+                      <th className="py-3.5 px-4 min-w-[170px]">Nama Santri</th>
+                      <th className="py-3.5 px-3 w-24 text-center">NIS</th>
+                      <th className="py-3.5 px-2.5 w-24 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <span>Kehadiran</span>
+                          <span className="text-[10px] font-normal text-gray-500 dark:text-gray-400">(Presensi)</span>
+                        </div>
+                      </th>
+                      <th className="py-3.5 px-2 w-24 text-center">Harian (30%)</th>
+                      <th className="py-3.5 px-2 w-24 text-center">UTS (30%)</th>
+                      <th className="py-3.5 px-2 w-24 text-center">UAS (40%)</th>
+                      <th className="py-3.5 px-2 w-28 text-center bg-amber-100/90 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 font-black border-l border-r border-amber-200 dark:border-amber-800/60">
                         Nilai Akhir (Auto/Manual)
                       </th>
-                      <th className="py-3 px-2 w-24 text-center bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-300">
+                      <th className="py-3.5 px-2 w-24 text-center bg-amber-100/90 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 font-black border-r border-amber-200 dark:border-amber-800/60">
                         Predikat
                       </th>
-                      <th className="py-3 px-4 min-w-[160px]">Catatan Perkembangan</th>
+                      <th className="py-3.5 px-4 min-w-[160px]">Catatan Perkembangan</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -541,7 +578,7 @@ export default function PenilaianRaportPage() {
                       const cur = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
 
                       return (
-                        <tr key={m.murid_id} className="hover:bg-amber-50/30 dark:hover:bg-gray-750/50 transition-colors">
+                        <tr key={m.murid_id} className="hover:bg-amber-50/40 dark:hover:bg-gray-700/40 transition-colors">
                           <td className="py-3 px-3 text-center text-gray-500 font-semibold">{idx + 1}</td>
                           <td className="py-3 px-4 font-bold text-gray-800 dark:text-gray-100">
                             {m.nama}
@@ -550,6 +587,23 @@ export default function PenilaianRaportPage() {
                             </span>
                           </td>
                           <td className="py-3 px-3 text-center text-gray-500 font-mono text-xs">{m.nis || '-'}</td>
+                          
+                          {/* KOLOM PROSENTASE KEHADIRAN OTOMATIS */}
+                          <td className="py-3 px-2.5 text-center">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-extrabold shadow-2xs ${
+                                (m.kehadiran_persen ?? 100) >= 85
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                                  : (m.kehadiran_persen ?? 100) >= 70
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                                  : 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+                              }`}
+                              title={m.kehadiran_total > 0 ? `${m.kehadiran_hadir} dari ${m.kehadiran_total} sesi hadir` : 'Presensi terekap otomatis'}
+                            >
+                              {m.kehadiran_persen !== undefined ? `${m.kehadiran_persen}%` : '100%'}
+                            </span>
+                          </td>
+
                           <td className="py-2 px-2 text-center">
                             <input
                               type="number"
@@ -559,7 +613,7 @@ export default function PenilaianRaportPage() {
                               value={cur.harian}
                               onChange={(e) => handleScoreChange(m.murid_id, 'harian', e.target.value)}
                               placeholder="0"
-                              className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                             />
                           </td>
                           <td className="py-2 px-2 text-center">
@@ -571,7 +625,7 @@ export default function PenilaianRaportPage() {
                               value={cur.uts}
                               onChange={(e) => handleScoreChange(m.murid_id, 'uts', e.target.value)}
                               placeholder="0"
-                              className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                             />
                           </td>
                           <td className="py-2 px-2 text-center">
@@ -583,11 +637,11 @@ export default function PenilaianRaportPage() {
                               value={cur.uas}
                               onChange={(e) => handleScoreChange(m.murid_id, 'uas', e.target.value)}
                               placeholder="0"
-                              className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                             />
                           </td>
                           {/* NILAI AKHIR (DAPAT DIUBAH MANUAL OLEH PENGGUNA/GURU) */}
-                          <td className="py-2 px-2 text-center bg-amber-50/30 dark:bg-amber-950/10">
+                          <td className="py-2 px-2 text-center bg-amber-50/40 dark:bg-amber-950/20 border-l border-r border-amber-100 dark:border-amber-900/40">
                             <input
                               type="number"
                               min="0"
@@ -596,16 +650,16 @@ export default function PenilaianRaportPage() {
                               value={cur.akhir}
                               onChange={(e) => handleScoreChange(m.murid_id, 'akhir', e.target.value)}
                               placeholder="0"
-                              className="w-20 text-center py-1.5 px-2 bg-white dark:bg-gray-750 rounded-lg border-2 border-amber-300 dark:border-amber-600/70 font-black text-amber-800 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                              className="w-20 text-center py-1.5 px-2 bg-white dark:bg-gray-900 rounded-lg border-2 border-amber-400 dark:border-amber-500 font-black text-amber-900 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
                               title="Nilai Akhir: Terhitung otomatis, dapat diedit langsung jika ingin override manual"
                             />
                           </td>
                           {/* PREDIKAT (DAPAT DIUBAH MANUAL OLEH PENGGUNA/GURU) */}
-                          <td className="py-2 px-2 text-center bg-amber-50/30 dark:bg-amber-950/10">
+                          <td className="py-2 px-2 text-center bg-amber-50/40 dark:bg-amber-950/20 border-r border-amber-100 dark:border-amber-900/40">
                             <select
                               value={cur.predikat}
                               onChange={(e) => handleScoreChange(m.murid_id, 'predikat', e.target.value)}
-                              className="w-16 text-center py-1.5 px-1 bg-white dark:bg-gray-750 rounded-lg border border-amber-300 dark:border-amber-600/70 font-black text-xs text-amber-800 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                              className="w-16 text-center py-1.5 px-1 bg-white dark:bg-gray-900 rounded-lg border border-amber-400 dark:border-amber-500 font-black text-xs text-amber-900 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
                             >
                               <option value="">-</option>
                               <option value="A">A</option>
@@ -621,7 +675,7 @@ export default function PenilaianRaportPage() {
                               value={cur.catatan}
                               onChange={(e) => handleScoreChange(m.murid_id, 'catatan', e.target.value)}
                               placeholder="Catatan kemajuan..."
-                              className="w-full py-1.5 px-2.5 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              className="w-full py-1.5 px-2.5 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
                             />
                           </td>
                         </tr>

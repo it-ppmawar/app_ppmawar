@@ -85,7 +85,34 @@ export async function GET(request: Request) {
           [kelasId, kelasId]
         );
 
-        // 4. Jika ada mata pelajaran yang dipilih, ambil nilai yang sudah ada
+        // 4. Ambil rekap kehadiran dari tabel absensi untuk seluruh santri di kelas ini
+        const attendanceMap: Record<number, { persen: number; hadir: number; total: number }> = {};
+        if (muridRows.length > 0) {
+          try {
+            const muridIds = muridRows.map(m => m.murid_id);
+            const placeholders = muridIds.map(() => '?').join(',');
+            const [attRows] = await pool.execute<RowDataPacket[]>(
+              `SELECT 
+                murid_id,
+                SUM(CASE WHEN LOWER(status) = 'hadir' THEN 1 ELSE 0 END) as hadir_count,
+                COUNT(*) as total_sesi
+               FROM absensi
+               WHERE murid_id IN (${placeholders})
+               GROUP BY murid_id`,
+              muridIds
+            );
+            attRows.forEach((r: any) => {
+              const hadir = Number(r.hadir_count || 0);
+              const total = Number(r.total_sesi || 0);
+              const persen = total > 0 ? Math.round((hadir / total) * 100) : 100;
+              attendanceMap[r.murid_id] = { persen, hadir, total };
+            });
+          } catch (attErr) {
+            console.warn('Error fetching attendance for penilaian:', attErr);
+          }
+        }
+
+        // 5. Jika ada mata pelajaran yang dipilih, ambil nilai yang sudah ada
         let existingScoresMap: Record<number, any> = {};
         if (mapelName) {
           try {
@@ -105,11 +132,15 @@ export async function GET(request: Request) {
 
         muridWithScores = muridRows.map(m => {
           const score = existingScoresMap[m.murid_id] || {};
+          const att = attendanceMap[m.murid_id] || { persen: 100, hadir: 0, total: 0 };
           return {
             murid_id: m.murid_id,
             nama: m.nama,
             nis: m.nis,
             jenis_kelamin: m.jenis_kelamin,
+            kehadiran_persen: att.total > 0 ? att.persen : 100,
+            kehadiran_total: att.total,
+            kehadiran_hadir: att.hadir,
             nilai_harian: score.nilai_harian !== undefined && score.nilai_harian !== null ? Number(score.nilai_harian) : '',
             nilai_uts: score.nilai_uts !== undefined && score.nilai_uts !== null ? Number(score.nilai_uts) : '',
             nilai_uas: score.nilai_uas !== undefined && score.nilai_uas !== null ? Number(score.nilai_uas) : '',
