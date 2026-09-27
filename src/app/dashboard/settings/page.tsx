@@ -1594,23 +1594,25 @@ export default function SettingsPage() {
                 <Calendar size={18} className="text-blue-500" />
                 Struktur Tab di Spreadsheet
               </h3>
-              <div className="mt-3 space-y-1.5 text-sm">
-                {[
-                  { tab: 'Data_Santri', mode: 'Overwrite (Timpa Baru)', color: 'blue' },
-                  { tab: 'Data_Guru', mode: 'Overwrite (Timpa Baru)', color: 'blue' },
-                  { tab: 'Jadwal', mode: 'Overwrite (Timpa Baru)', color: 'blue' },
-                  { tab: 'Rekap_Absensi', mode: 'Append (Tambah ke Bawah)', color: 'amber' },
-                  { tab: 'Ketertiban', mode: 'Append (Tambah ke Bawah)', color: 'amber' },
-                ].map(item => (
-                  <div key={item.tab} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-1 border-b border-gray-100/50 dark:border-gray-800/30 last:border-0">
-                    <span className="font-mono text-xs text-gray-600 dark:text-gray-400">{item.tab}</span>
-                    <span className={`text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full w-fit ${
-                      item.color === 'blue'
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                    }`}>{item.mode}</span>
-                  </div>
-                ))}
+              <div className="mt-3 overflow-x-auto pb-1 scrollbar-thin">
+                <div className="min-w-[280px] sm:min-w-full space-y-1.5 text-sm">
+                  {[
+                    { tab: 'Data_Santri', mode: 'Overwrite (Timpa Baru)', color: 'blue' },
+                    { tab: 'Data_Guru', mode: 'Overwrite (Timpa Baru)', color: 'blue' },
+                    { tab: 'Jadwal', mode: 'Overwrite (Timpa Baru)', color: 'blue' },
+                    { tab: 'Rekap_Absensi', mode: 'Append (Tambah ke Bawah)', color: 'amber' },
+                    { tab: 'Ketertiban', mode: 'Append (Tambah ke Bawah)', color: 'amber' },
+                  ].map(item => (
+                    <div key={item.tab} className="flex items-center justify-between gap-3 py-1.5 px-2 rounded-lg hover:bg-gray-100/60 dark:hover:bg-gray-800/60 transition-colors border-b border-gray-100/60 dark:border-gray-800/40 last:border-0">
+                      <span className="font-mono text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">{item.tab}</span>
+                      <span className={`text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 text-right ml-auto ${
+                        item.color === 'blue'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                      }`}>{item.mode}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
             {spreadsheetUrl && (

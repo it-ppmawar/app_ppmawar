@@ -435,14 +435,16 @@ export default function DashboardPage() {
         {/* Khusus Admin & Staff - Statistik Guru (Diperinci per Kategori) */}
         {(role === 'admin' || role === 'staff') && (
           <div className="space-y-3 max-w-5xl mx-auto w-full">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <Activity size={16} className="text-green-600 dark:text-green-400" />
-                Statistik Absensi Dewan Guru & Pembina Terbaru
+            <div className="px-1">
+              <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span className="flex items-center gap-1.5">
+                  <Activity size={16} className="text-green-600 dark:text-green-400 shrink-0" />
+                  Statistik Absensi Dewan Guru &amp; Pembina Terbaru
+                </span>
+                <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-bold whitespace-nowrap align-middle">
+                  Hari ini &amp; Kemarin
+                </span>
               </h3>
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/60 px-2 py-0.5 rounded-full">
-                Hari ini &amp; Kemarin
-              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
