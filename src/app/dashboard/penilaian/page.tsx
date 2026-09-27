@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, Printer, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
   ShieldCheck, AlertTriangle, FileText, ChevronRight, ChevronDown, Sparkles, Download,
-  Edit3
+  Edit3, ArrowUpDown, ArrowUp, ArrowDown, X
 } from 'lucide-react';
 
 export default function PenilaianRaportPage() {
@@ -33,6 +33,125 @@ export default function PenilaianRaportPage() {
   const [loadingMurid, setLoadingMurid] = useState(false);
   const [savingScores, setSavingScores] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+
+  // Fitur Pencarian Universal & Pengurutan Kolom (Sorting)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<string>('no');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const filteredAndSortedMurid = useMemo(() => {
+    let list = muridList.map((m, idx) => ({ ...m, original_no: idx + 1 }));
+
+    // 1. Universal Search Filter (Nama, NIS, Kelas, Kamar, Asrama, Alamat, Nilai, Predikat, Catatan)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(m => {
+        const cur = scores[m.murid_id] || {};
+        const fields = [
+          m.nama || '',
+          m.nis || '',
+          m.nama_kelas || '',
+          m.nama_kamar || '',
+          m.nama_asrama || '',
+          m.alamat || '',
+          m.jenis_kelamin || '',
+          String(m.kehadiran_persen ?? ''),
+          String(cur.harian ?? m.nilai_harian ?? ''),
+          String(cur.uts ?? m.nilai_uts ?? ''),
+          String(cur.uas ?? m.nilai_uas ?? ''),
+          String(cur.akhir ?? m.nilai_akhir ?? ''),
+          String(cur.predikat ?? m.predikat ?? ''),
+          String(cur.catatan ?? m.catatan ?? ''),
+        ];
+        return fields.some(f => f.toLowerCase().includes(q));
+      });
+    }
+
+    // 2. Sorting
+    if (sortField !== 'no') {
+      list.sort((a, b) => {
+        const curA = scores[a.murid_id] || {};
+        const curB = scores[b.murid_id] || {};
+
+        switch (sortField) {
+          case 'nama': {
+            const res = (a.nama || '').localeCompare(b.nama || '', 'id');
+            return sortOrder === 'asc' ? res : -res;
+          }
+          case 'nama_kelas': {
+            const res = (a.nama_kelas || '').localeCompare(b.nama_kelas || '', 'id');
+            return sortOrder === 'asc' ? res : -res;
+          }
+          case 'kamar': {
+            const valA = `${a.nama_kamar || ''} ${a.nama_asrama || ''}`.trim();
+            const valB = `${b.nama_kamar || ''} ${b.nama_asrama || ''}`.trim();
+            const res = valA.localeCompare(valB, 'id');
+            return sortOrder === 'asc' ? res : -res;
+          }
+          case 'alamat': {
+            const res = (a.alamat || '').localeCompare(b.alamat || '', 'id');
+            return sortOrder === 'asc' ? res : -res;
+          }
+          case 'nis': {
+            const res = (a.nis || '').localeCompare(b.nis || '', 'id');
+            return sortOrder === 'asc' ? res : -res;
+          }
+          case 'kehadiran': {
+            const valA = Number(a.kehadiran_persen ?? 100);
+            const valB = Number(b.kehadiran_persen ?? 100);
+            return sortOrder === 'asc' ? valA - valB : valB - valA;
+          }
+          case 'harian': {
+            const valA = parseFloat(curA.harian !== undefined && curA.harian !== '' ? curA.harian : a.nilai_harian) || 0;
+            const valB = parseFloat(curB.harian !== undefined && curB.harian !== '' ? curB.harian : b.nilai_harian) || 0;
+            return sortOrder === 'asc' ? valA - valB : valB - valA;
+          }
+          case 'uts': {
+            const valA = parseFloat(curA.uts !== undefined && curA.uts !== '' ? curA.uts : a.nilai_uts) || 0;
+            const valB = parseFloat(curB.uts !== undefined && curB.uts !== '' ? curB.uts : b.nilai_uts) || 0;
+            return sortOrder === 'asc' ? valA - valB : valB - valA;
+          }
+          case 'uas': {
+            const valA = parseFloat(curA.uas !== undefined && curA.uas !== '' ? curA.uas : a.nilai_uas) || 0;
+            const valB = parseFloat(curB.uas !== undefined && curB.uas !== '' ? curB.uas : b.nilai_uas) || 0;
+            return sortOrder === 'asc' ? valA - valB : valB - valA;
+          }
+          case 'akhir': {
+            const valA = parseFloat(curA.akhir !== undefined && curA.akhir !== '' ? curA.akhir : a.nilai_akhir) || 0;
+            const valB = parseFloat(curB.akhir !== undefined && curB.akhir !== '' ? curB.akhir : b.nilai_akhir) || 0;
+            return sortOrder === 'asc' ? valA - valB : valB - valA;
+          }
+          case 'predikat': {
+            const valA = (curA.predikat || a.predikat || '').toUpperCase();
+            const valB = (curB.predikat || b.predikat || '').toUpperCase();
+            const res = valA.localeCompare(valB, 'id');
+            return sortOrder === 'asc' ? res : -res;
+          }
+          case 'catatan': {
+            const valA = (curA.catatan || a.catatan || '').toLowerCase();
+            const valB = (curB.catatan || b.catatan || '').toLowerCase();
+            const res = valA.localeCompare(valB, 'id');
+            return sortOrder === 'asc' ? res : -res;
+          }
+          default:
+            return 0;
+        }
+      });
+    } else if (sortOrder === 'desc') {
+      list.reverse();
+    }
+
+    return list;
+  }, [muridList, searchQuery, sortField, sortOrder, scores]);
 
   // State Raport
   const [selectedMuridId, setSelectedMuridId] = useState<string>('');
@@ -606,43 +725,282 @@ export default function PenilaianRaportPage() {
                 <p className="text-sm font-semibold">Belum ada santri terdaftar di kelas ini.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs sm:text-sm">
-                  <thead>
-                    <tr className="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-bold border-b border-gray-200 dark:border-gray-700 text-xs sm:text-sm">
-                      <th className="py-3.5 px-3 w-10 text-center">No</th>
-                      <th className="py-3.5 px-4 min-w-[170px]">Nama Santri</th>
-                      <th className="py-3.5 px-3 w-24 text-center">NIS</th>
-                      <th className="py-3.5 px-2.5 w-24 text-center">
-                        <div className="flex flex-col items-center justify-center">
-                          <span>Kehadiran</span>
-                          <span className="text-[10px] font-normal text-gray-500 dark:text-gray-400">
-                            {isLegerMode ? '(Total Sesi)' : '(Presensi)'}
-                          </span>
-                        </div>
-                      </th>
-                      <th className="py-3.5 px-2 w-24 text-center">
-                        {isLegerMode ? 'Harian (Rerata)' : 'Harian (30%)'}
-                      </th>
-                      <th className="py-3.5 px-2 w-24 text-center">
-                        {isLegerMode ? 'UTS (Rerata)' : 'UTS (30%)'}
-                      </th>
-                      <th className="py-3.5 px-2 w-24 text-center">
-                        {isLegerMode ? 'UAS (Rerata)' : 'UAS (40%)'}
-                      </th>
-                      <th className="py-3.5 px-2 w-28 text-center bg-amber-100/90 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 font-black border-l border-r border-amber-200 dark:border-amber-800/60">
-                        {isLegerMode ? 'Nilai Akhir (Rerata)' : 'Nilai Akhir (Auto/Manual)'}
-                      </th>
-                      <th className="py-3.5 px-2 w-24 text-center bg-amber-100/90 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 font-black border-r border-amber-200 dark:border-amber-800/60">
-                        {isLegerMode ? 'Predikat Umum' : 'Predikat'}
-                      </th>
-                      <th className="py-3.5 px-4 min-w-[160px]">
-                        {isLegerMode ? 'Kelengkapan Nilai' : 'Catatan Perkembangan'}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {muridList.map((m, idx) => {
+              <>
+                {/* Toolbar Pencarian & Filter Cepat */}
+                <div className="p-3 sm:p-4 bg-gray-50/70 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="relative w-full sm:max-w-md">
+                    <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Cari santri, NIS, kelas, kamar, alamat, nilai..."
+                      className="w-full pl-9 pr-8 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium text-gray-800 dark:text-gray-100 placeholder:text-gray-400 shadow-2xs"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
+                        title="Hapus pencarian"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-2 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    {searchQuery && (
+                      <span className="bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 px-2.5 py-1 rounded-lg text-xs font-bold border border-amber-300 dark:border-amber-800/60">
+                        Hasil: {filteredAndSortedMurid.length} dari {muridList.length} santri
+                      </span>
+                    )}
+                    <div className="flex items-center gap-1.5 text-[11px]">
+                      <span className="text-gray-400">Urut:</span>
+                      <span className="font-bold text-gray-700 dark:text-gray-200 capitalize">
+                        {sortField === 'no' ? 'Nomor' : sortField === 'nama_kelas' ? 'Kelas' : sortField} ({sortOrder === 'asc' ? 'A-Z / Naik' : 'Z-A / Turun'})
+                      </span>
+                      {sortField !== 'no' && (
+                        <button
+                          type="button"
+                          onClick={() => { setSortField('no'); setSortOrder('asc'); }}
+                          className="ml-1 text-[10px] text-amber-600 dark:text-amber-400 hover:underline font-semibold"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                    <thead>
+                      <tr className="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-bold border-b border-gray-200 dark:border-gray-700 text-xs sm:text-sm">
+                        {/* Kolom No */}
+                        <th
+                          onClick={() => handleSort('no')}
+                          className="py-3.5 px-3 w-12 text-center cursor-pointer select-none hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                          title="Klik untuk mengurutkan Nomor Urut Asli"
+                        >
+                          <div className="inline-flex items-center justify-center gap-1">
+                            <span>No</span>
+                            {sortField === 'no' ? (
+                              sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-30" />
+                            )}
+                          </div>
+                        </th>
+
+                        {/* Kolom Nama Santri + Sub-sort: Kelas, Kamar, Alamat */}
+                        <th className="py-3.5 px-4 min-w-[210px]">
+                          <div className="flex items-center justify-between gap-1 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => handleSort('nama')}
+                              className="inline-flex items-center gap-1 font-bold hover:text-amber-600 dark:hover:text-amber-400 transition"
+                              title="Klik untuk mengurutkan Nama Santri (A-Z)"
+                            >
+                              <span>Nama Santri</span>
+                              {sortField === 'nama' ? (
+                                sortOrder === 'asc' ? <ArrowUp size={13} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={13} className="text-amber-600 dark:text-amber-400" />
+                              ) : (
+                                <ArrowUpDown size={12} className="opacity-35" />
+                              )}
+                            </button>
+                            <div className="flex items-center gap-1 text-[10px] font-normal">
+                              <button
+                                type="button"
+                                onClick={() => handleSort('nama_kelas')}
+                                title="Urutkan berdasarkan Rombel/Kelas"
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold border transition ${
+                                  sortField === 'nama_kelas'
+                                    ? 'bg-amber-600 text-white border-amber-600'
+                                    : 'bg-white dark:bg-gray-800 text-gray-500 hover:text-amber-600 border-gray-200 dark:border-gray-700'
+                                }`}
+                              >
+                                Kelas {sortField === 'nama_kelas' && (sortOrder === 'asc' ? '↑' : '↓')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSort('kamar')}
+                                title="Urutkan berdasarkan Kamar/Asrama"
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold border transition ${
+                                  sortField === 'kamar'
+                                    ? 'bg-amber-600 text-white border-amber-600'
+                                    : 'bg-white dark:bg-gray-800 text-gray-500 hover:text-amber-600 border-gray-200 dark:border-gray-700'
+                                }`}
+                              >
+                                Kamar {sortField === 'kamar' && (sortOrder === 'asc' ? '↑' : '↓')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSort('alamat')}
+                                title="Urutkan berdasarkan Alamat"
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold border transition ${
+                                  sortField === 'alamat'
+                                    ? 'bg-amber-600 text-white border-amber-600'
+                                    : 'bg-white dark:bg-gray-800 text-gray-500 hover:text-amber-600 border-gray-200 dark:border-gray-700'
+                                }`}
+                              >
+                                Alamat {sortField === 'alamat' && (sortOrder === 'asc' ? '↑' : '↓')}
+                              </button>
+                            </div>
+                          </div>
+                        </th>
+
+                        {/* Kolom NIS */}
+                        <th
+                          onClick={() => handleSort('nis')}
+                          className="py-3.5 px-3 w-24 text-center cursor-pointer select-none hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                          title="Klik untuk mengurutkan NIS"
+                        >
+                          <div className="inline-flex items-center justify-center gap-1">
+                            <span>NIS</span>
+                            {sortField === 'nis' ? (
+                              sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-30" />
+                            )}
+                          </div>
+                        </th>
+
+                        {/* Kolom Kehadiran */}
+                        <th
+                          onClick={() => handleSort('kehadiran')}
+                          className="py-3.5 px-2.5 w-24 text-center cursor-pointer select-none hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                          title="Klik untuk mengurutkan Persentase Kehadiran"
+                        >
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="inline-flex items-center gap-1">
+                              <span>Kehadiran</span>
+                              {sortField === 'kehadiran' ? (
+                                sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
+                              ) : (
+                                <ArrowUpDown size={11} className="opacity-30" />
+                              )}
+                            </div>
+                            <span className="text-[10px] font-normal text-gray-500 dark:text-gray-400">
+                              {isLegerMode ? '(Total Sesi)' : '(Presensi)'}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* Kolom Harian */}
+                        <th
+                          onClick={() => handleSort('harian')}
+                          className="py-3.5 px-2 w-24 text-center cursor-pointer select-none hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                          title="Klik untuk mengurutkan Nilai Harian"
+                        >
+                          <div className="inline-flex items-center justify-center gap-1">
+                            <span>{isLegerMode ? 'Harian (Rerata)' : 'Harian (30%)'}</span>
+                            {sortField === 'harian' ? (
+                              sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-30" />
+                            )}
+                          </div>
+                        </th>
+
+                        {/* Kolom UTS */}
+                        <th
+                          onClick={() => handleSort('uts')}
+                          className="py-3.5 px-2 w-24 text-center cursor-pointer select-none hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                          title="Klik untuk mengurutkan Nilai UTS"
+                        >
+                          <div className="inline-flex items-center justify-center gap-1">
+                            <span>{isLegerMode ? 'UTS (Rerata)' : 'UTS (30%)'}</span>
+                            {sortField === 'uts' ? (
+                              sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-30" />
+                            )}
+                          </div>
+                        </th>
+
+                        {/* Kolom UAS */}
+                        <th
+                          onClick={() => handleSort('uas')}
+                          className="py-3.5 px-2 w-24 text-center cursor-pointer select-none hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                          title="Klik untuk mengurutkan Nilai UAS"
+                        >
+                          <div className="inline-flex items-center justify-center gap-1">
+                            <span>{isLegerMode ? 'UAS (Rerata)' : 'UAS (40%)'}</span>
+                            {sortField === 'uas' ? (
+                              sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-30" />
+                            )}
+                          </div>
+                        </th>
+
+                        {/* Kolom Nilai Akhir */}
+                        <th
+                          onClick={() => handleSort('akhir')}
+                          className="py-3.5 px-2 w-28 text-center cursor-pointer select-none bg-amber-100/90 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 font-black border-l border-r border-amber-200 dark:border-amber-800/60 hover:bg-amber-200/90 transition-colors"
+                          title="Klik untuk mengurutkan Nilai Akhir"
+                        >
+                          <div className="inline-flex items-center justify-center gap-1">
+                            <span>{isLegerMode ? 'Nilai Akhir (Rerata)' : 'Nilai Akhir'}</span>
+                            {sortField === 'akhir' ? (
+                              sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-700 dark:text-amber-300" /> : <ArrowDown size={12} className="text-amber-700 dark:text-amber-300" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-30" />
+                            )}
+                          </div>
+                        </th>
+
+                        {/* Kolom Predikat */}
+                        <th
+                          onClick={() => handleSort('predikat')}
+                          className="py-3.5 px-2 w-24 text-center cursor-pointer select-none bg-amber-100/90 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 font-black border-r border-amber-200 dark:border-amber-800/60 hover:bg-amber-200/90 transition-colors"
+                          title="Klik untuk mengurutkan Predikat"
+                        >
+                          <div className="inline-flex items-center justify-center gap-1">
+                            <span>{isLegerMode ? 'Predikat Umum' : 'Predikat'}</span>
+                            {sortField === 'predikat' ? (
+                              sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-700 dark:text-amber-300" /> : <ArrowDown size={12} className="text-amber-700 dark:text-amber-300" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-30" />
+                            )}
+                          </div>
+                        </th>
+
+                        {/* Kolom Catatan / Kelengkapan Nilai */}
+                        <th
+                          onClick={() => handleSort('catatan')}
+                          className="py-3.5 px-4 min-w-[160px] cursor-pointer select-none hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                          title="Klik untuk mengurutkan Catatan/Kelengkapan"
+                        >
+                          <div className="inline-flex items-center gap-1">
+                            <span>{isLegerMode ? 'Kelengkapan Nilai' : 'Catatan Perkembangan'}</span>
+                            {sortField === 'catatan' ? (
+                              sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
+                            ) : (
+                              <ArrowUpDown size={11} className="opacity-30" />
+                            )}
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {filteredAndSortedMurid.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                            <AlertCircle size={24} className="mx-auto text-amber-500 mb-2" />
+                            <p className="font-semibold text-xs sm:text-sm">Tidak ditemukan data santri yang cocok dengan &quot;{searchQuery}&quot;</p>
+                            <button
+                              type="button"
+                              onClick={() => setSearchQuery('')}
+                              className="mt-2 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline"
+                            >
+                              Reset Pencarian
+                            </button>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredAndSortedMurid.map((m, idx) => {
                       const cur = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
 
                       return (
@@ -802,10 +1160,11 @@ export default function PenilaianRaportPage() {
                           )}
                         </tr>
                       );
-                    })}
+                    }))}
                   </tbody>
                 </table>
               </div>
+            </>
             )}
           </div>
         </div>

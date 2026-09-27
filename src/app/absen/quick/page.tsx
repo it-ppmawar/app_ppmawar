@@ -1592,19 +1592,28 @@ function QuickAbsenContent() {
                         {/* Avatar / Foto Santri (Klik untuk Zoom) */}
                         <div
                           onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
-                          className={`w-12 h-12 rounded-xl shrink-0 overflow-hidden border border-slate-200 dark:border-slate-700 flex items-center justify-center relative mt-0.5 ${fotoUrl ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''}`}
-                          style={{ backgroundColor: getAvatarColor(m.nama) }}
+                          className={`w-12 h-12 rounded-xl shrink-0 overflow-hidden border border-slate-200 dark:border-slate-700 relative mt-0.5 select-none ${fotoUrl ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''}`}
                           title={fotoUrl ? 'Klik untuk memperbesar foto' : ''}
                         >
-                          {fotoUrl ? (
+                          {/* Lapisan Dasar: Inisial Abjad nama santri */}
+                          <div
+                            className="absolute inset-0 flex items-center justify-center"
+                            style={{ backgroundColor: getAvatarColor(m.nama) }}
+                          >
+                            <span className="text-white font-extrabold text-xs tracking-wider">{getInitials(m.nama)}</span>
+                          </div>
+                          {/* Lapisan Foto: Menutupi inisial jika foto valid; jika error/404, sembunyikan gambar */}
+                          {fotoUrl && (
                             <img
                               src={fotoUrl}
                               alt={m.nama}
-                              className="w-full h-full object-cover"
-                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.opacity = '0';
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                              }}
                             />
-                          ) : (
-                            <span className="text-white font-bold text-xs">{getInitials(m.nama)}</span>
                           )}
                         </div>
 

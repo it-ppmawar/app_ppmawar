@@ -76,6 +76,18 @@ const ALL_SEARCH_ITEMS: SearchItem[] = [
     textColor: 'text-purple-700 dark:text-purple-400',
   },
   {
+    id: 'penilaian',
+    label: 'Penilaian & Raport Digital',
+    description: 'Input & kelola nilai santri, raport madin & quran',
+    href: '/dashboard/penilaian',
+    type: 'page',
+    tags: ['penilaian', 'nilai', 'raport', 'rapor', 'ulangan', 'ujian', 'uts', 'uas', 'harian', 'predikat', 'laporan nilai', 'nilai santri', 'nilai madin', 'nilai quran', 'rekap nilai', 'kitab', 'mata pelajaran', 'semester', 'tahun ajaran'],
+    roles: ['admin', 'staff', 'guru', 'pengurus_asrama', 'pengasuh'],
+    icon: FileText,
+    color: 'bg-violet-100 dark:bg-violet-900/40',
+    textColor: 'text-violet-700 dark:text-violet-400',
+  },
+  {
     id: 'absen-guru',
     label: 'Absen Dewan Guru',
     description: 'Daftar hadir guru & pembina',

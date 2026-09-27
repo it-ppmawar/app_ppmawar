@@ -1790,20 +1790,21 @@ function InputAbsenContent() {
                                     <div
                                       onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
                                       style={{ backgroundColor: getAvatarColor(item.nama) }}
-                                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-extrabold shadow-sm shrink-0 uppercase select-none overflow-hidden ${
+                                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-extrabold shadow-sm shrink-0 uppercase select-none relative overflow-hidden ${
                                         fotoUrl ? 'cursor-pointer hover:opacity-90 hover:scale-105 transition-all' : ''
                                       }`}
                                       title={fotoUrl ? 'Klik untuk memperbesar foto' : ''}
                                     >
-                                      {fotoUrl ? (
+                                      <div className="absolute inset-0 flex items-center justify-center">
+                                        <span className="text-white text-xs font-extrabold">{getInitials(item.nama)}</span>
+                                      </div>
+                                      {fotoUrl && (
                                         <img
                                           src={fotoUrl}
                                           alt={item.nama}
-                                          className="w-full h-full object-cover"
+                                          className="absolute inset-0 w-full h-full object-cover"
                                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                         />
-                                      ) : (
-                                        <span>{getInitials(item.nama)}</span>
                                       )}
                                     </div>
                                     <div>
@@ -1918,15 +1919,16 @@ function InputAbsenContent() {
                               style={{ backgroundColor: getAvatarColor(item.nama) }}
                               title={fotoUrl ? 'Klik untuk memperbesar foto' : ''}
                             >
-                              {fotoUrl ? (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">{getInitials(item.nama)}</span>
+                              </div>
+                              {fotoUrl && (
                                 <img
                                   src={fotoUrl}
                                   alt={item.nama}
-                                  className="w-full h-full object-cover"
+                                  className="absolute inset-0 w-full h-full object-cover"
                                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                 />
-                              ) : (
-                                <span className="text-white font-bold text-xs">{getInitials(item.nama)}</span>
                               )}
                             </div>
 
