@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CalendarCheck, Clock, BookOpen, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, QrCode, Brain, Lock, LockOpen, CheckCircle, Hourglass, HeartPulse, User } from 'lucide-react';
+import { CalendarCheck, Clock, BookOpen, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, QrCode, Brain, Lock, LockOpen, CheckCircle, Hourglass, HeartPulse, User, ClipboardCheck } from 'lucide-react';
 import Link from 'next/link';
 
 type TipeFilter = 'semua' | 'quran' | 'madin' | 'kegiatan';
@@ -106,6 +106,24 @@ export default function InputAbsenPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
+      {/* Switcher Tab Mode Absensi Santri: Mode Manual vs Mode Scan */}
+      <div className="bg-gray-100 dark:bg-gray-800/90 p-1.5 rounded-2xl flex items-center gap-1.5 shadow-inner border border-gray-200/60 dark:border-gray-700/60">
+        <Link
+          href="/dashboard/absen"
+          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-xs sm:text-sm transition-all bg-white dark:bg-gray-700 text-green-700 dark:text-green-300 shadow-sm border border-gray-200/60 dark:border-gray-600"
+        >
+          <ClipboardCheck size={18} />
+          <span>Mode Manual (Pilih Jadwal)</span>
+        </Link>
+        <Link
+          href="/dashboard/scan-absen"
+          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
+        >
+          <QrCode size={18} />
+          <span>Mode Scan (QR &amp; Wajah AI)</span>
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 rounded-3xl p-6 shadow-sm border border-blue-200 dark:border-blue-800/50 relative overflow-hidden transition-colors duration-300">
         <div className="absolute top-0 right-0 -mt-4 -mr-4 text-blue-200/50 dark:text-blue-800/30">

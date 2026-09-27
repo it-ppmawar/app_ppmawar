@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2, Megaphone, Shield, ChevronDown, Database, Layers, Sparkles, Send, ExternalLink, Globe, Smartphone, Search } from 'lucide-react';
+import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2, Megaphone, Shield, ChevronDown, Database, Layers, Sparkles, Send, ExternalLink, Globe, Smartphone, Search, Award } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
@@ -711,13 +711,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </div>
                           </li>
                           <li>
-                            <Link href="/dashboard/absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/absen' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'}`}>
-                              <ClipboardCheck size={18} /> <span className="text-sm">Input Absensi</span>
-                            </Link>
-                          </li>
-                          <li>
-                            <Link href="/dashboard/scan-absen" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/scan-absen' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
-                              <QrCode size={18} /> <span className="text-sm">Scan Absensi</span>
+                            <Link
+                              href="/dashboard/absen"
+                              onClick={() => setShowSidebar(false)}
+                              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                                pathname === '/dashboard/absen' || pathname.startsWith('/dashboard/absen/') || pathname.startsWith('/dashboard/scan-absen')
+                                  ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold'
+                                  : 'hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 font-bold'
+                              }`}
+                            >
+                              <ClipboardCheck size={18} /> <span className="text-sm">Absensi Santri</span>
                             </Link>
                           </li>
                           <li>
@@ -875,6 +878,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <li>
                               <Link href="/dashboard/kurikulum" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/kurikulum' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-bold' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold'}`}>
                                 <BookOpen size={18} /> <span className="text-sm">Kurikulum Madin</span>
+                              </Link>
+                            </li>
+                            <li>
+                              <Link href="/dashboard/penilaian" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/penilaian') || pathname.startsWith('/dashboard/raport') ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-bold' : 'hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 font-bold'}`}>
+                                <Award size={18} /> <span className="text-sm">Penilaian &amp; Raport</span>
                               </Link>
                             </li>
                           </>

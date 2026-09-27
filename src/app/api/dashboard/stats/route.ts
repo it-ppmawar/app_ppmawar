@@ -393,6 +393,7 @@ export async function GET() {
       }
 
       return {
+        murid_id: r.murid_id,
         nama: r.nama || '-',
         kelas: r.kelas_nama || '-',
         status: statusClean,
@@ -400,6 +401,28 @@ export async function GET() {
         tanggal: rawTgl,
         sumber,
       };
+    };
+
+    // Helper deduplikasi santri per hari agar tidak tampil ganda jika ada >1 jadwal pada hari yang sama
+    const deduplicateSantriList = (list: any[]) => {
+      const seen = new Map<string, any>();
+      for (const item of list) {
+        const key = `${item.murid_id || item.nama}_${item.tanggal}`;
+        if (!seen.has(key)) {
+          seen.set(key, { ...item });
+        } else {
+          const existing = seen.get(key);
+          if (!existing.keterangan && item.keterangan) {
+            existing.keterangan = item.keterangan;
+          } else if (existing.keterangan && item.keterangan && !existing.keterangan.includes(item.keterangan)) {
+            existing.keterangan = `${existing.keterangan}, ${item.keterangan}`;
+          }
+          if (existing.status === 'Alpha' && item.status !== 'Alpha') {
+            existing.status = item.status;
+          }
+        }
+      }
+      return Array.from(seen.values());
     };
 
     // 4. PERIZINAN & PELANGGARAN TERBARU (Hanya hari ini dan kemarin)
@@ -479,12 +502,12 @@ export async function GET() {
         });
       };
 
-      perizinanRows = sortSantriList([
+      perizinanRows = sortSantriList(deduplicateSantriList([
         ...((madinRows[0] || []).map((r: any) => mapSantriRow(r, 'Madin', 'Izin'))),
         ...((quranRows[0] || []).map((r: any) => mapSantriRow(r, "Qur'an", 'Izin'))),
         ...((kegiatanRows[0] || []).map((r: any) => mapSantriRow(r, 'Kegiatan', 'Izin'))),
         ...((pelanggaranRows[0] || []).map((r: any) => mapSantriRow(r, 'Perizinan', 'Izin'))),
-      ]);
+      ]));
     } catch (e) {
       console.warn('perizinan query error:', e);
     }
@@ -558,12 +581,12 @@ export async function GET() {
         });
       };
 
-      pelanggaranRows = sortPelanggaranList([
+      pelanggaranRows = sortPelanggaranList(deduplicateSantriList([
         ...((madinRows[0] || []).map((r: any) => mapSantriRow(r, 'Madin', 'Alpha'))),
         ...((quranRows[0] || []).map((r: any) => mapSantriRow(r, "Qur'an", 'Alpha'))),
         ...((kegiatanRows[0] || []).map((r: any) => mapSantriRow(r, 'Kegiatan', 'Alpha'))),
         ...((pelanggaranRowsDb[0] || []).map((r: any) => mapSantriRow(r, 'Pelanggaran', r.status || 'Pelanggaran'))),
-      ]);
+      ]));
     } catch (e) {
       console.warn('pelanggaran query error:', e);
     }
