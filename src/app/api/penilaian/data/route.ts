@@ -168,16 +168,16 @@ export async function GET(request: Request) {
         if (role === 'guru' && guruId) {
           whereMurid = `WHERE (m.kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?) 
                          OR m.kelas_madin_2_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?)
-                         OR km.guru_id = ?)`;
+                         OR km1.guru_id = ?)`;
           paramsMurid = [guruId, guruId, guruId];
         } else if (role === 'staff') {
           const asr = (namaAsrama || payload.asrama || '').toLowerCase();
           const isPutra = asr === 'putra' || asr.includes('putra') || asr.includes('asrama a') || asr === 'a';
           const isPutri = asr === 'putri' || asr.includes('putri') || asr.includes('asrama b') || asr.includes('asrama c') || asr.includes('asrama d') || asr.includes('asrama e') || asr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f'].includes(asr.trim());
           if (isPutra) {
-            whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL) AND LOWER(km.nama_kelas) LIKE '%putra%'`;
+            whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL) AND LOWER(COALESCE(km1.nama_kelas, km2.nama_kelas, '')) LIKE '%putra%'`;
           } else if (isPutri) {
-            whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL) AND LOWER(km.nama_kelas) LIKE '%putri%'`;
+            whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL) AND LOWER(COALESCE(km1.nama_kelas, km2.nama_kelas, '')) LIKE '%putri%'`;
           } else {
             whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL)`;
           }
@@ -199,13 +199,16 @@ export async function GET(request: Request) {
                 COALESCE(m.alamat, '') as alamat,
                 COALESCE(k.nama_kamar, '') as nama_kamar,
                 COALESCE(k.nama_asrama, '') as nama_asrama,
-                COALESCE(km.nama_kelas, '') as nama_kelas,
+                COALESCE(km1.nama_kelas, km2.nama_kelas, '') as nama_kelas,
                 COALESCE(m.kelas_madin_id, 0) as kelas_madin_id
          FROM murid m
          LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
-         LEFT JOIN kelas_madin km ON (m.kelas_madin_id = km.kelas_id OR m.kelas_madin_2_id = km.kelas_id)
+         LEFT JOIN kelas_madin km1 ON m.kelas_madin_id = km1.kelas_id
+         LEFT JOIN kelas_madin km2 ON m.kelas_madin_2_id = km2.kelas_id
          ${whereMurid}
-         ORDER BY km.nama_kelas ASC, m.nama ASC`,
+         GROUP BY m.murid_id, m.nama, m.nis, m.jenis_kelamin, m.alamat,
+                  k.nama_kamar, k.nama_asrama, km1.nama_kelas, km2.nama_kelas, m.kelas_madin_id
+         ORDER BY COALESCE(km1.nama_kelas, km2.nama_kelas, '') ASC, m.nama ASC`,
         paramsMurid
       );
 
