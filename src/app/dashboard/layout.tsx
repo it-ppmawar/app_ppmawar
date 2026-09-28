@@ -25,9 +25,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     manajemenData: false,
     aplikasiLainnya: false,
     manajemenSistem: false,
+    pemberitahuan: false,
   });
 
-  const toggleSection = (sectionKey: 'menuUtama' | 'manajemenData' | 'aplikasiLainnya' | 'manajemenSistem') => {
+  const toggleSection = (sectionKey: 'menuUtama' | 'manajemenData' | 'aplikasiLainnya' | 'manajemenSistem' | 'pemberitahuan') => {
     setOpenSections(prev => ({
       ...prev,
       [sectionKey]: !prev[sectionKey]
@@ -531,110 +532,144 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             )}
 
-            {/* Banner Reminder Sidik Jari — hanya tampil untuk role yg punya fitur WebAuthn di halaman profil */}
-            {webAuthnSupported && user && !user.has_fingerprint && (['guru', 'wali_murid'].includes(user.role)) && (
-              <div className="px-4 mb-5">
-                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-2xl p-3 shadow-sm relative overflow-hidden">
-                  <div className="absolute -top-4 -right-4 w-16 h-16 bg-indigo-100 dark:bg-indigo-800/30 rounded-full opacity-50 pointer-events-none"></div>
-                  <div className="flex gap-3">
-                    <div className="bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 p-2 rounded-xl flex-shrink-0">
-                      <Fingerprint size={20} />
+            {/* ============================================================= */}
+            {/* SECTION: PEMBERITAHUAN (Collapsible — Default Tertutup)       */}
+            {/* ============================================================= */}
+            {(
+              (webAuthnSupported && user && !user.has_fingerprint && (['guru', 'wali_murid'].includes(user.role))) ||
+              pwaInstallable ||
+              ((user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0) ||
+              !!activeSchedule
+            ) && (
+              <div className="px-3 mb-3">
+                <button
+                  onClick={() => toggleSection('pemberitahuan')}
+                  className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-all border border-amber-200 dark:border-amber-800/50 shadow-sm group"
+                  aria-label="Toggle Pemberitahuan"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform relative">
+                      <Bell size={16} />
+                      {/* Dot merah jika ada notif penting */}
+                      {((user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0 || !!activeSchedule) && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                      )}
                     </div>
-                    <div>
-                      <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1">Login Lebih Cepat!</h5>
-                      <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-2 leading-tight">Untuk kemudahan login, aktifkan fitur sidik jari Anda.</p>
-                      <Link href="/dashboard/profil" onClick={() => setShowSidebar(false)} className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors">
-                        Aktifkan Sekarang
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Banner PWA Install */}
-            {pwaInstallable && (
-              <div className="px-4 mb-5">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/50 rounded-2xl p-3 shadow-sm relative overflow-hidden">
-                  <div className="flex gap-3 items-start">
-                    <div className="bg-green-100 dark:bg-green-800 text-green-600 dark:text-green-300 p-2 rounded-xl flex-shrink-0">
-                      <Download size={18} />
-                    </div>
-                    <div>
-                      <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1">Install Aplikasi SALAM</h5>
-                      <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-tight mb-2">Tambahkan ke layar utama HP Anda agar lebih cepat diakses seperti aplikasi biasa.</p>
-                      <button
-                        onClick={() => {
-                          const e = (window as any).deferredPrompt;
-                          if (e) {
-                            e.prompt();
-                            e.userChoice.then((choiceResult: any) => {
-                              if (choiceResult.outcome === 'accepted') {
-                                setPwaInstallable(false);
-                              }
-                            });
-                          }
-                        }}
-                        className="inline-block bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        Install Sekarang
-                      </button>
+                    <div className="flex flex-col items-start">
+                      <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider leading-none">Pemberitahuan</span>
+                      {!openSections.pemberitahuan && (
+                        <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium leading-none mt-0.5">
+                          {[
+                            webAuthnSupported && user && !user.has_fingerprint && ['guru', 'wali_murid'].includes(user.role) ? 1 : 0,
+                            pwaInstallable ? 1 : 0,
+                            (user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0 ? 1 : 0,
+                            activeSchedule ? 1 : 0,
+                          ].reduce((a, b) => a + b, 0)} notifikasi baru
+                        </span>
+                      )}
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
+                  <ChevronDown size={16} className={`text-gray-400 transition-transform duration-200 ${openSections.pemberitahuan ? 'rotate-180 text-amber-500' : 'rotate-0'}`} />
+                </button>
 
-            {/* Banner Pengingat Absensi untuk Admin / Staff */}
-            {(user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0 && (
-              <div className="px-4 mb-5">
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-3 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-8 h-8 bg-amber-200 dark:bg-amber-800/50 rounded-bl-full flex items-start justify-end p-1.5">
-                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-0.5 mt-0.5"></span>
+                {openSections.pemberitahuan && (
+                  <div className="mt-2 space-y-2.5 px-1">
+
+                    {/* Banner Reminder Sidik Jari */}
+                    {webAuthnSupported && user && !user.has_fingerprint && (['guru', 'wali_murid'].includes(user.role)) && (
+                      <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-2xl p-3 shadow-sm relative overflow-hidden">
+                        <div className="absolute -top-4 -right-4 w-16 h-16 bg-indigo-100 dark:bg-indigo-800/30 rounded-full opacity-50 pointer-events-none"></div>
+                        <div className="flex gap-3">
+                          <div className="bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300 p-2 rounded-xl flex-shrink-0">
+                            <Fingerprint size={20} />
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1">Login Lebih Cepat!</h5>
+                            <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-2 leading-tight">Untuk kemudahan login, aktifkan fitur sidik jari Anda.</p>
+                            <Link href="/dashboard/profil" onClick={() => setShowSidebar(false)} className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors">
+                              Aktifkan Sekarang
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Banner PWA Install */}
+                    {pwaInstallable && (
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/50 rounded-2xl p-3 shadow-sm relative overflow-hidden">
+                        <div className="flex gap-3 items-start">
+                          <div className="bg-green-100 dark:bg-green-800 text-green-600 dark:text-green-300 p-2 rounded-xl flex-shrink-0">
+                            <Download size={18} />
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1">Install Aplikasi SALAM</h5>
+                            <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-tight mb-2">Tambahkan ke layar utama HP Anda agar lebih cepat diakses seperti aplikasi biasa.</p>
+                            <button
+                              onClick={() => {
+                                const e = (window as any).deferredPrompt;
+                                if (e) {
+                                  e.prompt();
+                                  e.userChoice.then((choiceResult: any) => {
+                                    if (choiceResult.outcome === 'accepted') {
+                                      setPwaInstallable(false);
+                                    }
+                                  });
+                                }
+                              }}
+                              className="inline-block bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              Install Sekarang
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Banner Pengingat Absensi untuk Admin / Staff */}
+                    {(user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0 && (
+                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-3 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-8 h-8 bg-amber-200 dark:bg-amber-800/50 rounded-bl-full flex items-start justify-end p-1.5">
+                          <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-0.5 mt-0.5"></span>
+                        </div>
+                        <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1">
+                          <AlertTriangle size={12}/> PENGINGAT ABSENSI
+                        </p>
+                        <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1">Ada {pendingRemindersCount} jadwal belum absen!</h5>
+                        <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-2 leading-tight">Segera ingatkan guru/pengurus asrama lewat WhatsApp.</p>
+                        <Link
+                          href="/dashboard/notifikasi?remind=true"
+                          onClick={() => {
+                            setShowSidebar(false);
+                            if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard/notifikasi')) {
+                              const el = document.getElementById('tab-pilihan-pengingat') || document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }}
+                          className="block w-full text-center bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold py-2 rounded-xl transition-colors shadow-sm"
+                        >
+                          Kirim Pengingat WA
+                        </Link>
+                      </div>
+                    )}
+
+                    {/* Jadwal Aktif (Mobile) */}
+                    {activeSchedule && (
+                      <div className="sm:hidden bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/50 rounded-2xl p-3 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-8 h-8 bg-green-200 dark:bg-green-800/50 rounded-bl-full flex items-start justify-end p-1.5">
+                          <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-0.5 mt-0.5"></span>
+                        </div>
+                        <p className="text-[10px] font-bold text-green-700 dark:text-green-400 mb-1 flex items-center gap-1"><Bell size={12}/> JADWAL AKTIF</p>
+                        <h5 className="font-bold text-sm text-gray-800 dark:text-gray-200 mb-2">{activeSchedule.title}</h5>
+                        <Link href="/dashboard/absen" onClick={() => setShowSidebar(false)} className="block w-full text-center bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold py-2 rounded-xl transition-colors">
+                          Input Absensi
+                        </Link>
+                      </div>
+                    )}
+
                   </div>
-                  <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1">
-                    <AlertTriangle size={12}/> PENGINGAT ABSENSI
-                  </p>
-                  <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1">
-                    Ada {pendingRemindersCount} jadwal belum absen!
-                  </h5>
-                  <p className="text-[10px] text-gray-600 dark:text-gray-400 mb-2 leading-tight">
-                    Segera ingatkan guru/pengurus asrama lewat WhatsApp.
-                  </p>
-                  <Link 
-                    href="/dashboard/notifikasi?remind=true" 
-                    onClick={() => {
-                      setShowSidebar(false);
-                      if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard/notifikasi')) {
-                        const el = document.getElementById('tab-pilihan-pengingat') || document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
-                        if (el) {
-                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                      }
-                    }} 
-                    className="block w-full text-center bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold py-2 rounded-xl transition-colors shadow-sm"
-                  >
-                    Kirim Pengingat WA
-                  </Link>
-                </div>
+                )}
               </div>
             )}
-
-            {/* Jadwal Aktif Khusus Mobile di Sidebar */}
-          {activeSchedule && (
-            <div className="sm:hidden px-4 mb-5">
-              <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/50 rounded-2xl p-3 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-8 h-8 bg-green-200 dark:bg-green-800/50 rounded-bl-full flex items-start justify-end p-1.5">
-                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-0.5 mt-0.5"></span>
-                </div>
-                <p className="text-[10px] font-bold text-green-700 dark:text-green-400 mb-1 flex items-center gap-1"><Bell size={12}/> JADWAL AKTIF</p>
-                <h5 className="font-bold text-sm text-gray-800 dark:text-gray-200 mb-2">{activeSchedule.title}</h5>
-                <Link href="/dashboard/absen" onClick={() => setShowSidebar(false)} className="block w-full text-center bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold py-2 rounded-xl transition-colors">
-                  Input Absensi
-                </Link>
-              </div>
-            </div>
-          )}
 
           {/* ========================================================================= */}
           {/* 1. GRUP MENU UTAMA (Collapsible Accordion — Default Tertutup)            */}

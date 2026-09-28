@@ -27,6 +27,9 @@ export default function PenilaianRaportPage() {
   const isLegerMode = !selectedMapel || selectedMapel === 'SEMUA' || selectedMapel === 'Semua Mapel';
   const isSemuaKelasMode = !selectedKelas || selectedKelas === 'SEMUA' || selectedKelas === 'all';
 
+  // State Loading Progress Bar (animasi seperti billing)
+  const [loadProgress, setLoadProgress] = useState(0);
+
   // State Tabel Input Nilai
   const [muridList, setMuridList] = useState<any[]>([]);
   const [scores, setScores] = useState<Record<number, { harian: string; uts: string; uas: string; akhir: string; predikat: string; catatan: string }>>({});
@@ -76,6 +79,19 @@ export default function PenilaianRaportPage() {
       });
     }
 
+    // Helper null-safe numeric: null/kosong selalu di bawah terlepas dari arah sort
+    const safeNum = (raw: string | number | null | undefined): number | null => {
+      if (raw === null || raw === undefined || raw === '') return null;
+      const n = parseFloat(String(raw));
+      return isNaN(n) ? null : n;
+    };
+    const cmpNum = (a: number | null, b: number | null, asc: boolean): number => {
+      if (a === null && b === null) return 0;
+      if (a === null) return 1;   // null selalu di bawah
+      if (b === null) return -1;  // null selalu di bawah
+      return asc ? a - b : b - a;
+    };
+
     // 2. Sorting
     if (sortField !== 'no') {
       list.sort((a, b) => {
@@ -106,33 +122,37 @@ export default function PenilaianRaportPage() {
             return sortOrder === 'asc' ? res : -res;
           }
           case 'kehadiran': {
-            const valA = Number(a.kehadiran_persen ?? 100);
-            const valB = Number(b.kehadiran_persen ?? 100);
-            return sortOrder === 'asc' ? valA - valB : valB - valA;
+            const valA = safeNum(a.kehadiran_persen);
+            const valB = safeNum(b.kehadiran_persen);
+            return cmpNum(valA, valB, sortOrder === 'asc');
           }
           case 'harian': {
-            const valA = parseFloat(curA.harian !== undefined && curA.harian !== '' ? curA.harian : a.nilai_harian) || 0;
-            const valB = parseFloat(curB.harian !== undefined && curB.harian !== '' ? curB.harian : b.nilai_harian) || 0;
-            return sortOrder === 'asc' ? valA - valB : valB - valA;
+            const rawA = curA.harian !== undefined && curA.harian !== '' ? curA.harian : a.nilai_harian;
+            const rawB = curB.harian !== undefined && curB.harian !== '' ? curB.harian : b.nilai_harian;
+            return cmpNum(safeNum(rawA), safeNum(rawB), sortOrder === 'asc');
           }
           case 'uts': {
-            const valA = parseFloat(curA.uts !== undefined && curA.uts !== '' ? curA.uts : a.nilai_uts) || 0;
-            const valB = parseFloat(curB.uts !== undefined && curB.uts !== '' ? curB.uts : b.nilai_uts) || 0;
-            return sortOrder === 'asc' ? valA - valB : valB - valA;
+            const rawA = curA.uts !== undefined && curA.uts !== '' ? curA.uts : a.nilai_uts;
+            const rawB = curB.uts !== undefined && curB.uts !== '' ? curB.uts : b.nilai_uts;
+            return cmpNum(safeNum(rawA), safeNum(rawB), sortOrder === 'asc');
           }
           case 'uas': {
-            const valA = parseFloat(curA.uas !== undefined && curA.uas !== '' ? curA.uas : a.nilai_uas) || 0;
-            const valB = parseFloat(curB.uas !== undefined && curB.uas !== '' ? curB.uas : b.nilai_uas) || 0;
-            return sortOrder === 'asc' ? valA - valB : valB - valA;
+            const rawA = curA.uas !== undefined && curA.uas !== '' ? curA.uas : a.nilai_uas;
+            const rawB = curB.uas !== undefined && curB.uas !== '' ? curB.uas : b.nilai_uas;
+            return cmpNum(safeNum(rawA), safeNum(rawB), sortOrder === 'asc');
           }
           case 'akhir': {
-            const valA = parseFloat(curA.akhir !== undefined && curA.akhir !== '' ? curA.akhir : a.nilai_akhir) || 0;
-            const valB = parseFloat(curB.akhir !== undefined && curB.akhir !== '' ? curB.akhir : b.nilai_akhir) || 0;
-            return sortOrder === 'asc' ? valA - valB : valB - valA;
+            const rawA = curA.akhir !== undefined && curA.akhir !== '' ? curA.akhir : a.nilai_akhir;
+            const rawB = curB.akhir !== undefined && curB.akhir !== '' ? curB.akhir : b.nilai_akhir;
+            return cmpNum(safeNum(rawA), safeNum(rawB), sortOrder === 'asc');
           }
           case 'predikat': {
             const valA = (curA.predikat || a.predikat || '').toUpperCase();
             const valB = (curB.predikat || b.predikat || '').toUpperCase();
+            // kosong selalu di bawah
+            if (!valA && !valB) return 0;
+            if (!valA) return 1;
+            if (!valB) return -1;
             const res = valA.localeCompare(valB, 'id');
             return sortOrder === 'asc' ? res : -res;
           }
@@ -152,6 +172,7 @@ export default function PenilaianRaportPage() {
 
     return list;
   }, [muridList, searchQuery, sortField, sortOrder, scores]);
+
 
   // State Raport
   const [selectedMuridId, setSelectedMuridId] = useState<string>('');
@@ -304,6 +325,26 @@ export default function PenilaianRaportPage() {
 
     fetchMuridDanNilai();
   }, [selectedKelas, selectedMapel, semester, tahunAjaran]);
+
+  // 2b. Animasi Progress Bar saat loadingMurid (seperti billing page)
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (loadingMurid) {
+      setLoadProgress(8);
+      timer = setInterval(() => {
+        setLoadProgress(prev => {
+          if (prev >= 90) { clearInterval(timer); return 90; }
+          const step = prev < 40 ? 12 : prev < 70 ? 7 : 3;
+          return Math.min(prev + step, 90);
+        });
+      }, 280);
+    } else {
+      setLoadProgress(100);
+      const t = setTimeout(() => setLoadProgress(0), 300);
+      return () => clearTimeout(t);
+    }
+    return () => clearInterval(timer);
+  }, [loadingMurid]);
 
   // 3. Load Raport Detail Santri
   const fetchRaportDetail = async (mId: string) => {
@@ -715,9 +756,26 @@ export default function PenilaianRaportPage() {
             </div>
 
             {loadingMurid ? (
-              <div className="p-12 text-center text-gray-500 dark:text-gray-400">
-                <RefreshCw size={28} className="animate-spin mx-auto text-amber-600 mb-2" />
-                <p className="text-sm font-semibold">Memuat daftar santri dan nilai...</p>
+              <div className="p-8 sm:p-12 text-center">
+                <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-6 sm:p-8 w-full max-w-sm mx-auto text-center space-y-4 border border-gray-100 dark:border-gray-700">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-sm">
+                    <BookOpen size={24} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-gray-800 dark:text-gray-100 text-sm sm:text-base">
+                      Memuat Data Santri & Nilai...
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-1">Menghubungkan ke server database penilaian</p>
+                  </div>
+                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-amber-500 h-full rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${loadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{loadProgress}%</p>
+                  <p className="text-[11px] text-gray-400">Harap tunggu, proses sedang berlangsung...</p>
+                </div>
               </div>
             ) : muridList.length === 0 ? (
               <div className="p-12 text-center text-gray-500 dark:text-gray-400">
@@ -1238,11 +1296,31 @@ export default function PenilaianRaportPage() {
               </div>
             </div>
 
-            {/* Tombol Cetak / Download PDF: Rata Tengah Rapi */}
-            <div className="flex justify-center w-full pt-1">
+            {/* Tombol Aksi PDF: Preview + Cetak / Download */}
+            <div className="flex flex-col sm:flex-row sm:justify-center gap-2.5 w-full pt-1">
+              {/* Preview PDF — buka tab baru (ideal untuk HP yang tidak support window.print langsung) */}
+              <button
+                onClick={() => {
+                  if (!selectedMuridId) return;
+                  const params = new URLSearchParams({
+                    murid_id: selectedMuridId,
+                    semester,
+                    tahun_ajaran: tahunAjaran,
+                    preview: '1',
+                  });
+                  window.open(`/dashboard/penilaian/preview?${params.toString()}`, '_blank', 'noopener');
+                }}
+                disabled={!raportData}
+                className="flex-1 sm:flex-none px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <FileText size={16} />
+                <span>Preview PDF</span>
+              </button>
+              {/* Cetak / Download — langsung print dialog (ideal untuk Desktop) */}
               <button
                 onClick={handlePrint}
-                className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
+                disabled={!raportData}
+                className="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
               >
                 <Printer size={16} />
                 <span>Cetak / Download PDF</span>
