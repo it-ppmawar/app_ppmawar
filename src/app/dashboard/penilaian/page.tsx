@@ -155,6 +155,10 @@ export default function PenilaianRaportPage() {
   // State Raport
   const [selectedMuridId, setSelectedMuridId] = useState<string>('');
   const [raportData, setRaportData] = useState<any>(null);
+  // Searchable combobox Pilih Santri (tab Raport)
+  const [muridSearch, setMuridSearch] = useState<string>('');
+  const [showMuridDropdown, setShowMuridDropdown] = useState(false);
+  const muridComboRef = useRef<HTMLDivElement>(null);
   const [loadingRaport, setLoadingRaport] = useState(false);
   const [savingRaportCatatan, setSavingRaportCatatan] = useState(false);
   const [editCatatan, setEditCatatan] = useState({
@@ -192,6 +196,28 @@ export default function PenilaianRaportPage() {
       }
     }
   };
+
+  // Computed: filter daftar santri berdasarkan teks pencarian di combobox Raport
+  const filteredMuridOptions = useMemo(() => {
+    if (!muridSearch.trim()) return muridList;
+    const q = muridSearch.toLowerCase().trim();
+    return muridList.filter(m =>
+      (m.nama || '').toLowerCase().includes(q) ||
+      (m.nis || '').toLowerCase().includes(q) ||
+      (m.nama_kelas || '').toLowerCase().includes(q)
+    );
+  }, [muridList, muridSearch]);
+
+  // Close combobox Pilih Santri saat klik di luar
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (muridComboRef.current && !muridComboRef.current.contains(e.target as Node)) {
+        setShowMuridDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // 0. Fetch Role Pengguna (untuk mode tamu)
   useEffect(() => {
@@ -1229,29 +1255,101 @@ export default function PenilaianRaportPage() {
           {/* Header Kontrol Raport: Format Presisi HP (Pilih Santri di Atas Full-Width, Kelas & Semester Berdampingan 50%-50%, Tombol Print Rata Tengah) */}
           <div className="print:hidden bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
             <div className="flex flex-col gap-3 w-full">
-              {/* Baris 1: Filter Pilih Santri Memenuhi Ruang Kanan dan Kiri */}
-              <div className="w-full">
+              {/* Baris 1: Filter Pilih Santri — Searchable Combobox */}
+              <div className="w-full" ref={muridComboRef}>
                 <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
                   Pilih Santri
                 </label>
-                <select
-                  value={selectedMuridId}
-                  onChange={(e) => {
-                    setSelectedMuridId(e.target.value);
-                    fetchRaportDetail(e.target.value);
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
-                >
-                  {muridList.length === 0 ? (
-                    <option value="">(Belum ada data santri)</option>
-                  ) : (
-                    muridList.map(m => (
-                      <option key={m.murid_id} value={m.murid_id}>
-                        {m.nama} {m.nis ? `(${m.nis})` : ''}
-                      </option>
-                    ))
+                <div className="relative">
+                  {/* Input pencarian */}
+                  <div
+                    className={`w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border ${showMuridDropdown ? 'border-amber-500 ring-2 ring-amber-500/30' : 'border-gray-200 dark:border-gray-600'} text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 shadow-xs cursor-text transition-all`}
+                    onClick={() => { setShowMuridDropdown(true); }}
+                  >
+                    <Search size={14} className="text-gray-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={showMuridDropdown ? muridSearch : (muridList.find(m => String(m.murid_id) === selectedMuridId)?.nama || '')}
+                      onChange={e => { setMuridSearch(e.target.value); setShowMuridDropdown(true); }}
+                      onFocus={() => { setMuridSearch(''); setShowMuridDropdown(true); }}
+                      placeholder={muridList.length === 0 ? '(Belum ada data santri)' : 'Ketik nama atau NIS santri...'}
+                      className="flex-1 bg-transparent outline-none font-bold text-gray-800 dark:text-gray-100 placeholder:font-normal placeholder:text-gray-400 min-w-0"
+                    />
+                    {selectedMuridId && !showMuridDropdown && (
+                      <span className="text-[10px] font-semibold text-gray-400 shrink-0">
+                        {muridList.find(m => String(m.murid_id) === selectedMuridId)?.nis || ''}
+                      </span>
+                    )}
+                    <ChevronDown size={14} className={`text-gray-400 shrink-0 transition-transform duration-200 ${showMuridDropdown ? 'rotate-180 text-amber-500' : ''}`} />
+                  </div>
+
+                  {/* Dropdown list */}
+                  {showMuridDropdown && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-xl overflow-hidden max-h-64 flex flex-col">
+                      {filteredMuridOptions.length === 0 ? (
+                        <div className="px-4 py-3 text-xs text-gray-400 text-center">
+                          {muridSearch ? `Tidak ditemukan: "${muridSearch}"` : 'Belum ada data santri'}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="px-3 py-1.5 border-b border-gray-100 dark:border-gray-700 text-[10px] text-gray-400">
+                            {filteredMuridOptions.length} santri {muridSearch ? `cocok dengan "${muridSearch}"` : 'tersedia'}
+                          </div>
+                          <ul className="overflow-y-auto flex-1">
+                            {filteredMuridOptions.map(m => {
+                              const isSelected = String(m.murid_id) === selectedMuridId;
+                              const q = muridSearch.trim().toLowerCase();
+                              const name = m.nama || '';
+                              const nis = m.nis || '';
+                              // Highlight teks yang cocok
+                              const highlightText = (text: string) => {
+                                if (!q) return <span>{text}</span>;
+                                const idx = text.toLowerCase().indexOf(q);
+                                if (idx === -1) return <span>{text}</span>;
+                                return (
+                                  <span>
+                                    {text.slice(0, idx)}
+                                    <mark className="bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 rounded px-0.5">{text.slice(idx, idx + q.length)}</mark>
+                                    {text.slice(idx + q.length)}
+                                  </span>
+                                );
+                              };
+                              return (
+                                <li key={m.murid_id}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedMuridId(String(m.murid_id));
+                                      setMuridSearch('');
+                                      setShowMuridDropdown(false);
+                                      fetchRaportDetail(String(m.murid_id));
+                                    }}
+                                    className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors ${isSelected ? 'bg-amber-50 dark:bg-amber-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/60'}`}
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <div className={`text-xs font-bold truncate ${isSelected ? 'text-amber-700 dark:text-amber-300' : 'text-gray-800 dark:text-gray-100'}`}>
+                                        {highlightText(name)}
+                                      </div>
+                                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                        {nis && <span className="text-[10px] text-gray-400 font-mono">{highlightText(nis)}</span>}
+                                        {m.nama_kelas && (
+                                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
+                                            {m.nama_kelas}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {isSelected && <CheckCircle size={14} className="text-amber-500 shrink-0" />}
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </>
+                      )}
+                    </div>
                   )}
-                </select>
+                </div>
               </div>
 
               {/* Baris 2: Filter Pilih Kelas dan Pilih Semester Berdampingan Rata Tengah dengan Ukuran Presisi Sama */}
