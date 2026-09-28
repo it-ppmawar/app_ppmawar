@@ -505,32 +505,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         
           <div className="flex-1 overflow-y-auto py-4">
 
-            {/* Banner Mode Tamu */}
+            {/* Banner Mode Tamu (Collapsible — Default Tertutup) */}
             {isTamu && (
-              <div className="px-4 mb-5">
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20 border border-amber-200 dark:border-amber-700/50 rounded-2xl p-3 shadow-sm">
-                  <div className="flex gap-3 items-start">
-                    <div className="bg-amber-100 dark:bg-amber-800 text-amber-600 dark:text-amber-300 p-2 rounded-xl flex-shrink-0">
-                      <UserRound size={18} />
+              <div className="px-3 mb-3">
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20 border border-amber-200 dark:border-amber-700/50 rounded-2xl shadow-sm overflow-hidden">
+                  {/* Header accordion — selalu tampil */}
+                  <div className="flex items-center gap-2.5 px-3 py-2.5">
+                    <div className="bg-amber-100 dark:bg-amber-800 text-amber-600 dark:text-amber-300 p-1.5 rounded-xl flex-shrink-0">
+                      <UserRound size={15} />
                     </div>
-                    <div>
-                      <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1">Mode Tamu</h5>
-                      <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-tight">Anda masuk sebagai tamu. Hanya dapat melihat struktur menu tanpa akses data.</p>
-                      <button
-                        onClick={async () => {
-                          try { localStorage.removeItem('was_logged_in'); } catch (_) {}
-                          await fetch('/api/auth/logout', { method: 'POST' });
-                          window.location.href = '/';
-                        }}
-                        className="mt-2 inline-block bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        Masuk dengan Akun
-                      </button>
-                    </div>
+                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200 flex-1">Mode Tamu</span>
+                    <button
+                      onClick={async () => {
+                        try { localStorage.removeItem('was_logged_in'); } catch (_) {}
+                        await fetch('/api/auth/logout', { method: 'POST' });
+                        window.location.href = '/';
+                      }}
+                      className="inline-flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors shrink-0"
+                    >
+                      Masuk
+                    </button>
+                    <button
+                      onClick={() => toggleSection('pemberitahuan')}
+                      className="p-1 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors shrink-0"
+                      aria-label="Toggle detail mode tamu"
+                    >
+                      <ChevronDown
+                        size={14}
+                        className={`text-amber-600 dark:text-amber-400 transition-transform duration-200 ${openSections.pemberitahuan ? 'rotate-180' : 'rotate-0'}`}
+                      />
+                    </button>
                   </div>
+                  {/* Detail — muncul saat dibuka */}
+                  {openSections.pemberitahuan && (
+                    <div className="px-3 pb-3 pt-0 border-t border-amber-200/60 dark:border-amber-700/40">
+                      <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed mt-2">
+                        Anda masuk sebagai tamu. Hanya dapat melihat struktur menu tanpa akses data. Login untuk menggunakan fitur lengkap.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
+
 
             {/* ============================================================= */}
             {/* SECTION: PEMBERITAHUAN (Collapsible — Default Tertutup)       */}
