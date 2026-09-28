@@ -545,14 +545,16 @@ export default function PenilaianRaportPage() {
               <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 <Filter size={14} className="text-amber-600 dark:text-amber-400" /> Filter Kelas &amp; Mata Pelajaran
               </div>
-              <button
-                type="button"
-                onClick={handleToggleCustomMapel}
-                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 px-3.5 py-1.5 rounded-full border border-amber-200/70 dark:border-amber-800/50 transition-all shadow-xs"
-              >
-                <Edit3 size={13} />
-                <span>{isCustomMapel ? 'Kembali ke Pilihan Kurikulum' : 'Ketik Mapel Khusus'}</span>
-              </button>
+              {!isTamu && (
+                <button
+                  type="button"
+                  onClick={handleToggleCustomMapel}
+                  className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:text-amber-800 dark:hover:text-amber-200 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 px-3.5 py-1.5 rounded-full border border-amber-200/70 dark:border-amber-800/50 transition-all shadow-xs"
+                >
+                  <Edit3 size={13} />
+                  <span>{isCustomMapel ? 'Kembali ke Pilihan Kurikulum' : 'Ketik Mapel Khusus'}</span>
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
