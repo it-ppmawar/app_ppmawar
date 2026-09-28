@@ -34,6 +34,11 @@ export async function GET(request: Request) {
     // Mode: rentang tanggal atau bulan/tahun
     const isRentang = !!(tanggal_dari && tanggal_sampai);
 
+    // Mode Tamu: return data kosong (bisa lihat halaman, tapi tanpa data)
+    if (payload.role === 'tamu') {
+      return NextResponse.json({ success: true, data: [] }, { headers: noCacheHeaders });
+    }
+
     // Wali Murid & Wali Alumni Logic (akses rekap anak masing-masing)
     if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
       if (!payload.muridId) return NextResponse.json({ error: 'Murid ID tidak valid' }, { status: 400, headers: noCacheHeaders });

@@ -30,6 +30,10 @@ export default function PenilaianRaportPage() {
   // State Loading Progress Bar (animasi seperti billing)
   const [loadProgress, setLoadProgress] = useState(0);
 
+  // Role Pengguna & Mode Tamu
+  const [userRole, setUserRole] = useState<string>('guru');
+  const isTamu = userRole === 'tamu';
+
   // State Tabel Input Nilai
   const [muridList, setMuridList] = useState<any[]>([]);
   const [scores, setScores] = useState<Record<number, { harian: string; uts: string; uas: string; akhir: string; predikat: string; catatan: string }>>({});
@@ -37,7 +41,7 @@ export default function PenilaianRaportPage() {
   const [savingScores, setSavingScores] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
-  // Fitur Pencarian Universal & Pengurutan Kolom (Sorting)
+  // Fitur Pencarian Universal & Pengurutan Kolom (Sorting berpola Rekapitulasi)
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('no');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -47,131 +51,105 @@ export default function PenilaianRaportPage() {
       setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
-      setSortOrder('asc');
+      setSortOrder(['harian', 'uts', 'uas', 'akhir', 'kehadiran'].includes(field) ? 'desc' : 'asc');
     }
   };
 
+  // 1. Pengurutan Data Santri secara Global (Pola Handal Rekapitulasi)
+  const sortedMurid = useMemo(() => {
+    const list = [...muridList];
+    if (sortField === 'no') {
+      return sortOrder === 'asc' ? list : [...list].reverse();
+    }
+
+    return list.sort((a, b) => {
+      const curA = scores[a.murid_id] || {};
+      const curB = scores[b.murid_id] || {};
+      let res = 0;
+
+      if (sortField === 'nama') {
+        res = (a.nama || '').trim().localeCompare((b.nama || '').trim(), 'id', { sensitivity: 'base' });
+      } else if (sortField === 'nama_kelas') {
+        res = (a.nama_kelas || '').trim().localeCompare((b.nama_kelas || '').trim(), 'id');
+      } else if (sortField === 'kamar') {
+        const valA = `${a.nama_kamar || ''} ${a.nama_asrama || ''}`.trim();
+        const valB = `${b.nama_kamar || ''} ${b.nama_asrama || ''}`.trim();
+        res = valA.localeCompare(valB, 'id');
+      } else if (sortField === 'alamat') {
+        res = (a.alamat || '').trim().localeCompare((b.alamat || '').trim(), 'id');
+      } else if (sortField === 'nis') {
+        res = (a.nis || '').trim().localeCompare((b.nis || '').trim(), undefined, { numeric: true, sensitivity: 'base' });
+      } else if (sortField === 'kehadiran') {
+        const numA = a.kehadiran_persen !== undefined && a.kehadiran_persen !== null ? Number(a.kehadiran_persen) : -1;
+        const numB = b.kehadiran_persen !== undefined && b.kehadiran_persen !== null ? Number(b.kehadiran_persen) : -1;
+        res = numA - numB;
+      } else if (sortField === 'harian') {
+        const rawA = curA.harian !== undefined && curA.harian !== '' ? curA.harian : a.nilai_harian;
+        const rawB = curB.harian !== undefined && curB.harian !== '' ? curB.harian : b.nilai_harian;
+        const numA = rawA !== null && rawA !== undefined && rawA !== '' && rawA !== '-' ? parseFloat(String(rawA)) : -1;
+        const numB = rawB !== null && rawB !== undefined && rawB !== '' && rawB !== '-' ? parseFloat(String(rawB)) : -1;
+        res = numA - numB;
+      } else if (sortField === 'uts') {
+        const rawA = curA.uts !== undefined && curA.uts !== '' ? curA.uts : a.nilai_uts;
+        const rawB = curB.uts !== undefined && curB.uts !== '' ? curB.uts : b.nilai_uts;
+        const numA = rawA !== null && rawA !== undefined && rawA !== '' && rawA !== '-' ? parseFloat(String(rawA)) : -1;
+        const numB = rawB !== null && rawB !== undefined && rawB !== '' && rawB !== '-' ? parseFloat(String(rawB)) : -1;
+        res = numA - numB;
+      } else if (sortField === 'uas') {
+        const rawA = curA.uas !== undefined && curA.uas !== '' ? curA.uas : a.nilai_uas;
+        const rawB = curB.uas !== undefined && curB.uas !== '' ? curB.uas : b.nilai_uas;
+        const numA = rawA !== null && rawA !== undefined && rawA !== '' && rawA !== '-' ? parseFloat(String(rawA)) : -1;
+        const numB = rawB !== null && rawB !== undefined && rawB !== '' && rawB !== '-' ? parseFloat(String(rawB)) : -1;
+        res = numA - numB;
+      } else if (sortField === 'akhir') {
+        const rawA = curA.akhir !== undefined && curA.akhir !== '' ? curA.akhir : a.nilai_akhir;
+        const rawB = curB.akhir !== undefined && curB.akhir !== '' ? curB.akhir : b.nilai_akhir;
+        const numA = rawA !== null && rawA !== undefined && rawA !== '' && rawA !== '-' ? parseFloat(String(rawA)) : -1;
+        const numB = rawB !== null && rawB !== undefined && rawB !== '' && rawB !== '-' ? parseFloat(String(rawB)) : -1;
+        res = numA - numB;
+      } else if (sortField === 'predikat') {
+        const valA = (curA.predikat || a.predikat || '').trim().toUpperCase();
+        const valB = (curB.predikat || b.predikat || '').trim().toUpperCase();
+        if (!valA && !valB) res = 0;
+        else if (!valA) res = -1;
+        else if (!valB) res = 1;
+        else res = valA.localeCompare(valB);
+      } else if (sortField === 'catatan') {
+        const valA = (curA.catatan || a.catatan || '').trim().toLowerCase();
+        const valB = (curB.catatan || b.catatan || '').trim().toLowerCase();
+        res = valA.localeCompare(valB);
+      }
+
+      return sortOrder === 'asc' ? res : -res;
+    });
+  }, [muridList, sortField, sortOrder, scores]);
+
+  // 2. Pencarian Universal Client-Side
   const filteredAndSortedMurid = useMemo(() => {
-    let list = muridList.map((m, idx) => ({ ...m, original_no: idx + 1 }));
+    if (!searchQuery.trim()) return sortedMurid;
+    const q = searchQuery.toLowerCase().trim();
+    return sortedMurid.filter(m => {
+      const cur = scores[m.murid_id] || {};
+      const fields = [
+        m.nama || '',
+        m.nis || '',
+        m.nama_kelas || '',
+        m.nama_kamar || '',
+        m.nama_asrama || '',
+        m.alamat || '',
+        m.jenis_kelamin || '',
+        String(m.kehadiran_persen ?? ''),
+        String(cur.harian ?? m.nilai_harian ?? ''),
+        String(cur.uts ?? m.nilai_uts ?? ''),
+        String(cur.uas ?? m.nilai_uas ?? ''),
+        String(cur.akhir ?? m.nilai_akhir ?? ''),
+        String(cur.predikat ?? m.predikat ?? ''),
+        String(cur.catatan ?? m.catatan ?? ''),
+      ];
+      return fields.some(f => f.toLowerCase().includes(q));
+    });
+  }, [sortedMurid, searchQuery, scores]);
 
-    // 1. Universal Search Filter (Nama, NIS, Kelas, Kamar, Asrama, Alamat, Nilai, Predikat, Catatan)
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(m => {
-        const cur = scores[m.murid_id] || {};
-        const fields = [
-          m.nama || '',
-          m.nis || '',
-          m.nama_kelas || '',
-          m.nama_kamar || '',
-          m.nama_asrama || '',
-          m.alamat || '',
-          m.jenis_kelamin || '',
-          String(m.kehadiran_persen ?? ''),
-          String(cur.harian ?? m.nilai_harian ?? ''),
-          String(cur.uts ?? m.nilai_uts ?? ''),
-          String(cur.uas ?? m.nilai_uas ?? ''),
-          String(cur.akhir ?? m.nilai_akhir ?? ''),
-          String(cur.predikat ?? m.predikat ?? ''),
-          String(cur.catatan ?? m.catatan ?? ''),
-        ];
-        return fields.some(f => f.toLowerCase().includes(q));
-      });
-    }
-
-    // Helper null-safe numeric: null/kosong selalu di bawah terlepas dari arah sort
-    const safeNum = (raw: string | number | null | undefined): number | null => {
-      if (raw === null || raw === undefined || raw === '') return null;
-      const n = parseFloat(String(raw));
-      return isNaN(n) ? null : n;
-    };
-    const cmpNum = (a: number | null, b: number | null, asc: boolean): number => {
-      if (a === null && b === null) return 0;
-      if (a === null) return 1;   // null selalu di bawah
-      if (b === null) return -1;  // null selalu di bawah
-      return asc ? a - b : b - a;
-    };
-
-    // 2. Sorting
-    if (sortField !== 'no') {
-      list.sort((a, b) => {
-        const curA = scores[a.murid_id] || {};
-        const curB = scores[b.murid_id] || {};
-
-        switch (sortField) {
-          case 'nama': {
-            const res = (a.nama || '').localeCompare(b.nama || '', 'id');
-            return sortOrder === 'asc' ? res : -res;
-          }
-          case 'nama_kelas': {
-            const res = (a.nama_kelas || '').localeCompare(b.nama_kelas || '', 'id');
-            return sortOrder === 'asc' ? res : -res;
-          }
-          case 'kamar': {
-            const valA = `${a.nama_kamar || ''} ${a.nama_asrama || ''}`.trim();
-            const valB = `${b.nama_kamar || ''} ${b.nama_asrama || ''}`.trim();
-            const res = valA.localeCompare(valB, 'id');
-            return sortOrder === 'asc' ? res : -res;
-          }
-          case 'alamat': {
-            const res = (a.alamat || '').localeCompare(b.alamat || '', 'id');
-            return sortOrder === 'asc' ? res : -res;
-          }
-          case 'nis': {
-            const res = (a.nis || '').localeCompare(b.nis || '', 'id');
-            return sortOrder === 'asc' ? res : -res;
-          }
-          case 'kehadiran': {
-            const valA = safeNum(a.kehadiran_persen);
-            const valB = safeNum(b.kehadiran_persen);
-            return cmpNum(valA, valB, sortOrder === 'asc');
-          }
-          case 'harian': {
-            const rawA = curA.harian !== undefined && curA.harian !== '' ? curA.harian : a.nilai_harian;
-            const rawB = curB.harian !== undefined && curB.harian !== '' ? curB.harian : b.nilai_harian;
-            return cmpNum(safeNum(rawA), safeNum(rawB), sortOrder === 'asc');
-          }
-          case 'uts': {
-            const rawA = curA.uts !== undefined && curA.uts !== '' ? curA.uts : a.nilai_uts;
-            const rawB = curB.uts !== undefined && curB.uts !== '' ? curB.uts : b.nilai_uts;
-            return cmpNum(safeNum(rawA), safeNum(rawB), sortOrder === 'asc');
-          }
-          case 'uas': {
-            const rawA = curA.uas !== undefined && curA.uas !== '' ? curA.uas : a.nilai_uas;
-            const rawB = curB.uas !== undefined && curB.uas !== '' ? curB.uas : b.nilai_uas;
-            return cmpNum(safeNum(rawA), safeNum(rawB), sortOrder === 'asc');
-          }
-          case 'akhir': {
-            const rawA = curA.akhir !== undefined && curA.akhir !== '' ? curA.akhir : a.nilai_akhir;
-            const rawB = curB.akhir !== undefined && curB.akhir !== '' ? curB.akhir : b.nilai_akhir;
-            return cmpNum(safeNum(rawA), safeNum(rawB), sortOrder === 'asc');
-          }
-          case 'predikat': {
-            const valA = (curA.predikat || a.predikat || '').toUpperCase();
-            const valB = (curB.predikat || b.predikat || '').toUpperCase();
-            // kosong selalu di bawah
-            if (!valA && !valB) return 0;
-            if (!valA) return 1;
-            if (!valB) return -1;
-            const res = valA.localeCompare(valB, 'id');
-            return sortOrder === 'asc' ? res : -res;
-          }
-          case 'catatan': {
-            const valA = (curA.catatan || a.catatan || '').toLowerCase();
-            const valB = (curB.catatan || b.catatan || '').toLowerCase();
-            const res = valA.localeCompare(valB, 'id');
-            return sortOrder === 'asc' ? res : -res;
-          }
-          default:
-            return 0;
-        }
-      });
-    } else if (sortOrder === 'desc') {
-      list.reverse();
-    }
-
-    return list;
-  }, [muridList, searchQuery, sortField, sortOrder, scores]);
 
 
   // State Raport
@@ -214,6 +192,14 @@ export default function PenilaianRaportPage() {
       }
     }
   };
+
+  // 0. Fetch Role Pengguna (untuk mode tamu)
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(d => { if (d.success && d.user) setUserRole(d.user.role); })
+      .catch(() => {});
+  }, []);
 
   // 1. Load Data Master (Daftar Kelas)
   useEffect(() => {
@@ -742,6 +728,11 @@ export default function PenilaianRaportPage() {
                 <div className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 rounded-xl text-xs font-bold shadow-2xs">
                   <Sparkles size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
                   <span>Pilih mapel tertentu untuk input / edit nilai</span>
+                </div>
+              ) : isTamu ? (
+                <div className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-xl text-xs font-bold shadow-2xs">
+                  <ShieldCheck size={14} className="shrink-0" />
+                  <span>Mode Tamu — hanya lihat data</span>
                 </div>
               ) : (
                 <button

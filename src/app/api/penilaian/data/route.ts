@@ -41,6 +41,11 @@ export async function GET(request: Request) {
     const isSemuaKelas = !kelasId || kelasId === 'SEMUA' || kelasId === 'all';
     const isSemuaMapel = !mapelName || mapelName === 'SEMUA' || mapelName === 'Semua Mapel';
 
+    // Mode Tamu: return struktur kosong yang valid (tidak ada data ditampilkan)
+    if (role === 'tamu') {
+      return NextResponse.json({ success: true, kelas: [], kurikulum: [], murid: [], muridList: [] });
+    }
+
     // 1. RBAC: Filter daftar kelas madin sesuai wewenang pengguna (seperti halaman rekapitulasi)
     let whereKelas = '';
     let paramsKelas: any[] = [];

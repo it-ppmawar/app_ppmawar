@@ -276,7 +276,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     || (userRoleLower === 'wali_alumni' && hasAlumniTunggakan)
     || userRoleLower.includes('pengasuh') || !!user?.is_pengasuh || !!user?.isPengasuh;
 
-  const showQuranMadin = user?.role === 'admin' || user?.role === 'staff' || hasQuran || hasMadin;
+  const showQuranMadin = user?.role === 'admin' || user?.role === 'staff' || hasQuran || hasMadin || isTamu;
   const showKamarAsrama = userRoleLower === 'admin' || userRoleLower === 'staff' || isPengasuhRole || hasKegiatan;
   const showDataSantri = userRoleLower === 'admin' || userRoleLower === 'staff' || isPengasuhRole || hasQuran || hasMadin || hasKegiatan;
   const showDataGuru = userRoleLower === 'admin' || userRoleLower === 'staff' || isPengasuhRole || hasQuran || hasMadin || hasKegiatan;
@@ -836,7 +836,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* ========================================================================= */}
           {/* 2. GRUP MANAJEMEN DATA (Data Santri/Guru, Jadwal, QR Dewan Guru, Tagihan) */}
           {/* ========================================================================= */}
-          {!isTamu && !(user?.role || '').toLowerCase().includes('petugas') && (
+          {!(user?.role || '').toLowerCase().includes('petugas') && (
             <div className="px-3 mb-3">
               <button
                 onClick={() => toggleSection('manajemenData')}
