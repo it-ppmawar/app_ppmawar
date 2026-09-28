@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CalendarCheck, Clock, BookOpen, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, QrCode, Brain, Lock, LockOpen, CheckCircle, Hourglass, HeartPulse, User, ClipboardCheck } from 'lucide-react';
+import { CalendarCheck, Clock, BookOpen, AlertCircle, ArrowRight, RefreshCw, CheckCircle2, QrCode, Brain, Lock, LockOpen, CheckCircle, Hourglass, HeartPulse, User, ClipboardCheck, Utensils } from 'lucide-react';
 import Link from 'next/link';
 
 type TipeFilter = 'semua' | 'quran' | 'madin' | 'kegiatan';
@@ -120,7 +120,14 @@ export default function InputAbsenPage() {
           className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
         >
           <QrCode size={18} />
-          <span>Mode Scan (QR &amp; Wajah AI)</span>
+          <span>Mode Scan (QR &amp; Wajah)</span>
+        </Link>
+        <Link
+          href="/dashboard/kupon-makan"
+          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
+        >
+          <Utensils size={18} />
+          <span>E-Kupon Makan (Pilot)</span>
         </Link>
       </div>
 

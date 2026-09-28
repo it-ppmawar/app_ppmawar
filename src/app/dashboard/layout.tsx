@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2, Megaphone, Shield, ChevronDown, Database, Layers, Sparkles, Send, ExternalLink, Globe, Smartphone, Search, Award } from 'lucide-react';
+import { Home, CalendarDays, ClipboardCheck, Bell, User, Moon, Sun, Clock, Menu, X, LogOut, Settings, Users, FileWarning, MessageSquare, MessageCircle, UserCog, BookOpen, QrCode, Fingerprint, AlertTriangle, GraduationCap, UserRound, Download, CreditCard, Archive, Trash2, ClipboardList, Brain, FileText, Calendar, Link2, Megaphone, Shield, ChevronDown, Database, Layers, Sparkles, Send, ExternalLink, Globe, Smartphone, Search, Award, Utensils } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
@@ -778,6 +778,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           <li>
                             <Link href="/dashboard/rekapitulasi" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/rekapitulasi' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-bold' : 'hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-bold'}`}>
                               <FileText size={18} /> <span className="text-sm">Rekapitulasi Absensi</span>
+                            </Link>
+                          </li>
+                          <li>
+                            <Link
+                              href="/dashboard/kupon-makan"
+                              onClick={() => setShowSidebar(false)}
+                              className={`flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
+                                pathname === '/dashboard/kupon-makan'
+                                  ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold'
+                                  : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <Utensils size={18} /> <span className="text-sm">E-Kupon Makan</span>
+                              </div>
+                              <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300">
+                                Trial
+                              </span>
                             </Link>
                           </li>
                           {(['admin', 'staff'].includes(userRoleLower) || isPengasuhRole) && (

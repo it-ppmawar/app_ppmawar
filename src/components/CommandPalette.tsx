@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Search, Home, ClipboardCheck, QrCode, FileText, CalendarDays, BookOpen, FileWarning, Megaphone, Trash2, Users, UserCog, GraduationCap, BookOpen as BookOpenIcon, Calendar, ClipboardList, Home as HomeIcon, Archive, QrCode as QrCodeIcon, CreditCard, Users as UsersIcon, MessageSquare, Shield, Settings, User, Globe, Smartphone, Sparkles, Sun, Moon, MessageCircle, X, ArrowRight, Zap, Link2 } from 'lucide-react';
+import { Search, Home, ClipboardCheck, QrCode, FileText, CalendarDays, BookOpen, FileWarning, Megaphone, Trash2, Users, UserCog, GraduationCap, BookOpen as BookOpenIcon, Calendar, ClipboardList, Home as HomeIcon, Archive, QrCode as QrCodeIcon, CreditCard, Users as UsersIcon, MessageSquare, Shield, Settings, User, Globe, Smartphone, Sparkles, Sun, Moon, MessageCircle, X, ArrowRight, Zap, Link2, Utensils } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Type Definitions
@@ -60,6 +60,18 @@ const ALL_SEARCH_ITEMS: SearchItem[] = [
     tags: ['scan', 'qr', 'kamera', 'barcode', 'scan absen', 'qr absen', 'pindai'],
     roles: ['admin', 'staff', 'guru', 'pengurus_asrama', 'pengasuh'],
     icon: QrCode,
+    color: 'bg-emerald-100 dark:bg-emerald-900/40',
+    textColor: 'text-emerald-700 dark:text-emerald-400',
+  },
+  {
+    id: 'kupon-makan',
+    label: 'E-Kupon Makan Santri (Pilot)',
+    description: 'Validasi QR kupon makan santri & cek tunggakan',
+    href: '/dashboard/kupon-makan',
+    type: 'page',
+    tags: ['makan', 'kupon', 'kantin', 'dapur', 'sarapan', 'siang', 'malam', 'konsumsi', 'spp makan', 'dispensasi', 'kupon makan'],
+    roles: ['admin', 'staff', 'guru', 'pengurus_asrama', 'pengasuh'],
+    icon: Utensils,
     color: 'bg-emerald-100 dark:bg-emerald-900/40',
     textColor: 'text-emerald-700 dark:text-emerald-400',
   },
