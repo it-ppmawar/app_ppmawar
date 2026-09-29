@@ -248,8 +248,8 @@ function QuickAbsenContent() {
       msg += `📖 *${labelCategory}:* ${mapel}\n`;
     }
 
-    // Nama pengajar: guru utama atau pengganti (badal) jika ada
-    const namaGuruUtama = data.jadwal?.guru_nama || '';
+    // Nama pengajar: tampilkan semua guru kelompok, atau pengganti (badal) jika ada
+    const namaGuruUtama = data.jadwal?.semua_guru || data.jadwal?.guru_nama || '';
     const namaBadal = data.badal_nama || izinResultData?.badal_info?.nama || '';
     if (namaGuruUtama && namaBadal) {
       msg += `👨‍🏫 *Pengajar:* ${namaGuruUtama}\n`;
@@ -1161,7 +1161,7 @@ function QuickAbsenContent() {
                 <div className="p-3.5 bg-slate-50 dark:bg-slate-950/80 rounded-xl border border-slate-200 dark:border-slate-800/80 text-xs space-y-1.5">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-slate-200/80 dark:border-slate-800/50 gap-0.5 sm:gap-2">
                     <span className="text-slate-500 dark:text-slate-400">Guru / Pembina:</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 text-right">{guru_nama}</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 text-right">{jadwal?.semua_guru || guru_nama}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-1 border-b border-slate-200/80 dark:border-slate-800/50 gap-0.5 sm:gap-2">
                     <span className="text-slate-500 dark:text-slate-400">Kelas / Kamar:</span>

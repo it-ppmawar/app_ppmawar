@@ -64,11 +64,54 @@ export async function POST(request: Request) {
         const combinedKelasNama = Array.from(new Set(combinedSchedules.map((s: any) => s.nama_kelas))).join(' & ');
         const combinedMapel = Array.from(new Set(combinedSchedules.map((s: any) => s.mata_pelajaran).filter(Boolean))).join(' & ');
 
+        // Cari semua guru kelompok (co-teachers) pada kelas, hari, jam & mapel yang sama
+        let semuaGuru = primary.guru_nama || '';
+        try {
+          const placeholders = combinedKelasIds.map(() => '?').join(',');
+          const [coTeacherRows] = await pool.execute<RowDataPacket[]>(
+            `SELECT DISTINCT g.nama 
+             FROM jadwal_madin j 
+             JOIN guru g ON j.guru_id = g.guru_id
+             WHERE j.kelas_madin_id IN (${placeholders})
+               AND TRIM(LOWER(j.mata_pelajaran)) = TRIM(LOWER(?))
+               AND (j.hari = ? OR j.hari IS NULL OR ? IS NULL)
+               AND (
+                 j.jam_mulai = ? 
+                 OR SUBSTRING(j.jam_mulai, 1, 5) = SUBSTRING(?, 1, 5) 
+                 OR j.jam_mulai IS NULL 
+                 OR ? IS NULL 
+                 OR j.jam_mulai = ''
+               )
+             ORDER BY g.nama ASC`,
+            [
+              ...combinedKelasIds,
+              primary.mata_pelajaran || '',
+              primary.hari || '',
+              primary.hari || '',
+              primary.jam_mulai || '',
+              primary.jam_mulai || '',
+              primary.jam_mulai || ''
+            ]
+          );
+          if (coTeacherRows.length > 0) {
+            const allTeacherNames = Array.from(new Set([
+              primary.guru_nama,
+              ...coTeacherRows.map((r: any) => r.nama)
+            ].filter(Boolean)));
+            if (allTeacherNames.length > 0) {
+              semuaGuru = allTeacherNames.join(', ');
+            }
+          }
+        } catch (e) {
+          console.warn('Error fetching co-teachers in quick-verify madin:', e);
+        }
+
         jadwalDetail = {
           ...primary,
           nama_kelas: combinedKelasNama,
           mata_pelajaran: combinedMapel || primary.mata_pelajaran,
           guru_nama: primary.guru_nama || '',
+          semua_guru: semuaGuru,
           jadwal_ids: combinedJadwalIds,
           kelas_ids: combinedKelasIds,
         };
@@ -112,11 +155,54 @@ export async function POST(request: Request) {
         const combinedKelasNama = Array.from(new Set(combinedSchedules.map((s: any) => s.nama_kelas))).join(' & ');
         const combinedMapel = Array.from(new Set(combinedSchedules.map((s: any) => s.mata_pelajaran).filter(Boolean))).join(' & ');
 
+        // Cari semua guru kelompok (co-teachers) pada kelas, hari, jam & mapel yang sama
+        let semuaGuru = primary.guru_nama || '';
+        try {
+          const placeholders = combinedKelasIds.map(() => '?').join(',');
+          const [coTeacherRows] = await pool.execute<RowDataPacket[]>(
+            `SELECT DISTINCT g.nama 
+             FROM jadwal_quran j 
+             JOIN guru g ON j.guru_id = g.guru_id
+             WHERE j.kelas_quran_id IN (${placeholders})
+               AND TRIM(LOWER(j.mata_pelajaran)) = TRIM(LOWER(?))
+               AND (j.hari = ? OR j.hari IS NULL OR ? IS NULL)
+               AND (
+                 j.jam_mulai = ? 
+                 OR SUBSTRING(j.jam_mulai, 1, 5) = SUBSTRING(?, 1, 5) 
+                 OR j.jam_mulai IS NULL 
+                 OR ? IS NULL 
+                 OR j.jam_mulai = ''
+               )
+             ORDER BY g.nama ASC`,
+            [
+              ...combinedKelasIds,
+              primary.mata_pelajaran || '',
+              primary.hari || '',
+              primary.hari || '',
+              primary.jam_mulai || '',
+              primary.jam_mulai || '',
+              primary.jam_mulai || ''
+            ]
+          );
+          if (coTeacherRows.length > 0) {
+            const allTeacherNames = Array.from(new Set([
+              primary.guru_nama,
+              ...coTeacherRows.map((r: any) => r.nama)
+            ].filter(Boolean)));
+            if (allTeacherNames.length > 0) {
+              semuaGuru = allTeacherNames.join(', ');
+            }
+          }
+        } catch (e) {
+          console.warn('Error fetching co-teachers in quick-verify quran:', e);
+        }
+
         jadwalDetail = {
           ...primary,
           nama_kelas: combinedKelasNama,
           mata_pelajaran: combinedMapel || primary.mata_pelajaran,
           guru_nama: primary.guru_nama || '',
+          semua_guru: semuaGuru,
           jadwal_ids: combinedJadwalIds,
           kelas_ids: combinedKelasIds,
         };
@@ -160,11 +246,54 @@ export async function POST(request: Request) {
         const combinedKelasNama = Array.from(new Set(combinedSchedules.map((s: any) => s.nama_kamar || s.nama_kelas))).join(' & ');
         const combinedMapel = Array.from(new Set(combinedSchedules.map((s: any) => s.mata_pelajaran).filter(Boolean))).join(' & ');
 
+        // Cari semua guru kelompok / pembina bersama
+        let semuaGuru = primary.guru_nama || '';
+        try {
+          const placeholders = combinedKelasIds.map(() => '?').join(',');
+          const [coTeacherRows] = await pool.execute<RowDataPacket[]>(
+            `SELECT DISTINCT g.nama 
+             FROM jadwal_kegiatan j 
+             JOIN guru g ON j.guru_id = g.guru_id
+             WHERE j.kamar_id IN (${placeholders})
+               AND TRIM(LOWER(j.nama_kegiatan)) = TRIM(LOWER(?))
+               AND (j.hari = ? OR j.hari IS NULL OR ? IS NULL)
+               AND (
+                 j.jam_mulai = ? 
+                 OR SUBSTRING(j.jam_mulai, 1, 5) = SUBSTRING(?, 1, 5) 
+                 OR j.jam_mulai IS NULL 
+                 OR ? IS NULL 
+                 OR j.jam_mulai = ''
+               )
+             ORDER BY g.nama ASC`,
+            [
+              ...combinedKelasIds,
+              primary.nama_kegiatan || '',
+              primary.hari || '',
+              primary.hari || '',
+              primary.jam_mulai || '',
+              primary.jam_mulai || '',
+              primary.jam_mulai || ''
+            ]
+          );
+          if (coTeacherRows.length > 0) {
+            const allTeacherNames = Array.from(new Set([
+              primary.guru_nama,
+              ...coTeacherRows.map((r: any) => r.nama)
+            ].filter(Boolean)));
+            if (allTeacherNames.length > 0) {
+              semuaGuru = allTeacherNames.join(', ');
+            }
+          }
+        } catch (e) {
+          console.warn('Error fetching co-teachers in quick-verify kegiatan:', e);
+        }
+
         jadwalDetail = {
           ...primary,
           nama_kelas: combinedKelasNama,
           mata_pelajaran: combinedMapel || primary.mata_pelajaran,
           guru_nama: primary.guru_nama || '',
+          semua_guru: semuaGuru,
           jadwal_ids: combinedJadwalIds,
           kelas_ids: combinedKelasIds,
         };
