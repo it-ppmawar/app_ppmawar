@@ -880,33 +880,33 @@ export default function BillingPage() {
         </div>
 
         {/* Dynamic Summary Cards */}
-        <div className="p-4 md:p-5 bg-slate-900/90 dark:bg-slate-950/90 border-b border-gray-700/80 backdrop-blur-md">
+        <div className="px-4 md:px-5 pt-2 pb-4 border-b border-gray-200 dark:border-gray-700/60">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
               <span>📊</span>
               <span>Ringkasan Nilai ({activeTabLabel})</span>
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Card Belum Lunas */}
-            <div className="bg-slate-800/90 dark:bg-slate-900/90 rounded-2xl p-5 border border-red-500/30 flex items-center gap-4 shadow-inner">
-              <div className="w-12 h-12 bg-red-500/20 text-red-400 rounded-xl flex items-center justify-center shrink-0 border border-red-500/30">
-                <XCircle size={24} />
+            <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl p-4 border border-red-200 dark:border-red-800/50 flex items-center gap-4">
+              <div className="w-11 h-11 bg-red-100 dark:bg-red-900/50 text-red-500 dark:text-red-400 rounded-xl flex items-center justify-center shrink-0 border border-red-200 dark:border-red-800">
+                <XCircle size={22} />
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400">Total Tunggakan (Belum Lunas)</p>
-                <p className="text-xl sm:text-2xl font-black text-red-400 mt-0.5 tracking-tight">{formatRupiah(dynamicTotalBelum)}</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Total Tunggakan (Belum Lunas)</p>
+                <p className="text-lg sm:text-xl font-black text-red-600 dark:text-red-400 mt-0.5 tracking-tight">{formatRupiah(dynamicTotalBelum)}</p>
               </div>
             </div>
 
             {/* Card Lunas */}
-            <div className="bg-slate-800/90 dark:bg-slate-900/90 rounded-2xl p-5 border border-emerald-500/30 flex items-center gap-4 shadow-inner">
-              <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center shrink-0 border border-emerald-500/30">
-                <CheckCircle2 size={24} />
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl p-4 border border-emerald-200 dark:border-emerald-800/50 flex items-center gap-4">
+              <div className="w-11 h-11 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
+                <CheckCircle2 size={22} />
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400">Total Pembayaran Lunas</p>
-                <p className="text-xl sm:text-2xl font-black text-emerald-400 mt-0.5 tracking-tight">{formatRupiah(dynamicTotalLunas)}</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Total Pembayaran Lunas</p>
+                <p className="text-lg sm:text-xl font-black text-emerald-700 dark:text-emerald-400 mt-0.5 tracking-tight">{formatRupiah(dynamicTotalLunas)}</p>
               </div>
             </div>
           </div>
