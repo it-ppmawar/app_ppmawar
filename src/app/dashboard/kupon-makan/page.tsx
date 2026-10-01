@@ -74,8 +74,25 @@ export default function KuponMakanPage() {
 
   // RBAC Authentication State
   const [authChecking, setAuthChecking] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(15);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
+
+  // Animasi progress bar interaktif saat memuat data E-Kupon Makan
+  useEffect(() => {
+    let progressTimer: NodeJS.Timeout;
+    if (authChecking) {
+      setLoadProgress(15);
+      progressTimer = setInterval(() => {
+        setLoadProgress(prev => {
+          if (prev >= 90) return prev;
+          const inc = Math.floor(Math.random() * 10) + 7;
+          return Math.min(prev + inc, 92);
+        });
+      }, 150);
+    }
+    return () => clearInterval(progressTimer);
+  }, [authChecking]);
 
   // Modal Pengaturan Sesi & Jadwal
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -212,7 +229,8 @@ export default function KuponMakanPage() {
         console.error('Auth check error:', err);
         setIsAuthorized(false);
       } finally {
-        setAuthChecking(false);
+        setLoadProgress(100);
+        setTimeout(() => setAuthChecking(false), 200);
       }
     };
 
@@ -371,7 +389,14 @@ export default function KuponMakanPage() {
 
   const scrollToCamera = useCallback(() => {
     if (cameraButtonRef.current) {
-      cameraButtonRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const rect = cameraButtonRef.current.getBoundingClientRect();
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      // Beri ruang lega 80px di atas tombol agar tombol Proses & Kamera terlihat utuh sempurna
+      const targetY = rect.top + scrollTop - 80;
+      window.scrollTo({
+        top: Math.max(0, targetY),
+        behavior: 'smooth'
+      });
     }
   }, []);
 
@@ -435,12 +460,29 @@ export default function KuponMakanPage() {
   const activeSessionsList = sessions.filter(s => s.is_aktif === 1);
   const currentSesiObj = sessions.find(s => s.kode_sesi === activeSesi);
 
-  // Loading screen saat memeriksa izin akses
+  // Loading screen interaktif saat memuat data E-Kupon Makan (seperti halaman tagihan)
   if (authChecking) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Memverifikasi hak akses pengguna...</p>
+      <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 animate-[fadeIn_0.3s_ease-out]">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 sm:p-7 w-full max-w-sm text-center space-y-4 border border-slate-200 dark:border-slate-800">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs">
+            <Utensils size={24} className="animate-pulse" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm sm:text-base">
+              Memuat E-Kupon Makan...
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Menghubungkan ke server database santri &amp; sesi makan</p>
+          </div>
+          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
+            <div
+              className="bg-emerald-600 h-full rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${loadProgress}%` }}
+            />
+          </div>
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{loadProgress}%</p>
+          <p className="text-[11px] text-slate-400">Harap tunggu, proses sedang berlangsung...</p>
+        </div>
       </div>
     );
   }
@@ -512,26 +554,21 @@ export default function KuponMakanPage() {
 
         {/* HEADER KUPON MAKAN */}
         <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3.5">
-          {/* Baris 1: Ikon + Teks "E-Kupon Makan Santri" 1 baris */}
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 flex-shrink-0">
-              <Utensils size={20} />
-            </div>
-            <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
-              <span>E-Kupon Makan Santri</span>
-              {presetAktif === 'ramadhan' && (
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 flex items-center gap-1">
-                  <Moon size={11} /> Ramadhan
-                </span>
-              )}
-            </h1>
-          </div>
-
-          {/* Baris 2: Deskripsi di kiri & Tombol Kembali di sebelah kanan rata kanan */}
+          {/* Baris 1: Ikon + Teks "E-Kupon Makan Santri" di kiri, Tombol Kembali di sebelah kanan rata kanan */}
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed flex-1">
-              Validasi jatah makan via QR Card &amp; sinkronisasi status pelunasan bulan lalu
-            </p>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 flex-shrink-0">
+                <Utensils size={20} />
+              </div>
+              <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                <span>E-Kupon Makan Santri</span>
+                {presetAktif === 'ramadhan' && (
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 flex items-center gap-1">
+                    <Moon size={11} /> Ramadhan
+                  </span>
+                )}
+              </h1>
+            </div>
             <Link
               href="/dashboard"
               className="p-2 -mr-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors flex-shrink-0"
@@ -540,6 +577,11 @@ export default function KuponMakanPage() {
               <ArrowLeft size={20} />
             </Link>
           </div>
+
+          {/* Baris 2: Deskripsi merapat ke ujung kiri */}
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+            Validasi jatah makan via QR Card &amp; sinkronisasi status pelunasan bulan lalu
+          </p>
 
           {/* Baris 3: Tanggal & Jam 1 baris melebar memenuhi ruang kanan & kiri, rata tengah */}
           <div className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 text-center flex items-center justify-center gap-2 flex-wrap">
@@ -907,14 +949,14 @@ export default function KuponMakanPage() {
 
             {/* LIVE FEED REKAP SCAN */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-[460px]">
-              <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-1">
-                <div className="flex items-center gap-2">
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-2">
                   <Clock size={16} className="text-slate-400 flex-shrink-0" />
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white">
                     Riwayat Scan Hari Ini ({recentScans.length})
                   </h3>
                 </div>
-                <div className="text-right">
+                <div className="text-center sm:text-right">
                   <span className="text-[11px] text-slate-400 block">Terakhir discan</span>
                 </div>
               </div>
