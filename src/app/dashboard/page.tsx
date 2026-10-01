@@ -451,8 +451,7 @@ export default function DashboardPage() {
               {/* 1. Guru Qur'an */}
               {(() => {
                 const gStat = dashboardStats?.guru?.quran || { total: 0, hadir: 0, izin: 0, sakit: 0, alpha: 0 };
-                const izinSakit = (gStat.izin || 0) + (gStat.sakit || 0);
-                const belumAbsen = Math.max(0, (gStat.total || 0) - ((gStat.hadir || 0) + izinSakit + (gStat.alpha || 0)));
+                const belumAbsen = Math.max(0, (gStat.total || 0) - ((gStat.hadir || 0) + (gStat.sakit || 0) + (gStat.izin || 0) + (gStat.alpha || 0)));
 
                 return (
                   <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300 flex flex-col justify-between">
@@ -463,22 +462,28 @@ export default function DashboardPage() {
                           {gStat.total} Terjadwal
                         </span>
                       </div>
+                      {/* Baris Total: 1 baris memenuhi ruang kanan dan kiri kartu */}
+                      <div className="px-4 py-2.5 bg-gray-50/70 dark:bg-gray-900/40 border-b dark:border-gray-700/80 flex items-center justify-between">
+                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Terjadwal</span>
+                        <span className="text-base font-extrabold text-gray-900 dark:text-gray-100">{gStat.total} Guru</span>
+                      </div>
+                      {/* Hadir, Sakit, Izin, Alpha berdampingan dalam 1 baris */}
                       <div className="grid grid-cols-4 divide-x dark:divide-gray-700 border-b dark:border-gray-700">
                         <div className="p-2.5 text-center">
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Total</p>
-                          <p className="text-base font-bold text-gray-800 dark:text-gray-200">{gStat.total}</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Hadir</p>
+                          <p className="text-base font-bold text-green-600 dark:text-green-400">{gStat.hadir || 0}</p>
                         </div>
                         <div className="p-2.5 text-center">
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Hadir</p>
-                          <p className="text-base font-bold text-green-600 dark:text-green-400">{gStat.hadir}</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Sakit</p>
+                          <p className="text-base font-bold text-blue-500 dark:text-blue-400">{gStat.sakit || 0}</p>
                         </div>
                         <div className="p-2.5 text-center">
                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Izin</p>
-                          <p className="text-base font-bold text-orange-500 dark:text-orange-400">{izinSakit}</p>
+                          <p className="text-base font-bold text-orange-500 dark:text-orange-400">{gStat.izin || 0}</p>
                         </div>
                         <div className="p-2.5 text-center">
                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Alpha</p>
-                          <p className="text-base font-bold text-red-600 dark:text-red-400">{gStat.alpha}</p>
+                          <p className="text-base font-bold text-red-600 dark:text-red-400">{gStat.alpha || 0}</p>
                         </div>
                       </div>
                     </div>
@@ -495,8 +500,7 @@ export default function DashboardPage() {
               {/* 2. Guru Madin */}
               {(() => {
                 const gStat = dashboardStats?.guru?.madin || { total: 0, hadir: 0, izin: 0, sakit: 0, alpha: 0 };
-                const izinSakit = (gStat.izin || 0) + (gStat.sakit || 0);
-                const belumAbsen = Math.max(0, (gStat.total || 0) - ((gStat.hadir || 0) + izinSakit + (gStat.alpha || 0)));
+                const belumAbsen = Math.max(0, (gStat.total || 0) - ((gStat.hadir || 0) + (gStat.sakit || 0) + (gStat.izin || 0) + (gStat.alpha || 0)));
 
                 return (
                   <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300 flex flex-col justify-between">
@@ -507,22 +511,28 @@ export default function DashboardPage() {
                           {gStat.total} Terjadwal
                         </span>
                       </div>
+                      {/* Baris Total: 1 baris memenuhi ruang kanan dan kiri kartu */}
+                      <div className="px-4 py-2.5 bg-gray-50/70 dark:bg-gray-900/40 border-b dark:border-gray-700/80 flex items-center justify-between">
+                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Terjadwal</span>
+                        <span className="text-base font-extrabold text-gray-900 dark:text-gray-100">{gStat.total} Guru</span>
+                      </div>
+                      {/* Hadir, Sakit, Izin, Alpha berdampingan dalam 1 baris */}
                       <div className="grid grid-cols-4 divide-x dark:divide-gray-700 border-b dark:border-gray-700">
                         <div className="p-2.5 text-center">
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Total</p>
-                          <p className="text-base font-bold text-gray-800 dark:text-gray-200">{gStat.total}</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Hadir</p>
+                          <p className="text-base font-bold text-green-600 dark:text-green-400">{gStat.hadir || 0}</p>
                         </div>
                         <div className="p-2.5 text-center">
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Hadir</p>
-                          <p className="text-base font-bold text-green-600 dark:text-green-400">{gStat.hadir}</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Sakit</p>
+                          <p className="text-base font-bold text-blue-500 dark:text-blue-400">{gStat.sakit || 0}</p>
                         </div>
                         <div className="p-2.5 text-center">
                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Izin</p>
-                          <p className="text-base font-bold text-orange-500 dark:text-orange-400">{izinSakit}</p>
+                          <p className="text-base font-bold text-orange-500 dark:text-orange-400">{gStat.izin || 0}</p>
                         </div>
                         <div className="p-2.5 text-center">
                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Alpha</p>
-                          <p className="text-base font-bold text-red-600 dark:text-red-400">{gStat.alpha}</p>
+                          <p className="text-base font-bold text-red-600 dark:text-red-400">{gStat.alpha || 0}</p>
                         </div>
                       </div>
                     </div>
@@ -539,8 +549,7 @@ export default function DashboardPage() {
               {/* 3. Pembina Asrama */}
               {(() => {
                 const gStat = dashboardStats?.guru?.kegiatan || { total: 0, hadir: 0, izin: 0, sakit: 0, alpha: 0 };
-                const izinSakit = (gStat.izin || 0) + (gStat.sakit || 0);
-                const belumAbsen = Math.max(0, (gStat.total || 0) - ((gStat.hadir || 0) + izinSakit + (gStat.alpha || 0)));
+                const belumAbsen = Math.max(0, (gStat.total || 0) - ((gStat.hadir || 0) + (gStat.sakit || 0) + (gStat.izin || 0) + (gStat.alpha || 0)));
 
                 return (
                   <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300 flex flex-col justify-between">
@@ -551,22 +560,28 @@ export default function DashboardPage() {
                           {gStat.total} Terjadwal
                         </span>
                       </div>
+                      {/* Baris Total: 1 baris memenuhi ruang kanan dan kiri kartu */}
+                      <div className="px-4 py-2.5 bg-gray-50/70 dark:bg-gray-900/40 border-b dark:border-gray-700/80 flex items-center justify-between">
+                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Terjadwal</span>
+                        <span className="text-base font-extrabold text-gray-900 dark:text-gray-100">{gStat.total} Pembina</span>
+                      </div>
+                      {/* Hadir, Sakit, Izin, Alpha berdampingan dalam 1 baris */}
                       <div className="grid grid-cols-4 divide-x dark:divide-gray-700 border-b dark:border-gray-700">
                         <div className="p-2.5 text-center">
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Total</p>
-                          <p className="text-base font-bold text-gray-800 dark:text-gray-200">{gStat.total}</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Hadir</p>
+                          <p className="text-base font-bold text-green-600 dark:text-green-400">{gStat.hadir || 0}</p>
                         </div>
                         <div className="p-2.5 text-center">
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Hadir</p>
-                          <p className="text-base font-bold text-green-600 dark:text-green-400">{gStat.hadir}</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Sakit</p>
+                          <p className="text-base font-bold text-blue-500 dark:text-blue-400">{gStat.sakit || 0}</p>
                         </div>
                         <div className="p-2.5 text-center">
                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Izin</p>
-                          <p className="text-base font-bold text-orange-500 dark:text-orange-400">{izinSakit}</p>
+                          <p className="text-base font-bold text-orange-500 dark:text-orange-400">{gStat.izin || 0}</p>
                         </div>
                         <div className="p-2.5 text-center">
                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5 font-medium">Alpha</p>
-                          <p className="text-base font-bold text-red-600 dark:text-red-400">{gStat.alpha}</p>
+                          <p className="text-base font-bold text-red-600 dark:text-red-400">{gStat.alpha || 0}</p>
                         </div>
                       </div>
                     </div>
@@ -631,16 +646,6 @@ export default function DashboardPage() {
                     </h4>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-xs dark:text-gray-300">
-                        <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
-                          <XCircle size={14} /> Alpha
-                        </span>
-                        <span className="font-bold">{stat.alphaPct}% ({stat.alpha})</span>
-                      </div>
-                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                        <div className="bg-red-500 dark:bg-red-400 h-1.5 rounded-full transition-all duration-500" style={{ width: `${stat.alphaPct}%` }}></div>
-                      </div>
-
-                      <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
                         <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
                           <CheckCircle size={14} /> Hadir
                         </span>
@@ -648,6 +653,16 @@ export default function DashboardPage() {
                       </div>
                       <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
                         <div className="bg-green-500 dark:bg-green-400 h-1.5 rounded-full transition-all duration-500" style={{ width: `${stat.hadirPct}%` }}></div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
+                        <span className="flex items-center gap-1 text-blue-500 dark:text-blue-400">
+                          <Activity size={14} /> Sakit
+                        </span>
+                        <span className="font-bold">{stat.sakitPct}% ({stat.sakit})</span>
+                      </div>
+                      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-blue-400 h-1.5 rounded-full transition-all duration-500" style={{ width: `${stat.sakitPct}%` }}></div>
                       </div>
 
                       <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
@@ -661,13 +676,13 @@ export default function DashboardPage() {
                       </div>
 
                       <div className="flex justify-between items-center text-xs mt-3 dark:text-gray-300">
-                        <span className="flex items-center gap-1 text-blue-500 dark:text-blue-400">
-                          <Activity size={14} /> Sakit
+                        <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                          <XCircle size={14} /> Alpha
                         </span>
-                        <span className="font-bold">{stat.sakitPct}% ({stat.sakit})</span>
+                        <span className="font-bold">{stat.alphaPct}% ({stat.alpha})</span>
                       </div>
                       <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                        <div className="bg-blue-400 h-1.5 rounded-full transition-all duration-500" style={{ width: `${stat.sakitPct}%` }}></div>
+                        <div className="bg-red-500 dark:bg-red-400 h-1.5 rounded-full transition-all duration-500" style={{ width: `${stat.alphaPct}%` }}></div>
                       </div>
                     </div>
                   </div>
