@@ -625,7 +625,7 @@ export default function SettingsPage() {
               <div>
                 <h3 className="font-bold text-gray-800 dark:text-gray-200 text-lg">Status Absensi Otomatis (Master)</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-lg">
-                  Jika diaktifkan, sistem akan otomatis mencatat status &quot;Alpha&quot; untuk Guru/Pembina yang memiliki jadwal pada hari ini namun tidak menekan tombol absensi hingga batas waktu tenggang habis.
+                  Jika diaktifkan, sistem akan otomatis mencatat status &quot;Alpha&quot; untuk Guru/Pembina yang memiliki jadwal pada hari sebelumnya (kemarin) namun tidak menekan tombol absensi. Berlaku per-kategori sesuai pilihan di bawah — bukan semua jadwal sekaligus.
                 </p>
               </div>
               

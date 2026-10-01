@@ -146,12 +146,10 @@ export async function GET() {
         else {
           if (isCatAutoActive && !isModeLibur) {
             const schedules = categoryRows.filter(j => j.guru_id === gId);
-            const allPassed = schedules.length > 0 && schedules.every(s => {
-              const selesaiSec = parseTimeToSec(s.jam_selesai);
-              const deadlineSec = selesaiSec + (waktuTenggangHours * 3600);
-              return currentSecs > deadlineSec;
-            });
-            if (allPassed) alpha++;
+            // Data yang ditampilkan adalah KEMARIN — hari sudah berganti sehingga
+            // semua jadwal kemarin sudah pasti melewati waktu tenggang.
+            // Tidak perlu cek jam (currentSecs > deadlineSec), langsung alpha.
+            if (schedules.length > 0) alpha++;
           }
         }
       });
