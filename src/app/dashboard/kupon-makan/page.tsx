@@ -634,23 +634,24 @@ export default function KuponMakanPage() {
 
         {/* SESI MAKAN SELECTOR (DINAMIS SESUAI JADWAL AKTIF) */}
         <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center text-center space-y-2.5">
-          {/* Baris 1: Teks "Sesi Makan Aktif:" satu baris rata tengah */}
-          <div className="w-full flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            <Sparkles size={16} className="text-amber-500" />
-            <span>Sesi Makan Aktif:</span>
+          {/* Header Sesi Aktif + Jam: 1 baris di desktop (PC), flex-col di mobile */}
+          <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2.5">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <Sparkles size={16} className="text-amber-500" />
+              <span>Sesi Makan Aktif:</span>
+            </div>
+
+            {currentSesiObj && (
+              <div className="flex justify-center">
+                <span className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200/60 dark:border-slate-700">
+                  {currentSesiObj.jam_mulai.substring(0, 5)} - {currentSesiObj.jam_selesai.substring(0, 5)} WIB
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Baris 2: Keterangan jam seperti "16:30 - 17:30 WIB" satu baris rata tengah */}
-          {currentSesiObj && (
-            <div className="w-full flex justify-center">
-              <span className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200/60 dark:border-slate-700">
-                {currentSesiObj.jam_mulai.substring(0, 5)} - {currentSesiObj.jam_selesai.substring(0, 5)} WIB
-              </span>
-            </div>
-          )}
-
-          {/* Baris 3: Badge / Tombol sesi masing-masing 1 baris rata tengah */}
-          <div className="w-full max-w-md flex flex-col gap-2 pt-1">
+          {/* Badge / Tombol Sesi: 1 baris sejajar di desktop (PC), flex-col di mobile */}
+          <div className="w-full max-w-xl flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
             {activeSessionsList.map((ses) => {
               const isSelected = activeSesi === ses.kode_sesi;
               const porsiCount = porsiPerSesi[ses.kode_sesi] || 0;
@@ -659,14 +660,14 @@ export default function KuponMakanPage() {
                 <button
                   key={ses.id}
                   onClick={() => setActiveSesi(ses.kode_sesi)}
-                  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                  className={`w-full sm:flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                     isSelected
                       ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
                   {getSesiIcon(ses.kode_sesi)}
-                  <span>{ses.nama_sesi}</span>
+                  <span className="whitespace-nowrap">{ses.nama_sesi}</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
                     isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                   }`}>

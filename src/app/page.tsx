@@ -141,14 +141,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-800 to-green-900 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-800 to-green-900 flex flex-col items-center justify-start sm:justify-center p-3 sm:p-4 py-6 sm:py-8 overflow-y-auto">
       {mounted && (
-        <div className="w-full max-w-md bg-white/10 backdrop-blur-md rounded-2xl p-4 mb-4 shadow-xl border border-white/20 text-center animate-[slideDown_0.5s_ease-out]">
+        <div className="w-full max-w-md bg-white/10 backdrop-blur-md rounded-2xl p-3.5 sm:p-4 mb-3 sm:mb-4 shadow-xl border border-white/20 text-center animate-[slideDown_0.5s_ease-out]">
           <div className="flex justify-center items-center gap-2 text-white font-medium text-sm md:text-base">
-            <CalendarDays className="h-5 w-5" />
-            <span className="font-cairo text-lg md:text-xl mt-1 tracking-wide font-bold" dir="rtl">{getHijriDate(currentTime)}</span>
+            <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="font-cairo text-base sm:text-lg md:text-xl mt-0.5 sm:mt-1 tracking-wide font-bold" dir="rtl">{getHijriDate(currentTime)}</span>
           </div>
-          <div className="flex justify-center items-center gap-2 text-green-100 text-xs md:text-sm mt-1 font-bold">
+          <div className="flex justify-center items-center gap-2 text-green-100 text-[11px] sm:text-xs md:text-sm mt-1 font-bold">
             <span style={{fontFamily: '"Courier New", Courier, monospace'}}>{getMasehiDate(currentTime)}</span>
             <span className="text-white/50">|</span>
             <span style={{fontFamily: '"Courier New", Courier, monospace'}}>{getTime(currentTime)}</span>
@@ -156,29 +156,29 @@ export default function LoginPage() {
         </div>
       )}
 
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20 animate-[fadeIn_0.6s_ease-out]">
-        <div className="text-center mb-8">
-          <div className="bg-white rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-xl h-32 w-32 md:h-40 md:w-40 p-4 md:p-5 animate-[slideDown_0.8s_ease-out]">
+      <div className="w-full max-w-md bg-white/10 backdrop-blur-lg rounded-3xl p-5 sm:p-8 shadow-2xl border border-white/20 animate-[fadeIn_0.6s_ease-out]">
+        <div className="flex flex-col items-center justify-center text-center mb-6 sm:mb-8 w-full px-1">
+          <div className="bg-white rounded-[2rem] flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-xl h-24 w-24 sm:h-32 sm:w-32 md:h-36 md:w-36 p-3 sm:p-4 md:p-5 animate-[slideDown_0.8s_ease-out]">
             <img src="/logo.png" alt="Logo PPMA" className="h-[85%] w-[85%] object-contain drop-shadow-md" />
           </div>
-          {/* Salam Mawar — baris terpendek */}
+          {/* Salam Mawar — baris terpendek (puncak piramid) */}
           <h1
-            className="font-bold text-white animate-[fadeIn_1s_ease-out] mb-2"
-            style={{ fontFamily: 'var(--font-cinzel), serif', fontSize: 'clamp(1.4rem, 4vw, 1.7rem)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
+            className="font-bold text-white animate-[fadeIn_1s_ease-out] mb-1.5 sm:mb-2 text-center"
+            style={{ fontFamily: 'var(--font-cinzel), serif', fontSize: 'clamp(1.2rem, 4vw, 1.7rem)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
           >
             Salam Mawar
           </h1>
-          {/* Sistem Aplikasi Layanan Akademik — medium */}
+          {/* Sistem Aplikasi Layanan Akademik — medium (badan piramid) */}
           <h2
-            className="text-white font-bold animate-[fadeIn_1.2s_ease-out] mb-1.5"
-            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.7rem, 2.5vw, 0.85rem)', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
+            className="text-white font-bold animate-[fadeIn_1.2s_ease-out] mb-1 sm:mb-1.5 text-center"
+            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.55rem, 2.7vw, 0.85rem)', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}
           >
             Sistem Aplikasi Layanan Akademik
           </h2>
-          {/* Pondok Pesantren Matholi'ul Anwar — terpanjang */}
+          {/* Pondok Pesantren Matholi'ul Anwar — terpanjang (alas piramid) */}
           <p
-            className="text-white font-bold animate-[fadeIn_1.4s_ease-out]"
-            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.7rem, 2.5vw, 0.85rem)', letterSpacing: '0.12em', whiteSpace: 'nowrap' }}
+            className="text-white font-bold animate-[fadeIn_1.4s_ease-out] text-center"
+            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.55rem, 2.7vw, 0.85rem)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
           >
             Pondok Pesantren Matholi&apos;ul Anwar
           </p>
@@ -190,9 +190,9 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
           <div className="space-y-1">
-            <label className="text-[15px] font-extrabold text-green-50 ml-1" style={{ fontFamily: 'var(--font-cinzel), serif', letterSpacing: '0.05em' }}>Nama Pengguna</label>
+            <label className="text-[14px] sm:text-[15px] font-extrabold text-green-50 ml-1" style={{ fontFamily: 'var(--font-cinzel), serif', letterSpacing: '0.05em' }}>Nama Pengguna</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <User className="h-4 w-4 text-green-200" />
@@ -201,16 +201,16 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[15px] font-bold placeholder-green-200/70 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[14px] sm:text-[15px] font-bold placeholder-green-200/70 placeholder:font-sans placeholder:font-normal placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
                 style={{ fontFamily: '"Courier New", Courier, monospace' }}
-                placeholder="Masukkan Nama Pengguna Anda"
+                placeholder="Nama Pengguna"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-[15px] font-extrabold text-green-50 ml-1" style={{ fontFamily: 'var(--font-cinzel), serif', letterSpacing: '0.05em' }}>Kata Sandi</label>
+            <label className="text-[14px] sm:text-[15px] font-extrabold text-green-50 ml-1" style={{ fontFamily: 'var(--font-cinzel), serif', letterSpacing: '0.05em' }}>Kata Sandi</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -220,9 +220,9 @@ export default function LoginPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[15px] font-bold placeholder-green-200/70 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[14px] sm:text-[15px] font-bold placeholder-green-200/70 placeholder:font-sans placeholder:font-normal placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
                   style={{ fontFamily: '"Courier New", Courier, monospace' }}
-                  placeholder="Masukkan Kata Sandi Anda"
+                  placeholder="Kata Sandi"
                   required
                 />
               </div>

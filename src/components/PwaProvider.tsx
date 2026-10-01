@@ -168,7 +168,15 @@ function DraggableInstallButton({ onInstall, onClose }: { onInstall: () => void,
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    setPosition({ x: window.innerWidth - 170, y: window.innerHeight - 80 });
+    const isMobile = window.innerWidth < 768;
+    // Di mobile, posisikan tombol lebih ke atas (~145px dari bawah) agar TIDAK menutupi
+    // Bottom Navigation Bar (tinggi ~65px) maupun ikon menu Profil di pojok kanan bawah
+    const initialX = isMobile ? window.innerWidth - 65 : window.innerWidth - 170;
+    const initialY = isMobile ? window.innerHeight - 145 : window.innerHeight - 80;
+    setPosition({ x: Math.max(10, initialX), y: Math.max(10, initialY) });
+    if (isMobile) {
+      setIsMinimized(true);
+    }
     setIsMounted(true);
   }, []);
 
@@ -190,9 +198,12 @@ function DraggableInstallButton({ onInstall, onClose }: { onInstall: () => void,
     let newX = e.clientX - dragOffset.x;
     let newY = e.clientY - dragOffset.y;
     
-    // Batasi agar tidak keluar layar
+    const isMobile = window.innerWidth < 768;
+    const bottomSafety = isMobile ? 120 : 60;
+
+    // Batasi agar tidak keluar layar dan tidak menimpa bottom navbar di mobile
     newX = Math.max(10, Math.min(newX, window.innerWidth - (isMinimized ? 60 : 150)));
-    newY = Math.max(10, Math.min(newY, window.innerHeight - 60));
+    newY = Math.max(10, Math.min(newY, window.innerHeight - bottomSafety));
     
     setPosition({ x: newX, y: newY });
   };
@@ -218,7 +229,7 @@ function DraggableInstallButton({ onInstall, onClose }: { onInstall: () => void,
         left: position.x, 
         top: position.y, 
         touchAction: 'none',
-        zIndex: 9999 
+        zIndex: 45 
       }}
       className="cursor-move animate-[slideUp_0.5s_ease-out]"
     >
