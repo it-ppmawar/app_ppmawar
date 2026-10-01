@@ -7,7 +7,7 @@ import {
   Camera, CheckCircle, XCircle, QrCode, Shield, Wifi, RefreshCw,
   ChevronDown, FlipHorizontal, SwitchCamera, Layers, Sparkles, Brain, ScanFace,
   Loader2, Users, Zap, Info, Link2, Search, UserPlus, CheckCircle2,
-  AlertTriangle, Settings, Upload, Image, HelpCircle, MapPin, ClipboardCheck
+  AlertTriangle, Settings, Upload, Image, HelpCircle, MapPin, ClipboardCheck, Utensils
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 
@@ -810,21 +810,37 @@ function ScanAbsenInner() {
   return (
     <div className="max-w-xl mx-auto space-y-5 pb-24 animate-[fadeIn_0.5s_ease-out]">
 
-      {/* Switcher Tab Mode Absensi Santri: Mode Manual vs Mode Scan */}
-      <div className="bg-gray-100 dark:bg-gray-800/90 p-1.5 rounded-2xl flex items-center gap-1.5 shadow-inner border border-gray-200/60 dark:border-gray-700/60">
+      {/* Switcher 3 Tab Terpadu: Mode Manual vs Mode Scan vs Kupon Makan */}
+      <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-800/90 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner">
         <Link
           href="/dashboard/absen"
-          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
+          className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
         >
-          <ClipboardCheck size={18} />
-          <span>Mode Manual (Pilih Jadwal)</span>
+          <ClipboardCheck size={20} className="mb-1 flex-shrink-0" />
+          <span className="leading-tight">
+            Mode Manual
+            <span className="block text-[10px] font-normal opacity-80">(Pilih Jadwal)</span>
+          </span>
         </Link>
         <Link
           href="/dashboard/scan-absen"
-          className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-xs sm:text-sm transition-all bg-white dark:bg-gray-700 text-emerald-700 dark:text-emerald-300 shadow-sm border border-gray-200/60 dark:border-gray-600"
+          className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-black text-xs sm:text-sm transition-all bg-white dark:bg-gray-700 text-emerald-700 dark:text-emerald-300 shadow-sm border border-gray-200/60 dark:border-gray-600"
         >
-          <QrCode size={18} />
-          <span>Mode Scan (QR &amp; Wajah AI)</span>
+          <QrCode size={20} className="mb-1 flex-shrink-0" />
+          <span className="leading-tight">
+            Mode Scan
+            <span className="block text-[10px] font-normal opacity-80">(QR &amp; Wajah)</span>
+          </span>
+        </Link>
+        <Link
+          href="/dashboard/kupon-makan"
+          className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
+        >
+          <Utensils size={20} className="mb-1 flex-shrink-0" />
+          <span className="leading-tight">
+            Kupon Makan
+            <span className="block text-[10px] font-normal opacity-80">(QR Santri)</span>
+          </span>
         </Link>
       </div>
 

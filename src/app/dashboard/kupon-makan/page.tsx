@@ -7,7 +7,7 @@ import {
   Camera, Volume2, VolumeX, RefreshCw, User, ShieldAlert,
   Search, Check, Trash2, ArrowLeft, Coffee, Sun, Moon,
   Sparkles, Info, Settings2, AlertCircle, CalendarClock,
-  SlidersHorizontal, X, Save
+  SlidersHorizontal, X, Save, ClipboardCheck, QrCode
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 
@@ -463,93 +463,107 @@ export default function KuponMakanPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 p-3 sm:p-6 transition-colors">
       <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* TAB SWITCHER TERINTEGRASI: ABSEN MANUAL vs SCAN ABSEN vs KUPON MAKAN */}
-        <div className="bg-gray-100 dark:bg-slate-800/90 p-1.5 rounded-2xl flex items-center gap-1.5 shadow-inner border border-gray-200/60 dark:border-slate-700/60">
+        {/* Switcher 3 Tab Terpadu: Mode Manual vs Mode Scan vs Kupon Makan */}
+        <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-800/90 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner">
           <Link
             href="/dashboard/absen"
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50"
+            className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
           >
-            <CheckCircle2 size={16} />
-            <span>Mode Manual (Jadwal)</span>
+            <ClipboardCheck size={20} className="mb-1 flex-shrink-0" />
+            <span className="leading-tight">
+              Mode Manual
+              <span className="block text-[10px] font-normal opacity-80">(Pilih Jadwal)</span>
+            </span>
           </Link>
           <Link
             href="/dashboard/scan-absen"
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50"
+            className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
           >
-            <Camera size={16} />
-            <span>Scan Absen (QR &amp; Wajah)</span>
+            <QrCode size={20} className="mb-1 flex-shrink-0" />
+            <span className="leading-tight">
+              Mode Scan
+              <span className="block text-[10px] font-normal opacity-80">(QR &amp; Wajah)</span>
+            </span>
           </Link>
           <Link
             href="/dashboard/kupon-makan"
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm transition-all bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-sm border border-slate-200/60 dark:border-slate-700"
+            className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-black text-xs sm:text-sm transition-all bg-white dark:bg-gray-700 text-emerald-700 dark:text-emerald-300 shadow-sm border border-gray-200/60 dark:border-gray-600"
           >
-            <Utensils size={16} />
-            <span>E-Kupon Makan (Pilot)</span>
+            <Utensils size={20} className="mb-1 flex-shrink-0" />
+            <span className="leading-tight">
+              Kupon Makan
+              <span className="block text-[10px] font-normal opacity-80">(QR Santri)</span>
+            </span>
           </Link>
         </div>
 
-        {/* HEADER & PILOT BADGE */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/dashboard"
-                className="p-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-                title="Kembali ke Dashboard"
-              >
-                <ArrowLeft size={20} />
-              </Link>
-              <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400">
-                <Utensils size={24} />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
-                  E-Kupon Makan Santri
-                  {isModeUjiCoba && (
-                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-                      Pilot / 6 Bulan Uji Coba
-                    </span>
-                  )}
-                  {presetAktif === 'ramadhan' && (
-                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 flex items-center gap-1">
-                      <Moon size={12} /> Mode Ramadhan
-                    </span>
-                  )}
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                  Validasi jatah makan via QR Card & sinkronisasi status pelunasan bulan lalu
-                </p>
-              </div>
+        {/* HEADER KUPON MAKAN */}
+        <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3.5">
+          {/* Baris 1: Tombol Kembali + Ikon + Teks "E-Kupon Makan Santri" 1 baris */}
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/dashboard"
+              className="p-2 -ml-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors flex-shrink-0"
+              title="Kembali ke Dashboard"
+            >
+              <ArrowLeft size={20} />
+            </Link>
+            <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 flex-shrink-0">
+              <Utensils size={20} />
             </div>
+            <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+              <span>E-Kupon Makan Santri</span>
+              {presetAktif === 'ramadhan' && (
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 flex items-center gap-1">
+                  <Moon size={11} /> Ramadhan
+                </span>
+              )}
+            </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Live Clock */}
-            <div className="text-right px-3.5 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-              <div className="text-[10px] text-slate-400 font-medium">{currentDateStr}</div>
-              <div className="text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 justify-end">
-                <Clock size={13} />
-                {currentTimeStr}
-              </div>
-            </div>
+          {/* Baris 2: Deskripsi merapat ke ujung kiri sejajar dengan ujung kiri ikon/elemen di atasnya */}
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+            Validasi jatah makan via QR Card &amp; sinkronisasi status pelunasan bulan lalu
+          </p>
 
-            {/* Tombol Atur Jadwal & Sesi Makan */}
+          {/* Baris 3: Tanggal & Jam 1 baris melebar memenuhi ruang kanan & kiri, rata tengah */}
+          <div className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 text-center flex items-center justify-center gap-2 flex-wrap">
+            <span className="text-xs text-slate-400 font-medium">{currentDateStr}</span>
+            <span className="text-xs text-slate-300 dark:text-slate-600 hidden sm:inline">•</span>
+            <span className="text-xs sm:text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+              <Clock size={13} />
+              {currentTimeStr}
+            </span>
+          </div>
+
+          {/* Baris 4: Tombol Muat Ulang di kiri, Tombol Atur Jadwal di tengah, Tombol Speaker di kanan */}
+          <div className="flex items-center justify-between gap-2 w-full pt-0.5">
+            {/* Kiri: Muat Ulang */}
+            <button
+              onClick={fetchStatsAndSesi}
+              className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors border border-slate-200/60 dark:border-slate-700 flex items-center justify-center flex-shrink-0"
+              title="Perbarui Data"
+            >
+              <RefreshCw size={18} />
+            </button>
+
+            {/* Tengah: Atur Jadwal */}
             <button
               onClick={() => {
                 setEditableSessions(JSON.parse(JSON.stringify(sessions)));
                 setShowSettingsModal(true);
               }}
-              className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-colors border border-slate-200/80 dark:border-slate-700"
+              className="flex-1 max-w-sm py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors border border-slate-200/80 dark:border-slate-700"
               title="Atur Waktu & Preset Sesi Makan"
             >
               <CalendarClock size={16} className="text-emerald-600 dark:text-emerald-400" />
               <span>Atur Jadwal</span>
             </button>
 
-            {/* Toggle Sound */}
+            {/* Kanan: Speaker */}
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className={`p-2 rounded-xl border transition-all ${
+              className={`p-2.5 rounded-xl border transition-all flex items-center justify-center flex-shrink-0 ${
                 soundEnabled
                   ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400'
                   : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'
@@ -558,60 +572,52 @@ export default function KuponMakanPage() {
             >
               {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
-
-            {/* Refresh Stats */}
-            <button
-              onClick={fetchStatsAndSesi}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
-              title="Perbarui Data"
-            >
-              <RefreshCw size={18} />
-            </button>
           </div>
         </div>
 
         {/* SESI MAKAN SELECTOR (DINAMIS SESUAI JADWAL AKTIF) */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <Sparkles size={16} className="text-amber-500" />
-                Sesi Makan Aktif:
+        <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center text-center space-y-2.5">
+          {/* Baris 1: Teks "Sesi Makan Aktif:" satu baris rata tengah */}
+          <div className="w-full flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <Sparkles size={16} className="text-amber-500" />
+            <span>Sesi Makan Aktif:</span>
+          </div>
+
+          {/* Baris 2: Keterangan jam seperti "16:30 - 17:30 WIB" satu baris rata tengah */}
+          {currentSesiObj && (
+            <div className="w-full flex justify-center">
+              <span className="text-xs font-mono font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200/60 dark:border-slate-700">
+                {currentSesiObj.jam_mulai.substring(0, 5)} - {currentSesiObj.jam_selesai.substring(0, 5)} WIB
               </span>
-              {currentSesiObj && (
-                <span className="text-[11px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                  {currentSesiObj.jam_mulai.substring(0, 5)} - {currentSesiObj.jam_selesai.substring(0, 5)} WIB
-                </span>
-              )}
             </div>
+          )}
 
-            {/* Tombol-tombol sesi aktif dinamis */}
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-              {activeSessionsList.map((ses) => {
-                const isSelected = activeSesi === ses.kode_sesi;
-                const porsiCount = porsiPerSesi[ses.kode_sesi] || 0;
+          {/* Baris 3: Badge / Tombol sesi masing-masing 1 baris rata tengah */}
+          <div className="w-full max-w-md flex flex-col gap-2 pt-1">
+            {activeSessionsList.map((ses) => {
+              const isSelected = activeSesi === ses.kode_sesi;
+              const porsiCount = porsiPerSesi[ses.kode_sesi] || 0;
 
-                return (
-                  <button
-                    key={ses.id}
-                    onClick={() => setActiveSesi(ses.kode_sesi)}
-                    className={`flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-                      isSelected
-                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    {getSesiIcon(ses.kode_sesi)}
-                    <span>{ses.nama_sesi}</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                    }`}>
-                      {porsiCount}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+              return (
+                <button
+                  key={ses.id}
+                  onClick={() => setActiveSesi(ses.kode_sesi)}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {getSesiIcon(ses.kode_sesi)}
+                  <span>{ses.nama_sesi}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  }`}>
+                    {porsiCount}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -844,23 +850,37 @@ export default function KuponMakanPage() {
           <div className="lg:col-span-5 space-y-6">
 
             {/* RINGKASAN STATISTIK HARI INI */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-center">
-                <span className="text-[10px] text-slate-400 font-medium block">Total Porsi</span>
-                <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{stats.totalPorsi}</span>
+            <div className="space-y-2.5">
+              {/* Baris 1: Total Porsi 1 baris melebar memenuhi ruang kanan dan kiri */}
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-400 font-medium block">Total Porsi</span>
+                  <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 leading-none mt-0.5 block">{stats.totalPorsi}</span>
+                </div>
+                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                  <Utensils size={22} />
+                </div>
               </div>
 
-              {/* Tampilkan 2 sesi aktif pertama */}
-              {activeSessionsList.slice(0, 2).map(ses => (
-                <div key={ses.id} className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-center">
-                  <span className="text-[10px] text-slate-400 font-medium block truncate">{ses.nama_sesi}</span>
-                  <span className="text-xl font-extrabold text-amber-500">{porsiPerSesi[ses.kode_sesi] || 0}</span>
-                </div>
-              ))}
+              {/* Baris 2: Sesi Makan (Sarapan Pagi & Makan Sore / Malam) berdampingan */}
+              <div className="grid grid-cols-2 gap-2.5">
+                {activeSessionsList.slice(0, 2).map((ses) => (
+                  <div key={ses.id} className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-center">
+                    <span className="text-[11px] text-slate-400 font-medium block truncate">{ses.nama_sesi}</span>
+                    <span className="text-xl font-extrabold text-amber-500 block mt-0.5">{porsiPerSesi[ses.kode_sesi] || 0}</span>
+                  </div>
+                ))}
+              </div>
 
-              <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-center">
-                <span className="text-[10px] text-slate-400 font-medium block">Dispensasi</span>
-                <span className="text-xl font-extrabold text-blue-500">{stats.totalDispensasi}</span>
+              {/* Baris 3: Dispensasi 1 baris melebar memenuhi ruang kanan dan kiri */}
+              <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-400 font-medium block">Dispensasi</span>
+                  <span className="text-xl font-extrabold text-blue-500 leading-none mt-0.5 block">{stats.totalDispensasi}</span>
+                </div>
+                <div className="p-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl">
+                  <AlertTriangle size={18} />
+                </div>
               </div>
             </div>
 
