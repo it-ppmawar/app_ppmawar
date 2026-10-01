@@ -515,8 +515,7 @@ export default function KuponMakanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 p-3 sm:p-6 transition-colors">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto pb-20 animate-[fadeIn_0.3s_ease-out]">
 
         {/* Switcher 3 Tab Terpadu: Mode Manual vs Mode Scan vs Kupon Makan */}
         <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-800/90 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner">
@@ -1027,8 +1026,6 @@ export default function KuponMakanPage() {
           </div>
 
         </div>
-
-      </div>
 
       {/* MODAL PENGATURAN JADWAL & SESI MAKAN */}
       {showSettingsModal && (

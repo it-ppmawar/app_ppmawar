@@ -784,18 +784,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <Link
                               href="/dashboard/kupon-makan"
                               onClick={() => setShowSidebar(false)}
-                              className={`flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
+                              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
                                 pathname === '/dashboard/kupon-makan'
                                   ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold'
                                   : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'
                               }`}
                             >
-                              <div className="flex items-center gap-3">
-                                <Utensils size={18} /> <span className="text-sm">E-Kupon Makan</span>
-                              </div>
-                              <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300">
-                                Trial
-                              </span>
+                              <Utensils size={18} /> <span className="text-sm">E-Kupon Makan</span>
                             </Link>
                           </li>
                           {(['admin', 'staff'].includes(userRoleLower) || isPengasuhRole) && (
