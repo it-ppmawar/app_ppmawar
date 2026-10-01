@@ -134,7 +134,7 @@ export default function DashboardPage() {
       <div className="text-center py-8 bg-gradient-to-br from-[#064e3b] to-[#022c22] rounded-3xl shadow-lg border border-green-800/50 overflow-hidden relative transition-colors duration-300">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 via-emerald-500 to-green-600"></div>
         <h2
-          className="text-[clamp(1.5rem,7.5vw,4.5rem)] font-diwani text-green-300 mb-1 mt-1 drop-shadow-sm transition-all duration-300 px-2 w-full leading-relaxed tracking-[0.03em] whitespace-nowrap"
+          className="text-[clamp(1.85rem,8.8vw,4.8rem)] font-diwani text-green-300 mb-1 mt-1 drop-shadow-sm transition-all duration-300 px-2 w-full leading-relaxed tracking-[0.03em] whitespace-nowrap"
           dir="rtl"
         >
           « السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ »

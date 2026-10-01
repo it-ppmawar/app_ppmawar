@@ -164,21 +164,21 @@ export default function LoginPage() {
           {/* Salam Mawar — baris terpendek (puncak piramid) */}
           <h1
             className="font-bold text-white animate-[fadeIn_1s_ease-out] mb-1.5 sm:mb-2 text-center"
-            style={{ fontFamily: 'var(--font-cinzel), serif', fontSize: 'clamp(1.2rem, 4vw, 1.7rem)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
+            style={{ fontFamily: 'var(--font-cinzel), serif', fontSize: 'clamp(1.3rem, 4.2vw, 1.8rem)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
           >
             Salam Mawar
           </h1>
           {/* Sistem Aplikasi Layanan Akademik — medium (badan piramid) */}
           <h2
             className="text-white font-bold animate-[fadeIn_1.2s_ease-out] mb-1 sm:mb-1.5 text-center"
-            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.55rem, 2.7vw, 0.85rem)', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}
+            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.68rem, 3.2vw, 0.95rem)', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
           >
             Sistem Aplikasi Layanan Akademik
           </h2>
           {/* Pondok Pesantren Matholi'ul Anwar — terpanjang (alas piramid) */}
           <p
             className="text-white font-bold animate-[fadeIn_1.4s_ease-out] text-center"
-            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.55rem, 2.7vw, 0.85rem)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
+            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.68rem, 3.2vw, 0.95rem)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
           >
             Pondok Pesantren Matholi&apos;ul Anwar
           </p>
@@ -201,7 +201,7 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[14px] sm:text-[15px] font-bold placeholder-green-200/70 placeholder:font-sans placeholder:font-normal placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[14px] sm:text-[15px] font-bold placeholder-green-200/70 placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
                 style={{ fontFamily: '"Courier New", Courier, monospace' }}
                 placeholder="Nama Pengguna"
                 required
@@ -220,7 +220,7 @@ export default function LoginPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[14px] sm:text-[15px] font-bold placeholder-green-200/70 placeholder:font-sans placeholder:font-normal placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[14px] sm:text-[15px] font-bold placeholder-green-200/70 placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
                   style={{ fontFamily: '"Courier New", Courier, monospace' }}
                   placeholder="Kata Sandi"
                   required
