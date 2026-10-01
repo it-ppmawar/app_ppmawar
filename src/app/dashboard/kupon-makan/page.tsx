@@ -71,7 +71,6 @@ export default function KuponMakanPage() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [currentTimeStr, setCurrentTimeStr] = useState('');
   const [currentDateStr, setCurrentDateStr] = useState('');
-  const [isModeUjiCoba, setIsModeUjiCoba] = useState(true);
 
   // RBAC Authentication State
   const [authChecking, setAuthChecking] = useState(true);
@@ -84,6 +83,7 @@ export default function KuponMakanPage() {
   const [savingSettings, setSavingSettings] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraButtonRef = useRef<HTMLButtonElement>(null);
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   // Audio synthesizer via Web Audio API
@@ -182,9 +182,6 @@ export default function KuponMakanPage() {
         }
         if (json.settings?.preset_aktif) {
           setPresetAktif(json.settings.preset_aktif);
-        }
-        if (json.settings?.mode_uji_coba !== undefined) {
-          setIsModeUjiCoba(json.settings.mode_uji_coba === '1');
         }
       }
     } catch (e) {
@@ -372,6 +369,12 @@ export default function KuponMakanPage() {
     }
   };
 
+  const scrollToCamera = useCallback(() => {
+    if (cameraButtonRef.current) {
+      cameraButtonRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
   const toggleCamera = () => {
     if (isCameraActive) {
       if (html5QrCodeRef.current) {
@@ -389,6 +392,9 @@ export default function KuponMakanPage() {
     } else {
       setIsCameraActive(true);
       setTimeout(() => {
+        scrollToCamera();
+      }, 50);
+      setTimeout(() => {
         const qr = new Html5Qrcode('qr-reader');
         html5QrCodeRef.current = qr;
         qr.start(
@@ -403,9 +409,16 @@ export default function KuponMakanPage() {
           setIsCameraActive(false);
           alert('Gagal membuka kamera: ' + err);
         });
+        scrollToCamera();
       }, 300);
     }
   };
+
+  useEffect(() => {
+    if (isCameraActive) {
+      scrollToCamera();
+    }
+  }, [isCameraActive, scrollToCamera]);
 
   // Helper Ikon Sesi
   const getSesiIcon = (kode: string) => {
@@ -499,15 +512,8 @@ export default function KuponMakanPage() {
 
         {/* HEADER KUPON MAKAN */}
         <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3.5">
-          {/* Baris 1: Tombol Kembali + Ikon + Teks "E-Kupon Makan Santri" 1 baris */}
+          {/* Baris 1: Ikon + Teks "E-Kupon Makan Santri" 1 baris */}
           <div className="flex items-center gap-2.5">
-            <Link
-              href="/dashboard"
-              className="p-2 -ml-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors flex-shrink-0"
-              title="Kembali ke Dashboard"
-            >
-              <ArrowLeft size={20} />
-            </Link>
             <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 flex-shrink-0">
               <Utensils size={20} />
             </div>
@@ -521,10 +527,19 @@ export default function KuponMakanPage() {
             </h1>
           </div>
 
-          {/* Baris 2: Deskripsi merapat ke ujung kiri sejajar dengan ujung kiri ikon/elemen di atasnya */}
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-            Validasi jatah makan via QR Card &amp; sinkronisasi status pelunasan bulan lalu
-          </p>
+          {/* Baris 2: Deskripsi di kiri & Tombol Kembali di sebelah kanan rata kanan */}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed flex-1">
+              Validasi jatah makan via QR Card &amp; sinkronisasi status pelunasan bulan lalu
+            </p>
+            <Link
+              href="/dashboard"
+              className="p-2 -mr-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors flex-shrink-0"
+              title="Kembali ke Dashboard"
+            >
+              <ArrowLeft size={20} />
+            </Link>
+          </div>
 
           {/* Baris 3: Tanggal & Jam 1 baris melebar memenuhi ruang kanan & kiri, rata tengah */}
           <div className="w-full py-2.5 px-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 text-center flex items-center justify-center gap-2 flex-wrap">
@@ -628,9 +643,10 @@ export default function KuponMakanPage() {
           <div className="lg:col-span-7 space-y-6">
 
             {/* BARCODE / SCANNER GUN INPUT BOX */}
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-              <form onSubmit={handleSubmitInput} className="flex gap-2">
-                <div className="relative flex-1">
+            <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3.5">
+              <form onSubmit={handleSubmitInput} className="space-y-3">
+                {/* Baris 1: Kolom pencarian melebar penuh memenuhi ruang kanan dan kiri */}
+                <div className="relative w-full">
                   <input
                     ref={inputRef}
                     type="text"
@@ -638,30 +654,36 @@ export default function KuponMakanPage() {
                     onChange={(e) => setBarcodeInput(e.target.value)}
                     placeholder="Scan barcode kartu atau ketik NIS lalu Enter..."
                     disabled={loading}
-                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono text-base focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-all"
+                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm sm:text-base focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-all"
                   />
                   <Search className="absolute left-3.5 top-4 text-slate-400" size={20} />
                 </div>
-                <button
-                  type="submit"
-                  disabled={loading || !barcodeInput.trim()}
-                  className="px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  <Check size={18} />
-                  <span>Proses</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleCamera}
-                  className={`p-3.5 rounded-xl border transition-all ${
-                    isCameraActive
-                      ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-600'
-                      : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                  }`}
-                  title={isCameraActive ? 'Tutup Kamera' : 'Buka Kamera QR'}
-                >
-                  <Camera size={20} />
-                </button>
+
+                {/* Baris 2: Tombol Proses dan Tombol Kamera di bawah kolom pencarian */}
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="submit"
+                    disabled={loading || !barcodeInput.trim()}
+                    className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-sm"
+                  >
+                    <Check size={18} />
+                    <span>Proses</span>
+                  </button>
+                  <button
+                    ref={cameraButtonRef}
+                    type="button"
+                    onClick={toggleCamera}
+                    className={`py-3 px-4 rounded-xl border transition-all flex items-center justify-center gap-2 font-semibold text-sm scroll-mt-3 ${
+                      isCameraActive
+                        ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400'
+                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                    title={isCameraActive ? 'Tutup Kamera' : 'Buka Kamera QR'}
+                  >
+                    <Camera size={18} />
+                    <span>{isCameraActive ? 'Tutup' : 'Kamera'}</span>
+                  </button>
+                </div>
               </form>
 
               {/* Kamera Viewport jika diaktifkan */}
@@ -838,9 +860,8 @@ export default function KuponMakanPage() {
                 </div>
               )}
 
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
-                <span>Mode: {isModeUjiCoba ? 'Pendamping Uji Coba 6 Bulan' : 'Operasional Penuh'}</span>
-                <span>Auto-Focus USB Scanner Aktif</span>
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 text-center font-medium">
+                Auto-Focus USB Scanner Aktif
               </div>
             </div>
 
@@ -886,12 +907,16 @@ export default function KuponMakanPage() {
 
             {/* LIVE FEED REKAP SCAN */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-[460px]">
-              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                  <Clock size={16} className="text-slate-400" />
-                  Riwayat Scan Hari Ini ({recentScans.length})
-                </h3>
-                <span className="text-[11px] text-slate-400">Terakhir discan</span>
+              <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Clock size={16} className="text-slate-400 flex-shrink-0" />
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                    Riwayat Scan Hari Ini ({recentScans.length})
+                  </h3>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] text-slate-400 block">Terakhir discan</span>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 p-2">
