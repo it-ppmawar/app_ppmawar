@@ -171,14 +171,14 @@ export default function LoginPage() {
           {/* Sistem Aplikasi Layanan Akademik — medium (badan piramid) */}
           <h2
             className="text-white font-bold animate-[fadeIn_1.2s_ease-out] mb-1 sm:mb-1.5 text-center"
-            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.68rem, 3.2vw, 0.95rem)', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
+            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.65rem, 2.95vw, 0.88rem)', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}
           >
             Sistem Aplikasi Layanan Akademik
           </h2>
-          {/* Pondok Pesantren Matholi'ul Anwar — terpanjang (alas piramid) */}
+          {/* Pondok Pesantren Matholi'ul Anwar — terpanjang (alas piramid bertingkat elegan) */}
           <p
             className="text-white font-bold animate-[fadeIn_1.4s_ease-out] text-center"
-            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.68rem, 3.2vw, 0.95rem)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
+            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.65rem, 2.95vw, 0.88rem)', letterSpacing: '0.11em', whiteSpace: 'nowrap' }}
           >
             Pondok Pesantren Matholi&apos;ul Anwar
           </p>
