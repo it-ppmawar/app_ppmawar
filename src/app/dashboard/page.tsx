@@ -441,7 +441,7 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-snug">
                   <span>Statistik Absensi Dewan Guru &amp; Pembina Terbaru</span>{' '}
                   <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-bold whitespace-nowrap align-middle">
-                    Hari ini &amp; Kemarin
+                    Kemarin
                   </span>
                 </h3>
               </div>
@@ -599,7 +599,7 @@ export default function DashboardPage() {
                   <h3 className="text-sm font-bold text-green-700 dark:text-green-400 leading-snug">
                     <span>Statistik Absensi Santri Terbaru</span>{' '}
                     <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/60 text-green-800 dark:text-green-300 font-bold whitespace-nowrap align-middle">
-                      Hari ini
+                      Kemarin
                     </span>
                   </h3>
                 </div>

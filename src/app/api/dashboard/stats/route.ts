@@ -74,7 +74,13 @@ export async function GET() {
     };
     const currentSecs = parseTimeToSec(currentTimeStr);
 
-    // 2. STATISTIK GURU HARI INI (Safe try/catch)
+    // 2. STATISTIK GURU KEMARIN (Safe try/catch)
+    // Gunakan hari kemarin agar data sudah lengkap (bukan hari berjalan yang masih kosong di pagi hari)
+    const yesterdayGuruDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const yesterdayGuruStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(yesterdayGuruDate);
+    const rawYesterdayDay = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(yesterdayGuruDate);
+    const yesterdayDay = rawYesterdayDay === 'Minggu' ? 'Ahad' : rawYesterdayDay;
+
     let jadwalGuruRows: RowDataPacket[] = [];
     try {
       const [rows] = await pool.execute<RowDataPacket[]>(`
@@ -86,23 +92,19 @@ export async function GET() {
         UNION ALL
         SELECT j.kegiatan_id as jadwal_id, j.guru_id, j.jam_mulai, j.jam_selesai, 'kegiatan' as tipe
         FROM jadwal_kegiatan j WHERE j.hari = ? AND j.guru_id IS NOT NULL AND j.guru_id > 0
-      `, [currentDay, currentDay, currentDay]);
+      `, [yesterdayDay, yesterdayDay, yesterdayDay]);
       jadwalGuruRows = rows;
     } catch (e) {
       console.warn('jadwalGuruRows error:', e);
     }
-
-    // Hitung yesterday untuk statistik guru (hari ini + kemarin, seragam dengan statistik santri)
-    const yesterdayGuruDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const yesterdayGuruStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(yesterdayGuruDate);
 
     let absenGuruRows: RowDataPacket[] = [];
     try {
       const [rows] = await pool.execute<RowDataPacket[]>(`
         SELECT ag.guru_id, ag.status, ag.jadwal_madin_id, ag.jadwal_quran_id, ag.kegiatan_id, ag.tanggal
         FROM absensi_guru ag
-        WHERE ag.tanggal IN (?, ?)
-      `, [todayStr, yesterdayGuruStr]);
+        WHERE ag.tanggal = ?
+      `, [yesterdayGuruStr]);
       absenGuruRows = rows;
     } catch (e) {
       console.warn('absenGuruRows error:', e);
@@ -291,7 +293,8 @@ export async function GET() {
       }
     }
 
-    // 3. STATISTIK ABSENSI SANTRI HARI INI (Sinkron dengan hak akses role)
+    // 3. STATISTIK ABSENSI SANTRI KEMARIN (Sinkron dengan hak akses role)
+    // Gunakan kemarin agar data sudah lengkap (bukan hari berjalan yang masih kosong di pagi hari)
     let madinStatsRow: any = {};
     try {
       const [rows] = await pool.execute<RowDataPacket[]>(`
@@ -304,7 +307,7 @@ export async function GET() {
         FROM absensi a
         JOIN murid m ON a.murid_id = m.murid_id
         WHERE a.tanggal = ?${roleConditionMadin}
-      `, [todayStr, ...roleParamsMadin]);
+      `, [yesterdayGuruStr, ...roleParamsMadin]);
       madinStatsRow = rows[0] || {};
     } catch (e) {
       console.warn('madinStats error:', e);
@@ -322,7 +325,7 @@ export async function GET() {
         FROM absensi_quran aq
         JOIN murid m ON aq.murid_id = m.murid_id
         WHERE aq.tanggal = ?${roleConditionQuran}
-      `, [todayStr, ...roleParamsQuran]);
+      `, [yesterdayGuruStr, ...roleParamsQuran]);
       quranStatsRow = rows[0] || {};
     } catch (e) {
       console.warn('quranStats error:', e);
@@ -340,7 +343,7 @@ export async function GET() {
         FROM absensi_kegiatan ak
         JOIN murid m ON ak.murid_id = m.murid_id
         WHERE ak.tanggal = ?${roleConditionKegiatan}
-      `, [todayStr, ...roleParamsKegiatan]);
+      `, [yesterdayGuruStr, ...roleParamsKegiatan]);
       kegiatanStatsRow = rows[0] || {};
     } catch (e) {
       console.warn('kegiatanStats error:', e);
