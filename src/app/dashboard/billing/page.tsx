@@ -280,23 +280,34 @@ export default function BillingPage() {
       list = list.filter(s => s.overallStatus === filterStatus);
     }
 
-    // Sort list santri
+    // Sort list santri — gunakan localeCompare agar tahan terhadap karakter tersembunyi / Unicode Arab
+    const normalize = (s: string) =>
+      s.replace(/[\u200B-\u200D\uFEFF\u00A0\u202A-\u202E\u2066-\u2069]/g, '').trim().toLowerCase();
+
     list.sort((a, b) => {
-      let aVal: any = a.nama_santri;
-      let bVal: any = b.nama_santri;
       if (sortField === 'nominal') {
-        aVal = a.totalBelum;
-        bVal = b.totalBelum;
+        const diff = a.totalBelum - b.totalBelum;
+        return sortOrder === 'asc' ? diff : -diff;
       } else if (sortField === 'status') {
-        aVal = a.overallStatus;
-        bVal = b.overallStatus;
+        const aVal = normalize(a.overallStatus);
+        const bVal = normalize(b.overallStatus);
+        return sortOrder === 'asc'
+          ? aVal.localeCompare(bVal, 'id', { sensitivity: 'base' })
+          : bVal.localeCompare(aVal, 'id', { sensitivity: 'base' });
       } else if (sortField === 'asrama') {
-        aVal = a.asrama;
-        bVal = b.asrama;
+        const aVal = normalize(a.asrama);
+        const bVal = normalize(b.asrama);
+        return sortOrder === 'asc'
+          ? aVal.localeCompare(bVal, 'id', { sensitivity: 'base' })
+          : bVal.localeCompare(aVal, 'id', { sensitivity: 'base' });
+      } else {
+        // default: nama_santri
+        const aVal = normalize(a.nama_santri);
+        const bVal = normalize(b.nama_santri);
+        return sortOrder === 'asc'
+          ? aVal.localeCompare(bVal, 'id', { sensitivity: 'base' })
+          : bVal.localeCompare(aVal, 'id', { sensitivity: 'base' });
       }
-      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
     });
 
     return list;
@@ -311,6 +322,10 @@ export default function BillingPage() {
     ? groupedSantriList.filter(s => s.overallStatus === 'Lunas').length 
     : tabFilteredTagihan.filter(t => t.status === 'Lunas').length;
 
+  // Normalisasi nama (buang karakter invisible) sebelum sort pada mode rincian
+  const normalizeStr = (s: string) =>
+    s.replace(/[\u200B-\u200D\uFEFF\u00A0\u202A-\u202E\u2066-\u2069]/g, '').trim().toLowerCase();
+
   // Final list rincian tagihan (Mode Rincian)
   const filteredTagihan = tabFilteredTagihan
     .filter(t => {
@@ -318,20 +333,15 @@ export default function BillingPage() {
       return true;
     })
     .sort((a, b) => {
-      let aVal = a[sortField];
-      let bVal = b[sortField];
-
       if (sortField === 'nominal') {
-        aVal = Number(aVal || 0);
-        bVal = Number(bVal || 0);
-      } else {
-        aVal = String(aVal || '').toLowerCase();
-        bVal = String(bVal || '').toLowerCase();
+        const diff = Number(a[sortField] || 0) - Number(b[sortField] || 0);
+        return sortOrder === 'asc' ? diff : -diff;
       }
-
-      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
+      const aVal = normalizeStr(String(a[sortField] || ''));
+      const bVal = normalizeStr(String(b[sortField] || ''));
+      return sortOrder === 'asc'
+        ? aVal.localeCompare(bVal, 'id', { sensitivity: 'base' })
+        : bVal.localeCompare(aVal, 'id', { sensitivity: 'base' });
     });
 
   const formatRupiah = (angka: number) => {
