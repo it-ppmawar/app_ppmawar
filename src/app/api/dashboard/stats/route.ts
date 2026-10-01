@@ -179,6 +179,19 @@ export async function GET() {
       else if (gAbs.some(a => a.status === 'Izin')) overallIzin++;
       else if (gAbs.some(a => a.status === 'Sakit')) overallSakit++;
       else if (gAbs.some(a => a.status === 'Alpha')) overallAlpha++;
+      else {
+        // Cek apakah ada jadwal guru ini yang kategorinya mengaktifkan auto-alpha
+        const gSchedules = jadwalGuruRows.filter(j => j.guru_id === gId);
+        const hasActiveAutoCat = gSchedules.some(s => {
+          if (s.tipe === 'madin') return isAutoAbsenMadin;
+          if (s.tipe === 'quran') return isAutoAbsenQuran;
+          if (s.tipe === 'kegiatan') return isAutoAbsenKegiatan;
+          return false;
+        });
+        if (hasActiveAutoCat && !isModeLibur) {
+          overallAlpha++;
+        }
+      }
     });
     const guruOverall = {
       total: allGuruDistinctIds.length,
