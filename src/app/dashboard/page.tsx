@@ -139,7 +139,14 @@ export default function DashboardPage() {
         >
           « السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ »
         </h2>
-        <h1 className="text-xl md:text-3xl font-bold text-white transition-all duration-300 font-cinzel tracking-widest uppercase mt-2" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+        <h1
+          className="font-bold text-white transition-all duration-300 font-cinzel uppercase mt-1.5 sm:mt-2 text-center"
+          style={{
+            fontSize: 'clamp(0.95rem, 3.8vw, 1.75rem)',
+            letterSpacing: '0.06em',
+            textShadow: '0 2px 8px rgba(0,0,0,0.4)'
+          }}
+        >
           {greeting} <span className="text-green-400 inline-block">!</span>
         </h1>
 
