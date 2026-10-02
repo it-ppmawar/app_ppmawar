@@ -1816,10 +1816,20 @@ function QuickAbsenContent() {
       {showSuccessModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 max-w-md w-full text-center shadow-2xl space-y-4 my-auto">
-            {/* Animated Draw & Erase Success Checkmark */}
+            {/* Animated Draw & Erase Success Checkmark & Circle */}
             <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-300 dark:border-emerald-500/40 relative">
               <svg className="w-9 h-9" viewBox="0 0 50 50">
-                <circle cx="25" cy="25" r="22" stroke="currentColor" strokeWidth="2.5" fill="none" opacity="0.35" />
+                <circle cx="25" cy="25" r="22" stroke="currentColor" strokeWidth="2.5" fill="none" opacity="0.15" />
+                <circle
+                  cx="25"
+                  cy="25"
+                  r="22"
+                  stroke="currentColor"
+                  strokeWidth="2.8"
+                  strokeLinecap="round"
+                  fill="none"
+                  className="animate-draw-erase-circle"
+                />
                 <path
                   d="M14 26 L22 34 L36 18"
                   stroke="currentColor"
@@ -1843,13 +1853,15 @@ function QuickAbsenContent() {
               </p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-950/80 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3 text-left">
-              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <Camera size={16} className="text-emerald-600 dark:text-emerald-400 animate-pulse" />
-                Foto Kehadiran Kelas/Kamar (Opsional)
-              </label>
-              <p className="text-[10px] text-emerald-700 dark:text-emerald-400/80 font-medium mt-0.5 pl-6 flex items-center gap-1">
-                ⚡ Diproses langsung di HP (Tanpa Beban Server)
-              </p>
+              <div>
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <Camera size={16} className="text-emerald-600 dark:text-emerald-400 animate-pulse" />
+                  Foto Kehadiran Kelas/Kamar (Opsional)
+                </label>
+                <p className="text-[10.5px] text-emerald-700 dark:text-emerald-400/80 font-medium mt-1 flex items-center gap-1">
+                  ⚡ Diproses langsung di HP (Tanpa Beban Server)
+                </p>
+              </div>
 
               {/* Camera live view */}
               {showCamera && (
@@ -1914,8 +1926,8 @@ function QuickAbsenContent() {
 
               <canvas ref={canvasRef} className="hidden" />
 
-              {/* Buttons side-by-side full width */}
-              <div className="grid grid-cols-2 gap-2.5 w-full">
+              {/* Buttons bertumpuk di HP agar lega, berdampingan di sm ke atas */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
                 {!showCamera ? (
                   <button
                     type="button"
@@ -1978,22 +1990,27 @@ function QuickAbsenContent() {
               <button
                 onClick={handleShareToWA}
                 type="button"
-                className="w-full bg-[#128C7E] hover:bg-[#075E54] text-white px-4 py-3 rounded-xl font-bold text-xs transition shadow-md flex items-center justify-center gap-2 active:scale-95"
+                className="w-full bg-[#128C7E] hover:bg-[#075E54] text-white px-4 py-3 rounded-xl font-bold text-xs sm:text-sm transition shadow-md text-center active:scale-95"
               >
-                <Send size={15} /> {photoUrl ? 'Kirim Laporan & Foto ke Grup WA' : 'Kirim Ringkasan Laporan ke Grup WA'}
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Send size={15} className="shrink-0" />
+                  <span>{photoUrl ? 'Kirim Laporan & Foto ke Grup WA' : 'Kirim Ringkasan Laporan ke Grup WA'}</span>
+                </span>
               </button>
 
               <button
                 onClick={copyReportText}
                 type="button"
-                className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 border ${
+                className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs transition-all text-center border ${
                   copiedWa
                     ? 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-500/60'
                     : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-750 dark:text-slate-300 dark:border-slate-700'
                 }`}
               >
-                {copiedWa ? <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" /> : <Copy size={14} />}
-                {copiedWa ? '✅ Teks Berhasil Disalin! (Tinggal Paste di WA)' : 'Salin Teks Laporan (Untuk iPhone / Cadangan)'}
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  {copiedWa ? <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> : <Copy size={14} className="shrink-0" />}
+                  <span>{copiedWa ? '✅ Teks Berhasil Disalin! (Tinggal Paste di WA)' : 'Salin Teks Laporan (Untuk iPhone / Cadangan)'}</span>
+                </span>
               </button>
 
               <Link

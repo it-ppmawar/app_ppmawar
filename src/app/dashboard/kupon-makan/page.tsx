@@ -694,7 +694,7 @@ export default function KuponMakanPage() {
                     type="text"
                     value={barcodeInput}
                     onChange={(e) => setBarcodeInput(e.target.value)}
-                    placeholder="Scan barcode kartu atau ketik NIS lalu Enter..."
+                    placeholder="Ketik NIS lalu Enter atau Scan barcode kartu..."
                     disabled={loading}
                     className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl font-mono text-sm sm:text-base focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-all"
                   />

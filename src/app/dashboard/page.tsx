@@ -647,9 +647,13 @@ export default function DashboardPage() {
                     key={tipe}
                     className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 transition-colors duration-300 w-full"
                   >
-                    <h4 className="text-xs font-bold text-green-700 dark:text-green-400 mb-3 border-b dark:border-gray-700 pb-2 flex justify-between items-center">
+                    <h4 className="text-xs font-bold text-green-700 dark:text-green-400 mb-3 border-b dark:border-gray-700 pb-2 flex justify-between items-center gap-2">
                       <span>Statistik Absensi {tipeName} Terbaru</span>
-                      {stat.total > 0 && <span className="text-[10px] bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 px-2 py-0.5 rounded-full font-bold">{stat.total} Santri</span>}
+                      {stat.total > 0 && (
+                        <span className="text-[10px] bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 px-2.5 py-0.5 rounded-full font-bold text-center shrink-0 leading-tight inline-flex flex-col items-center justify-center">
+                          {stat.total} Santri
+                        </span>
+                      )}
                     </h4>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-xs dark:text-gray-300">

@@ -813,10 +813,20 @@ function InputAbsenContent() {
   if (isSuccess) {
     return (
       <div className="max-w-xl mx-auto p-8 text-center bg-white dark:bg-gray-800 rounded-3xl mt-10 shadow-lg border border-gray-100 dark:border-gray-700 animate-[slideDown_0.3s_ease-out]">
-        {/* Animated Draw & Erase Success Checkmark */}
+        {/* Animated Draw & Erase Success Checkmark & Circle */}
         <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-300 dark:border-emerald-500/40 relative">
           <svg className="w-11 h-11" viewBox="0 0 50 50">
-            <circle cx="25" cy="25" r="22" stroke="currentColor" strokeWidth="2.5" fill="none" opacity="0.35" />
+            <circle cx="25" cy="25" r="22" stroke="currentColor" strokeWidth="2.5" fill="none" opacity="0.15" />
+            <circle
+              cx="25"
+              cy="25"
+              r="22"
+              stroke="currentColor"
+              strokeWidth="2.8"
+              strokeLinecap="round"
+              fill="none"
+              className="animate-draw-erase-circle"
+            />
             <path
               d="M14 26 L22 34 L36 18"
               stroke="currentColor"
@@ -841,7 +851,7 @@ function InputAbsenContent() {
               <Camera size={18} className="text-indigo-600 dark:text-indigo-400 animate-pulse" />
               <span>Foto Kehadiran Kelas/Kamar (Opsional)</span>
             </label>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5 pl-6 flex items-center gap-1">
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1">
               <span>⚡ Diproses langsung di HP (Tanpa Beban Server)</span>
             </p>
           </div>
@@ -923,8 +933,8 @@ function InputAbsenContent() {
           {/* Canvas (hidden) for snapshot */}
           <canvas ref={canvasRef} className="hidden" />
 
-          {/* Buttons side-by-side full width */}
-          <div className="grid grid-cols-2 gap-3 w-full">
+          {/* Buttons bertumpuk di HP agar lebih lega, berdampingan di sm ke atas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
             {!showCamera ? (
               <button
                 type="button"
@@ -986,22 +996,27 @@ function InputAbsenContent() {
           <button
             onClick={handleShareToWA}
             type="button"
-            className="w-full bg-[#128C7E] hover:bg-[#075E54] text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md flex items-center justify-center gap-2"
+            className="w-full bg-[#128C7E] hover:bg-[#075E54] text-white px-4 py-3.5 rounded-xl font-bold text-xs sm:text-sm transition-all hover:scale-[1.01] active:scale-[0.98] shadow-md text-center"
           >
-            <Send size={16} /> {photoUrl ? 'Kirim Laporan & Foto ke Grup WA' : 'Kirim Ringkasan Laporan ke Grup WA'}
+            <span className="inline-flex items-center justify-center gap-2">
+              <Send size={16} className="shrink-0" />
+              <span>{photoUrl ? 'Kirim Laporan & Foto ke Grup WA' : 'Kirim Ringkasan Laporan ke Grup WA'}</span>
+            </span>
           </button>
 
           <button
             onClick={handleCopyReport}
             type="button"
-            className={`w-full py-3 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 border ${
+            className={`w-full py-3 px-3 rounded-xl font-bold text-xs transition-all text-center border ${
               copiedWa 
                 ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 border-emerald-300' 
                 : 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
-            {copiedWa ? <CheckCircle2 size={15} className="text-emerald-600" /> : <Copy size={15} />}
-            {copiedWa ? '✅ Teks Berhasil Disalin! (Tinggal Paste di WA)' : 'Salin Teks Laporan (Untuk Pengguna iPhone / Cadangan)'}
+            <span className="inline-flex items-center justify-center gap-1.5">
+              {copiedWa ? <CheckCircle2 size={15} className="text-emerald-600 shrink-0" /> : <Copy size={15} className="shrink-0" />}
+              <span>{copiedWa ? '✅ Teks Berhasil Disalin! (Tinggal Paste di WA)' : 'Salin Teks Laporan (Untuk Pengguna iPhone / Cadangan)'}</span>
+            </span>
           </button>
 
           <Link href={`/dashboard/notifikasi?kegiatan=${tipe}&kelas=${kelas_id}`} className="block w-full bg-[#25D366] hover:bg-[#1DA851] text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md flex items-center justify-center gap-2 text-center">
