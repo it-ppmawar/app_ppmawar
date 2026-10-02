@@ -813,8 +813,20 @@ function InputAbsenContent() {
   if (isSuccess) {
     return (
       <div className="max-w-xl mx-auto p-8 text-center bg-white dark:bg-gray-800 rounded-3xl mt-10 shadow-lg border border-gray-100 dark:border-gray-700 animate-[slideDown_0.3s_ease-out]">
-        <div className="w-20 h-20 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle size={48} className="text-green-600 dark:text-green-400" />
+        {/* Animated Draw & Erase Success Checkmark */}
+        <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-300 dark:border-emerald-500/40 relative">
+          <svg className="w-11 h-11" viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="22" stroke="currentColor" strokeWidth="2.5" fill="none" opacity="0.35" />
+            <path
+              d="M14 26 L22 34 L36 18"
+              stroke="currentColor"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+              className="animate-draw-erase-check"
+            />
+          </svg>
         </div>
         <p className="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 font-serif mb-2 select-none" dir="rtl">
           الْحَمْدُ لِلَّهِ
@@ -1214,16 +1226,11 @@ function InputAbsenContent() {
         </div>
 
         {location ? (
-          <span className={`text-xs font-bold flex items-center gap-1.5 shrink-0 ${
+          <span className={`text-xs font-bold shrink-0 ml-auto whitespace-nowrap ${
             lokasiTarget && gpsDistance !== null && gpsDistance > lokasiTarget.radius
               ? 'text-rose-600 dark:text-rose-400'
               : 'text-emerald-600 dark:text-emerald-400'
           }`}>
-            <CheckCircle2 size={14} className={
-              lokasiTarget && gpsDistance !== null && gpsDistance > lokasiTarget.radius
-                ? 'text-rose-500 dark:text-rose-400'
-                : 'text-emerald-500 dark:text-emerald-400'
-            } />
             {lokasiTarget && gpsDistance !== null && gpsDistance > lokasiTarget.radius
               ? 'Di Luar Radius'
               : 'Terdeteksi & Siap'
@@ -1495,29 +1502,31 @@ function InputAbsenContent() {
 
             {/* Opsi Tunjuk Guru Pengganti (Badal) */}
             <div className="bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-800/40 rounded-2xl p-4 space-y-3">
-              <label className="flex items-center justify-between cursor-pointer">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xl">🎖️</span>
-                  <div>
-                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Tunjuk Guru Pengganti (Badal)</span>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400">Pilih dewan guru atau ketik nama pengganti (luar dewan guru)</p>
+              <label className="block cursor-pointer">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl shrink-0">🎖️</span>
+                    <span className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200">Tunjuk Guru Pengganti (Badal)</span>
                   </div>
+                  <input
+                    type="checkbox"
+                    checked={useBadal}
+                    onChange={(e) => {
+                      setUseBadal(e.target.checked);
+                      if (!e.target.checked) {
+                        setSelectedBadalId('');
+                        setSelectedBadalNama('');
+                        setIsManualBadal(false);
+                        setBadalSearch('');
+                        setShowBadalDropdown(false);
+                      }
+                    }}
+                    className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 dark:border-gray-600 cursor-pointer shrink-0"
+                  />
                 </div>
-                <input
-                  type="checkbox"
-                  checked={useBadal}
-                  onChange={(e) => {
-                    setUseBadal(e.target.checked);
-                    if (!e.target.checked) {
-                      setSelectedBadalId('');
-                      setSelectedBadalNama('');
-                      setIsManualBadal(false);
-                      setBadalSearch('');
-                      setShowBadalDropdown(false);
-                    }
-                  }}
-                  className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 dark:border-gray-600 cursor-pointer"
-                />
+                <p className="text-[10.5px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-snug">
+                  Pilih dewan guru atau ketik nama pengganti (luar dewan guru)
+                </p>
               </label>
 
               {useBadal && (

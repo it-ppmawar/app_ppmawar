@@ -1971,10 +1971,10 @@ function NotifikasiContent() {
           </div>
 
           {/* Tab Switcher: Dikelompokkan Rapi Berdasarkan Jenis Fitur */}
-          <div className="p-3 bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700">
+          <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700/60">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Kelompok 1: Pengingat */}
-              <div className="bg-white/80 dark:bg-gray-800/80 p-2.5 rounded-2xl border border-amber-200/50 dark:border-amber-900/30 shadow-xs flex flex-col justify-between">
+              <div className="bg-amber-50/60 dark:bg-amber-950/25 p-3 rounded-2xl border border-amber-200/70 dark:border-amber-800/50 shadow-xs flex flex-col justify-between">
                 <div className="flex items-center gap-1.5 mb-2 px-1">
                   <span className="w-1.5 h-3.5 bg-amber-500 rounded-full"></span>
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">
@@ -1988,7 +1988,7 @@ function NotifikasiContent() {
                     className={`min-h-[52px] sm:min-h-[56px] py-3 px-2 sm:px-3 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
                       guruCardTab === 'auto'
                         ? 'bg-amber-500 text-white shadow-md font-extrabold'
-                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
+                        : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
                     }`}
                   >
                     <AlertTriangle size={16} className={`shrink-0 ${guruCardTab === 'auto' ? 'text-white' : 'text-amber-500'}`} />
@@ -2016,7 +2016,7 @@ function NotifikasiContent() {
                     className={`min-h-[52px] sm:min-h-[56px] py-3 px-2 sm:px-3 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
                       guruCardTab === 'manual'
                         ? 'bg-blue-600 text-white shadow-md font-extrabold'
-                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
+                        : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
                     }`}
                   >
                     <Settings2 size={16} className={`shrink-0 ${guruCardTab === 'manual' ? 'text-white' : 'text-blue-500'}`} />
@@ -2026,7 +2026,7 @@ function NotifikasiContent() {
               </div>
 
               {/* Kelompok 2: Laporan & Info Akun */}
-              <div className="bg-white/80 dark:bg-gray-800/80 p-2.5 rounded-2xl border border-purple-200/40 dark:border-purple-900/30 shadow-xs flex flex-col justify-between">
+              <div className="bg-purple-50/60 dark:bg-purple-950/25 p-3 rounded-2xl border border-purple-200/70 dark:border-purple-800/50 shadow-xs flex flex-col justify-between">
                 <div className="flex items-center gap-1.5 mb-2 px-1">
                   <span className="w-1.5 h-3.5 bg-purple-500 rounded-full"></span>
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-purple-700 dark:text-purple-400">
@@ -2040,7 +2040,7 @@ function NotifikasiContent() {
                     className={`min-h-[52px] sm:min-h-[56px] py-3 px-2 sm:px-3 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
                       guruCardTab === 'rekap'
                         ? 'bg-purple-600 text-white shadow-md font-extrabold'
-                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
+                        : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
                     }`}
                   >
                     <Calendar size={16} className={`shrink-0 ${guruCardTab === 'rekap' ? 'text-white' : 'text-purple-500'}`} />
@@ -2053,7 +2053,7 @@ function NotifikasiContent() {
                     className={`min-h-[52px] sm:min-h-[56px] py-3 px-2 sm:px-3 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
                       guruCardTab === 'info_akun'
                         ? 'bg-emerald-600 text-white shadow-md font-extrabold'
-                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 border border-gray-200/70 dark:border-gray-700/70'
+                        : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
                     }`}
                   >
                     <Smartphone size={16} className={`shrink-0 ${guruCardTab === 'info_akun' ? 'text-white' : 'text-emerald-500'}`} />

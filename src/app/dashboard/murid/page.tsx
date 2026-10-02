@@ -1028,6 +1028,7 @@ export default function DataMuridPage() {
                     />
                   </th>
                 )}
+                <th className="px-3 py-4 w-12 text-center text-gray-500 dark:text-gray-400 text-xs font-extrabold select-none">NO</th>
                 <th className="px-4 py-4 w-12 text-center">FOTO</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nis')}>NIS{getSortIcon('nis')}</th>
                 <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('nama')}>NAMA LENGKAP{getSortIcon('nama')}</th>
@@ -1040,15 +1041,15 @@ export default function DataMuridPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-gray-500">Memuat data santri...</td>
+                  <td colSpan={role === 'admin' || role === 'staff' ? 9 : 8} className="text-center py-8 text-gray-500">Memuat data santri...</td>
                 </tr>
               ) : filteredMurid.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-gray-500">Data santri tidak ditemukan.</td>
+                  <td colSpan={role === 'admin' || role === 'staff' ? 9 : 8} className="text-center py-8 text-gray-500">Data santri tidak ditemukan.</td>
                 </tr>
               ) : !showAll && !search && !filterMadin && !filterQuran && !filterKamar && selectedMurid.length === 0 && !filterOnlySelected ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12">
+                  <td colSpan={role === 'admin' || role === 'staff' ? 9 : 8} className="text-center py-12">
                     <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm font-medium">Gunakan fitur pencarian atau filter di atas untuk menemukan data santri,<br/>atau klik tombol di bawah ini untuk melihat seluruh data santri.</p>
                     <button onClick={() => setShowAll(true)} className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 px-6 py-2.5 rounded-xl font-bold transition-colors text-sm shadow-sm inline-flex items-center gap-2">
                       <Users size={16} /> Tampilkan Semua Data Santri
@@ -1056,7 +1057,7 @@ export default function DataMuridPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedMurid.map((item) => (
+                paginatedMurid.map((item, index) => (
                   <tr key={item.murid_id} className={`transition-colors text-gray-700 dark:text-gray-200 ${(role === 'admin' || role === 'staff') && selectedMurid.includes(item.murid_id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50'}`}>
                     {(role === 'admin' || role === 'staff') && (
                       <td className="px-4 py-3 text-center">
@@ -1068,6 +1069,9 @@ export default function DataMuridPage() {
                         />
                       </td>
                     )}
+                    <td className="px-3 py-3 text-center text-xs font-bold text-gray-500 dark:text-gray-400 font-mono">
+                      {(currentPage - 1) * pageSize + index + 1}
+                    </td>
                     <td className="px-4 py-3 text-center">
                       <div
                         className={`w-10 h-10 rounded-full mx-auto overflow-hidden relative ${item.foto && item.foto !== '-' ? 'cursor-pointer hover:opacity-80' : ''}`}

@@ -982,16 +982,11 @@ function QuickAbsenContent() {
           </div>
 
           {userLocation ? (
-            <span className={`text-xs font-bold flex items-center gap-1.5 shrink-0 ${
+            <span className={`text-xs font-bold shrink-0 ml-auto whitespace-nowrap ${
               lokasiTarget && gpsDistance !== null && gpsDistance > lokasiTarget.radius
                 ? 'text-rose-600 dark:text-rose-400'
                 : 'text-emerald-600 dark:text-emerald-400'
             }`}>
-              <CheckCircle2 size={13} className={
-                lokasiTarget && gpsDistance !== null && gpsDistance > lokasiTarget.radius
-                  ? 'text-rose-600 dark:text-rose-400'
-                  : 'text-emerald-600 dark:text-emerald-400'
-              } />
               {lokasiTarget && gpsDistance !== null && gpsDistance > lokasiTarget.radius
                 ? 'Di Luar Radius'
                 : 'Terdeteksi & Siap'
@@ -1247,29 +1242,31 @@ function QuickAbsenContent() {
 
                 {/* Opsi Tunjuk Guru Pengganti (Badal) */}
                 <div className="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl p-4 space-y-3">
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-xl">🎖️</span>
-                      <div>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Tunjuk Guru Pengganti (Badal)</span>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Pilih dewan guru atau ketik nama pengganti (luar dewan guru)</p>
+                  <label className="block cursor-pointer">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl shrink-0">🎖️</span>
+                        <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">Tunjuk Guru Pengganti (Badal)</span>
                       </div>
+                      <input
+                        type="checkbox"
+                        checked={useBadal}
+                        onChange={(e) => {
+                          setUseBadal(e.target.checked);
+                          if (!e.target.checked) {
+                            setSelectedBadalId('');
+                            setSelectedBadalNama('');
+                            setIsManualBadal(false);
+                            setBadalSearch('');
+                            setShowBadalDropdown(false);
+                          }
+                        }}
+                        className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer shrink-0"
+                      />
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={useBadal}
-                      onChange={(e) => {
-                        setUseBadal(e.target.checked);
-                        if (!e.target.checked) {
-                          setSelectedBadalId('');
-                          setSelectedBadalNama('');
-                          setIsManualBadal(false);
-                          setBadalSearch('');
-                          setShowBadalDropdown(false);
-                        }
-                      }}
-                      className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer"
-                    />
+                    <p className="text-[10.5px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-snug">
+                      Pilih dewan guru atau ketik nama pengganti (luar dewan guru)
+                    </p>
                   </label>
 
                   {useBadal && (
@@ -1819,9 +1816,20 @@ function QuickAbsenContent() {
       {showSuccessModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 max-w-md w-full text-center shadow-2xl space-y-4 my-auto">
-            {/* Success Icon */}
-            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-300 dark:border-emerald-500/40 animate-bounce">
-              <CheckCircle2 size={36} />
+            {/* Animated Draw & Erase Success Checkmark */}
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-300 dark:border-emerald-500/40 relative">
+              <svg className="w-9 h-9" viewBox="0 0 50 50">
+                <circle cx="25" cy="25" r="22" stroke="currentColor" strokeWidth="2.5" fill="none" opacity="0.35" />
+                <path
+                  d="M14 26 L22 34 L36 18"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
+                  className="animate-draw-erase-check"
+                />
+              </svg>
             </div>
 
             {/* Arabic & Main Title */}
