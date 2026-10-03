@@ -1152,13 +1152,25 @@ function InputAbsenContent() {
         </div>
       )}
 
-      {/* Error Banner (Radius / Simpan gagal) */}
+      {/* Error Banner (Radius / Simpan gagal / Info santri) */}
       {errorMsg && (
         <div className="bg-red-50 dark:bg-red-900/30 border-2 border-red-400 dark:border-red-600 rounded-2xl p-4 flex items-start gap-3 animate-in slide-in-from-top duration-300">
           <AlertTriangle size={22} className="text-red-500 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-red-700 dark:text-red-300 font-bold text-sm">Absensi Tidak Dapat Disimpan</p>
-            <p className="text-red-600 dark:text-red-400 text-xs mt-0.5 leading-relaxed">{errorMsg}</p>
+            <p className="text-red-700 dark:text-red-300 font-bold text-sm">
+              {errorMsg.toLowerCase().includes('jarak') || errorMsg.toLowerCase().includes('radius')
+                ? 'Absensi Ditolak (Di Luar Radius)'
+                : errorMsg.toLowerCase().includes('gps') || errorMsg.toLowerCase().includes('lokasi')
+                ? 'Izin Lokasi (GPS) Diperlukan'
+                : (errorMsg.toLowerCase().includes('keterangan') || errorMsg.toLowerCase().includes('unknown column') || murid.length === 0)
+                ? 'Pemberitahuan Data Santri & Presensi'
+                : 'Absensi Tidak Dapat Disimpan'}
+            </p>
+            <p className="text-red-600 dark:text-red-400 text-xs mt-0.5 leading-relaxed">
+              {errorMsg.toLowerCase().includes('keterangan') || errorMsg.toLowerCase().includes('unknown column')
+                ? 'Tidak ditemukan data santri atau kolom catatan presensi untuk jadwal ini (belum ada santri yang terdaftar pada kelas terpilih). Silakan pastikan data santri di kelas ini sudah diatur melalui menu Data Santri.'
+                : errorMsg}
+            </p>
           </div>
           <button
             onClick={() => setErrorMsg('')}
@@ -1770,6 +1782,29 @@ function InputAbsenContent() {
             </button>
           </form>
         )
+      ) : murid.length === 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-amber-200 dark:border-amber-800/60 p-8 text-center space-y-4 shadow-sm animate-in fade-in duration-300">
+          <div className="w-16 h-16 bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800">
+            <Users size={32} />
+          </div>
+          <div className="max-w-md mx-auto space-y-1.5">
+            <h3 className="text-base font-extrabold text-gray-800 dark:text-gray-100">
+              Tidak Ada Santri Terdaftar di Jadwal / Kelas Ini
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+              Belum ada data santri yang terhubung dengan jadwal/kelas ini. Silakan periksa pembagian santri pada menu Data Santri agar nama santri muncul di halaman presensi.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              href="/dashboard/data-santri"
+              className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-amber-600/20 transition active:scale-95"
+            >
+              <Users size={15} />
+              <span>Buka Kelola Data Santri</span>
+            </Link>
+          </div>
+        </div>
       ) : (
         <>
           {/* Set Massal 4 Tombol */}
@@ -2068,25 +2103,31 @@ function InputAbsenContent() {
             })()}
           </div>
 
-          <div className="fixed bottom-16 left-0 w-full bg-white dark:bg-gray-800 border-t border-b border-gray-100 dark:border-gray-700 p-4 shadow-[0_0_25px_rgba(0,0,0,0.08)] dark:shadow-[0_0_25px_rgba(0,0,0,0.4)] z-40 rounded-3xl">
-            <div className="max-w-4xl mx-auto flex items-center justify-between">
-              <div className="text-sm font-bold text-gray-600 dark:text-gray-300">
-                Total Hadir: <span className="text-green-600 dark:text-green-400">{murid.filter(m => m.status === 'Hadir').length}</span> / {murid.length}
+          {/* Floating Action Bar Bawah (2 Baris Ramping di HP, 1 Baris di Desktop) */}
+          <div className="fixed bottom-16 left-0 w-full bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-b border-gray-150 dark:border-gray-700 py-2 sm:py-3 px-3 sm:px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.4)] z-40 rounded-t-2xl sm:rounded-3xl transition-all">
+            <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center sm:justify-between gap-1.5 sm:gap-4">
+              <div className="text-xs sm:text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-1.5 justify-center sm:justify-start">
+                <span>Total Hadir:</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm sm:text-base">{murid.filter(m => m.status === 'Hadir').length}</span>
+                <span className="text-gray-400 font-medium">/</span>
+                <span>{murid.length} Santri</span>
               </div>
               <button
                 onClick={handleSave}
                 disabled={saving || murid.length === 0}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-50"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white px-5 sm:px-8 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50"
               >
                 {saving ? (
-                  <Clock className="animate-spin" size={20} />
+                  <Clock className="animate-spin" size={16} />
                 ) : (
-                  <Save size={20} />
+                  <Save size={16} />
                 )}
-                {saving 
-                  ? (sudahAbsen ? 'Memperbarui...' : 'Menyimpan...') 
-                  : (sudahAbsen ? 'Perbarui Absensi' : 'Simpan Absensi')
-                }
+                <span>
+                  {saving 
+                    ? (sudahAbsen ? 'Memperbarui...' : 'Menyimpan...') 
+                    : (sudahAbsen ? 'Perbarui Absensi' : 'Simpan Absensi')
+                  }
+                </span>
               </button>
             </div>
           </div>
@@ -2107,10 +2148,14 @@ function InputAbsenContent() {
                   ? 'Absensi Ditolak (Di Luar Radius)'
                   : errorMsg.toLowerCase().includes('gps') || errorMsg.toLowerCase().includes('lokasi')
                   ? 'Izin Lokasi (GPS) Diperlukan'
+                  : (errorMsg.toLowerCase().includes('keterangan') || errorMsg.toLowerCase().includes('unknown column') || murid.length === 0)
+                  ? 'Pemberitahuan Data Santri & Presensi'
                   : 'Gagal Menyimpan Absensi'}
               </h3>
               <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed max-w-sm mx-auto">
-                {errorMsg}
+                {errorMsg.toLowerCase().includes('keterangan') || errorMsg.toLowerCase().includes('unknown column')
+                  ? 'Tidak ditemukan data santri atau kolom catatan presensi untuk jadwal ini (belum ada santri yang terdaftar pada kelas terpilih). Silakan pastikan pembagian santri di kelas ini sudah diatur melalui menu Data Santri.'
+                  : errorMsg}
               </p>
             </div>
 

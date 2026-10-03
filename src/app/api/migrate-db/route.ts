@@ -655,6 +655,26 @@ export async function GET() {
       results.push('❌ Guru badal migration error: ' + e.message);
     }
 
+    // ── Keterangan Column Migration untuk Absensi ─────────────────
+    try {
+      const absTables = ['absensi', 'absensi_quran', 'absensi_kegiatan'];
+      for (const t of absTables) {
+        try {
+          const [cols] = await pool.execute<any[]>(`SHOW COLUMNS FROM ${t} LIKE 'keterangan'`);
+          if (cols.length === 0) {
+            await pool.execute(`ALTER TABLE ${t} ADD COLUMN keterangan TEXT NULL`);
+            results.push(`✅ Added keterangan to ${t}`);
+          } else {
+            results.push(`ℹ️ ${t}.keterangan already exists`);
+          }
+        } catch (colErr: any) {
+          results.push(`❌ ${t} keterangan column: ` + colErr.message);
+        }
+      }
+    } catch (e: any) {
+      results.push('❌ Absensi keterangan migration error: ' + e.message);
+    }
+
     return NextResponse.json({ success: true, results });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -425,14 +425,45 @@ export async function POST(request: Request) {
 
     const placeholdersJadwal = siblingJadwalIds.map(() => '?').join(',');
 
+    // Cek ketersediaan kolom keterangan dan auto-add jika belum ada
+    let hasKeteranganCol = true;
+    try {
+      const tableTarget = tipe === 'madin' ? 'absensi' : tipe === 'quran' ? 'absensi_quran' : 'absensi_kegiatan';
+      const [colRows] = await pool.execute<RowDataPacket[]>(`SHOW COLUMNS FROM ${tableTarget} LIKE 'keterangan'`);
+      if (colRows.length === 0) {
+        hasKeteranganCol = false;
+        try {
+          await pool.execute(`ALTER TABLE ${tableTarget} ADD COLUMN keterangan TEXT NULL`);
+          hasKeteranganCol = true;
+        } catch (_) {}
+      }
+    } catch (_) {}
+
+    const colKeterangan = hasKeteranganCol ? ', keterangan' : '';
     let existingQuery = '';
-    if (tipe === 'madin') existingQuery = `SELECT murid_id, status, keterangan FROM absensi WHERE jadwal_madin_id IN (${placeholdersJadwal}) AND tanggal = ?`;
-    else if (tipe === 'quran') existingQuery = `SELECT murid_id, status, keterangan FROM absensi_quran WHERE jadwal_quran_id IN (${placeholdersJadwal}) AND tanggal = ?`;
-    else if (tipe === 'kamar' || tipe === 'kegiatan') existingQuery = `SELECT murid_id, status, keterangan FROM absensi_kegiatan WHERE kegiatan_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    if (tipe === 'madin') existingQuery = `SELECT murid_id, status${colKeterangan} FROM absensi WHERE jadwal_madin_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    else if (tipe === 'quran') existingQuery = `SELECT murid_id, status${colKeterangan} FROM absensi_quran WHERE jadwal_quran_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    else if (tipe === 'kamar' || tipe === 'kegiatan') existingQuery = `SELECT murid_id, status${colKeterangan} FROM absensi_kegiatan WHERE kegiatan_id IN (${placeholdersJadwal}) AND tanggal = ?`;
 
     const existingKeteranganMap: { [id: number]: string } = {};
     if (existingQuery) {
-      const [existingRows] = await pool.execute<RowDataPacket[]>(existingQuery, [...siblingJadwalIds, targetDate]);
+      let existingRows: any[] = [];
+      try {
+        const [rows] = await pool.execute<RowDataPacket[]>(existingQuery, [...siblingJadwalIds, targetDate]);
+        existingRows = rows;
+      } catch (errEx) {
+        console.warn('Notice querying existing in quick-verify:', errEx);
+        try {
+          const fallbackQuery = tipe === 'madin'
+            ? `SELECT murid_id, status FROM absensi WHERE jadwal_madin_id IN (${placeholdersJadwal}) AND tanggal = ?`
+            : tipe === 'quran'
+            ? `SELECT murid_id, status FROM absensi_quran WHERE jadwal_quran_id IN (${placeholdersJadwal}) AND tanggal = ?`
+            : `SELECT murid_id, status FROM absensi_kegiatan WHERE kegiatan_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+          const [rows] = await pool.execute<RowDataPacket[]>(fallbackQuery, [...siblingJadwalIds, targetDate]);
+          existingRows = rows;
+        } catch (_) {}
+      }
+
       (existingRows || []).forEach(r => {
         const rawSt = (r.status || '').toString().trim().toLowerCase();
         if (rawSt === 'izin') existingMap[r.murid_id] = 'izin';

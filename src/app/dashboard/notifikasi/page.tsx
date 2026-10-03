@@ -2673,7 +2673,7 @@ function NotifikasiContent() {
                   </label>
                   <div className="space-y-2">
                     {[
-                      { key: 'madin', label: '📚 Madrasah Diniyah (Madin)', desc: 'Jadwal & pelajaran diniyah (Aktif)' },
+                      { key: 'madin', label: '📚 Madrasah Diniyah', desc: 'Jadwal & pelajaran diniyah (Aktif)' },
                       { key: 'quran', label: "🕌 Kelas Qur'an", desc: 'Majlis Al-Qur\'an & Tahfidz' },
                       { key: 'kamar', label: '🏠 Asrama / Kamar', desc: 'Kegiatan & piket asrama' },
                     ].map(({ key, label, desc }) => {
@@ -3197,7 +3197,7 @@ function NotifikasiContent() {
                 </label>
                 <div className="space-y-2">
                   {[
-                    { key: 'madin', label: '📚 Madrasah Diniyah (Madin)', desc: 'Jadwal ngaji & pelajaran diniyah' },
+                    { key: 'madin', label: '📚 Madrasah Diniyah', desc: 'Jadwal ngaji & pelajaran diniyah' },
                     { key: 'quran', label: "🕌 Kelas Qur'an", desc: 'Majlis Al-Qur\'an & halaqoh' },
                     { key: 'kamar', label: '🏠 Asrama / Kamar', desc: 'Kegiatan & piket asrama' },
                   ].map(({ key, label, desc }) => {

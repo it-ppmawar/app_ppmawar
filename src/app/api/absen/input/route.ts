@@ -256,14 +256,45 @@ export async function GET(request: Request) {
     }
 
     const placeholdersJadwal = siblingJadwalIds.map(() => '?').join(',');
+
+    // Cek ketersediaan kolom keterangan dan auto-add jika belum ada
+    let hasKeteranganCol = true;
+    try {
+      const tableTarget = tipe === 'madin' ? 'absensi' : tipe === 'quran' ? 'absensi_quran' : 'absensi_kegiatan';
+      const [colRows] = await pool.execute<RowDataPacket[]>(`SHOW COLUMNS FROM ${tableTarget} LIKE 'keterangan'`);
+      if (colRows.length === 0) {
+        hasKeteranganCol = false;
+        try {
+          await pool.execute(`ALTER TABLE ${tableTarget} ADD COLUMN keterangan TEXT NULL`);
+          hasKeteranganCol = true;
+        } catch (_) {}
+      }
+    } catch (_) {}
+
+    const colKeterangan = hasKeteranganCol ? ', keterangan' : '';
     let existingQuery = '';
     let existingParams = [...siblingJadwalIds, localISOTime];
 
-    if (tipe === 'madin') existingQuery = `SELECT murid_id, status, keterangan FROM absensi WHERE jadwal_madin_id IN (${placeholdersJadwal}) AND tanggal = ?`;
-    else if (tipe === 'quran') existingQuery = `SELECT murid_id, status, keterangan FROM absensi_quran WHERE jadwal_quran_id IN (${placeholdersJadwal}) AND tanggal = ?`;
-    else if (tipe === 'kegiatan') existingQuery = `SELECT murid_id, status, keterangan FROM absensi_kegiatan WHERE kegiatan_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    if (tipe === 'madin') existingQuery = `SELECT murid_id, status${colKeterangan} FROM absensi WHERE jadwal_madin_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    else if (tipe === 'quran') existingQuery = `SELECT murid_id, status${colKeterangan} FROM absensi_quran WHERE jadwal_quran_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+    else if (tipe === 'kegiatan') existingQuery = `SELECT murid_id, status${colKeterangan} FROM absensi_kegiatan WHERE kegiatan_id IN (${placeholdersJadwal}) AND tanggal = ?`;
 
-    const [existing] = await pool.execute<RowDataPacket[]>(existingQuery, existingParams);
+    let existing: any[] = [];
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(existingQuery, existingParams);
+      existing = rows;
+    } catch (errEx: any) {
+      console.warn('Notice querying existing absensi in input route:', errEx);
+      try {
+        const fallbackQuery = tipe === 'madin' 
+          ? `SELECT murid_id, status FROM absensi WHERE jadwal_madin_id IN (${placeholdersJadwal}) AND tanggal = ?`
+          : tipe === 'quran'
+          ? `SELECT murid_id, status FROM absensi_quran WHERE jadwal_quran_id IN (${placeholdersJadwal}) AND tanggal = ?`
+          : `SELECT murid_id, status FROM absensi_kegiatan WHERE kegiatan_id IN (${placeholdersJadwal}) AND tanggal = ?`;
+        const [rows] = await pool.execute<RowDataPacket[]>(fallbackQuery, existingParams);
+        existing = rows;
+      } catch (_) {}
+    }
     
     const existingMap = existing.reduce((acc: any, curr: any) => {
       let st = (curr.status || '').toString().trim();
@@ -731,35 +762,35 @@ export async function POST(request: Request) {
 
     await connection.beginTransaction();
 
-    // Check if guru_badal_id column exists
+    // Check if guru_badal_id & keterangan column exists
     let hasBadalCol = false;
+    let hasKeteranganCol = true;
     try {
       const tableTarget = tipe === 'madin' ? 'absensi' : tipe === 'quran' ? 'absensi_quran' : 'absensi_kegiatan';
       const [colRows] = await connection.execute<RowDataPacket[]>(
-        `SHOW COLUMNS FROM ${tableTarget} LIKE 'guru_badal_id'`
+        `SHOW COLUMNS FROM ${tableTarget}`
       );
-      hasBadalCol = colRows.length > 0;
+      const colNames = (colRows || []).map((c: any) => c.Field);
+      hasBadalCol = colNames.includes('guru_badal_id');
+      hasKeteranganCol = colNames.includes('keterangan');
+      if (!hasKeteranganCol) {
+        try {
+          await connection.execute(`ALTER TABLE ${tableTarget} ADD COLUMN keterangan TEXT NULL`);
+          hasKeteranganCol = true;
+        } catch (_) {}
+      }
     } catch (_) {}
 
-    let deleteQuery = '';
-    let insertQuery = '';
+    const tableTargetName = tipe === 'madin' ? 'absensi' : tipe === 'quran' ? 'absensi_quran' : 'absensi_kegiatan';
+    const schedColName = tipe === 'madin' ? 'jadwal_madin_id' : tipe === 'quran' ? 'jadwal_quran_id' : 'kegiatan_id';
 
-    if (tipe === 'madin') {
-      deleteQuery = 'DELETE FROM absensi WHERE jadwal_madin_id = ? AND tanggal = ?';
-      insertQuery = hasBadalCol
-        ? 'INSERT INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan, guru_badal_id) VALUES (?, ?, ?, ?, ?, ?)'
-        : 'INSERT INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)';
-    } else if (tipe === 'quran') {
-      deleteQuery = 'DELETE FROM absensi_quran WHERE jadwal_quran_id = ? AND tanggal = ?';
-      insertQuery = hasBadalCol
-        ? 'INSERT INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan, guru_badal_id) VALUES (?, ?, ?, ?, ?, ?)'
-        : 'INSERT INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)';
-    } else if (tipe === 'kegiatan') {
-      deleteQuery = 'DELETE FROM absensi_kegiatan WHERE kegiatan_id = ? AND tanggal = ?';
-      insertQuery = hasBadalCol
-        ? 'INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan, guru_badal_id) VALUES (?, ?, ?, ?, ?, ?)'
-        : 'INSERT INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, ?, ?)';
-    }
+    const deleteQuery = `DELETE FROM ${tableTargetName} WHERE ${schedColName} = ? AND tanggal = ?`;
+
+    const insertFields = [schedColName, 'murid_id', 'tanggal', 'status'];
+    if (hasKeteranganCol) insertFields.push('keterangan');
+    if (hasBadalCol) insertFields.push('guru_badal_id');
+
+    const insertQuery = `INSERT INTO ${tableTargetName} (${insertFields.join(', ')}) VALUES (${insertFields.map(() => '?').join(', ')})`;
 
     // Find all sibling schedule IDs in this class session (Team Teaching)
     let allSessionJadwalIds = [...targetJadwalIds];
@@ -815,8 +846,10 @@ export async function POST(request: Request) {
           item.murid_id,
           localISOTime,
           cleanStatus,
-          item.keterangan || ''
         ];
+        if (hasKeteranganCol) {
+          insertParams.push(item.keterangan || '');
+        }
         if (hasBadalCol) {
           insertParams.push(badalId || null);
         }
