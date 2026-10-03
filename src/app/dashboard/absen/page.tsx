@@ -492,7 +492,7 @@ export default function InputAbsenPage() {
 
                         <Link
                           href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${(sched.kelas_ids || [sched.kelas_id]).join(',')}&jadwal_id=${(sched.jadwal_ids || [sched.jadwal_id]).join(',')}`}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95 ${
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95 flex-wrap text-center ${
                             sudahAbsen
                               ? 'bg-green-600 hover:bg-green-700 text-white'
                               : 'bg-blue-600 hover:bg-blue-700 text-white'
