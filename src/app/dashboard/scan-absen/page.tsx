@@ -1000,7 +1000,7 @@ function ScanAbsenInner() {
           )}
           {gpsStatus === 'verified' && (
             <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex-shrink-0 ml-2">
-              Valid &amp; Sinkron ✅
+              Valid &amp; Sinkron
             </span>
           )}
         </div>
