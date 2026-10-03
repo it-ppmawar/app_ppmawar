@@ -2103,19 +2103,14 @@ function InputAbsenContent() {
             })()}
           </div>
 
-          {/* Floating Action Bar Bawah (2 Baris Ramping di HP, 1 Baris di Desktop) */}
-          <div className="fixed bottom-16 left-0 w-full bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-b border-gray-150 dark:border-gray-700 py-2 sm:py-3 px-3 sm:px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.4)] z-40 rounded-t-2xl sm:rounded-3xl transition-all">
+          {/* Floating Action Bar Bawah (HP: Baris 1 Tombol, Baris 2 Total Hadir | Desktop: Sejajar) */}
+          <div className="fixed bottom-16 left-0 w-full bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-b border-gray-150 dark:border-gray-700 py-2 sm:py-3 px-3 sm:px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.4)] z-40 rounded-3xl transition-all">
             <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center sm:justify-between gap-1.5 sm:gap-4">
-              <div className="text-xs sm:text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-1.5 justify-center sm:justify-start">
-                <span>Total Hadir:</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm sm:text-base">{murid.filter(m => m.status === 'Hadir').length}</span>
-                <span className="text-gray-400 font-medium">/</span>
-                <span>{murid.length} Santri</span>
-              </div>
+              {/* Baris 1 di HP (Tombol Simpan/Perbarui), Sisi Kanan di Desktop */}
               <button
                 onClick={handleSave}
                 disabled={saving || murid.length === 0}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white px-5 sm:px-8 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50"
+                className="w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white px-5 sm:px-8 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50"
               >
                 {saving ? (
                   <Clock className="animate-spin" size={16} />
@@ -2129,6 +2124,14 @@ function InputAbsenContent() {
                   }
                 </span>
               </button>
+
+              {/* Baris 2 di HP (Ringkasan Kehadiran), Sisi Kiri di Desktop */}
+              <div className="w-full sm:w-auto order-2 sm:order-1 text-xs sm:text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-1.5 justify-center sm:justify-start">
+                <span>Total Hadir:</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm sm:text-base">{murid.filter(m => m.status === 'Hadir').length}</span>
+                <span className="text-gray-400 font-medium">/</span>
+                <span>{murid.length} Santri</span>
+              </div>
             </div>
           </div>
         </>
