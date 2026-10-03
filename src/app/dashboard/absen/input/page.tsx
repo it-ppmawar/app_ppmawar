@@ -816,6 +816,22 @@ function InputAbsenContent() {
         {/* Animated Draw & Erase Success Checkmark & Circle */}
         <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-300 dark:border-emerald-500/40 relative">
           <svg className="w-11 h-11" viewBox="0 0 50 50">
+            <style>{`
+              @keyframes drawAndEraseCircle {
+                0% { stroke-dashoffset: 140; opacity: 0; }
+                8% { opacity: 1; }
+                42%, 68% { stroke-dashoffset: 0; opacity: 1; }
+                92% { opacity: 1; }
+                100% { stroke-dashoffset: -140; opacity: 0; }
+              }
+              @keyframes drawAndEraseCheck {
+                0% { stroke-dashoffset: 42; opacity: 0; }
+                8% { opacity: 1; }
+                42%, 68% { stroke-dashoffset: 0; opacity: 1; }
+                92% { opacity: 1; }
+                100% { stroke-dashoffset: -42; opacity: 0; }
+              }
+            `}</style>
             <circle cx="25" cy="25" r="22" stroke="currentColor" strokeWidth="2.5" fill="none" opacity="0.15" />
             <circle
               cx="25"
@@ -826,6 +842,13 @@ function InputAbsenContent() {
               strokeLinecap="round"
               fill="none"
               className="animate-draw-erase-circle"
+              style={{
+                strokeDasharray: 140,
+                strokeDashoffset: 140,
+                transformOrigin: 'center',
+                transform: 'rotate(-90deg)',
+                animation: 'drawAndEraseCircle 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite',
+              }}
             />
             <path
               d="M14 26 L22 34 L36 18"
@@ -835,6 +858,11 @@ function InputAbsenContent() {
               strokeLinejoin="round"
               fill="none"
               className="animate-draw-erase-check"
+              style={{
+                strokeDasharray: 42,
+                strokeDashoffset: 42,
+                animation: 'drawAndEraseCheck 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite',
+              }}
             />
           </svg>
         </div>

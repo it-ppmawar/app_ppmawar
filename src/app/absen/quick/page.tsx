@@ -122,30 +122,49 @@ function QuickAbsenContent() {
     }
   }, []);
 
-  const openCamera = async () => {
+  const startCamera = useCallback(async (facing: 'environment' | 'user') => {
     stopCameraStream();
     setIsSwitchingCamera(true);
     try {
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: facingMode },
-          width: { ideal: cameraOrientation === 'portrait' ? 720 : 1280 },
-          height: { ideal: cameraOrientation === 'portrait' ? 1280 : 720 },
-        },
-        audio: false,
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facing },
+            width: { ideal: cameraOrientation === 'portrait' ? 720 : 1280 },
+            height: { ideal: cameraOrientation === 'portrait' ? 1280 : 720 },
+          },
+          audio: false,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: facing },
+          audio: false,
+        });
+      }
       mediaStreamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(e => console.warn('video play warning:', e));
       }
-      setShowCamera(true);
     } catch (err) {
       console.warn('Gagal membuka kamera:', err);
       alert('Tidak dapat mengakses kamera. Pastikan izin kamera telah diaktifkan di browser.');
+      setShowCamera(false);
     } finally {
       setIsSwitchingCamera(false);
     }
+  }, [stopCameraStream, cameraOrientation]);
+
+  const openCamera = () => {
+    setShowCamera(true);
+    setTimeout(() => {
+      startCamera(facingMode);
+      const el = document.getElementById('quick-camera-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 150);
   };
 
   const closeCamera = () => {
@@ -156,29 +175,7 @@ function QuickAbsenContent() {
   const switchCamera = async () => {
     const nextMode = facingMode === 'environment' ? 'user' : 'environment';
     setFacingMode(nextMode);
-    stopCameraStream();
-    setIsSwitchingCamera(true);
-    try {
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { exact: nextMode },
-          width: { ideal: cameraOrientation === 'portrait' ? 720 : 1280 },
-          height: { ideal: cameraOrientation === 'portrait' ? 1280 : 720 },
-        },
-        audio: false,
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints).catch(async () => {
-        return await navigator.mediaDevices.getUserMedia({ video: { facingMode: nextMode }, audio: false });
-      });
-      mediaStreamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      console.warn('Gagal switch kamera:', err);
-    } finally {
-      setIsSwitchingCamera(false);
-    }
+    await startCamera(nextMode);
   };
 
   const capturePhoto = () => {
@@ -1817,8 +1814,24 @@ function QuickAbsenContent() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 max-w-md w-full text-center shadow-2xl space-y-4 my-auto">
             {/* Animated Draw & Erase Success Checkmark & Circle */}
-            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-300 dark:border-emerald-500/40 relative">
-              <svg className="w-9 h-9" viewBox="0 0 50 50">
+            <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-300 dark:border-emerald-500/40 relative">
+              <svg className="w-11 h-11" viewBox="0 0 50 50">
+                <style>{`
+                  @keyframes drawAndEraseCircle {
+                    0% { stroke-dashoffset: 140; opacity: 0; }
+                    8% { opacity: 1; }
+                    42%, 68% { stroke-dashoffset: 0; opacity: 1; }
+                    92% { opacity: 1; }
+                    100% { stroke-dashoffset: -140; opacity: 0; }
+                  }
+                  @keyframes drawAndEraseCheck {
+                    0% { stroke-dashoffset: 42; opacity: 0; }
+                    8% { opacity: 1; }
+                    42%, 68% { stroke-dashoffset: 0; opacity: 1; }
+                    92% { opacity: 1; }
+                    100% { stroke-dashoffset: -42; opacity: 0; }
+                  }
+                `}</style>
                 <circle cx="25" cy="25" r="22" stroke="currentColor" strokeWidth="2.5" fill="none" opacity="0.15" />
                 <circle
                   cx="25"
@@ -1829,6 +1842,13 @@ function QuickAbsenContent() {
                   strokeLinecap="round"
                   fill="none"
                   className="animate-draw-erase-circle"
+                  style={{
+                    strokeDasharray: 140,
+                    strokeDashoffset: 140,
+                    transformOrigin: 'center',
+                    transform: 'rotate(-90deg)',
+                    animation: 'drawAndEraseCircle 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite',
+                  }}
                 />
                 <path
                   d="M14 26 L22 34 L36 18"
@@ -1838,6 +1858,11 @@ function QuickAbsenContent() {
                   strokeLinejoin="round"
                   fill="none"
                   className="animate-draw-erase-check"
+                  style={{
+                    strokeDasharray: 42,
+                    strokeDashoffset: 42,
+                    animation: 'drawAndEraseCheck 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite',
+                  }}
                 />
               </svg>
             </div>
@@ -1852,7 +1877,7 @@ function QuickAbsenContent() {
                 Data presensi kelas <strong>{jadwal?.nama_kelas || 'Madin/Al-Qur\'an'}</strong> telah tersimpan di sistem.
               </p>
             </div>
-            <div className="bg-slate-50 dark:bg-slate-950/80 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3 text-left">
+            <div id="quick-camera-section" className="bg-slate-50 dark:bg-slate-950/80 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3 text-left">
               <div>
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                   <Camera size={16} className="text-emerald-600 dark:text-emerald-400 animate-pulse" />
