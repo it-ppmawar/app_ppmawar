@@ -299,7 +299,26 @@ export default function UsersManagementPage() {
     if (!confirm('Apakah Anda ingin men-generate akun Petugas Asrama (Pemanggilan Santri, Inventaris & Kebersihan) untuk seluruh asrama secara otomatis?\n\n(Username: petugas_panggilan_asrama_a, petugas_inventaris_asrama_a, dst. | Password default: asrama123)')) return;
     setGeneratingPetugas(true);
     try {
-      const res = await fetch('/api/users/generate-petugas', { method: 'POST' });
+      const res = await fetch('/api/users/generate-petugas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        fetchUsers();
+      } else {
+        alert(data.error);
+      }
+    } catch (e) {
+      alert('Gagal menghubungi server');
+    } finally {
+      setGeneratingPetugas(false);
+    }
+  };
+
+  const handleGeneratePetugasForce = async () => {
+    if (!confirm('GENERATE ULANG semua akun petugas?\n\nSemua akun petugas yang sudah ada akan diperbarui (password direset ke "asrama123"). Akun baru akan dibuat untuk asrama yang belum ada.\n\nLanjutkan?')) return;
+    setGeneratingPetugas(true);
+    try {
+      const res = await fetch('/api/users/generate-petugas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force: true }) });
       const data = await res.json();
       if (data.success) {
         alert(data.message);
@@ -431,11 +450,22 @@ export default function UsersManagementPage() {
                   onClick={handleGeneratePetugas}
                   disabled={generatingPetugas}
                   className="flex-1 md:flex-none justify-center px-3 py-2 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border border-teal-200 dark:border-teal-800 rounded-xl text-xs font-bold hover:bg-teal-100 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                  title="Generate Akun Petugas Inventaris & Kebersihan per Asrama"
+                  title="Generate Akun Petugas Inventaris & Kebersihan per Asrama (hanya buat akun baru)"
                 >
                   <RefreshCw size={14} className={generatingPetugas ? 'animate-spin' : ''} />
                   {generatingPetugas ? 'Membuat...' : 'Generate Petugas Asrama'}
                 </button>
+                {activeTab === 'petugas' && (
+                  <button
+                    onClick={handleGeneratePetugasForce}
+                    disabled={generatingPetugas}
+                    className="flex-1 md:flex-none justify-center px-3 py-2 bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-800 rounded-xl text-xs font-bold hover:bg-orange-100 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                    title="Generate Ulang semua akun petugas — akun lama akan direset passwordnya"
+                  >
+                    <RefreshCw size={14} className={generatingPetugas ? 'animate-spin' : ''} />
+                    Generate Ulang
+                  </button>
+                )}
                 <button
                   onClick={handleGeneratePengurus}
                   disabled={generatingPengurus}
@@ -447,6 +477,7 @@ export default function UsersManagementPage() {
                 </button>
               </>
             )}
+
             <button
               onClick={handleSyncAllUsers}
               disabled={syncing}

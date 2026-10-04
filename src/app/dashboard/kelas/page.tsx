@@ -556,7 +556,7 @@ export default function KelasPage() {
             <div className="bg-teal-600 dark:bg-teal-900 p-5 text-white shrink-0">
               <div className="flex justify-between items-start gap-2">
                 <h2 className="text-xl font-bold flex items-center gap-2 min-w-0 flex-1">
-                  <Users size={20} className="shrink-0" /> <span className="truncate">{viewingKelas.nama}</span>
+                  <Users size={20} className="shrink-0" /> <span className="line-clamp-2 break-words leading-tight">{viewingKelas.nama}</span>
                 </h2>
                 {canEdit && (
                   <button

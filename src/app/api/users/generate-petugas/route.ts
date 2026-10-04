@@ -19,7 +19,15 @@ export async function POST(request: Request) {
 
     await ensureUserColumns();
 
+    // Baca parameter force dari body (opsional) — jika true, akun yang sudah ada akan di-update (password direset)
+    let force = false;
+    try {
+      const body = await request.json();
+      force = !!body?.force;
+    } catch (_) {}
+
     let createdCount = 0;
+    let updatedCount = 0;
     const passwordHash = await bcrypt.hash('asrama123', 10);
 
     // ─── 1. Akun Petugas Umum (Shared / Default) ───────────────────────────
@@ -32,11 +40,23 @@ export async function POST(request: Request) {
 
     for (const acc of defaultPetugas) {
       try {
-        await pool.execute(
-          `INSERT INTO users (username, password, role, nama) VALUES (?, ?, ?, ?)`,
-          [acc.username, passwordHash, acc.role, acc.nama]
-        );
-        createdCount++;
+        if (force) {
+          // ON DUPLICATE KEY UPDATE: affectedRows=1 = INSERT baru, affectedRows=2 = UPDATE existing
+          const [result]: any = await pool.execute(
+            `INSERT INTO users (username, password, role, nama)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE password = VALUES(password), nama = VALUES(nama), role = VALUES(role)`,
+            [acc.username, passwordHash, acc.role, acc.nama]
+          );
+          if (result.affectedRows === 1) createdCount++;
+          else if (result.affectedRows === 2) updatedCount++;
+        } else {
+          await pool.execute(
+            `INSERT INTO users (username, password, role, nama) VALUES (?, ?, ?, ?)`,
+            [acc.username, passwordHash, acc.role, acc.nama]
+          );
+          createdCount++;
+        }
       } catch (e: any) {
         if (e.code !== 'ER_DUP_ENTRY') {
           console.error(`Gagal membuat akun ${acc.username}:`, e.message);
@@ -60,51 +80,46 @@ export async function POST(request: Request) {
       const namaAsrama = rawAsrama.startsWith('Asrama ') ? rawAsrama : `Asrama ${rawAsrama}`;
       const suffix = namaAsrama.replace(/^Asrama\s+/i, '').toLowerCase().replace(/[^a-z0-9]/g, '_');
 
-      // a. Petugas Inventaris Asrama
-      const usernameInv = `petugas_inventaris_asrama_${suffix}`;
-      const namaInv = `Petugas Inventaris ${namaAsrama}`;
+      const akuPerAsrama = [
+        {
+          username: `petugas_inventaris_asrama_${suffix}`,
+          nama: `Petugas Inventaris ${namaAsrama}`,
+          role: 'petugas_inventaris',
+        },
+        {
+          username: `petugas_kebersihan_asrama_${suffix}`,
+          nama: `Petugas Kebersihan ${namaAsrama}`,
+          role: 'petugas_kebersihan',
+        },
+        {
+          username: `petugas_panggilan_asrama_${suffix}`,
+          nama: `Petugas Pemanggilan ${namaAsrama}`,
+          role: 'petugas_panggilan',
+        },
+      ];
 
-      try {
-        await pool.execute(
-          `INSERT INTO users (username, password, role, nama, asrama) VALUES (?, ?, 'petugas_inventaris', ?, ?)`,
-          [usernameInv, passwordHash, namaInv, namaAsrama]
-        );
-        createdCount++;
-      } catch (e: any) {
-        if (e.code !== 'ER_DUP_ENTRY') {
-          console.error(`Gagal membuat akun ${usernameInv}:`, e.message);
-        }
-      }
-
-      // b. Petugas Kebersihan Asrama
-      const usernameKeb = `petugas_kebersihan_asrama_${suffix}`;
-      const namaKeb = `Petugas Kebersihan ${namaAsrama}`;
-
-      try {
-        await pool.execute(
-          `INSERT INTO users (username, password, role, nama, asrama) VALUES (?, ?, 'petugas_kebersihan', ?, ?)`,
-          [usernameKeb, passwordHash, namaKeb, namaAsrama]
-        );
-        createdCount++;
-      } catch (e: any) {
-        if (e.code !== 'ER_DUP_ENTRY') {
-          console.error(`Gagal membuat akun ${usernameKeb}:`, e.message);
-        }
-      }
-
-      // c. Petugas Pemanggilan Santri Asrama
-      const usernamePang = `petugas_panggilan_asrama_${suffix}`;
-      const namaPang = `Petugas Pemanggilan ${namaAsrama}`;
-
-      try {
-        await pool.execute(
-          `INSERT INTO users (username, password, role, nama, asrama) VALUES (?, ?, 'petugas_panggilan', ?, ?)`,
-          [usernamePang, passwordHash, namaPang, namaAsrama]
-        );
-        createdCount++;
-      } catch (e: any) {
-        if (e.code !== 'ER_DUP_ENTRY') {
-          console.error(`Gagal membuat akun ${usernamePang}:`, e.message);
+      for (const acc of akuPerAsrama) {
+        try {
+          if (force) {
+            const [result]: any = await pool.execute(
+              `INSERT INTO users (username, password, role, nama, asrama)
+               VALUES (?, ?, ?, ?, ?)
+               ON DUPLICATE KEY UPDATE password = VALUES(password), nama = VALUES(nama), role = VALUES(role), asrama = VALUES(asrama)`,
+              [acc.username, passwordHash, acc.role, acc.nama, namaAsrama]
+            );
+            if (result.affectedRows === 1) createdCount++;
+            else if (result.affectedRows === 2) updatedCount++;
+          } else {
+            await pool.execute(
+              `INSERT INTO users (username, password, role, nama, asrama) VALUES (?, ?, ?, ?, ?)`,
+              [acc.username, passwordHash, acc.role, acc.nama, namaAsrama]
+            );
+            createdCount++;
+          }
+        } catch (e: any) {
+          if (e.code !== 'ER_DUP_ENTRY') {
+            console.error(`Gagal membuat akun ${acc.username}:`, e.message);
+          }
         }
       }
     }
@@ -116,15 +131,23 @@ export async function POST(request: Request) {
     const totalPetugas = totalRows[0]?.total || 0;
 
     let message = '';
-    if (createdCount > 0) {
-      message = `Berhasil men-generate ${createdCount} akun petugas baru (Petugas Pemanggilan, Inventaris, Kebersihan & Umum). Password default: asrama123`;
+    if (createdCount > 0 && updatedCount > 0) {
+      message = `Berhasil membuat ${createdCount} akun baru dan memperbarui ${updatedCount} akun petugas (Inventaris, Kebersihan & Pemanggilan per asrama). Password default: asrama123`;
+    } else if (createdCount > 0) {
+      message = `Berhasil men-generate ${createdCount} akun petugas baru (Inventaris, Kebersihan & Pemanggilan per asrama). Password default: asrama123`;
+    } else if (updatedCount > 0) {
+      message = `Berhasil memperbarui ${updatedCount} akun petugas (password direset ke default). Total: ${totalPetugas} akun petugas aktif. Password default: asrama123`;
     } else {
-      message = `Seluruh akun petugas sudah terdaftar di database (${totalPetugas} akun petugas aktif). Password default: asrama123`;
+      message = `Seluruh akun petugas sudah terdaftar di database (${totalPetugas} akun petugas aktif). Gunakan tombol "Generate Ulang" untuk mereset password. Password default: asrama123`;
     }
 
     return NextResponse.json({
       success: true,
-      message
+      message,
+      created: createdCount,
+      updated: updatedCount,
+      total: totalPetugas,
+      asrama_count: listAsrama.length,
     });
   } catch (error: any) {
     console.error('Error API generate-petugas:', error.message);
