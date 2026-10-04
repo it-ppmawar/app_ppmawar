@@ -627,9 +627,8 @@ function TOAContent() {
             <div>
               <label className="text-[11px] text-gray-400 mb-1 block font-bold uppercase tracking-wide">Filter Asrama</label>
               {lockedAsrama ? (
-                <div className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-orange-500/40 text-sm text-orange-400 font-bold flex items-center justify-between">
-                  <span>{lockedAsrama}</span>
-                  <span className="text-[10px] text-gray-400 font-normal px-2 py-0.5 rounded bg-gray-700/80">Terkunci</span>
+                <div className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-orange-500/40 text-sm text-orange-400 font-bold text-center">
+                  {lockedAsrama}
                 </div>
               ) : (
                 <div className="relative">
@@ -650,11 +649,11 @@ function TOAContent() {
               )}
             </div>
             <div className="sm:col-span-2">
-              <div className="px-3.5 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs flex items-center gap-2">
-                <Sparkles size={15} className="shrink-0 text-orange-400" />
-                <span>
+              <div className="px-3.5 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs">
+                <p className="leading-relaxed">
+                  <Sparkles size={14} className="inline mr-1.5 -mt-0.5 text-orange-400" />
                   <strong>Sinkron Otomatis:</strong> Volume, kecepatan, dan cengkok pengisi suara (Indonesia, Arab Fasih, Jawa, Inggris) 100% diatur dan disesuaikan dari perangkat pengirim panggilan.
-                </span>
+                </p>
               </div>
             </div>
           </div>

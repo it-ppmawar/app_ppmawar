@@ -459,13 +459,21 @@ export default function KebersIhanPage() {
         </div>
         {viewMode === 'daftar' && (
           <div className="flex gap-2 flex-wrap">
-            <select value={filterKategori} onChange={e => setFilterKategori(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none">
-              <option value="">Semua Kategori</option>
-              {Object.entries(KATEGORI_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            <select
+              value={filterKategori}
+              onChange={e => setFilterKategori(e.target.value)}
+              className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none text-center [text-align-last:center]"
+            >
+              <option value="" className="text-center">Semua Kategori</option>
+              {Object.entries(KATEGORI_LABEL).map(([k, v]) => <option key={k} value={k} className="text-center">{v}</option>)}
             </select>
-            <select value={filterKondisi} onChange={e => setFilterKondisi(e.target.value)} className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none">
-              <option value="">Semua Kondisi</option>
-              {['Bersih', 'Kotor Ringan', 'Kotor Berat'].map(k => <option key={k} value={k}>{k}</option>)}
+            <select
+              value={filterKondisi}
+              onChange={e => setFilterKondisi(e.target.value)}
+              className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none text-center [text-align-last:center]"
+            >
+              <option value="" className="text-center">Semua Kondisi</option>
+              {['Bersih', 'Kotor Ringan', 'Kotor Berat'].map(k => <option key={k} value={k} className="text-center">{k}</option>)}
             </select>
           </div>
         )}

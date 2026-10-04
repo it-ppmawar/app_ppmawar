@@ -538,15 +538,20 @@ export default function PanggilanSantriPage() {
         const onlineCount = uniqueDevices.filter(d => d.status === 'online').length;
         return (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Radio size={13} className="text-orange-500" />
-                Perangkat TOA Asrama
-                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-black ${onlineCount > 0 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
-                  {onlineCount} Online
-                </span>
-              </h3>
-              <button onClick={fetchDevices} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <div className="flex items-center justify-between mb-3 relative">
+              <div className="flex flex-col sm:flex-row sm:items-center items-start sm:gap-2 gap-1 flex-1">
+                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Radio size={13} className="text-orange-500" />
+                  Perangkat TOA Asrama
+                </h3>
+                {/* Di HP: di bawah teks dan rata tengah */}
+                <div className="w-full sm:w-auto flex justify-center sm:justify-start mt-0.5 sm:mt-0">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${onlineCount > 0 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+                    {onlineCount} Online
+                  </span>
+                </div>
+              </div>
+              <button onClick={fetchDevices} className="absolute right-0 top-0 sm:static text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 <RefreshCw size={12} />
               </button>
             </div>

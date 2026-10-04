@@ -1445,9 +1445,9 @@ export default function PenilaianRaportPage() {
               </div>
             </div>
 
-            {/* Tombol Aksi PDF + Excel */}
-            <div className="flex flex-col sm:flex-row sm:justify-center gap-2.5 w-full pt-1">
-              {/* Preview PDF — buka tab baru (ideal untuk HP yang tidak support window.print langsung) */}
+            {/* Tombol Aksi PDF + Excel (Berdampingan 3 Kolom di HP seperti Rekapitulasi) */}
+            <div className="grid grid-cols-3 sm:flex sm:justify-center gap-2 w-full pt-1">
+              {/* Preview PDF */}
               <button
                 onClick={() => {
                   if (!selectedMuridId) return;
@@ -1460,28 +1460,33 @@ export default function PenilaianRaportPage() {
                   window.open(`/dashboard/penilaian/preview?${params.toString()}`, '_blank', 'noopener');
                 }}
                 disabled={!raportData}
-                className="flex-1 sm:flex-none px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
+                className="px-2 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5 sm:gap-2"
+                title="Preview Lembar Raport PDF"
               >
-                <FileText size={16} />
-                <span>Preview PDF</span>
+                <FileText size={15} />
+                <span>Preview<span className="hidden sm:inline"> PDF</span></span>
               </button>
-              {/* Cetak / Download — langsung print dialog (ideal untuk Desktop) */}
+              {/* Cetak / Download PDF */}
               <button
                 onClick={handlePrint}
                 disabled={!raportData}
-                className="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
+                className="px-2 sm:px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5 sm:gap-2"
+                title="Cetak atau Download Raport PDF"
               >
-                <Printer size={16} />
-                <span>Cetak / Download PDF</span>
+                <Printer size={15} />
+                <span className="sm:hidden">PDF</span>
+                <span className="hidden sm:inline">Cetak / Download PDF</span>
               </button>
               {/* Unduh Excel */}
               <button
                 onClick={handleExportRaportExcel}
                 disabled={!raportData}
-                className="flex-1 sm:flex-none px-5 py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
+                className="px-2 sm:px-5 py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5 sm:gap-2"
+                title="Unduh Raport Format Excel (.xlsx)"
               >
-                <Download size={16} />
-                <span>Unduh Excel</span>
+                <Download size={15} />
+                <span className="sm:hidden">Excel</span>
+                <span className="hidden sm:inline">Unduh Excel</span>
               </button>
             </div>
           </div>
