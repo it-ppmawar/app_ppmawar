@@ -62,10 +62,12 @@ export async function resolveAsrama(
   }
 
   // Tebak dari username - pola yang lebih presisi:
-  // staff_asrama_a, ketua_asrama_a, pengurus_asrama_a, pengasuh_a, petugas_inventaris_asrama_a, petugas_kebersihan_asrama_a, dll.
-  const usernameMatch = username.match(/(?:asrama|pengasuh|petugas|petugas_inventaris|petugas_kebersihan)[_\-\s]+(?:asrama[_\-\s]+)?([a-f])(?:[_\-\s]|$)/i);
+  // staff_asrama_a, ketua_asrama_a, pengurus_asrama_a, pengasuh_a, petugas_panggilan_asrama_a, petugas_inventaris_asrama_a, petugas_kebersihan_asrama_a, dll.
+  const usernameMatch = username.match(/(?:asrama|pengasuh|petugas|petugas_panggilan|petugas_inventaris|petugas_kebersihan)[_\-\s]+(?:asrama[_\-\s]+)?([a-z0-9]+)(?:[_\-\s]|$)/i);
   if (usernameMatch) {
-    return `Asrama ${usernameMatch[1].toUpperCase()}`;
+    const code = usernameMatch[1].toUpperCase();
+    if (code === 'TAHFID') return 'Asrama Tahfid';
+    return `Asrama ${code}`;
   }
 
   // Tebak dari username pola staff_putra / staff_putri

@@ -21,5 +21,12 @@ export async function ensureUserColumns() {
     }
   }
 
+  // Koreksi role akun petugas asrama yang sempat ter-update menjadi umum
+  try {
+    await pool.execute("UPDATE users SET role = 'petugas_inventaris' WHERE username LIKE 'petugas_inventaris_asrama_%' AND role != 'petugas_inventaris'");
+    await pool.execute("UPDATE users SET role = 'petugas_kebersihan' WHERE username LIKE 'petugas_kebersihan_asrama_%' AND role != 'petugas_kebersihan'");
+    await pool.execute("UPDATE users SET role = 'petugas_panggilan' WHERE username LIKE 'petugas_panggilan_asrama_%' AND role != 'petugas_panggilan'");
+  } catch (_) {}
+
   isEnsured = true;
 }

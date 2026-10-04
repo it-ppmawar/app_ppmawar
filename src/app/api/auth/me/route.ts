@@ -126,12 +126,24 @@ export async function GET() {
             if (!dbRole.toLowerCase().includes('pengurus')) dbRole = 'pengurus_asrama';
             isPengurusAsrama = true;
             pool.execute("UPDATE users SET role = 'pengurus_asrama', is_pengurus_asrama = 1 WHERE id = ?", [userId]).catch(() => {});
-          } else if (uname.includes('petugas_inventaris') || rname.includes('petugas inventaris')) {
+          } else if (uname.includes('petugas_inventaris_asrama') || (uname.includes('petugas_inventaris') && (uRows[0].asrama || uname.includes('asrama') || rname.includes('asrama')))) {
+            dbRole = 'petugas_inventaris';
+            pool.execute("UPDATE users SET role = 'petugas_inventaris' WHERE id = ?", [userId]).catch(() => {});
+          } else if (uname === 'petugas_inventaris' || uname === 'petugas_inventaris_umum' || rname === 'petugas inventaris (umum)') {
             dbRole = 'petugas_inventaris_umum';
             pool.execute("UPDATE users SET role = 'petugas_inventaris_umum' WHERE id = ?", [userId]).catch(() => {});
-          } else if (uname.includes('petugas_kebersihan') || rname.includes('petugas kebersihan')) {
+          } else if (uname.includes('petugas_kebersihan_asrama') || (uname.includes('petugas_kebersihan') && (uRows[0].asrama || uname.includes('asrama') || rname.includes('asrama')))) {
+            dbRole = 'petugas_kebersihan';
+            pool.execute("UPDATE users SET role = 'petugas_kebersihan' WHERE id = ?", [userId]).catch(() => {});
+          } else if (uname === 'petugas_kebersihan' || uname === 'petugas_kebersihan_umum' || rname === 'petugas kebersihan (umum)') {
             dbRole = 'petugas_kebersihan_umum';
             pool.execute("UPDATE users SET role = 'petugas_kebersihan_umum' WHERE id = ?", [userId]).catch(() => {});
+          } else if (uname.includes('petugas_panggilan_asrama') || (uname.includes('petugas_panggilan') && (uRows[0].asrama || uname.includes('asrama') || rname.includes('asrama')))) {
+            dbRole = 'petugas_panggilan';
+            pool.execute("UPDATE users SET role = 'petugas_panggilan' WHERE id = ?", [userId]).catch(() => {});
+          } else if (uname === 'petugas_panggilan' || uname === 'petugas_panggilan_umum' || rname === 'petugas pemanggilan santri (umum)') {
+            dbRole = 'petugas_panggilan_umum';
+            pool.execute("UPDATE users SET role = 'petugas_panggilan_umum' WHERE id = ?", [userId]).catch(() => {});
           } else if (uname.includes('petugas_umum') || rname.includes('petugas umum')) {
             dbRole = 'petugas_umum';
             pool.execute("UPDATE users SET role = 'petugas_umum' WHERE id = ?", [userId]).catch(() => {});
@@ -145,6 +157,14 @@ export async function GET() {
           isPengasuh = !!(uRows[0].is_pengasuh || roleLower.includes('pengasuh'));
           isPengurusAsrama = !!(uRows[0].is_pengurus_asrama || roleLower.includes('pengurus'));
           if (uRows[0].asrama) asramaVal = uRows[0].asrama;
+
+          if (!asramaVal) {
+            const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
+            asramaVal = await resolveAsrama(userId, dbRole, uname, null);
+            if (asramaVal && (!uRows[0].asrama || uRows[0].asrama === '')) {
+              pool.execute("UPDATE users SET asrama = ? WHERE id = ?", [asramaVal, userId]).catch(() => {});
+            }
+          }
         }
       }
     } catch (e) {}

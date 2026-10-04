@@ -208,6 +208,7 @@ function TOAContent() {
   const asramaParam  = searchParams.get('asrama') || '';
 
   const [asrama, setAsrama] = useState(asramaParam);
+  const [lockedAsrama, setLockedAsrama] = useState<string | null>(null);
 
   // ── Auth & Role Check ─────────────────────────────────────────────────────
   const [authChecked, setAuthChecked] = useState(false);
@@ -219,7 +220,13 @@ function TOAContent() {
       const asrm: string = d.user?.asrama || '';
       const allowed = ['admin', 'staff', 'petugas_panggilan'].some(r => role.includes(r));
       if (!allowed) { router.replace('/dashboard'); return; }
-      if (asrm && !asramaParam) setAsrama(asrm);
+      const isAdminOrStaff = role === 'admin' || role === 'staff';
+      if (!isAdminOrStaff && asrm) {
+        setAsrama(asrm);
+        setLockedAsrama(asrm);
+      } else if (asrm && !asramaParam) {
+        setAsrama(asrm);
+      }
       setUserRole(role);
       setAuthChecked(true);
     }).catch(() => router.replace('/dashboard'));
@@ -619,21 +626,28 @@ function TOAContent() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[11px] text-gray-400 mb-1 block font-bold uppercase tracking-wide">Filter Asrama</label>
-              <div className="relative">
-                <select
-                  value={asrama}
-                  onChange={e => setAsrama(e.target.value)}
-                  className="w-full px-3 py-2 pr-9 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none cursor-pointer"
-                >
-                  <option value="">Semua Asrama (Umum)</option>
-                  {asramaList.map(a => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
-                  <ChevronDown size={14} />
+              {lockedAsrama ? (
+                <div className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-orange-500/40 text-sm text-orange-400 font-bold flex items-center justify-between">
+                  <span>{lockedAsrama}</span>
+                  <span className="text-[10px] text-gray-400 font-normal px-2 py-0.5 rounded bg-gray-700/80">Terkunci</span>
                 </div>
-              </div>
+              ) : (
+                <div className="relative">
+                  <select
+                    value={asrama}
+                    onChange={e => setAsrama(e.target.value)}
+                    className="w-full px-3 py-2 pr-9 rounded-lg bg-gray-800 border border-gray-700 text-sm text-white focus:outline-none focus:ring-1 focus:ring-orange-500 appearance-none cursor-pointer"
+                  >
+                    <option value="">Semua Asrama (Umum)</option>
+                    {asramaList.map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                    <ChevronDown size={14} />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="sm:col-span-2">
               <div className="px-3.5 py-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs flex items-center gap-2">

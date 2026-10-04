@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, SwitchCamera, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy, Search, Key, Link as LinkIcon, Sun, Moon } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, SwitchCamera, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy, Search, Key, Link as LinkIcon, Sun, Moon, MessageCircle, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { formatHariTanggalPesantren } from '@/lib/formatHariPesantren';
 
@@ -55,6 +55,45 @@ function QuickAbsenContent() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [copiedWa, setCopiedWa] = useState(false);
+
+  // Kirim WA Wali Murid Modal States
+  const [showWaliModal, setShowWaliModal] = useState(false);
+  const [waliFilterStatus, setWaliFilterStatus] = useState<'all' | 'unusual' | 'sakit' | 'izin' | 'alpha' | 'hadir'>('unusual');
+  const [waliSearch, setWaliSearch] = useState('');
+  const [sentWaliIds, setSentWaliIds] = useState<{ [id: number]: boolean }>({});
+
+  const handleSendSingleWaliWa = (murid: any) => {
+    let phone = (murid.no_wali || murid.no_hp || '').replace(/[^0-9]/g, '');
+    if (!phone) {
+      alert(`Nomor WhatsApp wali untuk ${murid.nama} belum terdaftar di sistem.`);
+      return;
+    }
+    if (phone.startsWith('0')) phone = '62' + phone.substring(1);
+
+    const st = kehadiran[murid.murid_id] || 'hadir';
+    const statusLabel = st === 'sakit' ? 'Sakit' : st === 'izin' ? 'Izin' : st === 'alpha' ? 'Alpha / Tanpa Keterangan' : 'Hadir';
+    const dateStr = formatHariTanggalPesantren(data?.date, data?.jadwal?.jam_mulai);
+    const namaKelas = data?.jadwal?.nama_kelas || 'Kelas';
+    const mapel = data?.jadwal?.mata_pelajaran || data?.jadwal?.mapel || '';
+    const namaSantri = murid.nama_panggilan ? `${murid.nama} [${murid.nama_panggilan}]` : murid.nama;
+    const ket = murid.keterangan ? `\n* Catatan/Keterangan: ${murid.keterangan}` : '';
+    const guruPengajar = data?.jadwal?.guru_nama || 'Pengajar PP. Matholi\'ul Anwar';
+
+    const text = `Assalamu'alaikum Warohmatullah, Bapak/Ibu Wali dari Ananda *${namaSantri}*.\n\nKami dari pengurus PPMA menginformasikan perkembangan presensi ananda hari ini:\n\n* Kegiatan/Mapel: ${mapel || 'Kegiatan Pesantren'}\n* Kelas/Kamar: ${namaKelas}\n* Hari/Tanggal: ${dateStr}\n* Status Kehadiran: *${statusLabel}*${ket}\n\nAtas perhatian dan kerjasamanya kami ucapkan terima kasih.\n\nWassalamu'alaikum Warohmatullah,\n_${guruPengajar}_`;
+
+    setSentWaliIds(prev => ({ ...prev, [murid.murid_id]: true }));
+
+    const encoded = encodeURIComponent(text);
+    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = `whatsapp://send?phone=${phone}&text=${encoded}`;
+      setTimeout(() => {
+        window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`, '_blank');
+      }, 1500);
+    } else {
+      window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`, '_blank');
+    }
+  };
 
   // Ref & autoscroll untuk menampilkan tombol aksi hingga tombol bawah 'Lanjut Kirim Pesan WA' terlihat sempurna
   const successBottomRef = useRef<HTMLDivElement | null>(null);
@@ -2049,12 +2088,18 @@ function QuickAbsenContent() {
                 </span>
               </button>
 
-              <Link
-                href={`/dashboard/notifikasi?kegiatan=${tipe}&kelas=${jadwal?.kelas_id || ''}&scroll=top`}
-                className="block w-full bg-[#25D366] hover:bg-[#1DA851] text-white px-4 py-3 rounded-xl font-bold text-xs transition shadow-md text-center active:scale-95"
+              <button
+                type="button"
+                onClick={() => {
+                  const listMurid: any[] = data?.murid || [];
+                  const hasUnusual = listMurid.some(m => ['sakit', 'izin', 'alpha'].includes(kehadiran[m.murid_id]));
+                  setWaliFilterStatus(hasUnusual ? 'unusual' : 'all');
+                  setShowWaliModal(true);
+                }}
+                className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white px-4 py-3 rounded-xl font-bold text-xs transition shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
               >
-                Lanjut Kirim Pesan WA Wali Murid
-              </Link>
+                <MessageCircle size={15} /> Lanjut Kirim Pesan WA Wali Murid
+              </button>
 
               <div ref={successBottomRef} className="grid grid-cols-2 gap-2 pt-1">
                 <button
@@ -2077,6 +2122,277 @@ function QuickAbsenContent() {
                   Selesai
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Kirim Pesan WA Wali Murid Terpadu */}
+      {showWaliModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 w-full max-w-xl rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh]">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <MessageCircle size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base leading-tight text-slate-800 dark:text-slate-100">
+                    Kirim Pesan WA ke Wali Murid
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    {data?.jadwal?.nama_kelas || 'Kelas'} {data?.jadwal?.mata_pelajaran ? `• ${data.jadwal.mata_pelajaran}` : ''}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowWaliModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Filter Tabs */}
+            {(() => {
+              const allList: any[] = data?.murid || [];
+              const countSakit = allList.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'sakit').length;
+              const countIzin = allList.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'izin').length;
+              const countAlpha = allList.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'alpha').length;
+              const countUnusual = countSakit + countIzin + countAlpha;
+              const countHadir = allList.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'hadir').length;
+
+              return (
+                <div className="space-y-3 shrink-0">
+                  {/* Filter Pills */}
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setWaliFilterStatus('unusual')}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shrink-0 flex items-center gap-1 ${
+                        waliFilterStatus === 'unusual'
+                          ? 'bg-amber-500 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      <AlertTriangle size={13} />
+                      <span>Perlu Dihubungi ({countUnusual})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWaliFilterStatus('all')}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shrink-0 ${
+                        waliFilterStatus === 'all'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      Semua ({allList.length})
+                    </button>
+                    {countAlpha > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setWaliFilterStatus('alpha')}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shrink-0 ${
+                          waliFilterStatus === 'alpha'
+                            ? 'bg-red-600 text-white shadow-xs'
+                            : 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                        }`}
+                      >
+                        Alpha ({countAlpha})
+                      </button>
+                    )}
+                    {countSakit > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setWaliFilterStatus('sakit')}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shrink-0 ${
+                          waliFilterStatus === 'sakit'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                        }`}
+                      >
+                        Sakit ({countSakit})
+                      </button>
+                    )}
+                    {countIzin > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setWaliFilterStatus('izin')}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shrink-0 ${
+                          waliFilterStatus === 'izin'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
+                        }`}
+                      >
+                        Izin ({countIzin})
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setWaliFilterStatus('hadir')}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap shrink-0 ${
+                        waliFilterStatus === 'hadir'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      Hadir ({countHadir})
+                    </button>
+                  </div>
+
+                  {/* Search input */}
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Cari santri atau wali murid..."
+                      value={waliSearch}
+                      onChange={(e) => setWaliSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* List Santri */}
+            {(() => {
+              const allList: any[] = data?.murid || [];
+              const filteredList = allList.filter(m => {
+                const st = kehadiran[m.murid_id] || 'hadir';
+                if (waliFilterStatus === 'unusual' && !['sakit', 'izin', 'alpha'].includes(st)) return false;
+                if (waliFilterStatus === 'sakit' && st !== 'sakit') return false;
+                if (waliFilterStatus === 'izin' && st !== 'izin') return false;
+                if (waliFilterStatus === 'alpha' && st !== 'alpha') return false;
+                if (waliFilterStatus === 'hadir' && st !== 'hadir') return false;
+
+                if (waliSearch.trim()) {
+                  const q = waliSearch.toLowerCase();
+                  const matchName = (m.nama || '').toLowerCase().includes(q);
+                  const matchNick = (m.nama_panggilan || '').toLowerCase().includes(q);
+                  const matchWali = (m.nama_wali || '').toLowerCase().includes(q);
+                  return matchName || matchNick || matchWali;
+                }
+                return true;
+              });
+
+              if (filteredList.length === 0) {
+                return (
+                  <div className="py-10 text-center flex-1 flex flex-col items-center justify-center">
+                    <CheckCircle2 size={36} className="text-emerald-500/50 mb-2" />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {waliFilterStatus === 'unusual' ? 'Alhamdulillah, tidak ada santri yang berhalangan (Sakit/Izin/Alpha).' : 'Tidak ada santri yang sesuai filter.'}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 mt-2 min-h-[220px]">
+                  {filteredList.map((m) => {
+                    const st = kehadiran[m.murid_id] || 'hadir';
+                    const hasPhone = !!(m.no_wali || m.no_hp);
+                    const isSent = !!sentWaliIds[m.murid_id];
+
+                    return (
+                      <div
+                        key={m.murid_id}
+                        className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-3 hover:border-emerald-300 dark:hover:border-emerald-700 transition"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          {/* Avatar / Foto */}
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden"
+                            style={{ backgroundColor: getAvatarColor(m.nama) }}
+                          >
+                            {m.foto && m.foto !== '-' ? (
+                              <img
+                                src={getFotoUrl(m.foto, m.nis)}
+                                alt={m.nama}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              getInitials(m.nama)
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
+                                {m.nama_panggilan ? `${m.nama} [${m.nama_panggilan}]` : m.nama}
+                              </span>
+                              <span
+                                className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                  st === 'sakit'
+                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
+                                    : st === 'izin'
+                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                                    : st === 'alpha'
+                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+                                }`}
+                              >
+                                {st}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                              Wali: <span className="font-medium text-slate-700 dark:text-slate-300">{m.nama_wali || '-'}</span>
+                              {hasPhone && <span className="text-[10px] text-slate-400 ml-1">({m.no_wali || m.no_hp})</span>}
+                            </p>
+                            {m.keterangan && (
+                              <p className="text-[10px] text-amber-600 dark:text-amber-400 italic truncate mt-0.5">
+                                Catatan: {m.keterangan}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Tombol Kirim WA */}
+                        <div className="shrink-0">
+                          {hasPhone ? (
+                            <button
+                              type="button"
+                              onClick={() => handleSendSingleWaliWa(m)}
+                              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-xs cursor-pointer ${
+                                isSent
+                                  ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
+                                  : 'bg-[#25D366] hover:bg-[#1DA851] text-white shadow-emerald-500/20'
+                              }`}
+                            >
+                              <MessageCircle size={14} />
+                              <span>{isSent ? 'Terkirim ✓' : 'Kirim WA'}</span>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 italic px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                              No. WA Kosong
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Footer Modal */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
+              <span className="text-[11px] text-slate-400">
+                Pesan terisi otomatis sesuai status absensi
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowWaliModal(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>

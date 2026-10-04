@@ -98,9 +98,11 @@ export default function KebersIhanPage() {
   const isDoubleRoleAsrama = user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama);
   const uRoleLower = (user?.role || '').toLowerCase();
   const isPengasuhOrPengurus = ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || user?.is_pengasuh || user?.isPengasuh || user?.is_pengurus_asrama || user?.isPengurusAsrama || isDoubleRoleAsrama;
-  const canAdd = isAdmin || isPengasuhOrPengurus;
   const isPetugas = uRoleLower.includes('petugas');
-  const showAllTabs = isAdmin || isPetugas;
+  const isPetugasAsrama = isPetugas && !uRoleLower.includes('umum') && (!!user?.asrama || user?.username?.includes('asrama'));
+  const isRestrictedAsrama = !isAdmin && (isPengasuhOrPengurus || isPetugasAsrama || (!!user?.asrama && user.asrama !== 'Semua'));
+  const canAdd = isAdmin || isPengasuhOrPengurus || isPetugasAsrama;
+  const showAllTabs = isAdmin || (isPetugas && !isPetugasAsrama && !user?.asrama);
   const isPengasuhOrAdmin = isAdmin || isPetugas || ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || isDoubleRoleAsrama;
 
   useEffect(() => {
@@ -109,12 +111,19 @@ export default function KebersIhanPage() {
       .then(d => {
         if (d.success) {
           setUser(d.user);
-          if (d.user.role === 'pengurus_asrama' || d.user.role === 'pengasuh' || (d.user.role === 'guru' && (d.user.is_pengasuh || d.user.is_pengurus_asrama || d.user.asrama))) {
-            const str = `${d.user.asrama || ''} ${d.user.real_name || ''} ${d.user.username || ''} ${d.user.nama || ''}`;
+          const uRole = (d.user.role || '').toLowerCase();
+          const uAsrm = d.user.asrama || '';
+          if (
+            uRole === 'pengurus_asrama' || uRole === 'pengasuh' ||
+            (uRole === 'guru' && (d.user.is_pengasuh || d.user.is_pengurus_asrama || uAsrm)) ||
+            (uRole.includes('petugas') && !uRole.includes('umum') && (uAsrm || d.user.username?.includes('asrama'))) ||
+            (uAsrm && uRole !== 'admin' && uRole !== 'staff')
+          ) {
+            const str = `${uAsrm} ${d.user.real_name || ''} ${d.user.username || ''} ${d.user.nama || ''}`;
             if (/tahfid/i.test(str)) {
               setActiveTab('Tahfid');
             } else {
-              const m = str.match(/asrama\s+([a-f])/i) || str.match(/(?:asrama|pengasuh)[_\-\s]?([a-f])(?:\b|_|\s|$)/i);
+              const m = str.match(/asrama\s+([a-z0-9]+)/i) || str.match(/(?:asrama|pengasuh|kebersihan|petugas)[_\-\s]?([a-f])(?:\b|_|\s|$)/i);
               if (m) setActiveTab(m[1].toUpperCase());
             }
           }
@@ -398,8 +407,8 @@ export default function KebersIhanPage() {
         ))}
       </div>
 
-      {/* Tabs Asrama — pengurus_asrama & pengasuh & guru peran ganda hanya tampilkan tab asrama terkait */}
-      {(user?.role === 'pengurus_asrama' || user?.role === 'pengasuh' || isDoubleRoleAsrama) ? (
+      {/* Tabs Asrama — jika user terbatasi asrama tertentu, hanya tampilkan badge asrama terkait */}
+      {isRestrictedAsrama ? (
         <div className="bg-white dark:bg-gray-900 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 w-full text-center">
           <div className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow-sm w-full">
             <MapPin size={16} />
@@ -574,9 +583,15 @@ export default function KebersIhanPage() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-600 dark:text-gray-400 mb-1 block">Asrama</label>
-                  <select value={itemForm.asrama} onChange={e => setItemForm(p => ({ ...p, asrama: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100 outline-none">
-                    {ASRAMA_LIST.map(a => <option key={a} value={a}>{a === 'Tahfid' ? 'Tahfid' : `Asrama ${a}`}</option>)}
-                  </select>
+                  {isRestrictedAsrama ? (
+                    <div className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                      {activeTab === 'Tahfid' ? 'Asrama Tahfid' : `Asrama ${activeTab}`}
+                    </div>
+                  ) : (
+                    <select value={itemForm.asrama} onChange={e => setItemForm(p => ({ ...p, asrama: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100 outline-none">
+                      {ASRAMA_LIST.map(a => <option key={a} value={a}>{a === 'Tahfid' ? 'Tahfid' : `Asrama ${a}`}</option>)}
+                    </select>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">

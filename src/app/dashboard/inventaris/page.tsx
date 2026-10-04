@@ -80,12 +80,19 @@ export default function InventarisPage() {
       .then(data => {
         if (data.success) {
            setUser(data.user);
-          if (data.user.role === 'pengurus_asrama' || data.user.role === 'pengasuh' || (data.user.role === 'guru' && (data.user.is_pengasuh || data.user.is_pengurus_asrama || data.user.asrama))) {
-            const str = `${data.user.asrama || ''} ${data.user.real_name || ''} ${data.user.username || ''} ${data.user.nama || ''}`;
+          const role = data.user.role || '';
+          const asrm = data.user.asrama || '';
+          // Pengurus/pengasuh asrama + petugas inventaris per-asrama → set tab ke asrama mereka
+          if (
+            role === 'pengurus_asrama' || role === 'pengasuh' ||
+            (role === 'guru' && (data.user.is_pengasuh || data.user.is_pengurus_asrama || asrm)) ||
+            (role.includes('petugas_inventaris') && asrm)
+          ) {
+            const str = `${asrm} ${data.user.real_name || ''} ${data.user.username || ''} ${data.user.nama || ''}`;
             if (/tahfid/i.test(str)) {
               setActiveTab('Tahfid');
             } else {
-              const m = str.match(/asrama\s+([a-f])/i) || str.match(/(?:asrama|pengasuh)[_\-\s]?([a-f])(?:\b|_|\s|$)/i);
+              const m = str.match(/asrama\s+([a-z0-9]+)/i) || str.match(/(?:asrama|pengasuh|inventaris)[_\-\s]?([a-f])(?:\b|_|\s|$)/i);
               if (m) setActiveTab(m[1].toUpperCase());
             }
           }
@@ -93,6 +100,7 @@ export default function InventarisPage() {
       });
     fetchData();
   }, []);
+
 
   const fetchData = async () => {
     setLoading(true);
@@ -265,16 +273,17 @@ export default function InventarisPage() {
 
   const dorms = ['Semua', 'A', 'B', 'C', 'D', 'E', 'F', 'Tahfid'];
 
+  const isAdmin = user?.role === 'admin' || user?.role === 'staff';
   const uRoleLower = (user?.role || '').toLowerCase();
   const isPengasuhOrPengurus = ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || user?.is_pengasuh || user?.isPengasuh || user?.is_pengurus_asrama || user?.isPengurusAsrama || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama));
-  const canAddDelete = user?.role === 'admin' || user?.role === 'staff' || isPengasuhOrPengurus;
-  const canAdd = canAddDelete;
   const isPetugas = uRoleLower.includes('petugas');
-  const canEdit = canAddDelete || isPetugas || isPengasuhOrPengurus;
+  const isPetugasAsrama = isPetugas && !uRoleLower.includes('umum') && (!!user?.asrama || user?.username?.includes('asrama'));
+  const isRestrictedAsrama = !isAdmin && (isPengasuhOrPengurus || isPetugasAsrama || (!!user?.asrama && user.asrama !== 'Semua'));
+  const canAddDelete = isAdmin || isPengasuhOrPengurus || isPetugasAsrama;
+  const canAdd = canAddDelete;
+  const canEdit = canAddDelete || isPetugas;
   const canUpdateLaporan = canAddDelete || isPetugas;
-  // Petugas umum, inventaris umum dan sarpras lihat semua tab asrama seperti admin
-  // pengasuh & pengurus_asrama hanya lihat tab asrama mereka sendiri
-  const showAllTabs = canAddDelete || isPetugas;
+  const showAllTabs = isAdmin || (isPetugas && !isPetugasAsrama && !user?.asrama);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20 fade-in">
@@ -354,8 +363,8 @@ export default function InventarisPage() {
         </div>
       </div>
 
-      {/* Tabs Asrama — pengurus_asrama & pengasuh & guru peran ganda hanya tampilkan tab asrama terkait */}
-      {(user?.role === 'pengurus_asrama' || user?.role === 'pengasuh' || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama))) ? (
+      {/* Tabs Asrama — jika user terbatasi asrama tertentu, hanya tampilkan badge asrama terkait */}
+      {isRestrictedAsrama ? (
         <div className="bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full text-center">
           <div className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-extrabold text-xs rounded-xl shadow-sm w-full">
             <MapPin size={16} />
@@ -618,11 +627,17 @@ export default function InventarisPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Lokasi / Asrama</label>
-                  <select required value={itemForm.asrama} onChange={e => setItemForm({...itemForm, asrama: e.target.value})} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-medium">
-                    {dorms.filter(d => d !== 'Semua').map(d => (
-                      <option key={d} value={d}>{d === 'Tahfid' ? 'Tahfid' : `Asrama ${d}`}</option>
-                    ))}
-                  </select>
+                  {isRestrictedAsrama ? (
+                    <div className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                      {activeTab === 'Tahfid' ? 'Asrama Tahfid' : `Asrama ${activeTab}`}
+                    </div>
+                  ) : (
+                    <select required value={itemForm.asrama} onChange={e => setItemForm({...itemForm, asrama: e.target.value})} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-medium">
+                      {dorms.filter(d => d !== 'Semua').map(d => (
+                        <option key={d} value={d}>{d === 'Tahfid' ? 'Tahfid' : `Asrama ${d}`}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

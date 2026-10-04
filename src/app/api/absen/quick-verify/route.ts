@@ -118,7 +118,7 @@ export async function POST(request: Request) {
 
         const placeholders = combinedKelasIds.map(() => '?').join(',');
         const [mRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.nama_wali, m.alamat, m.jenis_kelamin,
+          `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.nama_wali, m.no_wali, m.no_hp, m.alamat, m.jenis_kelamin,
                   m.kelas_madin_id, m.kelas_madin_2_id, k.nama_kelas
            FROM murid m
            JOIN kelas_madin k ON (m.kelas_madin_id = k.kelas_id OR m.kelas_madin_2_id = k.kelas_id)
@@ -209,7 +209,7 @@ export async function POST(request: Request) {
 
         const placeholders = combinedKelasIds.map(() => '?').join(',');
         const [mRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.nama_wali, m.alamat, m.jenis_kelamin,
+          `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.nama_wali, m.no_wali, m.no_hp, m.alamat, m.jenis_kelamin,
                   m.kelas_quran_id, k.nama_kelas
            FROM murid m
            JOIN kelas_quran k ON m.kelas_quran_id = k.id
@@ -300,7 +300,7 @@ export async function POST(request: Request) {
 
         const placeholders = combinedKelasIds.map(() => '?').join(',');
         const [mRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.nama_wali, m.alamat, m.jenis_kelamin,
+          `SELECT m.murid_id, m.nis, m.nama, m.nama_panggilan, m.foto, m.nama_wali, m.no_wali, m.no_hp, m.alamat, m.jenis_kelamin,
                   m.kamar_id, k.nama_kamar as nama_kelas
            FROM murid m
            JOIN kamar k ON m.kamar_id = k.kamar_id
