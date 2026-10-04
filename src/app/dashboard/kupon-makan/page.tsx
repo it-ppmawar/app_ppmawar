@@ -213,8 +213,16 @@ export default function KuponMakanPage() {
         const dataMe = await resMe.json();
         if (dataMe.success && dataMe.user) {
           const r = (dataMe.user.role || '').toLowerCase();
-          const isPengasuh = !!(dataMe.user.is_pengasuh || dataMe.user.isPengasuh || r === 'pengasuh');
-          const allowed = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus'].includes(r) || isPengasuh;
+          const isPengasuhOrPengurus = !!(
+            dataMe.user.is_pengasuh ||
+            dataMe.user.isPengasuh ||
+            dataMe.user.is_pengurus_asrama ||
+            dataMe.user.isPengurusAsrama ||
+            r.includes('pengasuh') ||
+            r.includes('pengurus')
+          );
+          const isMurniGuru = r === 'guru' && !isPengasuhOrPengurus;
+          const allowed = (['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus'].includes(r) || isPengasuhOrPengurus) && !isMurniGuru;
 
           setUserRole(r);
           setIsAuthorized(allowed);

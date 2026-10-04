@@ -7,7 +7,7 @@ import { verifyToken } from '@/lib/auth/jwt';
 
 export const dynamic = 'force-dynamic';
 
-async function checkAuth(allowedRoles = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus']) {
+async function checkAuth(customAllowedRoles?: string[]) {
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
   if (!token) return { ok: false, status: 401, error: 'Unauthorized: Silakan login terlebih dahulu.' };
@@ -15,14 +15,38 @@ async function checkAuth(allowedRoles = ['admin', 'staff', 'pengurus_asrama', 'p
   const payload = verifyToken(token) as any;
   if (!payload) return { ok: false, status: 401, error: 'Token invalid.' };
 
-  const role = payload.role;
-  const isPengasuh = !!(payload.isPengasuh || payload.is_pengasuh || role === 'pengasuh');
+  const userId = payload.userId || payload.id;
+  let role = (payload.role || '').toLowerCase();
+  let isPengasuhOrPengurus = !!(
+    payload.isPengasuh ||
+    payload.is_pengasuh ||
+    payload.isPengurusAsrama ||
+    payload.is_pengurus_asrama ||
+    role.includes('pengasuh') ||
+    role.includes('pengurus')
+  );
 
-  if (!allowedRoles.includes(role) && !isPengasuh) {
-    return { ok: false, status: 403, error: 'Akses ditolak: Role Anda tidak memiliki izin mengakses fitur kupon makan.' };
+  if (userId) {
+    try {
+      const [uRows] = await pool.execute<RowDataPacket[]>('SELECT role, is_pengasuh, is_pengurus_asrama FROM users WHERE id = ? LIMIT 1', [userId]);
+      if (uRows.length > 0) {
+        const dbRole = (uRows[0].role || '').toLowerCase();
+        if (dbRole) role = dbRole;
+        if (uRows[0].is_pengasuh || dbRole.includes('pengasuh')) isPengasuhOrPengurus = true;
+        if (uRows[0].is_pengurus_asrama || dbRole.includes('pengurus')) isPengasuhOrPengurus = true;
+      }
+    } catch (_) {}
   }
 
-  return { ok: true, payload, role, isPengasuh };
+  const isMurniGuru = role === 'guru' && !isPengasuhOrPengurus;
+  const allowed = customAllowedRoles || ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus'];
+  const isAllowed = (allowed.includes(role) || isPengasuhOrPengurus) && !isMurniGuru;
+
+  if (!isAllowed) {
+    return { ok: false, status: 403, error: 'Akses ditolak: Akun Anda tidak memiliki izin mengakses fitur kupon makan.' };
+  }
+
+  return { ok: true, payload, role, isPengasuhOrPengurus };
 }
 
 // GET: Ambil daftar seluruh sesi dan sesi aktif saat ini

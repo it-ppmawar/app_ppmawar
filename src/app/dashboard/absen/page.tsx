@@ -14,6 +14,7 @@ export default function InputAbsenPage() {
   const [hari, setHari] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [role, setRole] = useState<string>('');
+  const [isPengasuhOrPengurus, setIsPengasuhOrPengurus] = useState<boolean>(false);
   const [filter, setFilter] = useState<TipeFilter>('semua');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('semua');
 
@@ -40,7 +41,18 @@ export default function InputAbsenPage() {
           fetch('/api/absen/jadwal')
         ]);
         const meData = await resMe.json();
-        if (meData.success) setRole(meData.user.role);
+        if (meData.success && meData.user) {
+          const r = (meData.user.role || '').toLowerCase();
+          setRole(r);
+          setIsPengasuhOrPengurus(!!(
+            meData.user.is_pengasuh ||
+            meData.user.isPengasuh ||
+            meData.user.is_pengurus_asrama ||
+            meData.user.isPengurusAsrama ||
+            r.includes('pengasuh') ||
+            r.includes('pengurus')
+          ));
+        }
 
         const json = await res.json();
         if (res.ok && json.success) {
@@ -104,11 +116,14 @@ export default function InputAbsenPage() {
     kegiatan: 'Kegiatan / Asrama',
   };
 
+  const isMurniGuru = role === 'guru' && !isPengasuhOrPengurus;
+  const canAccessKuponMakan = (['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus'].includes(role) || isPengasuhOrPengurus) && !isMurniGuru;
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
       {/* Switcher Tab Terpadu: Mode Manual vs Mode Scan vs Kupon Makan */}
-      {/* Kupon Makan hanya tampil untuk role selain guru */}
-      <div className={`grid ${role === 'guru' ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-800/90 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner`}>
+      {/* Kupon Makan hanya tampil untuk role selain murni guru (tampil jika admin, staff, pengasuh, atau pengurus) */}
+      <div className={`grid ${!canAccessKuponMakan ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-800/90 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner`}>
         <Link
           href="/dashboard/absen"
           className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-black text-xs sm:text-sm transition-all bg-white dark:bg-gray-700 text-green-700 dark:text-green-300 shadow-sm border border-gray-200/60 dark:border-gray-600"
@@ -129,7 +144,7 @@ export default function InputAbsenPage() {
             <span className="block text-[10px] font-normal opacity-80">(QR &amp; Wajah)</span>
           </span>
         </Link>
-        {role !== 'guru' && (
+        {canAccessKuponMakan && (
           <Link
             href="/dashboard/kupon-makan"
             className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"

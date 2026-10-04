@@ -313,6 +313,7 @@ function ScanAbsenInner() {
   const [confirmPending, setConfirmPending] = useState(false);
   const [lastUnknownDescriptor, setLastUnknownDescriptor] = useState<number[] | undefined>();
   const [userRole, setUserRole] = useState<string>('');
+  const [isPengasuhOrPengurus, setIsPengasuhOrPengurus] = useState<boolean>(false);
   const [availableTargets, setAvailableTargets] = useState<string[]>(['kegiatan', 'madin', 'quran']);
 
   // Smart GPS state
@@ -386,6 +387,14 @@ function ScanAbsenInner() {
         if (dataMe.success && dataMe.user) {
           const r = (dataMe.user.role || '').toLowerCase();
           setUserRole(r);
+          setIsPengasuhOrPengurus(!!(
+            dataMe.user.is_pengasuh ||
+            dataMe.user.isPengasuh ||
+            dataMe.user.is_pengurus_asrama ||
+            dataMe.user.isPengurusAsrama ||
+            r.includes('pengasuh') ||
+            r.includes('pengurus')
+          ));
 
           if (['admin', 'staff'].includes(r)) {
             setAvailableTargets(['kegiatan', 'madin', 'quran']);
@@ -807,12 +816,15 @@ function ScanAbsenInner() {
   };
 
   // ── RENDER ────────────────────────────────────────────────────────
+  const isMurniGuru = userRole === 'guru' && !isPengasuhOrPengurus;
+  const canAccessKuponMakan = (['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus'].includes(userRole) || isPengasuhOrPengurus) && !isMurniGuru;
+
   return (
     <div className="max-w-xl mx-auto space-y-5 pb-24 animate-[fadeIn_0.5s_ease-out]">
 
       {/* Switcher Tab Terpadu: Mode Manual vs Mode Scan vs Kupon Makan */}
-      {/* Kupon Makan hanya tampil untuk role selain guru */}
-      <div className={`grid ${userRole === 'guru' ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-800/90 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner`}>
+      {/* Kupon Makan disembunyikan untuk murni role guru saja */}
+      <div className={`grid ${!canAccessKuponMakan ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-800/90 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner`}>
         <Link
           href="/dashboard/absen"
           className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
@@ -833,7 +845,7 @@ function ScanAbsenInner() {
             <span className="block text-[10px] font-normal opacity-80">(QR &amp; Wajah)</span>
           </span>
         </Link>
-        {userRole !== 'guru' && (
+        {canAccessKuponMakan && (
           <Link
             href="/dashboard/kupon-makan"
             className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"

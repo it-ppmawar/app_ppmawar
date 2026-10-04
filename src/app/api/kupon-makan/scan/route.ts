@@ -32,10 +32,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Token tidak valid.' }, { status: 401 });
     }
 
-    const role = payload.role;
-    const isPengasuh = !!(payload.isPengasuh || payload.is_pengasuh || role === 'pengasuh');
-    const allowedRoles = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus'];
-    if (!allowedRoles.includes(role) && !isPengasuh) {
+    const userId = payload.userId || payload.id;
+    let role = (payload.role || '').toLowerCase();
+    let isPengasuhOrPengurus = !!(
+      payload.isPengasuh ||
+      payload.is_pengasuh ||
+      payload.isPengurusAsrama ||
+      payload.is_pengurus_asrama ||
+      role.includes('pengasuh') ||
+      role.includes('pengurus')
+    );
+
+    if (userId) {
+      try {
+        const [uRows] = await pool.execute<RowDataPacket[]>('SELECT role, is_pengasuh, is_pengurus_asrama FROM users WHERE id = ? LIMIT 1', [userId]);
+        if (uRows.length > 0) {
+          const dbRole = (uRows[0].role || '').toLowerCase();
+          if (dbRole) role = dbRole;
+          if (uRows[0].is_pengasuh || dbRole.includes('pengasuh')) isPengasuhOrPengurus = true;
+          if (uRows[0].is_pengurus_asrama || dbRole.includes('pengurus')) isPengasuhOrPengurus = true;
+        }
+      } catch (_) {}
+    }
+
+    const isMurniGuru = role === 'guru' && !isPengasuhOrPengurus;
+    const isAllowed = (['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus'].includes(role) || isPengasuhOrPengurus) && !isMurniGuru;
+    if (!isAllowed) {
       return NextResponse.json({ success: false, message: 'Akses ditolak: Anda tidak memiliki izin untuk memindai kupon makan.' }, { status: 403 });
     }
 

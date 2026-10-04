@@ -276,6 +276,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     || (userRoleLower === 'wali_alumni' && hasAlumniTunggakan)
     || userRoleLower.includes('pengasuh') || !!user?.is_pengasuh || !!user?.isPengasuh;
 
+  // canAccessKuponMakan: hanya admin, staff, pengasuh, dan pengurus (murni guru tanpa peran pengasuh/pengurus disembunyikan)
+  const canAccessKuponMakan = ['admin', 'staff'].includes(userRoleLower) || isPengasuhRole;
+
   const showQuranMadin = user?.role === 'admin' || user?.role === 'staff' || hasQuran || hasMadin || isTamu;
   const showKamarAsrama = userRoleLower === 'admin' || userRoleLower === 'staff' || isPengasuhRole || hasKegiatan;
   const showDataSantri = userRoleLower === 'admin' || userRoleLower === 'staff' || isPengasuhRole || hasQuran || hasMadin || hasKegiatan;
@@ -780,8 +783,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                               <FileText size={18} /> <span className="text-sm">Rekapitulasi Absensi</span>
                             </Link>
                           </li>
-                          {/* Sembunyikan E-Kupon Makan untuk role guru */}
-                          {userRoleLower !== 'guru' && (
+                          {/* Sembunyikan E-Kupon Makan untuk murni role guru (tampil jika admin, staff, pengasuh, atau pengurus) */}
+                          {canAccessKuponMakan && (
                           <li>
                             <Link
                               href="/dashboard/kupon-makan"
