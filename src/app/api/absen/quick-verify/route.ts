@@ -478,12 +478,15 @@ export async function POST(request: Request) {
     }
 
     let lokasiTarget: { lat: number; lng: number; radius: number } | null = null;
+    let waTemplateWali: string | null = null;
     try {
       const [settingRows] = await pool.execute<RowDataPacket[]>(
-        'SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ("lat_pesantren", "lng_pesantren", "radius_absen")'
+        'SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ("lat_pesantren", "lng_pesantren", "radius_absen", "wa_template_wali")'
       );
       const settingsMap: Record<string, string> = {};
       settingRows.forEach(r => { settingsMap[r.nama_pengaturan] = r.nilai; });
+
+      waTemplateWali = settingsMap['wa_template_wali'] || null;
 
       const targetLat = parseFloat((settingsMap['lat_pesantren'] || '').toString().replace(',', '.').trim());
       const targetLng = parseFloat((settingsMap['lng_pesantren'] || '').toString().replace(',', '.').trim());
@@ -513,7 +516,8 @@ export async function POST(request: Request) {
         murid: muridList,
         existingAbsensi: existingMap,
         existingKeterangan: existingKeteranganMap,
-        lokasiTarget
+        lokasiTarget,
+        wa_template_wali: waTemplateWali
       }
     });
   } catch (error: any) {

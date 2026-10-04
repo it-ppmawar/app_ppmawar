@@ -458,11 +458,11 @@ export default function KebersIhanPage() {
           </div>
         </div>
         {viewMode === 'daftar' && (
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex items-center justify-center gap-2.5 flex-wrap w-full pt-1">
             <select
               value={filterKategori}
               onChange={e => setFilterKategori(e.target.value)}
-              className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none text-center [text-align-last:center]"
+              className="text-xs px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none text-center [text-align-last:center] cursor-pointer min-w-[140px] sm:min-w-[170px]"
             >
               <option value="" className="text-center">Semua Kategori</option>
               {Object.entries(KATEGORI_LABEL).map(([k, v]) => <option key={k} value={k} className="text-center">{v}</option>)}
@@ -470,7 +470,7 @@ export default function KebersIhanPage() {
             <select
               value={filterKondisi}
               onChange={e => setFilterKondisi(e.target.value)}
-              className="text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none text-center [text-align-last:center]"
+              className="text-xs px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none text-center [text-align-last:center] cursor-pointer min-w-[140px] sm:min-w-[170px]"
             >
               <option value="" className="text-center">Semua Kondisi</option>
               {['Bersih', 'Kotor Ringan', 'Kotor Berat'].map(k => <option key={k} value={k} className="text-center">{k}</option>)}

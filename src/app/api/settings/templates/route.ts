@@ -28,11 +28,16 @@ async function ensureUtf8mb4Table() {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const user = await getAuthUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { searchParams } = new URL(request.url);
+    const isPublic = searchParams.get('public') === '1' || searchParams.get('token') !== null;
+
+    if (!isPublic) {
+      const user = await getAuthUser();
+      if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     await ensureUtf8mb4Table();

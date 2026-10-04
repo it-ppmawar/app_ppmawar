@@ -62,6 +62,37 @@ function QuickAbsenContent() {
   const [waliSearch, setWaliSearch] = useState('');
   const [sentWaliIds, setSentWaliIds] = useState<{ [id: number]: boolean }>({});
 
+  const defaultWaliTemplate = `Assalamu'alaikum Warohmatullah, Bapak/Ibu Wali dari Ananda *{nama_santri}*.\n\nKami dari pengurus PPMA menginformasikan perkembangan kehadiran ananda hari ini:\n\n* Kegiatan: {kegiatan}\n* Tempat/Kelas: {kelas}\n* Status Absensi: *{status}*\n\nUntuk informasi kehadiran lebih lengkap, dapat dilihat melalui tautan berikut:\n{link_laporan}\n\nDemikian informasi yang dapat kami sampaikan. Atas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Warohmatullah.`;
+
+  const [waliTemplate, setWaliTemplate] = useState<string>(defaultWaliTemplate);
+
+  // Sinkronkan templat pesan wali dari database setting / local storage
+  useEffect(() => {
+    if (data?.wa_template_wali) {
+      setWaliTemplate(data.wa_template_wali);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('wa_template_wali', data.wa_template_wali);
+      }
+    } else if (typeof window !== 'undefined') {
+      const localTpl = localStorage.getItem('wa_template_wali');
+      if (localTpl) setWaliTemplate(localTpl);
+    }
+  }, [data?.wa_template_wali]);
+
+  useEffect(() => {
+    fetch('/api/settings/templates?public=1')
+      .then(res => res.json())
+      .then(res => {
+        if (res.success && res.templates?.wa_template_wali) {
+          setWaliTemplate(res.templates.wa_template_wali);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('wa_template_wali', res.templates.wa_template_wali);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleSendSingleWaliWa = (murid: any) => {
     let phone = (murid.no_wali || murid.no_hp || '').replace(/[^0-9]/g, '');
     if (!phone) {
@@ -73,13 +104,28 @@ function QuickAbsenContent() {
     const st = kehadiran[murid.murid_id] || 'hadir';
     const statusLabel = st === 'sakit' ? 'Sakit' : st === 'izin' ? 'Izin' : st === 'alpha' ? 'Alpha / Tanpa Keterangan' : 'Hadir';
     const dateStr = formatHariTanggalPesantren(data?.date, data?.jadwal?.jam_mulai);
-    const namaKelas = data?.jadwal?.nama_kelas || 'Kelas';
+    const namaKelas = data?.jadwal?.nama_kelas || data?.jadwal?.kelas_nama || 'Kelas';
     const mapel = data?.jadwal?.mata_pelajaran || data?.jadwal?.mapel || '';
+    const tipeLabel = data?.tipe === 'madin' ? 'Kegiatan Madin' : data?.tipe === 'quran' ? "Kegiatan Al-Qur'an" : 'Kegiatan Asrama';
+    const kegiatan = mapel ? `${tipeLabel} (${mapel})` : tipeLabel;
     const namaSantri = murid.nama_panggilan ? `${murid.nama} [${murid.nama_panggilan}]` : murid.nama;
-    const ket = murid.keterangan ? `\n* Catatan/Keterangan: ${murid.keterangan}` : '';
+    const statusText = murid.keterangan ? `${statusLabel} (${murid.keterangan})` : statusLabel;
+    const linkLaporan = 'https://app.ppmawar.or.id/dashboard/notifikasi';
     const guruPengajar = data?.jadwal?.guru_nama || 'Pengajar PP. Matholi\'ul Anwar';
 
-    const text = `Assalamu'alaikum Warohmatullah, Bapak/Ibu Wali dari Ananda *${namaSantri}*.\n\nKami dari pengurus PPMA menginformasikan perkembangan presensi ananda hari ini:\n\n* Kegiatan/Mapel: ${mapel || 'Kegiatan Pesantren'}\n* Kelas/Kamar: ${namaKelas}\n* Hari/Tanggal: ${dateStr}\n* Status Kehadiran: *${statusLabel}*${ket}\n\nAtas perhatian dan kerjasamanya kami ucapkan terima kasih.\n\nWassalamu'alaikum Warohmatullah,\n_${guruPengajar}_`;
+    // Ambil templat aktif yang tersinkronisasi dengan halaman Notifikasi
+    const activeTemplate = (data?.wa_template_wali || waliTemplate || (typeof window !== 'undefined' ? localStorage.getItem('wa_template_wali') : null) || defaultWaliTemplate).trim();
+
+    let text = activeTemplate
+      .replace(/{nama_santri}/g, namaSantri)
+      .replace(/{kegiatan}/g, kegiatan)
+      .replace(/{kelas}/g, namaKelas)
+      .replace(/{status}/g, statusText)
+      .replace(/{link_laporan}/g, linkLaporan)
+      .replace(/{hari_tanggal}/g, dateStr)
+      .replace(/{jam}/g, `${data?.jadwal?.jam_mulai || ''} - ${data?.jadwal?.jam_selesai || ''}`)
+      .replace(/{guru}/g, guruPengajar)
+      .replace(/{nama_guru}/g, guruPengajar);
 
     setSentWaliIds(prev => ({ ...prev, [murid.murid_id]: true }));
 
@@ -2300,12 +2346,13 @@ function QuickAbsenContent() {
                     return (
                       <div
                         key={m.murid_id}
-                        className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-3 hover:border-emerald-300 dark:hover:border-emerald-700 transition"
+                        className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col gap-2.5 hover:border-emerald-300 dark:hover:border-emerald-700 transition"
                       >
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        {/* Info Santri & Wali (Lebar Penuh, Tidak Terpotong) */}
+                        <div className="flex items-start gap-2.5 min-w-0 w-full">
                           {/* Avatar / Foto */}
                           <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden"
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden mt-0.5"
                             style={{ backgroundColor: getAvatarColor(m.nama) }}
                           >
                             {m.foto && m.foto !== '-' ? (
@@ -2324,11 +2371,11 @@ function QuickAbsenContent() {
 
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
+                              <span className="font-bold text-xs text-slate-800 dark:text-slate-100 break-words">
                                 {m.nama_panggilan ? `${m.nama} [${m.nama_panggilan}]` : m.nama}
                               </span>
                               <span
-                                className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${
                                   st === 'sakit'
                                     ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
                                     : st === 'izin'
@@ -2341,25 +2388,25 @@ function QuickAbsenContent() {
                                 {st}
                               </span>
                             </div>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                              Wali: <span className="font-medium text-slate-700 dark:text-slate-300">{m.nama_wali || '-'}</span>
-                              {hasPhone && <span className="text-[10px] text-slate-400 ml-1">({m.no_wali || m.no_hp})</span>}
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 break-words">
+                              Wali: <span className="font-semibold text-slate-700 dark:text-slate-200">{m.nama_wali || '-'}</span>
+                              {hasPhone && <span className="text-[10px] text-slate-400 ml-1.5 font-normal">({m.no_wali || m.no_hp})</span>}
                             </p>
                             {m.keterangan && (
-                              <p className="text-[10px] text-amber-600 dark:text-amber-400 italic truncate mt-0.5">
+                              <p className="text-[10px] text-amber-600 dark:text-amber-400 italic break-words mt-0.5">
                                 Catatan: {m.keterangan}
                               </p>
                             )}
                           </div>
                         </div>
 
-                        {/* Tombol Kirim WA */}
-                        <div className="shrink-0">
+                        {/* Tombol Kirim WA - Baris Tersendiri di Bawah Nama Wali */}
+                        <div className="w-full pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
                           {hasPhone ? (
                             <button
                               type="button"
                               onClick={() => handleSendSingleWaliWa(m)}
-                              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-xs cursor-pointer ${
+                              className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-[0.98] shadow-xs cursor-pointer ${
                                 isSent
                                   ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
                                   : 'bg-[#25D366] hover:bg-[#1DA851] text-white shadow-emerald-500/20'
@@ -2369,9 +2416,9 @@ function QuickAbsenContent() {
                               <span>{isSent ? 'Terkirim ✓' : 'Kirim WA'}</span>
                             </button>
                           ) : (
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 italic px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                            <div className="w-full py-1.5 text-center text-[10px] text-slate-400 dark:text-slate-500 italic bg-slate-100 dark:bg-slate-800 rounded-lg">
                               No. WA Kosong
-                            </span>
+                            </div>
                           )}
                         </div>
                       </div>

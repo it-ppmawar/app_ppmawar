@@ -384,19 +384,19 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         {role === 'tamu' ? (
-                          <span className="px-3 py-1.5 bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-700 cursor-not-allowed select-none">
+                          <span className="px-3 py-1.5 bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-700 cursor-not-allowed select-none text-center inline-flex items-center justify-center leading-tight min-w-[76px] shrink-0">
                             Hanya Lihat
                           </span>
                         ) : (
                           <Link 
                             href={`/dashboard/absen/input?tipe=${sched.tipe}&kelas_id=${sched.kelas_id}&jadwal_id=${sched.jadwal_id}`} 
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border ${
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors border text-center inline-flex items-center justify-center leading-tight min-w-[76px] shrink-0 ${
                               sched.sudah_absen
                                 ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100'
                                 : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-100'
                             }`}
                           >
-                            {sched.sudah_absen ? 'Perbarui' : 'Isi Absen'}
+                            <span className="text-center block w-full">{sched.sudah_absen ? 'Perbarui' : 'Isi Absen'}</span>
                           </Link>
                         )}
                       </div>
