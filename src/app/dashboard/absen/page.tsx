@@ -106,8 +106,9 @@ export default function InputAbsenPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
-      {/* Switcher 3 Tab Terpadu: Mode Manual vs Mode Scan vs Kupon Makan */}
-      <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-800/90 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner">
+      {/* Switcher Tab Terpadu: Mode Manual vs Mode Scan vs Kupon Makan */}
+      {/* Kupon Makan hanya tampil untuk role selain guru */}
+      <div className={`grid ${role === 'guru' ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-800/90 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner`}>
         <Link
           href="/dashboard/absen"
           className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-black text-xs sm:text-sm transition-all bg-white dark:bg-gray-700 text-green-700 dark:text-green-300 shadow-sm border border-gray-200/60 dark:border-gray-600"
@@ -128,16 +129,18 @@ export default function InputAbsenPage() {
             <span className="block text-[10px] font-normal opacity-80">(QR &amp; Wajah)</span>
           </span>
         </Link>
-        <Link
-          href="/dashboard/kupon-makan"
-          className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
-        >
-          <Utensils size={20} className="mb-1 flex-shrink-0" />
-          <span className="leading-tight">
-            Kupon Makan
-            <span className="block text-[10px] font-normal opacity-80">(QR Santri)</span>
-          </span>
-        </Link>
+        {role !== 'guru' && (
+          <Link
+            href="/dashboard/kupon-makan"
+            className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
+          >
+            <Utensils size={20} className="mb-1 flex-shrink-0" />
+            <span className="leading-tight">
+              Kupon Makan
+              <span className="block text-[10px] font-normal opacity-80">(QR Santri)</span>
+            </span>
+          </Link>
+        )}
       </div>
 
       {/* Header */}

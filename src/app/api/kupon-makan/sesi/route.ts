@@ -7,7 +7,7 @@ import { verifyToken } from '@/lib/auth/jwt';
 
 export const dynamic = 'force-dynamic';
 
-async function checkAuth(allowedRoles = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru']) {
+async function checkAuth(allowedRoles = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus']) {
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
   if (!token) return { ok: false, status: 401, error: 'Unauthorized: Silakan login terlebih dahulu.' };

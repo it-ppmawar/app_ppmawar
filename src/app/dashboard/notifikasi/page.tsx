@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { 
   Bell, AlertTriangle, CheckCircle2, MessageCircle, Phone, Search, 
   RefreshCw, Users, Check, Smartphone, Info, ChevronDown, ChevronUp, 
@@ -103,6 +103,30 @@ function NotifikasiContent() {
   const [isKepalaMadinSending, setIsKepalaMadinSending] = useState(false);
   const [isKepalaMadinScheduling, setIsKepalaMadinScheduling] = useState(false);
   const [kepalaMadinStatusMsg, setKepalaMadinStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+  // Ref untuk autoscroll ke area Simpan Templat / Pencarian saat diarahkan dari halaman absensi
+  const simpanTemplatRef = useRef<any>(null);
+
+  // Autoscroll ke area pencarian / Simpan Templat saat URL mengandung ?scroll=top
+  useEffect(() => {
+    const shouldScroll = searchParams.get('scroll') === 'top';
+    if (shouldScroll) {
+      // Beri sedikit jeda agar konten dan DOM selesai dirender
+      const timer = setTimeout(() => {
+        if (simpanTemplatRef.current) {
+          simpanTemplatRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          const el = document.getElementById('search-wali-container');
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1723,6 +1747,7 @@ function NotifikasiContent() {
                 </span>
               )}
               <button
+                ref={simpanTemplatRef}
                 type="button"
                 onClick={() => saveTemplate('wa_template_wali', pesanWaliTemplate)}
                 className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 min-w-[140px]"
@@ -1735,7 +1760,7 @@ function NotifikasiContent() {
 
         {/* Search bar — hanya tampil untuk mode absensi & info_akun */}
         {manualMode !== 'pembayaran' && (
-          <div className="relative mb-4">
+          <div id="search-wali-container" className="relative mb-4">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"

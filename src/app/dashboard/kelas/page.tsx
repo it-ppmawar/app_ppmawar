@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { BookOpen, Search, Plus, Edit, Users, UserPlus, X, FileText, Download, Upload, TableProperties } from 'lucide-react';
+import { BookOpen, Search, Plus, Edit, Users, UserPlus, X, FileText, Download, Upload, TableProperties, ArrowLeft } from 'lucide-react';
 import { downloadTemplate } from '@/lib/downloadTemplate';
 
 export default function KelasPage() {
@@ -554,27 +554,33 @@ export default function KelasPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-2xl overflow-hidden border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[85vh] mb-16">
             <div className="bg-teal-600 dark:bg-teal-900 p-5 text-white shrink-0">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Users size={20} /> {viewingKelas.nama}
-                  </h2>
-                  <p className="text-teal-100 text-sm mt-1">Wali Kelas: {viewingKelas.pembina || 'Belum ditugaskan'}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {canEdit && (
-                    <button
-                      onClick={() => { setIsAddMuridModalOpen(true); setSearchTambah(''); setMuridTersedia([]); }}
-                      className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition"
-                      title="Tambah Santri ke Kelas Ini"
-                    >
-                      <Plus size={18} />
-                    </button>
-                  )}
-                  <button onClick={() => setIsViewModalOpen(false)} className="bg-white/20 p-2 rounded-lg hover:bg-white/30 transition">
-                    Kembali
+              <div className="flex justify-between items-start gap-2">
+                <h2 className="text-xl font-bold flex items-center gap-2 min-w-0 flex-1">
+                  <Users size={20} className="shrink-0" /> <span className="truncate">{viewingKelas.nama}</span>
+                </h2>
+                {canEdit && (
+                  <button
+                    onClick={() => { setIsAddMuridModalOpen(true); setSearchTambah(''); setMuridTersedia([]); }}
+                    className="bg-white/20 hover:bg-white/30 p-1.5 rounded-lg transition shrink-0"
+                    title="Tambah Santri ke Kelas Ini"
+                  >
+                    <Plus size={18} />
                   </button>
-                </div>
+                )}
+              </div>
+
+              {/* Baris Keterangan Wali Kelas & Tombol Kembali (Rata Kanan) */}
+              <div className="flex items-center justify-between gap-3 mt-2 pt-1 border-t border-white/10">
+                <p className="text-teal-100 text-xs sm:text-sm">
+                  Wali Kelas: <span className="font-semibold text-white">{viewingKelas.pembina || 'Belum ditugaskan'}</span>
+                </p>
+                <button
+                  onClick={() => setIsViewModalOpen(false)}
+                  className="bg-white/20 hover:bg-white/30 text-white p-1.5 rounded-lg transition flex items-center justify-center shrink-0 active:scale-95"
+                  title="Kembali"
+                >
+                  <ArrowLeft size={16} />
+                </button>
               </div>
             </div>
             

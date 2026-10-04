@@ -780,6 +780,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                               <FileText size={18} /> <span className="text-sm">Rekapitulasi Absensi</span>
                             </Link>
                           </li>
+                          {/* Sembunyikan E-Kupon Makan untuk role guru */}
+                          {userRoleLower !== 'guru' && (
                           <li>
                             <Link
                               href="/dashboard/kupon-makan"
@@ -793,6 +795,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                               <Utensils size={18} /> <span className="text-sm">E-Kupon Makan</span>
                             </Link>
                           </li>
+                          )}
                           {(['admin', 'staff'].includes(userRoleLower) || isPengasuhRole) && (
                             <li>
                               <Link href="/dashboard/absen-guru" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/absen-guru' ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-bold' : 'hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold'}`}>

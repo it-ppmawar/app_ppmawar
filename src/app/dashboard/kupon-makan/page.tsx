@@ -214,7 +214,7 @@ export default function KuponMakanPage() {
         if (dataMe.success && dataMe.user) {
           const r = (dataMe.user.role || '').toLowerCase();
           const isPengasuh = !!(dataMe.user.is_pengasuh || dataMe.user.isPengasuh || r === 'pengasuh');
-          const allowed = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'].includes(r) || isPengasuh;
+          const allowed = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus'].includes(r) || isPengasuh;
 
           setUserRole(r);
           setIsAuthorized(allowed);
@@ -498,7 +498,7 @@ export default function KuponMakanPage() {
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Akses Ditolak</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
-              Halaman pemindaian dan pengaturan E-Kupon Makan ini dikhususkan bagi <strong>Petugas Kantin, Pengurus Asrama, Dewan Guru, atau Pengasuh Pondok</strong>. Akun Anda ({userRole || 'tamu'}) tidak memiliki wewenang untuk fitur ini.
+              Halaman pemindaian dan pengaturan E-Kupon Makan ini dikhususkan bagi <strong>Pengasuh, Admin, Staff, atau Pengurus</strong>. Akun Anda ({userRole || 'tamu'}) tidak memiliki wewenang untuk fitur ini.
             </p>
           </div>
           <div className="pt-2">

@@ -56,6 +56,17 @@ function QuickAbsenContent() {
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [copiedWa, setCopiedWa] = useState(false);
 
+  // Ref & autoscroll untuk menampilkan tombol aksi hingga tombol bawah 'Lanjut Kirim Pesan WA' terlihat sempurna
+  const successBottomRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (showSuccessModal) {
+      const timer = setTimeout(() => {
+        successBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessModal]);
+
   // Dark/Light Theme State
   const [isDark, setIsDark] = useState(true);
 
@@ -2039,13 +2050,13 @@ function QuickAbsenContent() {
               </button>
 
               <Link
-                href={`/dashboard/notifikasi?kegiatan=${tipe}&kelas=${jadwal?.kelas_id || ''}`}
+                href={`/dashboard/notifikasi?kegiatan=${tipe}&kelas=${jadwal?.kelas_id || ''}&scroll=top`}
                 className="block w-full bg-[#25D366] hover:bg-[#1DA851] text-white px-4 py-3 rounded-xl font-bold text-xs transition shadow-md text-center active:scale-95"
               >
                 Lanjut Kirim Pesan WA Wali Murid
               </Link>
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div ref={successBottomRef} className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   onClick={() => setShowSuccessModal(false)}
                   className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs border border-slate-200 dark:border-slate-700 transition"

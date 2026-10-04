@@ -114,6 +114,17 @@ function InputAbsenContent() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const lanjutBtnRef = useRef<HTMLAnchorElement | null>(null);
+  const bottomActionRef = useRef<HTMLAnchorElement | null>(null);
+
+  useEffect(() => {
+    if (isSuccess) {
+      const timer = setTimeout(() => {
+        bottomActionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess]);
   useEffect(() => {
     let progressTimer: NodeJS.Timeout;
     if (loading) {
@@ -770,6 +781,10 @@ function InputAbsenContent() {
       if (data.success) {
         setSudahAbsen(true);
         setIsSuccess(true);
+        // Autoscroll ke tombol "Lanjut Kirim Pesan WA Wali Murid" setelah absen berhasil disimpan
+        setTimeout(() => {
+          lanjutBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 400);
       } else {
         setErrorMsg(data.error || 'Gagal menyimpan absensi');
         setShowErrorModal(true);
@@ -1047,10 +1062,10 @@ function InputAbsenContent() {
             </span>
           </button>
 
-          <Link href={`/dashboard/notifikasi?kegiatan=${tipe}&kelas=${kelas_id}`} className="block w-full bg-[#25D366] hover:bg-[#1DA851] text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md flex items-center justify-center gap-2 text-center">
+          <Link ref={lanjutBtnRef} href={`/dashboard/notifikasi?kegiatan=${tipe}&kelas=${kelas_id}&scroll=top`} className="block w-full bg-[#25D366] hover:bg-[#1DA851] text-white px-6 py-4 rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md flex items-center justify-center gap-2 text-center">
             Lanjut Kirim Pesan WA Wali Murid
           </Link>
-          <Link href="/dashboard/absen" className="block w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-6 py-4 rounded-xl font-bold transition-colors text-center">
+          <Link ref={bottomActionRef} href="/dashboard/absen" className="block w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-6 py-4 rounded-xl font-bold transition-colors text-center">
             Kembali ke Jadwal
           </Link>
         </div>

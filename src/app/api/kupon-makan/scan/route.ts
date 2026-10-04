@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     const role = payload.role;
     const isPengasuh = !!(payload.isPengasuh || payload.is_pengasuh || role === 'pengasuh');
-    const allowedRoles = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'guru'];
+    const allowedRoles = ['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus'];
     if (!allowedRoles.includes(role) && !isPengasuh) {
       return NextResponse.json({ success: false, message: 'Akses ditolak: Anda tidak memiliki izin untuk memindai kupon makan.' }, { status: 403 });
     }
