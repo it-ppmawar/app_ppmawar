@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, Printer, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
@@ -177,6 +178,63 @@ export default function PenilaianRaportPage() {
     if (score >= 70) return 'C';
     if (score >= 60) return 'D';
     return 'E';
+  };
+
+  // Export Raport Santri ke Excel
+  const handleExportRaportExcel = () => {
+    if (!raportData) return;
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Nilai Akademik
+    const nilaiRows = [
+      ['LAPORAN HASIL BELAJAR SANTRI (RAPORT)'],
+      ['Pondok Pesantren Matholi\'ul Anwar — Madrasah Diniyah'],
+      [],
+      ['Nama Santri', raportData.santri.nama],
+      ['NIS', raportData.santri.nis || '-'],
+      ['Kelas Madin', raportData.santri.nama_kelas_madin],
+      ['Kamar / Asrama', `${raportData.santri.nama_kamar} (${raportData.santri.nama_asrama})`],
+      ['Wali Kelas', raportData.santri.wali_kelas || '-'],
+      ['Semester / Tahun Ajaran', `${raportData.semester === '1' ? 'Semester 1 (Ganjil)' : 'Semester 2 (Genap)'} / ${raportData.tahun_ajaran}`],
+      [],
+      ['A. NILAI HASIL BELAJAR'],
+      ['No', 'Mata Pelajaran', 'Kitab yang Dipelajari', 'KKM', 'Nilai Akhir', 'Predikat', 'Keterangan'],
+      ...(raportData.nilai || []).map((n: any, i: number) => [
+        i + 1,
+        n.mata_pelajaran,
+        n.kitab || '-',
+        70,
+        n.nilai_akhir,
+        n.predikat,
+        Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan',
+      ]),
+      [],
+      ['', '', '', 'Nilai Rata-Rata Akhir:', raportData.ringkasan_nilai?.rata_rata, '', `Dari ${raportData.ringkasan_nilai?.total_mapel} mata pelajaran`],
+      [],
+      ['B. REKAPITULASI PRESENSI'],
+      ['Hadir', raportData.rekap_absensi?.hadir + ' kali'],
+      ['Izin', raportData.rekap_absensi?.izin + ' kali'],
+      ['Sakit', raportData.rekap_absensi?.sakit + ' kali'],
+      ['Alpha / Tanpa Keterangan', raportData.rekap_absensi?.alpha + ' kali'],
+      ['Persentase Kehadiran', raportData.rekap_absensi?.persentase + '%'],
+      [],
+      ['C. KEDISIPLINAN & KETERTIBAN'],
+      ['Total Poin Pelanggaran', raportData.rekap_kedisiplinan?.total_poin + ' Poin'],
+      ['Predikat Kedisiplinan', raportData.rekap_kedisiplinan?.predikat],
+      ['Capaian Tahfidz', editCatatan.tahfidz_hafalan || '-'],
+      ['Keputusan Akhir', editCatatan.status_kelulusan],
+      [],
+      ['D. CATATAN WALI KELAS'],
+      [editCatatan.catatan_wali_kelas || 'Tingkatkan terus prestasi belajar dan ketaatan ibadah.'],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(nilaiRows);
+    ws['!cols'] = [{ wch: 28 }, { wch: 28 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 10 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Raport Santri');
+
+    const namaSantri = (raportData.santri.nama || 'Santri').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_');
+    const smstr = raportData.semester === '1' ? 'Ganjil' : 'Genap';
+    XLSX.writeFile(wb, `Raport_${namaSantri}_Sem${smstr}_${raportData.tahun_ajaran?.replace('/', '-')}.xlsx`);
   };
 
   // Toggle Input Mapel Khusus (mengosongkan input dan mengarahkan kursor otomatis)
@@ -565,6 +623,34 @@ export default function PenilaianRaportPage() {
       {/* ========================================================================= */}
       {activeTab === 'input' && (
         <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
+          {/* Petunjuk Penggunaan — Collapsible, dipindah ke atas filter */}
+          <div className="bg-amber-50/60 dark:bg-amber-950/20 rounded-2xl border border-amber-200/60 dark:border-amber-800/40 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowPetunjuk(p => !p)}
+              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles size={15} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>Cara Menggunakan Halaman Penilaian</span>
+              </div>
+              <ChevronDown
+                size={16}
+                className={`shrink-0 text-amber-600 dark:text-amber-400 transition-transform duration-200 ${showPetunjuk ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {showPetunjuk && (
+              <div className="px-4 pb-4 text-xs text-amber-900 dark:text-amber-200">
+                <ol className="list-decimal list-inside space-y-1 text-amber-800/90 dark:text-amber-300/90 pl-1 leading-relaxed">
+                  <li>Pilih <strong>Kelas Madin</strong> dan <strong>Mata Pelajaran</strong> pada filter di bawah (daftar santri akan langsung muncul di tabel bawah).</li>
+                  <li>Ketik nilai pada kolom <strong>Harian (30%)</strong>, <strong>UTS (30%)</strong>, dan <strong>UAS (40%)</strong>. Nilai Akhir &amp; Predikat terhitung otomatis seketika, dan dapat diedit manual bila diperlukan.</li>
+                  <li>Klik tombol <strong>&quot;Simpan Semua Nilai&quot;</strong> di kanan atas tabel untuk menyimpan seluruh nilai santri sekelas sekaligus.</li>
+                  <li>Beralih ke tab <strong>&quot;Raport Santri&quot;</strong> untuk melihat atau mencetak lembar raport resmi yang telah terintegrasi dengan data presensi dan kedisiplinan santri.</li>
+                </ol>
+              </div>
+            )}
+          </div>
+
           {/* Baris Filter & Pemilihan Mapel */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
             <div className="flex flex-col items-center justify-center text-center gap-1.5 pb-0.5">
@@ -692,34 +778,6 @@ export default function PenilaianRaportPage() {
               <span>{saveSuccessMsg}</span>
             </div>
           )}
-
-          {/* Petunjuk Penggunaan — Collapsible, default tutup */}
-          <div className="bg-amber-50/60 dark:bg-amber-950/20 rounded-2xl border border-amber-200/60 dark:border-amber-800/40 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowPetunjuk(p => !p)}
-              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles size={15} className="shrink-0 text-amber-600 dark:text-amber-400" />
-                <span>Cara Menggunakan Halaman Penilaian</span>
-              </div>
-              <ChevronDown
-                size={16}
-                className={`shrink-0 text-amber-600 dark:text-amber-400 transition-transform duration-200 ${showPetunjuk ? 'rotate-180' : ''}`}
-              />
-            </button>
-            {showPetunjuk && (
-              <div className="px-4 pb-4 text-xs text-amber-900 dark:text-amber-200">
-                <ol className="list-decimal list-inside space-y-1 text-amber-800/90 dark:text-amber-300/90 pl-1 leading-relaxed">
-                  <li>Pilih <strong>Kelas Madin</strong> dan <strong>Mata Pelajaran</strong> pada filter di atas (daftar santri akan langsung muncul di tabel bawah).</li>
-                  <li>Ketik nilai pada kolom <strong>Harian (30%)</strong>, <strong>UTS (30%)</strong>, dan <strong>UAS (40%)</strong>. Nilai Akhir &amp; Predikat terhitung otomatis seketika, dan dapat diedit manual bila diperlukan.</li>
-                  <li>Klik tombol <strong>&quot;Simpan Semua Nilai&quot;</strong> di kanan atas tabel untuk menyimpan seluruh nilai santri sekelas sekaligus.</li>
-                  <li>Beralih ke tab <strong>&quot;Raport Santri&quot;</strong> untuk melihat atau mencetak lembar raport resmi yang telah terintegrasi dengan data presensi dan kedisiplinan santri.</li>
-                </ol>
-              </div>
-            )}
-          </div>
 
           {/* Tabel Input Nilai Santri */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -1387,7 +1445,7 @@ export default function PenilaianRaportPage() {
               </div>
             </div>
 
-            {/* Tombol Aksi PDF: Preview + Cetak / Download */}
+            {/* Tombol Aksi PDF + Excel */}
             <div className="flex flex-col sm:flex-row sm:justify-center gap-2.5 w-full pt-1">
               {/* Preview PDF — buka tab baru (ideal untuk HP yang tidak support window.print langsung) */}
               <button
@@ -1415,6 +1473,15 @@ export default function PenilaianRaportPage() {
               >
                 <Printer size={16} />
                 <span>Cetak / Download PDF</span>
+              </button>
+              {/* Unduh Excel */}
+              <button
+                onClick={handleExportRaportExcel}
+                disabled={!raportData}
+                className="flex-1 sm:flex-none px-5 py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <Download size={16} />
+                <span>Unduh Excel</span>
               </button>
             </div>
           </div>
