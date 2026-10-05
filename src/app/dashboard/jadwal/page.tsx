@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { CalendarDays, Clock, MapPin, User, Edit, Trash2, CheckSquare, FileText, Download, Upload, X, Search, ChevronDown } from 'lucide-react';
 import { downloadTemplate } from '@/lib/downloadTemplate';
 
-// Custom time picker — avoids native Android Chrome dialog that clips "Setel" button
+// Custom direct time input — memungkinkan ketik langsung jam & menit di HP tanpa popup radio dialog panjang
 function TimeInput({
   value,
   onChange,
@@ -15,32 +15,93 @@ function TimeInput({
   required?: boolean;
 }) {
   const parts = (value || '00:00').split(':');
-  const h = Math.min(23, Math.max(0, parseInt(parts[0] ?? '0') || 0));
-  const m = Math.min(59, Math.max(0, parseInt(parts[1] ?? '0') || 0));
-  const emit = (newH: number, newM: number) =>
-    onChange({ target: { value: `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}` } });
+  const initialH = parts[0] ? parts[0].padStart(2, '0') : '00';
+  const initialM = parts[1] ? parts[1].padStart(2, '0') : '00';
+
+  const [jamStr, setJamStr] = useState(initialH);
+  const [menitStr, setMenitStr] = useState(initialM);
+
+  useEffect(() => {
+    const p = (value || '00:00').split(':');
+    setJamStr(p[0] ? p[0].padStart(2, '0') : '00');
+    setMenitStr(p[1] ? p[1].padStart(2, '0') : '00');
+  }, [value]);
+
+  const updateTime = (hVal: string, mVal: string) => {
+    let cleanH = parseInt(hVal, 10);
+    if (isNaN(cleanH) || cleanH < 0) cleanH = 0;
+    if (cleanH > 23) cleanH = 23;
+
+    let cleanM = parseInt(mVal, 10);
+    if (isNaN(cleanM) || cleanM < 0) cleanM = 0;
+    if (cleanM > 59) cleanM = 59;
+
+    const formattedH = String(cleanH).padStart(2, '0');
+    const formattedM = String(cleanM).padStart(2, '0');
+    onChange({ target: { value: `${formattedH}:${formattedM}` } });
+  };
+
+  const handleJamChange = (val: string) => {
+    const onlyNum = val.replace(/\D/g, '').slice(0, 2);
+    setJamStr(onlyNum);
+    if (onlyNum.length === 2) {
+      updateTime(onlyNum, menitStr);
+    }
+  };
+
+  const handleJamBlur = () => {
+    const padded = jamStr ? String(Math.min(23, parseInt(jamStr, 10) || 0)).padStart(2, '0') : '00';
+    setJamStr(padded);
+    updateTime(padded, menitStr);
+  };
+
+  const handleMenitChange = (val: string) => {
+    const onlyNum = val.replace(/\D/g, '').slice(0, 2);
+    setMenitStr(onlyNum);
+    if (onlyNum.length === 2) {
+      updateTime(jamStr, onlyNum);
+    }
+  };
+
+  const handleMenitBlur = () => {
+    const padded = menitStr ? String(Math.min(59, parseInt(menitStr, 10) || 0)).padStart(2, '0') : '00';
+    setMenitStr(padded);
+    updateTime(jamStr, padded);
+  };
+
   return (
-    <div className="w-full flex items-center gap-1 px-2 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
-      <select
-        value={h}
-        onChange={e => emit(parseInt(e.target.value), m)}
+    <div className="w-full flex items-center justify-center gap-1 px-2.5 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus-within:ring-2 focus-within:ring-green-500 focus-within:border-green-500 transition-all">
+      <Clock size={14} className="text-gray-400 shrink-0" />
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        maxLength={2}
+        value={jamStr}
+        onChange={e => handleJamChange(e.target.value)}
+        onBlur={handleJamBlur}
+        onFocus={e => e.target.select()}
+        placeholder="00"
         required={required}
-        className="flex-1 bg-transparent text-center font-mono text-sm outline-none cursor-pointer dark:text-white"
-      >
-        {Array.from({ length: 24 }, (_, i) => (
-          <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
-        ))}
-      </select>
-      <span className="font-bold text-gray-400 select-none">:</span>
-      <select
-        value={m}
-        onChange={e => emit(h, parseInt(e.target.value))}
-        className="flex-1 bg-transparent text-center font-mono text-sm outline-none cursor-pointer dark:text-white"
-      >
-        {Array.from({ length: 60 }, (_, i) => (
-          <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
-        ))}
-      </select>
+        className="w-8 sm:w-9 text-center font-mono font-bold text-sm bg-transparent outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-400 p-0"
+        title="Ketik Jam (00 - 23)"
+      />
+      <span className="font-mono font-bold text-gray-400 select-none pb-0.5">:</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        maxLength={2}
+        value={menitStr}
+        onChange={e => handleMenitChange(e.target.value)}
+        onBlur={handleMenitBlur}
+        onFocus={e => e.target.select()}
+        placeholder="00"
+        required={required}
+        className="w-8 sm:w-9 text-center font-mono font-bold text-sm bg-transparent outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-400 p-0"
+        title="Ketik Menit (00 - 59)"
+      />
+      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider ml-auto">WIB</span>
     </div>
   );
 }
@@ -78,6 +139,7 @@ export default function JadwalPage() {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [savingAdd, setSavingAdd] = useState(false);
+  const [selectedHariAdd, setSelectedHariAdd] = useState<string[]>(['Senin']);
   const [newJadwal, setNewJadwal] = useState({
     hari: 'Senin',
     jam_mulai: '',
@@ -167,6 +229,7 @@ export default function JadwalPage() {
   };
 
   const handleOpenAddModal = () => {
+    setSelectedHariAdd(['Senin']);
     setNewJadwal({ hari: 'Senin', jam_mulai: '', jam_selesai: '', kegiatan: '', tempat_id: '', guru_id: '' });
     fetchOptions();
     setIsAddModalOpen(true);
@@ -174,9 +237,17 @@ export default function JadwalPage() {
 
   const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedHariAdd.length === 0) {
+      alert('Pilih minimal satu hari untuk jadwal!');
+      return;
+    }
     setSavingAdd(true);
     try {
-      const payload = { ...newJadwal, tipe: activeTab };
+      const payload = {
+        ...newJadwal,
+        hari: selectedHariAdd, // kirim array hari terpilih ke backend
+        tipe: activeTab
+      };
       const res = await fetch('/api/jadwal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -996,17 +1067,91 @@ export default function JadwalPage() {
       )}
       {/* Modal Add */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-sm overflow-visible animate-in fade-in zoom-in duration-200">
-            <div className="p-4 bg-green-600 text-white rounded-t-3xl">
-              <h2 className="text-lg font-bold">Tambah Jadwal Baru</h2>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md sm:max-w-lg overflow-visible animate-in fade-in zoom-in duration-200 my-auto">
+            <div className="p-4 bg-green-600 text-white rounded-t-3xl flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-bold">Tambah Jadwal Baru</h2>
+                <p className="text-xs text-green-100">Bisa memilih beberapa hari sekaligus untuk jadwal yang sama</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <X size={18} />
+              </button>
             </div>
             <form onSubmit={handleSaveAdd} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Hari</label>
-                <select value={newJadwal.hari} onChange={(e) => setNewJadwal({ ...newJadwal, hari: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg" required>
-                  {hariOrder.map(h => <option key={h} value={h}>{h}</option>)}
-                </select>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Pilih Hari</label>
+                  <span className={`text-[11px] font-bold ${selectedHariAdd.length > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
+                    {selectedHariAdd.length > 0 ? `${selectedHariAdd.length} hari dipilih` : 'Wajib pilih minimal 1 hari'}
+                  </span>
+                </div>
+
+                {/* Tombol Pintasan Cepat Hari */}
+                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedHariAdd([...hariOrder])}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-green-100 hover:bg-green-200 dark:bg-green-950/60 dark:hover:bg-green-900/80 text-green-700 dark:text-green-300 border border-green-300 dark:border-green-800 transition-all active:scale-95"
+                    title="Pilih seluruh hari (Senin s/d Ahad)"
+                  >
+                    Semua Hari
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedHariAdd(['Jumat', 'Sabtu', 'Ahad'])}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-950/60 dark:hover:bg-blue-900/80 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800 transition-all active:scale-95"
+                    title="Pilih hari Jumat, Sabtu, dan Ahad"
+                  >
+                    Jumat – Ahad
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedHariAdd(['Selasa', 'Rabu'])}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 transition-all active:scale-95"
+                    title="Pilih hari Selasa dan Rabu"
+                  >
+                    Selasa – Rabu
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedHariAdd([])}
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 transition-all active:scale-95 ml-auto"
+                    title="Kosongkan pilihan hari"
+                  >
+                    Reset
+                  </button>
+                </div>
+
+                {/* Grid Pilihan Hari (Pill Checkbox) */}
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                  {hariOrder.map(h => {
+                    const isChecked = selectedHariAdd.includes(h);
+                    return (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => {
+                          setSelectedHariAdd(prev =>
+                            prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h]
+                          );
+                        }}
+                        className={`px-2 py-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1 active:scale-95 ${
+                          isChecked
+                            ? 'bg-green-600 border-green-600 text-white shadow-xs'
+                            : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <CheckSquare size={13} className={isChecked ? 'opacity-100' : 'opacity-30'} />
+                        <span>{h}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1083,8 +1228,18 @@ export default function JadwalPage() {
                 {/* Dropdown rendered outside via fixed positioned portal-like element - see below */}
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Batal</button>
-                <button type="submit" disabled={savingAdd} className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl disabled:opacity-50 transition-colors">Simpan</button>
+                <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Batal</button>
+                <button
+                  type="submit"
+                  disabled={savingAdd || selectedHariAdd.length === 0}
+                  className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl disabled:opacity-50 transition-colors shadow-sm"
+                >
+                  {savingAdd
+                    ? 'Menyimpan...'
+                    : selectedHariAdd.length > 1
+                    ? `Simpan (${selectedHariAdd.length} Hari Sekaligus)`
+                    : 'Simpan Jadwal'}
+                </button>
               </div>
             </form>
           </div>

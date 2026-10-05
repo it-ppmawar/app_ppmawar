@@ -206,23 +206,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    let query = '';
-    let params: any[] = [];
-
-    if (tipe === 'madin') {
-      query = `INSERT INTO jadwal_madin (hari, jam_mulai, jam_selesai, mata_pelajaran, kelas_madin_id, guru_id) VALUES (?, ?, ?, ?, ?, ?)`;
-      params = [hari, jam_mulai, jam_selesai, kegiatan, tempat_id, guru_id || null];
-    } else if (tipe === 'quran') {
-      query = `INSERT INTO jadwal_quran (hari, jam_mulai, jam_selesai, mata_pelajaran, kelas_quran_id, guru_id) VALUES (?, ?, ?, ?, ?, ?)`;
-      params = [hari, jam_mulai, jam_selesai, kegiatan, tempat_id, guru_id || null];
-    } else if (tipe === 'kegiatan') {
-      query = `INSERT INTO jadwal_kegiatan (hari, jam_mulai, jam_selesai, nama_kegiatan, kamar_id, guru_id) VALUES (?, ?, ?, ?, ?, ?)`;
-      params = [hari, jam_mulai, jam_selesai, kegiatan, tempat_id, guru_id || null];
+    const hariList: string[] = Array.isArray(hari) ? hari : [hari];
+    if (hariList.length === 0) {
+      return NextResponse.json({ error: 'Pilih minimal satu hari' }, { status: 400 });
     }
 
-    await pool.execute(query, params);
+    for (const h of hariList) {
+      if (tipe === 'madin') {
+        await pool.execute(
+          `INSERT INTO jadwal_madin (hari, jam_mulai, jam_selesai, mata_pelajaran, kelas_madin_id, guru_id) VALUES (?, ?, ?, ?, ?, ?)`,
+          [h, jam_mulai, jam_selesai, kegiatan, tempat_id, guru_id || null]
+        );
+      } else if (tipe === 'quran') {
+        await pool.execute(
+          `INSERT INTO jadwal_quran (hari, jam_mulai, jam_selesai, mata_pelajaran, kelas_quran_id, guru_id) VALUES (?, ?, ?, ?, ?, ?)`,
+          [h, jam_mulai, jam_selesai, kegiatan, tempat_id, guru_id || null]
+        );
+      } else if (tipe === 'kegiatan') {
+        await pool.execute(
+          `INSERT INTO jadwal_kegiatan (hari, jam_mulai, jam_selesai, nama_kegiatan, kamar_id, guru_id) VALUES (?, ?, ?, ?, ?, ?)`,
+          [h, jam_mulai, jam_selesai, kegiatan, tempat_id, guru_id || null]
+        );
+      }
+    }
 
-    return NextResponse.json({ success: true, message: 'Jadwal berhasil ditambahkan' });
+    return NextResponse.json({
+      success: true,
+      message: hariList.length > 1
+        ? `${hariList.length} jadwal (${hariList.join(', ')}) berhasil ditambahkan`
+        : 'Jadwal berhasil ditambahkan'
+    });
   } catch (error: any) {
     return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500 });
   }
