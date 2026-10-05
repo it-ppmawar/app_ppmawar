@@ -367,6 +367,7 @@ function ScanAbsenInner() {
   const faceStreamRef = useRef<MediaStream | null>(null);
   const faceDetectIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const cameraContainerRef = useRef<HTMLDivElement | null>(null);
+  const targetDropdownRef = useRef<HTMLDivElement | null>(null);
   const faceApiRef = useRef<any>(null);
   const faceDbRef = useRef<FaceDescriptor[]>([]);
 
@@ -484,15 +485,16 @@ function ScanAbsenInner() {
     }
   }, [scanMode]);
 
-  // Auto-scroll ke posisi kamera agar seluruh kotak kamera, tombol alihkan kamera, dan tombol tutup tetap terlihat jelas
+  // Auto-scroll ke posisi dropdown target absensi & kamera agar seluruh tombol kamera dan dropdown terlihat utuh
   const scrollToCamera = useCallback(() => {
     const doScroll = () => {
-      if (!cameraContainerRef.current) return;
-      const rect = cameraContainerRef.current.getBoundingClientRect();
-      // Target scroll agar bagian atas kartu kamera berada ~28px di bawah batas atas layar.
-      // Ini menjamin tombol alih kamera (biru) dan tombol tutup kamera (merah) di header kartu
-      // selalu terlihat penuh dan mudah ditekan, tidak terpotong oleh browser bar / notch.
-      const targetScrollY = window.scrollY + rect.top - 28;
+      // Prioritaskan scroll ke posisi dropdown target absensi agar pilihan target absensi
+      // dan seluruh kotak kamera (tombol alih kamera & tutup) terlihat secara utuh di bawah navbar
+      const targetEl = targetDropdownRef.current || cameraContainerRef.current;
+      if (!targetEl) return;
+      const rect = targetEl.getBoundingClientRect();
+      // Berikan offset 75px untuk floating navbar di HP agar dropdown dan tombol kamera terlihat utuh
+      const targetScrollY = window.scrollY + rect.top - 75;
       window.scrollTo({
         top: Math.max(0, targetScrollY),
         behavior: 'smooth',
@@ -500,8 +502,9 @@ function ScanAbsenInner() {
     };
 
     // Jalankan segera dan ulangi setelah video stream ter-render penuh oleh browser
-    setTimeout(doScroll, 120);
-    setTimeout(doScroll, 450);
+    setTimeout(doScroll, 100);
+    setTimeout(doScroll, 400);
+    setTimeout(doScroll, 800);
   }, []);
 
   // ── QR SCANNER ────────────────────────────────────────────────────
@@ -509,10 +512,33 @@ function ScanAbsenInner() {
     if (html5QrCodeRef.current) {
       try {
         const state = html5QrCodeRef.current.getState();
-        if (state === 2 || state === 3) await html5QrCodeRef.current.stop();
-        html5QrCodeRef.current.clear();
-      } catch (e) { console.warn('QR stop:', e); }
-      html5QrCodeRef.current = null;
+        // State 2 = SCANNING, 3 = PAUSED
+        if (state === 2 || state === 3) {
+          await html5QrCodeRef.current.stop();
+        }
+        await html5QrCodeRef.current.clear();
+      } catch (e) {
+        console.warn('QR stop warning:', e);
+      } finally {
+        html5QrCodeRef.current = null;
+      }
+    }
+
+    // Pastikan seluruh elemen di dalam #reader benar-benar bersih dan tidak meninggalkan sisa video
+    if (typeof document !== 'undefined') {
+      const readerEl = document.getElementById('reader');
+      if (readerEl) {
+        const videos = readerEl.querySelectorAll('video');
+        videos.forEach(v => {
+          try {
+            if (v.srcObject instanceof MediaStream) {
+              v.srcObject.getTracks().forEach(t => t.stop());
+            }
+            v.srcObject = null;
+          } catch {}
+        });
+        readerEl.innerHTML = '';
+      }
     }
   };
 
@@ -520,29 +546,51 @@ function ScanAbsenInner() {
     try {
       const readerEl = document.getElementById('reader');
       if (!readerEl) return;
-      html5QrCodeRef.current = new Html5Qrcode('reader');
-      await html5QrCodeRef.current.start(
+
+      // Bersihkan scanner sebelumnya jika masih aktif agar tidak terjadi video ganda
+      if (html5QrCodeRef.current) {
+        await stopQrScanner();
+        await new Promise(r => setTimeout(r, 250));
+      }
+
+      readerEl.innerHTML = '';
+
+      const scanner = new Html5Qrcode('reader');
+      html5QrCodeRef.current = scanner;
+
+      await scanner.start(
         { facingMode: facing },
         { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-        (decodedText) => { stopQrScanner(); setIsScanning(false); handleQrScan(decodedText); },
+        (decodedText) => {
+          stopQrScanner();
+          setIsScanning(false);
+          handleQrScan(decodedText);
+        },
         () => {}
       );
     } catch (err) {
       console.error('QR camera failed:', err);
+      await stopQrScanner();
       setIsScanning(false);
-      setPopup({ type: 'error', title: 'Akses Kamera Gagal', text: 'Kamera tidak ditemukan atau izin belum diberikan.' });
+      setPopup({
+        type: 'error',
+        title: 'Akses Kamera Gagal',
+        text: 'Kamera tidak ditemukan atau izin belum diberikan. Silakan coba kembali.'
+      });
     }
   };
 
   useEffect(() => {
-    if (scanMode === 'qr' && isScanning) {
+    if (scanMode === 'qr' && isScanning && !isSwitchingCamera) {
       const timer = setTimeout(() => {
-        startQrScanner(facingMode);
-        scrollToCamera();
+        if (!html5QrCodeRef.current) {
+          startQrScanner(facingMode);
+          scrollToCamera();
+        }
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [isScanning, scanMode, facingMode, scrollToCamera]);
+  }, [isScanning, scanMode, scrollToCamera, isSwitchingCamera]);
 
   const handleQrScan = async (barcodeData: string) => {
     try {
@@ -591,13 +639,18 @@ function ScanAbsenInner() {
   };
 
   // ── FACE AI SCANNER ───────────────────────────────────────────────
-  const stopFaceScanner = useCallback(() => {
+  const stopFaceScanner = useCallback((resetScanning = true) => {
     if (faceDetectIntervalRef.current) { clearInterval(faceDetectIntervalRef.current); faceDetectIntervalRef.current = null; }
-    if (faceStreamRef.current) { faceStreamRef.current.getTracks().forEach(t => t.stop()); faceStreamRef.current = null; }
+    if (faceStreamRef.current) {
+      faceStreamRef.current.getTracks().forEach(t => {
+        try { t.stop(); } catch {}
+      });
+      faceStreamRef.current = null;
+    }
     if (videoRef.current) videoRef.current.srcObject = null;
     setFaceStatus('idle');
     setDetectResult(null);
-    setIsScanning(false);
+    if (resetScanning) setIsScanning(false);
   }, []);
 
   const loadFaceDb = useCallback(async () => {
@@ -740,30 +793,43 @@ function ScanAbsenInner() {
     }
   };
 
-  // Toggle camera
+  // Toggle camera (Depan / Belakang) secara aman tanpa tabrakan stream
   const switchCamera = async () => {
     if (isSwitchingCamera) return;
     setIsSwitchingCamera(true);
     const newFacing = facingMode === 'environment' ? 'user' : 'environment';
-    setFacingMode(newFacing);
-    if (scanMode === 'qr' && isScanning) {
-      await stopQrScanner();
-      setTimeout(async () => {
+
+    try {
+      if (scanMode === 'qr' && isScanning) {
+        // Hentikan scanner aktif dan bersihkan container DOM dari video sebelumnya
+        await stopQrScanner();
+        // Berikan waktu jeda agar driver/hardware kamera me-release resource sepenuhnya
+        await new Promise(r => setTimeout(r, 350));
+        setFacingMode(newFacing);
         await startQrScanner(newFacing);
-        setIsSwitchingCamera(false);
-        scrollToCamera();
-      }, 400);
-    } else if (scanMode === 'face' && isScanning) {
-      stopFaceScanner();
-      setTimeout(async () => {
+      } else if (scanMode === 'face' && isScanning) {
+        // Hentikan stream kamera aktif tanpa menutup UI scanning
+        stopFaceScanner(false);
+        // Jeda untuk transisi hardware kamera
+        await new Promise(r => setTimeout(r, 350));
+        setFacingMode(newFacing);
         await startFaceScanner(newFacing);
-        setIsSwitchingCamera(false);
-        scrollToCamera();
-      }, 400);
-    } else { setIsSwitchingCamera(false); }
+      } else {
+        setFacingMode(newFacing);
+      }
+    } catch (err) {
+      console.error('Switch camera error:', err);
+    } finally {
+      setIsSwitchingCamera(false);
+      scrollToCamera();
+    }
   };
 
-  const stopAll = () => { stopQrScanner(); stopFaceScanner(); setIsScanning(false); };
+  const stopAll = () => {
+    stopQrScanner();
+    stopFaceScanner(true);
+    setIsScanning(false);
+  };
 
   const handleModeSwitch = (mode: ScanMode) => {
     if (isScanning) stopAll();
@@ -1036,7 +1102,7 @@ function ScanAbsenInner() {
       {/* ====== SCAN CARD ====== */}
       <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
         {/* Target dropdown */}
-        <div>
+        <div ref={targetDropdownRef}>
           <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
             <Layers size={16} className="text-green-600" /> Pilih Target Absensi
           </label>
