@@ -7,7 +7,7 @@ import {
   Camera, Volume2, VolumeX, RefreshCw, User, ShieldAlert,
   Search, Check, Trash2, ArrowLeft, Coffee, Sun, Moon,
   Sparkles, Info, Settings2, AlertCircle, CalendarClock,
-  SlidersHorizontal, X, Save, ClipboardCheck, QrCode
+  SlidersHorizontal, X, Save, ClipboardCheck, QrCode, MapPin
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 
@@ -77,6 +77,12 @@ export default function KuponMakanPage() {
   const [loadProgress, setLoadProgress] = useState(15);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
+
+  // Asrama State (Tab klasifikasi & RBAC filter)
+  const [selectedAsrama, setSelectedAsrama] = useState<string>('Semua');
+  const [userAsrama, setUserAsrama] = useState<string | null>(null);
+  const [canSwitchAsrama, setCanSwitchAsrama] = useState<boolean>(false);
+  const [totalSantriLunas, setTotalSantriLunas] = useState<number>(0);
 
   // Animasi progress bar interaktif saat memuat data E-Kupon Makan
   useEffect(() => {
@@ -178,14 +184,22 @@ export default function KuponMakanPage() {
   }, []);
 
   // Fetch Sesi & Stats
-  const fetchStatsAndSesi = useCallback(async () => {
+  const fetchStatsAndSesi = useCallback(async (asramaOverride?: string) => {
     try {
-      const res = await fetch('/api/kupon-makan/stats');
+      const asramaQuery = asramaOverride ?? selectedAsrama;
+      const params = new URLSearchParams();
+      if (asramaQuery && asramaQuery !== 'Semua') params.set('asrama', asramaQuery);
+      const res = await fetch(`/api/kupon-makan/stats${params.toString() ? `?${params}` : ''}`);
       const json = await res.json();
       if (json.success) {
         setStats(json.stats);
         setRecentScans(json.recentScans || []);
         setPorsiPerSesi(json.porsiPerSesi || {});
+        if (typeof json.totalSantriLunas === 'number') {
+          setTotalSantriLunas(json.totalSantriLunas);
+        }
+        if (json.userAsrama !== undefined) setUserAsrama(json.userAsrama);
+        if (typeof json.canSwitchAsrama === 'boolean') setCanSwitchAsrama(json.canSwitchAsrama);
         if (json.sessions) {
           setSessions(json.sessions);
           setEditableSessions(JSON.parse(JSON.stringify(json.sessions)));
@@ -204,7 +218,7 @@ export default function KuponMakanPage() {
     } catch (e) {
       console.error('Error fetching stats:', e);
     }
-  }, []);
+  }, [selectedAsrama]);
 
   useEffect(() => {
     const initAuthAndData = async () => {
@@ -244,6 +258,14 @@ export default function KuponMakanPage() {
 
     initAuthAndData();
   }, [fetchStatsAndSesi]);
+
+  // Re-fetch stats ketika tab asrama berubah (hanya setelah auth selesai)
+  useEffect(() => {
+    if (!authChecking && isAuthorized) {
+      fetchStatsAndSesi(selectedAsrama);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAsrama]);
 
   // Process Scan
   const handleScan = async (code: string, forceDispensasi = false, catatan = '') => {
@@ -468,6 +490,18 @@ export default function KuponMakanPage() {
   const activeSessionsList = sessions.filter(s => s.is_aktif === 1);
   const currentSesiObj = sessions.find(s => s.kode_sesi === activeSesi);
 
+  // Label asrama yang terkunci (untuk pengurus/pengasuh non-admin)
+  const displayAsramaName = React.useMemo(() => {
+    const name = userAsrama;
+    if (!name) return 'Asrama Saya';
+    const clean = name.trim();
+    if (/^asrama\s+/i.test(clean)) {
+      const letter = clean.replace(/^asrama\s+/i, '').trim();
+      return letter.toLowerCase() === 'tahfid' ? 'Asrama Tahfid' : `Asrama ${letter.toUpperCase()}`;
+    }
+    return clean.toLowerCase() === 'tahfid' ? 'Asrama Tahfid' : `Asrama ${clean.toUpperCase()}`;
+  }, [userAsrama]);
+
   // Loading screen interaktif saat memuat data E-Kupon Makan (seperti halaman tagihan)
   if (authChecking) {
     return (
@@ -559,6 +593,45 @@ export default function KuponMakanPage() {
           </Link>
         </div>
 
+        {/* ===== TAB KLASIFIKASI ASRAMA ===== */}
+        {/* Admin/Staff: Tab bar scrollable */}
+        {canSwitchAsrama && (
+          <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-1.5 mb-2">
+              <MapPin size={13} className="text-emerald-500 flex-shrink-0" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter Asrama</span>
+            </div>
+            <div className="flex bg-slate-100/70 dark:bg-slate-800/60 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 overflow-x-auto scrollbar-none gap-1">
+              {['Semua', 'A', 'B', 'C', 'D', 'E', 'F', 'Lainnya'].map((dorm) => (
+                <button
+                  key={dorm}
+                  onClick={() => setSelectedAsrama(dorm === 'Semua' ? 'Semua' : dorm === 'Lainnya' ? 'Lainnya' : `Asrama ${dorm}`)}
+                  className={`flex-1 min-w-[60px] text-center px-2.5 py-1.5 text-[11px] font-bold rounded-lg transition-all whitespace-nowrap ${
+                    (dorm === 'Semua' && selectedAsrama === 'Semua') ||
+                    (dorm === 'Lainnya' && selectedAsrama === 'Lainnya') ||
+                    (dorm !== 'Semua' && dorm !== 'Lainnya' && selectedAsrama === `Asrama ${dorm}`)
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+                  }`}
+                >
+                  {dorm === 'Semua' ? 'Semua' : dorm === 'Lainnya' ? 'Lainnya' : `Asrama ${dorm}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pengurus/Pengasuh: Badge asrama terkunci */}
+        {!canSwitchAsrama && userAsrama && (
+          <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-emerald-600 text-white font-extrabold text-xs rounded-xl w-full">
+              <MapPin size={14} />
+              <span>{displayAsramaName}</span>
+              <span className="text-emerald-200 text-[10px] font-normal">(Akses Terkunci)</span>
+            </div>
+          </div>
+        )}
+
         {/* HEADER KUPON MAKAN */}
         <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3.5">
           {/* Baris 1: Ikon + Teks "E-Kupon Makan Santri" di kiri, Tombol Kembali di sebelah kanan rata kanan */}
@@ -604,7 +677,7 @@ export default function KuponMakanPage() {
           <div className="flex items-center justify-between gap-2 w-full pt-0.5">
             {/* Kiri: Muat Ulang */}
             <button
-              onClick={fetchStatsAndSesi}
+              onClick={() => fetchStatsAndSesi()}
               className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors border border-slate-200/60 dark:border-slate-700 flex items-center justify-center flex-shrink-0"
               title="Perbarui Data"
             >
@@ -923,14 +996,39 @@ export default function KuponMakanPage() {
             {/* RINGKASAN STATISTIK HARI INI */}
             <div className="space-y-2.5">
               {/* Baris 1: Total Porsi 1 baris melebar memenuhi ruang kanan dan kiri */}
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 font-medium block">Total Porsi</span>
-                  <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 leading-none mt-0.5 block">{stats.totalPorsi}</span>
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <span className="text-xs text-slate-400 font-medium block">Total Porsi Terambil</span>
+                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                      <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 leading-none">{stats.totalPorsi}</span>
+                      {totalSantriLunas > 0 && (
+                        <span className="text-sm font-bold text-slate-400">/ {totalSantriLunas}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                    <Utensils size={22} />
+                  </div>
                 </div>
-                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl">
-                  <Utensils size={22} />
-                </div>
+                {totalSantriLunas > 0 && (
+                  <>
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, Math.round((stats.totalPorsi / totalSantriLunas) * 100))}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[10px] text-slate-400">
+                        Kuota Lunas Syahriyah: <span className="font-bold text-slate-600 dark:text-slate-300">{totalSantriLunas} santri</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        {Math.min(100, Math.round((stats.totalPorsi / totalSantriLunas) * 100))}%
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Baris 2: Sesi Makan (Sarapan Pagi & Makan Sore / Malam) berdampingan */}

@@ -4,6 +4,7 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { ensureKuponMakanDB, detectActiveSesiWIB } from '@/lib/ensureKuponMakanDB';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
+import { resolveAsrama } from '@/lib/auth/resolveAsrama';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ async function checkAuth(customAllowedRoles?: string[]) {
     return { ok: false, status: 403, error: 'Akses ditolak: Akun Anda tidak memiliki izin mengakses data kupon makan.' };
   }
 
-  return { ok: true, payload, role, isPengasuhOrPengurus };
+  return { ok: true, payload, role, isPengasuhOrPengurus, userId };
 }
 
 export async function GET(request: NextRequest) {
@@ -60,12 +61,63 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const dateParam = searchParams.get('tanggal');
+    const asramaParam = searchParams.get('asrama'); // e.g. 'Semua', 'Asrama A', 'Asrama B', ...
+
+    // --- Resolve asrama user (RBAC) ---
+    const { payload, role, isPengasuhOrPengurus, userId } = auth as any;
+    const canSwitchAsrama = ['admin', 'staff'].includes(role);
+
+    // Resolve user's bound asrama (if any)
+    let userAsrama: string | null = null;
+    if (!canSwitchAsrama) {
+      userAsrama = await resolveAsrama(
+        userId,
+        role,
+        payload.username || '',
+        payload.asrama || payload.namaAsrama || null
+      );
+    }
+
+    // Active asrama filter: forced for non-admin/staff, chosen by admin/staff
+    let activeAsrama: string | null = null;
+    if (!canSwitchAsrama) {
+      // Pengurus/Pengasuh: always use their own asrama
+      activeAsrama = userAsrama;
+    } else {
+      // Admin/Staff: use requested param, default to 'Semua'
+      activeAsrama = asramaParam && asramaParam !== 'Semua' ? asramaParam : null;
+    }
+
+    // Build asrama SQL condition for riwayat_makan & murid queries
+    // riwayat_makan has `asrama` column directly, murid joins kamar
+    const asramaLetterFromName = (name: string | null): string | null => {
+      if (!name) return null;
+      const m = name.match(/asrama\s+([a-z0-9]+)/i);
+      if (m) return m[1].toUpperCase();
+      return name.toUpperCase();
+    };
+
+    const activeAsramaLetter = asramaLetterFromName(activeAsrama);
+
+    // Condition for riwayat_makan table (has `asrama` column like 'Asrama A' or 'A')
+    const buildRiwayatAsramaCond = (): [string, any[]] => {
+      if (!activeAsramaLetter) return ['1=1', []];
+      const fullName = activeAsramaLetter.toLowerCase() === 'tahfid'
+        ? 'Asrama Tahfid'
+        : `Asrama ${activeAsramaLetter}`;
+      return [
+        `(r.asrama = ? OR r.asrama = ? OR r.asrama LIKE ?)`,
+        [fullName, activeAsramaLetter, `Asrama ${activeAsramaLetter}%`]
+      ];
+    };
 
     const nowWib = new Date();
     const today = dateParam || new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(nowWib);
     const { activeKode, activeNama, sessions } = await detectActiveSesiWIB();
 
-    // 1. Ambil ringkasan statistik hari ini
+    const [riwayatCond, riwayatParams] = buildRiwayatAsramaCond();
+
+    // 1. Ambil ringkasan statistik hari ini (dengan filter asrama)
     const [summaryRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
         COUNT(*) as total_scans,
@@ -73,18 +125,18 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN status = 'berhasil' THEN 1 ELSE 0 END) as total_berhasil,
         SUM(CASE WHEN status = 'dispensasi' THEN 1 ELSE 0 END) as total_dispensasi,
         SUM(CASE WHEN status = 'ditolak' THEN 1 ELSE 0 END) as total_ditolak
-       FROM riwayat_makan
-       WHERE tanggal = ?`,
-      [today]
+       FROM riwayat_makan r
+       WHERE tanggal = ? AND ${riwayatCond}`,
+      [today, ...riwayatParams]
     );
 
-    // Ambil rincian porsi per sesi secara dinamis
+    // Rincian porsi per sesi (dengan filter asrama)
     const [sesiCounts] = await pool.query<RowDataPacket[]>(
       `SELECT sesi, COUNT(*) as porsi
-       FROM riwayat_makan
-       WHERE tanggal = ? AND status IN ('berhasil', 'dispensasi')
+       FROM riwayat_makan r
+       WHERE tanggal = ? AND status IN ('berhasil', 'dispensasi') AND ${riwayatCond}
        GROUP BY sesi`,
-      [today]
+      [today, ...riwayatParams]
     );
 
     const porsiPerSesi: Record<string, number> = {};
@@ -100,18 +152,56 @@ export async function GET(request: NextRequest) {
       total_ditolak: 0
     };
 
-    // 2. Ambil 30 scan terakhir
+    // 2. Hitung kuota santri lunas syahriyah bulan lalu (tidak ada tunggakan syahriyah 'Belum')
+    let totalSantriLunas = 0;
+    try {
+      // Build asrama condition for murid/kamar tables
+      let muridAsramaCond = '1=1';
+      let muridAsramaParams: any[] = [];
+
+      if (activeAsramaLetter) {
+        const fullName = activeAsramaLetter.toLowerCase() === 'tahfid'
+          ? 'Asrama Tahfid'
+          : `Asrama ${activeAsramaLetter}`;
+        muridAsramaCond = `(k.nama_asrama = ? OR k.nama_asrama = ? OR k.nama_asrama LIKE ?)`;
+        muridAsramaParams = [fullName, activeAsramaLetter, `Asrama ${activeAsramaLetter}%`];
+      }
+
+      const [lunasRows] = await pool.query<RowDataPacket[]>(
+        `SELECT COUNT(DISTINCT m.murid_id) as total_lunas
+         FROM murid m
+         LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
+         WHERE m.status = 'aktif'
+           AND ${muridAsramaCond}
+           AND m.nis NOT IN (
+             SELECT DISTINCT b.nis
+             FROM billing b
+             WHERE b.status = 'Belum'
+               AND b.nominal > 0
+               AND b.kategori = 'pesantren'
+               AND (b.nama_tagihan LIKE '%Syahriyah%' OR b.nama_tagihan LIKE '%syahriyah%')
+           )`,
+        [...muridAsramaParams]
+      );
+      totalSantriLunas = Number(lunasRows[0]?.total_lunas || 0);
+    } catch (e) {
+      // Fallback jika tabel billing/kamar belum lengkap
+      console.warn('totalSantriLunas query failed:', e);
+      totalSantriLunas = 0;
+    }
+
+    // 3. Ambil 30 scan terakhir (dengan filter asrama)
     const [recentRows] = await pool.query<RowDataPacket[]>(
       `SELECT r.*, m.foto
        FROM riwayat_makan r
        LEFT JOIN murid m ON r.murid_id = m.murid_id
-       WHERE r.tanggal = ?
+       WHERE r.tanggal = ? AND ${riwayatCond}
        ORDER BY r.id DESC
        LIMIT 30`,
-      [today]
+      [today, ...riwayatParams]
     );
 
-    // 3. Ambil setting sistem
+    // 4. Ambil setting sistem
     const [settingRows] = await pool.query<RowDataPacket[]>(
       `SELECT nama_pengaturan, nilai, keterangan FROM pengaturan_kupon_makan`
     );
@@ -134,6 +224,10 @@ export async function GET(request: NextRequest) {
         totalDispensasi: Number(stats.total_dispensasi || 0),
         totalDitolak: Number(stats.total_ditolak || 0)
       },
+      totalSantriLunas,
+      userAsrama,
+      canSwitchAsrama,
+      activeAsrama: activeAsrama || 'Semua',
       recentScans: recentRows,
       settings
     });
