@@ -485,7 +485,9 @@ function ScanAbsenInner() {
     }
   }, [scanMode]);
 
-  // Auto-scroll ke posisi kamera agar seluruh tampilan kamera & ujung bawahnya terlihat utuh di layar HP
+  // Auto-scroll ke posisi kamera agar pas di tengah layar HP,
+  // tombol Alih Kamera & Tutup (X) tetap tampak jelas di bawah header,
+  // serta ujung bawah layar kamera tidak terpotong navbar bawah.
   const scrollToCamera = useCallback(() => {
     const doScroll = () => {
       const cameraEl = cameraContainerRef.current;
@@ -500,28 +502,37 @@ function ScanAbsenInner() {
       const boxRect = cameraBox.getBoundingClientRect();
       const cameraBoxBottomAbsolute = window.scrollY + boxRect.bottom;
 
-      // Deteksi posisi navbar bawah jika ada
+      // Deteksi tinggi sticky header di atas agar tombol tidak terpotong
+      const headerEl = document.querySelector('header');
+      const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 70;
+
+      // Deteksi posisi batas atas navbar bawah jika ada
       const bottomNav = document.querySelector('nav.fixed.bottom-0');
       const bottomNavTop = bottomNav ? bottomNav.getBoundingClientRect().top : (window.innerHeight - 70);
 
-      // Target scroll Y dasar:
-      // Di layar HP: default offset ~25px di bawah batas atas viewport (lebih turun/tambah scroll dibanding sebelumnya ~75px)
-      // agar posisi kamera turun dan ujung bawah layar kamera terlihat utuh (seperti diminta di Foto 1).
-      // Di layar Desktop: default offset ~80px agar berada pas di bawah header sticky.
-      const defaultTopOffset = isMobile ? 25 : 80;
-      let targetScrollY = cameraTopAbsolute - defaultTopOffset;
+      // Hitung tinggi konten kamera (dari header kartu kamera sampai ujung bawah kotak kamera)
+      const cameraContentHeight = Math.max(300, cameraBoxBottomAbsolute - cameraTopAbsolute);
+      // Ruang vertikal yang tersedia antara header atas dan navbar bawah
+      const availableHeight = bottomNavTop - (headerHeight + 10);
+      const extraSpace = availableHeight - cameraContentHeight;
 
-      // Jika di layar HP ujung bawah layar kamera masih menabrak atau tertutup navbar bawah,
-      // tambahkan scroll ke bawah agar ujung bawah kamera memiliki jarak aman (~20px) di atas navbar bawah
-      if (isMobile) {
-        const safeBottomOffset = 20; // Jarak aman ujung bawah kamera di atas navbar bawah
+      // Bagi ruang sisa agar posisi kamera pas ke tengah layar (center vertical),
+      // dengan batas padding tengah maksimal ~30px agar tetap dekat dan rapi di bawah header
+      const centerPadding = extraSpace > 0 ? Math.min(Math.floor(extraSpace / 2), 30) : 0;
+
+      // Pastikan offset atas selalu berada di bawah header (headerHeight + gap 10px) ditambah center padding
+      // Ini menjamin tombol Alih Kamera dan Tutup (X) selalu tampak penuh dan mudah ditekan
+      const topOffset = headerHeight + 10 + (isMobile ? centerPadding : 20);
+      let targetScrollY = cameraTopAbsolute - topOffset;
+
+      // Jika di layar HP yang sangat pendek ujung bawah kamera masih menabrak navbar bawah,
+      // sesuaikan target scroll sedikit ke bawah dengan tetap menjaga tombol header tidak terpotong
+      if (isMobile && extraSpace < 0) {
+        const safeBottomOffset = 16;
         const scrollNeededForBottom = cameraBoxBottomAbsolute - (bottomNavTop - safeBottomOffset);
-
-        if (scrollNeededForBottom > targetScrollY) {
-          // Batasi scroll maksimal agar tombol alih kamera & tutup di header kartu tetap terlihat dan tidak terpotong navbar atas
-          const maxScroll = cameraTopAbsolute - 5;
-          targetScrollY = Math.min(scrollNeededForBottom, maxScroll);
-        }
+        // Batasi agar tombol tutup & alih kamera di header kartu tetap memiliki jarak minimal 8px di bawah header atas
+        const maxScroll = cameraTopAbsolute - (headerHeight + 8);
+        targetScrollY = Math.min(scrollNeededForBottom, maxScroll);
       }
 
       window.scrollTo({
