@@ -151,9 +151,15 @@ export async function GET(request: NextRequest) {
       total_ditolak: 0
     };
 
-    // 2. Hitung kuota santri lunas syahriyah bulan lalu (sebelum bulan berjalan)
-    // Tagihan bulan berjalan (Bulan Berjalan) TIDAK membatalkan status lunas santri
+    // 2. Hitung kuota santri lunas & rincian kelayakan ambil porsi
+    // Total Berhak Ambil Porsi = Lunas Murni + Toleransi / Dispensasi Bulan Berjalan
     let totalSantriLunas = 0;
+    let totalBerhakMakan = 0;
+    let totalLunasMurni = 0;
+    let totalToleransiBerjalan = 0;
+    let totalTunggakanLalu = 0;
+    let totalSantriAktif = 0;
+
     try {
       // Build asrama condition for murid/kamar tables
       let muridAsramaCond = '1=1';
@@ -167,31 +173,45 @@ export async function GET(request: NextRequest) {
         muridAsramaParams = [fullName, activeAsramaLetter, `Asrama ${activeAsramaLetter}%`];
       }
 
-      const [lunasRows] = await pool.query<RowDataPacket[]>(
-        `SELECT COUNT(DISTINCT m.murid_id) as total_lunas
+      const [breakdownRows] = await pool.query<RowDataPacket[]>(
+        `SELECT 
+          COUNT(DISTINCT m.murid_id) as total_santri_aktif,
+          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NULL THEN m.murid_id END) as total_berhak,
+          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NULL AND b_berjalan.nis IS NULL THEN m.murid_id END) as total_lunas_murni,
+          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NULL AND b_berjalan.nis IS NOT NULL THEN m.murid_id END) as total_toleransi_berjalan,
+          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NOT NULL THEN m.murid_id END) as total_tunggakan_lalu
          FROM murid m
          LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
-         WHERE m.status = 'aktif'
-           AND ${muridAsramaCond}
-           AND m.nis NOT IN (
-             SELECT DISTINCT b.nis
-             FROM billing b
-             WHERE b.status = 'Belum'
-               AND b.nominal > 0
-               AND b.kategori = 'pesantren'
-               AND (
-                 b.nama_tagihan LIKE '%Tunggakan Bulan Lalu%'
-                 OR (
-                   (b.nama_tagihan LIKE '%Syahriyah%' OR b.nama_tagihan LIKE '%syahriyah%')
-                   AND b.nama_tagihan NOT LIKE '%Bulan Berjalan%'
-                 )
+         LEFT JOIN (
+           SELECT DISTINCT nis 
+           FROM billing 
+           WHERE status = 'Belum' AND nominal > 0 AND kategori = 'pesantren'
+             AND (
+               nama_tagihan LIKE '%Tunggakan Bulan Lalu%'
+               OR (
+                 (nama_tagihan LIKE '%Syahriyah%' OR nama_tagihan LIKE '%syahriyah%')
+                 AND nama_tagihan NOT LIKE '%Bulan Berjalan%'
                )
-           )`,
+             )
+         ) b_lalu ON m.nis = b_lalu.nis
+         LEFT JOIN (
+           SELECT DISTINCT nis 
+           FROM billing 
+           WHERE status = 'Belum' AND nominal > 0 AND kategori = 'pesantren'
+             AND nama_tagihan LIKE '%Bulan Berjalan%'
+         ) b_berjalan ON m.nis = b_berjalan.nis
+         WHERE m.status = 'aktif' AND ${muridAsramaCond}`,
         [...muridAsramaParams]
       );
-      totalSantriLunas = Number(lunasRows[0]?.total_lunas || 0);
+
+      const bd = breakdownRows[0] || {};
+      totalSantriAktif = Number(bd.total_santri_aktif || 0);
+      totalBerhakMakan = Number(bd.total_berhak || 0);
+      totalLunasMurni = Number(bd.total_lunas_murni || 0);
+      totalToleransiBerjalan = Number(bd.total_toleransi_berjalan || 0);
+      totalTunggakanLalu = Number(bd.total_tunggakan_lalu || 0);
+      totalSantriLunas = totalBerhakMakan;
     } catch (e) {
-      // Fallback jika tabel billing/kamar belum lengkap
       console.warn('totalSantriLunas query failed:', e);
       totalSantriLunas = 0;
     }
@@ -231,6 +251,13 @@ export async function GET(request: NextRequest) {
         totalDitolak: Number(stats.total_ditolak || 0)
       },
       totalSantriLunas,
+      kuotaPorsi: {
+        totalSantriAktif,
+        totalBerhakMakan,
+        totalLunasMurni,
+        totalToleransiBerjalan,
+        totalTunggakanLalu
+      },
       userAsrama,
       canSwitchAsrama,
       activeAsrama: activeAsrama || 'Semua',

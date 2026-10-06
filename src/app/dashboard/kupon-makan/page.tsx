@@ -51,6 +51,14 @@ interface StatsData {
   totalDitolak: number;
 }
 
+interface KuotaPorsiData {
+  totalSantriAktif: number;
+  totalBerhakMakan: number;
+  totalLunasMurni: number;
+  totalToleransiBerjalan: number;
+  totalTunggakanLalu: number;
+}
+
 export default function KuponMakanPage() {
   const [sessions, setSessions] = useState<SesiMakan[]>([]);
   const [activeSesi, setActiveSesi] = useState<string>('siang');
@@ -66,6 +74,13 @@ export default function KuponMakanPage() {
     totalBerhasil: 0,
     totalDispensasi: 0,
     totalDitolak: 0
+  });
+  const [kuotaPorsi, setKuotaPorsi] = useState<KuotaPorsiData>({
+    totalSantriAktif: 0,
+    totalBerhakMakan: 0,
+    totalLunasMurni: 0,
+    totalToleransiBerjalan: 0,
+    totalTunggakanLalu: 0
   });
   const [recentScans, setRecentScans] = useState<any[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -198,6 +213,9 @@ export default function KuponMakanPage() {
         setPorsiPerSesi(json.porsiPerSesi || {});
         if (typeof json.totalSantriLunas === 'number') {
           setTotalSantriLunas(json.totalSantriLunas);
+        }
+        if (json.kuotaPorsi) {
+          setKuotaPorsi(json.kuotaPorsi);
         }
         if (json.userAsrama !== undefined) setUserAsrama(json.userAsrama);
         if (typeof json.canSwitchAsrama === 'boolean') setCanSwitchAsrama(json.canSwitchAsrama);
@@ -1011,8 +1029,8 @@ export default function KuponMakanPage() {
             {/* RINGKASAN STATISTIK HARI INI */}
             <div className="space-y-2.5">
               {/* Baris 1: Total Porsi 1 baris melebar memenuhi ruang kanan dan kiri */}
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs text-slate-400 font-medium block">Total Porsi Terambil</span>
                     <div className="flex items-baseline gap-1.5 mt-0.5">
@@ -1026,23 +1044,51 @@ export default function KuponMakanPage() {
                     <Utensils size={22} />
                   </div>
                 </div>
+
                 {totalSantriLunas > 0 && (
-                  <>
+                  <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
                     <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                       <div
                         className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                         style={{ width: `${Math.min(100, Math.round((stats.totalPorsi / totalSantriLunas) * 100))}%` }}
                       />
                     </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] text-slate-400">
-                        Kuota Lunas Syahriyah: <span className="font-bold text-slate-600 dark:text-slate-300">{totalSantriLunas} santri</span>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">
+                        Total Berhak Ambil Porsi: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{totalSantriLunas} santri</strong>
                       </span>
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
                         {Math.min(100, Math.round((stats.totalPorsi / totalSantriLunas) * 100))}%
                       </span>
                     </div>
-                  </>
+
+                    {/* Keterangan & Rincian Kelayakan Hak Porsi Makan */}
+                    <div className="bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/60 space-y-1.5">
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          <span>Lunas Murni:</span>
+                        </span>
+                        <strong className="text-slate-700 dark:text-slate-200 font-mono">{kuotaPorsi.totalLunasMurni} santri</strong>
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                          <span>Toleransi / Dispensasi Bulan Berjalan:</span>
+                        </span>
+                        <strong className="text-amber-600 dark:text-amber-400 font-mono">{kuotaPorsi.totalToleransiBerjalan} santri</strong>
+                      </div>
+                      {kuotaPorsi.totalTunggakanLalu > 0 && (
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                            <span>Tunggakan Bulan Lalu (Butuh Dispensasi):</span>
+                          </span>
+                          <strong className="text-rose-600 dark:text-rose-400 font-mono">{kuotaPorsi.totalTunggakanLalu} santri</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
 
