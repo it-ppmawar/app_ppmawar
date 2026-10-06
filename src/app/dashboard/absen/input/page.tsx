@@ -1189,7 +1189,7 @@ function InputAbsenContent() {
               <XIcon size={18} />
             </button>
           </div>
-          <p className="text-red-600 dark:text-red-400 text-xs mt-1.5 leading-relaxed pl-7">
+          <p className="text-red-600 dark:text-red-400 text-xs mt-1.5 leading-relaxed">
             {errorMsg.toLowerCase().includes('keterangan') || errorMsg.toLowerCase().includes('unknown column')
               ? 'Tidak ditemukan data santri atau kolom catatan presensi untuk jadwal ini (belum ada santri yang terdaftar pada kelas terpilih). Silakan pastikan data santri di kelas ini sudah diatur melalui menu Data Santri.'
               : errorMsg}
@@ -1235,7 +1235,7 @@ function InputAbsenContent() {
               Perhatian: Izin Lokasi (GPS) Diperlukan
             </p>
           </div>
-          <p className="text-xs text-rose-700 dark:text-rose-200/90 leading-relaxed pl-7 mt-1.5">
+          <p className="text-xs text-rose-700 dark:text-rose-200/90 leading-relaxed mt-1.5">
             {locationError}
           </p>
 
@@ -1331,12 +1331,12 @@ function InputAbsenContent() {
 
       {/* 3. Banner Notifikasi Mode Edit / Perbarui Absensi (Sesuai Desain Foto 4) */}
       {activeTab === 'absen' && sudahAbsen && (
-        <div className="bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-500/50 text-blue-800 dark:text-blue-200 p-3.5 rounded-2xl text-xs shadow-xs space-y-1 animate-in fade-in duration-200">
+        <div className="bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-500/50 text-blue-800 dark:text-blue-200 p-3.5 rounded-2xl text-xs shadow-xs animate-in fade-in duration-200">
           <div className="flex items-center gap-2 font-bold text-blue-700 dark:text-blue-300">
             <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
             <span>Mode Edit / Perbarui Absensi</span>
           </div>
-          <p className="text-[11px] text-blue-600/90 dark:text-blue-200/90 leading-relaxed pl-6">
+          <p className="text-[11px] text-blue-600/90 dark:text-blue-200/90 leading-relaxed mt-1">
             Absensi kelas ini sudah pernah diisi sebelumnya. Status yang tersimpan telah dimuat otomatis dan dapat Anda sesuaikan kembali, lalu klik <strong>&quot;Perbarui Absensi&quot;</strong>.
           </p>
         </div>
