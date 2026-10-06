@@ -827,7 +827,7 @@ export default function JadwalPage() {
                     </th>
                   )}
                   <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('hari')}>HARI{getSortIcon('hari')}</th>
-                  <th className="px-4 py-4">JAM</th>
+                  <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('jam_mulai')}>JAM{getSortIcon('jam_mulai')}</th>
                   <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kegiatan')}>
                     {activeTab === 'quran' ? 'MAJLIS' : activeTab === 'madin' ? 'MAPEL' : 'KEGIATAN'}{getSortIcon('kegiatan')}
                   </th>
