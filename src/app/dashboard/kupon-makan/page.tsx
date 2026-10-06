@@ -29,6 +29,7 @@ interface ScanResult {
   totalTunggakan?: number;
   tunggakan?: any[];
   waktuSebelumnya?: string;
+  crossAsramaWarning?: boolean;
 }
 
 interface SesiMakan {
@@ -294,7 +295,8 @@ export default function KuponMakanPage() {
           message: json.message,
           santri: json.data.santri,
           sesi: json.data.sesi,
-          waktu: json.data.waktu
+          waktu: json.data.waktu,
+          crossAsramaWarning: json.crossAsramaWarning
         });
       } else if (json.status === 'DISPENSASI') {
         playSound('success');
@@ -304,7 +306,8 @@ export default function KuponMakanPage() {
           santri: json.data.santri,
           sesi: json.data.sesi,
           waktu: json.data.waktu,
-          totalTunggakan: json.data.totalTunggakan
+          totalTunggakan: json.data.totalTunggakan,
+          crossAsramaWarning: json.crossAsramaWarning
         });
       } else if (json.status === 'SUDAH_AMBIL') {
         playSound('warning');
@@ -313,7 +316,8 @@ export default function KuponMakanPage() {
           message: json.message,
           santri: json.data.santri,
           sesi: json.data.sesi,
-          waktuSebelumnya: json.data.waktu_sebelumnya
+          waktuSebelumnya: json.data.waktu_sebelumnya,
+          crossAsramaWarning: json.crossAsramaWarning
         });
       } else if (json.status === 'TUNGGAKAN') {
         playSound('error');
@@ -323,7 +327,8 @@ export default function KuponMakanPage() {
           santri: json.data.santri,
           sesi: json.data.sesi,
           totalTunggakan: json.data.totalTunggakan,
-          tunggakan: json.data.tunggakan
+          tunggakan: json.data.tunggakan,
+          crossAsramaWarning: json.crossAsramaWarning
         });
       } else {
         playSound('error');
@@ -334,7 +339,7 @@ export default function KuponMakanPage() {
       }
 
       setBarcodeInput('');
-      fetchStatsAndSesi();
+      fetchStatsAndSesi(selectedAsrama);
     } catch (err: any) {
       playSound('error');
       setLastResult({
@@ -960,6 +965,17 @@ export default function KuponMakanPage() {
                             </ul>
                           </div>
                         )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PERINGATAN CROSS-ASRAMA */}
+                  {lastResult.crossAsramaWarning && lastResult.santri && (
+                    <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-xl border border-orange-200 dark:border-orange-800 flex items-start gap-2.5 text-xs">
+                      <AlertTriangle size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
+                      <div className="text-orange-800 dark:text-orange-300">
+                        <span className="font-bold block">Perhatian: Santri Beda Asrama</span>
+                        <span>Santri ini berasal dari <strong>{lastResult.santri.asrama}</strong>. Scan telah dicatat dengan keterangan cross-asrama.</span>
                       </div>
                     </div>
                   )}

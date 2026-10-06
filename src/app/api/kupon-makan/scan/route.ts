@@ -4,6 +4,7 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 import { ensureKuponMakanDB, detectActiveSesiWIB } from '@/lib/ensureKuponMakanDB';
+import { resolveAsrama } from '@/lib/auth/resolveAsrama';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +60,20 @@ export async function POST(request: NextRequest) {
     const isAllowed = (['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus'].includes(role) || isPengasuhOrPengurus) && !isMurniGuru;
     if (!isAllowed) {
       return NextResponse.json({ success: false, message: 'Akses ditolak: Anda tidak memiliki izin untuk memindai kupon makan.' }, { status: 403 });
+    }
+
+    // Tentukan apakah operator memiliki batasan asrama
+    const canSwitchAsrama = ['admin', 'staff'].includes(role);
+    let operatorAsrama: string | null = null;
+    if (!canSwitchAsrama) {
+      try {
+        operatorAsrama = await resolveAsrama(
+          userId,
+          role,
+          payload.username || '',
+          payload.asrama || payload.namaAsrama || null
+        );
+      } catch (_) {}
     }
 
     let operatorName = payload.nama || payload.username || 'Petugas Kantin';
@@ -119,6 +134,18 @@ export async function POST(request: NextRequest) {
     const santriAsrama = santri.nama_asrama ? (santri.nama_asrama.startsWith('Asrama') ? santri.nama_asrama : `Asrama ${santri.nama_asrama}`) : '-';
     const santriKamar = santri.nama_kamar || '-';
 
+    // Cek cross-asrama warning: pengurus/pengasuh scan santri dari asrama berbeda
+    let crossAsramaWarning = false;
+    let crossAsramaCatatan = '';
+    if (operatorAsrama && santriAsrama !== '-') {
+      const normOperator = operatorAsrama.replace(/asrama\s+/i, '').trim().toUpperCase();
+      const normSantri = santriAsrama.replace(/asrama\s+/i, '').trim().toUpperCase();
+      if (normOperator !== normSantri && normOperator !== 'SEMUA') {
+        crossAsramaWarning = true;
+        crossAsramaCatatan = `⚠️ Cross-Asrama: Santri dari ${santriAsrama}, di-scan oleh operator ${operatorAsrama}`;
+      }
+    }
+
     // 2. CEK APAKAH SUDAH MENGAMBIL MAKAN DI SESI INI HARI INI
     const [existingScans] = await pool.query<RowDataPacket[]>(
       `SELECT id, waktu_scan, status, catatan 
@@ -134,6 +161,7 @@ export async function POST(request: NextRequest) {
         success: false,
         status: 'SUDAH_AMBIL',
         message: `Santri sudah mengambil jatah makan sesi ${activeSesi.toUpperCase()} hari ini pada pukul ${prior.waktu_scan} WIB.`,
+        crossAsramaWarning,
         data: {
           santri: {
             murid_id: santri.murid_id,
@@ -171,7 +199,8 @@ export async function POST(request: NextRequest) {
 
     // 4. KONDISI: DIPAKSA DISPENSASI OLEH OPERATOR
     if (forceDispensasi) {
-      const catatanFinal = catatanDispensasi || (hasTunggakan ? `Dispensasi darurat (Ada tanggungan Rp ${totalTunggakan.toLocaleString('id-ID')})` : 'Dispensasi manual operator');
+      const catatanBase = catatanDispensasi || (hasTunggakan ? `Dispensasi darurat (Ada tanggungan Rp ${totalTunggakan.toLocaleString('id-ID')})` : 'Dispensasi manual operator');
+      const catatanFinal = crossAsramaWarning ? `${catatanBase} | ${crossAsramaCatatan}` : catatanBase;
 
       const [insertRes] = await pool.query<ResultSetHeader>(
         `INSERT INTO riwayat_makan (murid_id, nis, nama, asrama, kamar, tanggal, sesi, waktu_scan, status, operator, catatan)
@@ -183,6 +212,7 @@ export async function POST(request: NextRequest) {
         success: true,
         status: 'DISPENSASI',
         message: 'Kupon makan diberikan melalui jalur DISPENSASI.',
+        crossAsramaWarning,
         riwayatId: insertRes.insertId,
         data: {
           santri: {
@@ -205,18 +235,20 @@ export async function POST(request: NextRequest) {
     // 5. KONDISI: MEMILIKI TUNGGAKAN DAN TIDAK DISPENSASI
     if (hasTunggakan) {
       const ringkasanTunggakan = tunggakanRows.map(t => `${t.nama_tagihan} (${t.periode}): Rp ${Number(t.nominal).toLocaleString('id-ID')}`).join(', ');
+      const catatanTunggakan = crossAsramaWarning ? `${isModeUjiCoba ? 'Dalam Masa Uji Coba Lapangan' : ''} | ${crossAsramaCatatan}` : (isModeUjiCoba ? 'Dalam Masa Uji Coba Lapangan' : null);
 
       // Catat riwayat percobaan gagal agar terekap di evaluasi lapangan
       await pool.query(
         `INSERT INTO riwayat_makan (murid_id, nis, nama, asrama, kamar, tanggal, sesi, waktu_scan, status, alasan, operator, catatan)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ditolak', ?, ?, ?)`,
-        [santri.murid_id, santri.nis, santri.nama, santriAsrama, santriKamar, tanggalHariIni, activeSesi, waktuScan, 'Tunggakan: ' + ringkasanTunggakan, operatorName, isModeUjiCoba ? 'Dalam Masa Uji Coba Lapangan' : null]
+        [santri.murid_id, santri.nis, santri.nama, santriAsrama, santriKamar, tanggalHariIni, activeSesi, waktuScan, 'Tunggakan: ' + ringkasanTunggakan, operatorName, catatanTunggakan]
       );
 
       return NextResponse.json({
         success: false,
         status: 'TUNGGAKAN',
         isModeUjiCoba,
+        crossAsramaWarning,
         message: `MOHON MAAF: Masih terdapat tanggungan pembayaran. Silakan konfirmasi ke bagian administrasi.`,
         data: {
           santri: {
@@ -236,16 +268,18 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. KONDISI: LUNAS & BERHASIL (KUPON SAH)
+    const catatanBerhasil = crossAsramaWarning ? crossAsramaCatatan : null;
     const [insertRes] = await pool.query<ResultSetHeader>(
-      `INSERT INTO riwayat_makan (murid_id, nis, nama, asrama, kamar, tanggal, sesi, waktu_scan, status, operator)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'berhasil', ?)`,
-      [santri.murid_id, santri.nis, santri.nama, santriAsrama, santriKamar, tanggalHariIni, activeSesi, waktuScan, operatorName]
+      `INSERT INTO riwayat_makan (murid_id, nis, nama, asrama, kamar, tanggal, sesi, waktu_scan, status, operator, catatan)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'berhasil', ?, ?)`,
+      [santri.murid_id, santri.nis, santri.nama, santriAsrama, santriKamar, tanggalHariIni, activeSesi, waktuScan, operatorName, catatanBerhasil]
     );
 
     return NextResponse.json({
       success: true,
       status: 'BERHASIL',
       message: 'Kupon makan SAH. Silakan ambil jatah makan.',
+      crossAsramaWarning,
       riwayatId: insertRes.insertId,
       data: {
         santri: {
