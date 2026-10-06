@@ -161,27 +161,26 @@ export async function GET(request: NextRequest) {
     let totalSantriAktif = 0;
 
     try {
-      // Build asrama condition for murid/kamar tables
-      let muridAsramaCond = '1=1';
-      let muridAsramaParams: any[] = [];
+      // Filter asrama langsung dari data billing yang telah disinkronkan
+      let asramaWhere = '1=1';
+      let asramaParams: any[] = [];
 
       if (activeAsramaLetter) {
         const fullName = activeAsramaLetter.toLowerCase() === 'tahfid'
           ? 'Asrama Tahfid'
           : `Asrama ${activeAsramaLetter}`;
-        muridAsramaCond = `(k.nama_asrama = ? OR k.nama_asrama = ? OR k.nama_asrama LIKE ?)`;
-        muridAsramaParams = [fullName, activeAsramaLetter, `Asrama ${activeAsramaLetter}%`];
+        asramaWhere = `(b.asrama = ? OR b.asrama = ? OR b.asrama LIKE ?)`;
+        asramaParams = [fullName, activeAsramaLetter, `Asrama ${activeAsramaLetter}%`];
       }
 
       const [breakdownRows] = await pool.query<RowDataPacket[]>(
         `SELECT 
-          COUNT(DISTINCT m.murid_id) as total_santri_aktif,
-          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NULL THEN m.murid_id END) as total_berhak,
-          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NULL AND b_berjalan.nis IS NULL THEN m.murid_id END) as total_lunas_murni,
-          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NULL AND b_berjalan.nis IS NOT NULL THEN m.murid_id END) as total_toleransi_berjalan,
-          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NOT NULL THEN m.murid_id END) as total_tunggakan_lalu
-         FROM murid m
-         LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
+          COUNT(DISTINCT b.nis) as total_santri_aktif,
+          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NULL THEN b.nis END) as total_berhak,
+          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NULL AND b_berjalan.nis IS NULL THEN b.nis END) as total_lunas_murni,
+          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NULL AND b_berjalan.nis IS NOT NULL THEN b.nis END) as total_toleransi_berjalan,
+          COUNT(DISTINCT CASE WHEN b_lalu.nis IS NOT NULL THEN b.nis END) as total_tunggakan_lalu
+         FROM billing b
          LEFT JOIN (
            SELECT DISTINCT nis 
            FROM billing 
@@ -193,15 +192,15 @@ export async function GET(request: NextRequest) {
                  AND nama_tagihan NOT LIKE '%Bulan Berjalan%'
                )
              )
-         ) b_lalu ON m.nis = b_lalu.nis
+         ) b_lalu ON b.nis = b_lalu.nis
          LEFT JOIN (
            SELECT DISTINCT nis 
            FROM billing 
            WHERE status = 'Belum' AND nominal > 0 AND kategori = 'pesantren'
              AND nama_tagihan LIKE '%Bulan Berjalan%'
-         ) b_berjalan ON m.nis = b_berjalan.nis
-         WHERE m.status = 'aktif' AND ${muridAsramaCond}`,
-        [...muridAsramaParams]
+         ) b_berjalan ON b.nis = b_berjalan.nis
+         WHERE ${asramaWhere}`,
+        [...asramaParams]
       );
 
       const bd = breakdownRows[0] || {};

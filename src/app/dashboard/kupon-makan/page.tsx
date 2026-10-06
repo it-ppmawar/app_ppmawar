@@ -1045,62 +1045,54 @@ export default function KuponMakanPage() {
                   </div>
                 </div>
 
-                {/* Selalu tampil jika ada santri aktif (tidak bergantung pada totalSantriLunas) */}
-                {kuotaPorsi.totalSantriAktif > 0 && (
-                  <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                {/* Rincian Hak Porsi Makan: Selalu tampil */}
+                <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                  {kuotaPorsi.totalBerhakMakan > 0 && (
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, Math.round((stats.totalPorsi / kuotaPorsi.totalBerhakMakan) * 100))}%` }}
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">
+                      Total Berhak Ambil Porsi: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{kuotaPorsi.totalBerhakMakan || totalSantriLunas} santri</strong>
+                    </span>
                     {kuotaPorsi.totalBerhakMakan > 0 && (
-                      <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, Math.round((stats.totalPorsi / kuotaPorsi.totalBerhakMakan) * 100))}%` }}
-                        />
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                        {Math.min(100, Math.round((stats.totalPorsi / kuotaPorsi.totalBerhakMakan) * 100))}%
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Keterangan & Rincian Kelayakan Hak Porsi Makan */}
+                  <div className="bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/60 space-y-1.5">
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                        <span>Lunas Murni:</span>
+                      </span>
+                      <strong className="text-slate-700 dark:text-slate-200 font-mono">{kuotaPorsi.totalLunasMurni} santri</strong>
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0"></span>
+                        <span>Toleransi Bulan Berjalan:</span>
+                      </span>
+                      <strong className="text-amber-600 dark:text-amber-400 font-mono">{kuotaPorsi.totalToleransiBerjalan} santri</strong>
+                    </div>
+                    {kuotaPorsi.totalTunggakanLalu > 0 && (
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0"></span>
+                          <span>Tunggakan Bulan Lalu:</span>
+                        </span>
+                        <strong className="text-rose-600 dark:text-rose-400 font-mono">{kuotaPorsi.totalTunggakanLalu} santri</strong>
                       </div>
                     )}
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">
-                        Total Berhak Ambil Porsi: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{kuotaPorsi.totalBerhakMakan} santri</strong>
-                      </span>
-                      {kuotaPorsi.totalBerhakMakan > 0 && (
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                          {Math.min(100, Math.round((stats.totalPorsi / kuotaPorsi.totalBerhakMakan) * 100))}%
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Keterangan & Rincian Kelayakan Hak Porsi Makan */}
-                    <div className="bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/60 space-y-1.5">
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
-                          <span>Lunas Murni:</span>
-                        </span>
-                        <strong className="text-slate-700 dark:text-slate-200 font-mono">{kuotaPorsi.totalLunasMurni} santri</strong>
-                      </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0"></span>
-                          <span>Toleransi Bulan Berjalan:</span>
-                        </span>
-                        <strong className="text-amber-600 dark:text-amber-400 font-mono">{kuotaPorsi.totalToleransiBerjalan} santri</strong>
-                      </div>
-                      {kuotaPorsi.totalTunggakanLalu > 0 && (
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0"></span>
-                            <span>Tunggakan Bulan Lalu:</span>
-                          </span>
-                          <strong className="text-rose-600 dark:text-rose-400 font-mono">{kuotaPorsi.totalTunggakanLalu} santri</strong>
-                        </div>
-                      )}
-                      {/* Note jika billing belum disinkronkan (semua 0 tapi ada santri aktif) */}
-                      {kuotaPorsi.totalLunasMurni === 0 && kuotaPorsi.totalToleransiBerjalan === 0 && (
-                        <p className="text-[10px] text-amber-600 dark:text-amber-400 italic pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                          ⓘ Data akan akurat setelah Sinkronisasi Tagihan dilakukan.
-                        </p>
-                      )}
-                    </div>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Baris 2: Sesi Makan (Sarapan Pagi & Makan Sore / Malam) berdampingan */}
