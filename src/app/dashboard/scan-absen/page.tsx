@@ -601,7 +601,7 @@ function ScanAbsenInner() {
 
       await scanner.start(
         { facingMode: facing },
-        { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
           stopQrScanner();
           setIsScanning(false);
@@ -609,6 +609,7 @@ function ScanAbsenInner() {
         },
         () => {}
       );
+      scrollToCamera();
     } catch (err) {
       console.error('QR camera failed:', err);
       await stopQrScanner();
@@ -1194,14 +1195,14 @@ function ScanAbsenInner() {
                   <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
                   <span className="text-xs font-semibold text-gray-300">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
                 </div>
-                <div className="rounded-b-2xl overflow-hidden border-2 border-green-500 shadow-xl bg-black min-h-[300px] relative">
+                <div className="relative rounded-b-2xl overflow-hidden border-2 border-green-500 shadow-xl bg-black" style={{ minHeight: 300 }}>
                   {isSwitchingCamera && (
                     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 gap-3">
                       <div className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
                       <span className="text-white text-sm font-semibold">Mengganti kamera...</span>
                     </div>
                   )}
-                  <div id="reader" className="w-full h-full" />
+                  <div id="reader" className="w-full h-full border-none [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_video]:block" />
                 </div>
                 <div className="flex items-center gap-2 justify-center">
                   <Wifi size={14} className="text-gray-400" />
