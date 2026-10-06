@@ -827,6 +827,8 @@ export default function JadwalPage() {
                       <input type="checkbox" className="rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer" checked={selectedJadwal.length === filteredJadwal.length && filteredJadwal.length > 0} onChange={toggleSelectAll} />
                     </th>
                   )}
+                  <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('hari')}>HARI{getSortIcon('hari')}</th>
+                  <th className="px-4 py-4">JAM</th>
                   <th className="px-4 py-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none" onClick={() => requestSort('kegiatan')}>
                     {activeTab === 'quran' ? 'MAJLIS' : activeTab === 'madin' ? 'MAPEL' : 'KEGIATAN'}{getSortIcon('kegiatan')}
                   </th>
@@ -1092,43 +1094,27 @@ export default function JadwalPage() {
                 </div>
 
                 {/* Tombol Pintasan Cepat Hari */}
-                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                <div className="flex justify-center items-center gap-2 mb-2">
                   <button
                     type="button"
                     onClick={() => setSelectedHariAdd([...hariOrder])}
                     className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-green-100 hover:bg-green-200 dark:bg-green-950/60 dark:hover:bg-green-900/80 text-green-700 dark:text-green-300 border border-green-300 dark:border-green-800 transition-all active:scale-95"
                     title="Pilih seluruh hari (Senin s/d Ahad)"
                   >
-                    Semua Hari
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedHariAdd(['Jumat', 'Sabtu', 'Ahad'])}
-                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-100 hover:bg-blue-200 dark:bg-blue-950/60 dark:hover:bg-blue-900/80 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800 transition-all active:scale-95"
-                    title="Pilih hari Jumat, Sabtu, dan Ahad"
-                  >
-                    Jumat – Ahad
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedHariAdd(['Selasa', 'Rabu'])}
-                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 transition-all active:scale-95"
-                    title="Pilih hari Selasa dan Rabu"
-                  >
-                    Selasa – Rabu
+                    ✅ Semua Hari
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedHariAdd([])}
-                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 transition-all active:scale-95 ml-auto"
+                    className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 transition-all active:scale-95"
                     title="Kosongkan pilihan hari"
                   >
-                    Reset
+                    ↺ Reset
                   </button>
                 </div>
 
                 {/* Grid Pilihan Hari (Pill Checkbox) */}
-                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                <div className="flex flex-wrap justify-center gap-1.5">
                   {hariOrder.map(h => {
                     const isChecked = selectedHariAdd.includes(h);
                     return (

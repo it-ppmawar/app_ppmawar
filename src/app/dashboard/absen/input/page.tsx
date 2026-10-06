@@ -1145,13 +1145,13 @@ function InputAbsenContent() {
 
       {/* Info Card Jadwal (Pelajaran, Jam, Tanggal+Hari) */}
       {(jadwalInfo?.mata_pelajaran || tanggalAbsen) && (
-        <div className="bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-indigo-900/40 dark:to-blue-900/40 border border-indigo-200 dark:border-indigo-800/50 rounded-2xl p-4 shadow-sm transition-colors">
+        <div className="bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-indigo-900/40 dark:to-blue-900/40 border border-indigo-200 dark:border-indigo-800/50 rounded-2xl p-4 shadow-sm transition-colors text-center">
           {jadwalInfo?.mata_pelajaran && (
-            <p className="text-base font-extrabold text-indigo-900 dark:text-indigo-300 uppercase tracking-wide">
+            <p className="text-base font-extrabold text-indigo-900 dark:text-indigo-300 uppercase tracking-wide text-center">
               {jadwalInfo.mata_pelajaran}
             </p>
           )}
-          <div className="flex items-center justify-between text-xs text-indigo-700 dark:text-indigo-300 mt-2.5 pt-2 border-t border-indigo-200 dark:border-indigo-800/40 flex-wrap gap-2 font-medium">
+          <div className="flex flex-col items-center justify-center text-xs text-indigo-700 dark:text-indigo-300 mt-2.5 pt-2 border-t border-indigo-200 dark:border-indigo-800/40 gap-1.5 font-medium text-center">
             {jadwalInfo?.jam_mulai && (
               <span className="flex items-center gap-1.5">
                 <Clock size={13} className="shrink-0 text-indigo-600 dark:text-indigo-400" />
@@ -1235,7 +1235,7 @@ function InputAbsenContent() {
               Perhatian: Izin Lokasi (GPS) Diperlukan
             </p>
           </div>
-          <p className="text-xs text-rose-700 dark:text-rose-200/90 leading-relaxed">
+          <p className="text-xs text-rose-700 dark:text-rose-200/90 leading-relaxed pl-7">
             {locationError}
           </p>
 
