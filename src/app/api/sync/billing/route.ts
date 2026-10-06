@@ -288,18 +288,78 @@ export async function POST(request: Request) {
           status: string;
         }[] = [];
 
-        // 1. SYAHRIYAH PESANTREN
-        //    - Jika JUMLAH SYAHRIYAH > 0 → Belum, nominal = tunggakan syahriyah
-        //    - Jika JUMLAH SYAHRIYAH = 0 → Lunas, nominal = TAGIHAN ACTUAL (referensi)
-        const nominalSyahriyah = jumlahSyahriyah > 0 ? jumlahSyahriyah : tagihanActual;
-        if (nominalSyahriyah > 0) {
+        // 1. SYAHRIYAH PESANTREN (DIPISAH: TUNGGAKAN BULAN LALU VS BULAN BERJALAN)
+        // Urutan bulan tahun ajaran pesantren: 7 (Jul), 8 (Agu), 9 (Sep), 10 (Okt), 11 (Nov), 12 (Des), 1 (Jan), 2 (Feb), 3 (Mar), 4 (Apr), 5 (Mei), 6 (Jun)
+        const MONTHS_ORDER = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
+        const nowWib = new Date();
+        const currentMonthNum = Number(
+          new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', month: 'numeric' }).format(nowWib)
+        );
+        const currentMonthIdx = MONTHS_ORDER.indexOf(currentMonthNum) !== -1 ? MONTHS_ORDER.indexOf(currentMonthNum) : 3;
+
+        let tunggakanLaluSyahriyah = 0;
+        let tagihanBulanBerjalan = 0;
+
+        if (sheet.periodeCount === 1) {
+          // KELAS I: Group 1 (kolom index 18-29)
+          for (let m = 0; m < currentMonthIdx; m++) {
+            tunggakanLaluSyahriyah += parseRupiahNumber(row[18 + m]);
+          }
+          tagihanBulanBerjalan = parseRupiahNumber(row[18 + currentMonthIdx]);
+        } else if (sheet.periodeCount === 2) {
+          // KELAS II: Group 1 (kolom 18-29, thn lampau) + Group 2 (kolom 32-43, thn aktif)
+          for (let m = 0; m < 12; m++) {
+            tunggakanLaluSyahriyah += parseRupiahNumber(row[18 + m]);
+          }
+          for (let m = 0; m < currentMonthIdx; m++) {
+            tunggakanLaluSyahriyah += parseRupiahNumber(row[32 + m]);
+          }
+          tagihanBulanBerjalan = parseRupiahNumber(row[32 + currentMonthIdx]);
+        } else if (sheet.periodeCount === 3) {
+          // KELAS III: Group 1 & 2 lampau + Group 3 (kolom 46-57, thn aktif)
+          for (let m = 0; m < 12; m++) {
+            tunggakanLaluSyahriyah += parseRupiahNumber(row[18 + m]);
+            tunggakanLaluSyahriyah += parseRupiahNumber(row[32 + m]);
+          }
+          for (let m = 0; m < currentMonthIdx; m++) {
+            tunggakanLaluSyahriyah += parseRupiahNumber(row[46 + m]);
+          }
+          tagihanBulanBerjalan = parseRupiahNumber(row[46 + currentMonthIdx]);
+        }
+
+        // A. Jika ada tunggakan sebelum bulan berjalan (Bulan Lalu / Tahun Lalu)
+        if (tunggakanLaluSyahriyah > 0) {
           billingsToUpsert.push({
-            namaTagihan: 'Syahriyah Pesantren',
-            nominal: nominalSyahriyah,
+            namaTagihan: 'Syahriyah Pesantren (Tunggakan Bulan Lalu)',
+            nominal: tunggakanLaluSyahriyah,
             kategori: 'pesantren',
             asrama,
             kamar,
-            status: jumlahSyahriyah > 0 ? 'Belum' : 'Lunas',
+            status: 'Belum',
+          });
+        }
+
+        // B. Tagihan Bulan Berjalan (Toleransi Dispensasi Makan)
+        if (tagihanBulanBerjalan > 0) {
+          billingsToUpsert.push({
+            namaTagihan: 'Syahriyah Pesantren (Bulan Berjalan)',
+            nominal: tagihanBulanBerjalan,
+            kategori: 'pesantren',
+            asrama,
+            kamar,
+            status: 'Belum',
+          });
+        }
+
+        // C. Jika keduanya 0 (Lunas sebelum bulan berjalan & bulan berjalan)
+        if (tunggakanLaluSyahriyah === 0 && tagihanBulanBerjalan === 0) {
+          billingsToUpsert.push({
+            namaTagihan: 'Syahriyah Pesantren',
+            nominal: tagihanActual > 0 ? tagihanActual : 460000,
+            kategori: 'pesantren',
+            asrama,
+            kamar,
+            status: 'Lunas',
           });
         }
 

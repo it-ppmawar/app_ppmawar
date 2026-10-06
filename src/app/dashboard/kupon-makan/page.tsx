@@ -632,7 +632,6 @@ export default function KuponMakanPage() {
             <div className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-emerald-600 text-white font-extrabold text-xs rounded-xl w-full">
               <MapPin size={14} />
               <span>{displayAsramaName}</span>
-              <span className="text-emerald-200 text-[10px] font-normal">(Akses Terkunci)</span>
             </div>
           </div>
         )}

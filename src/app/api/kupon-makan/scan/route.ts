@@ -179,11 +179,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. CEK DATA TAGIHAN / PEMBAYARAN (Ketentuan: Tagihan Belum Lunas)
+    // Tagihan 'Syahriyah Pesantren (Bulan Berjalan)' TIDAK memblokir makan santri (dispensasi bulan berjalan)
     const [tunggakanRows] = await pool.query<RowDataPacket[]>(
       `SELECT id, nama_tagihan, nominal, status, periode, kategori 
        FROM billing 
        WHERE (nis = ? OR LOWER(TRIM(nama_santri)) = LOWER(TRIM(?))) 
          AND status = 'Belum' AND nominal > 0
+         AND nama_tagihan NOT LIKE '%Bulan Berjalan%'
        ORDER BY id ASC`,
       [santri.nis, santri.nama]
     );
@@ -249,7 +251,7 @@ export async function POST(request: NextRequest) {
         status: 'TUNGGAKAN',
         isModeUjiCoba,
         crossAsramaWarning,
-        message: `MOHON MAAF: Masih terdapat tanggungan pembayaran. Silakan konfirmasi ke bagian administrasi.`,
+        message: `MOHON MAAF: Masih terdapat tanggungan pembayaran sebelum bulan berjalan. Silakan konfirmasi ke bagian administrasi.`,
         data: {
           santri: {
             murid_id: santri.murid_id,

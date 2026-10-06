@@ -89,7 +89,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Build asrama SQL condition for riwayat_makan & murid queries
-    // riwayat_makan has `asrama` column directly, murid joins kamar
     const asramaLetterFromName = (name: string | null): string | null => {
       if (!name) return null;
       const m = name.match(/asrama\s+([a-z0-9]+)/i);
@@ -152,7 +151,8 @@ export async function GET(request: NextRequest) {
       total_ditolak: 0
     };
 
-    // 2. Hitung kuota santri lunas syahriyah bulan lalu (tidak ada tunggakan syahriyah 'Belum')
+    // 2. Hitung kuota santri lunas syahriyah bulan lalu (sebelum bulan berjalan)
+    // Tagihan bulan berjalan (Bulan Berjalan) TIDAK membatalkan status lunas santri
     let totalSantriLunas = 0;
     try {
       // Build asrama condition for murid/kamar tables
@@ -179,7 +179,13 @@ export async function GET(request: NextRequest) {
              WHERE b.status = 'Belum'
                AND b.nominal > 0
                AND b.kategori = 'pesantren'
-               AND (b.nama_tagihan LIKE '%Syahriyah%' OR b.nama_tagihan LIKE '%syahriyah%')
+               AND (
+                 b.nama_tagihan LIKE '%Tunggakan Bulan Lalu%'
+                 OR (
+                   (b.nama_tagihan LIKE '%Syahriyah%' OR b.nama_tagihan LIKE '%syahriyah%')
+                   AND b.nama_tagihan NOT LIKE '%Bulan Berjalan%'
+                 )
+               )
            )`,
         [...muridAsramaParams]
       );
