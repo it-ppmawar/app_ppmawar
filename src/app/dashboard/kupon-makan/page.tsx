@@ -59,6 +59,8 @@ interface KuotaPorsiData {
   totalTunggakanLalu: number;
 }
 
+const ASRAMA_LIST = ['A', 'B', 'C', 'D', 'E', 'F', 'Tahfid'];
+
 export default function KuponMakanPage() {
   const [sessions, setSessions] = useState<SesiMakan[]>([]);
   const [activeSesi, setActiveSesi] = useState<string>('siang');
@@ -617,38 +619,46 @@ export default function KuponMakanPage() {
         </div>
 
         {/* ===== TAB KLASIFIKASI ASRAMA ===== */}
-        {/* Admin/Staff: Tab bar scrollable */}
-        {canSwitchAsrama && (
-          <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center gap-1.5 mb-2">
-              <MapPin size={13} className="text-emerald-500 flex-shrink-0" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Filter Asrama</span>
-            </div>
-            <div className="flex bg-slate-100/70 dark:bg-slate-800/60 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 overflow-x-auto scrollbar-none gap-1">
-              {['Semua', 'A', 'B', 'C', 'D', 'E', 'F', 'Lainnya'].map((dorm) => (
-                <button
-                  key={dorm}
-                  onClick={() => setSelectedAsrama(dorm === 'Semua' ? 'Semua' : dorm === 'Lainnya' ? 'Lainnya' : `Asrama ${dorm}`)}
-                  className={`flex-1 min-w-[60px] text-center px-2.5 py-1.5 text-[11px] font-bold rounded-lg transition-all whitespace-nowrap ${
-                    (dorm === 'Semua' && selectedAsrama === 'Semua') ||
-                    (dorm === 'Lainnya' && selectedAsrama === 'Lainnya') ||
-                    (dorm !== 'Semua' && dorm !== 'Lainnya' && selectedAsrama === `Asrama ${dorm}`)
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
-                  }`}
-                >
-                  {dorm === 'Semua' ? 'Semua' : dorm === 'Lainnya' ? 'Lainnya' : `Asrama ${dorm}`}
-                </button>
-              ))}
+        {/* ===== TAB KLASIFIKASI ASRAMA (Sesuai Gaya Halaman Kebersihan) ===== */}
+        {canSwitchAsrama ? (
+          <div className="space-y-2">
+            {/* Tab Semua — full width */}
+            <button
+              onClick={() => setSelectedAsrama('Semua')}
+              className={`w-full py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                selectedAsrama === 'Semua'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-slate-200 dark:border-slate-800'
+              }`}
+            >
+              🏠 Semua Asrama
+            </button>
+            {/* Asrama tabs — wrap equally */}
+            <div className="flex flex-wrap gap-2">
+              {ASRAMA_LIST.map((tab) => {
+                const asramaVal = tab === 'Tahfid' ? 'Asrama Tahfid' : `Asrama ${tab}`;
+                const isSelected = selectedAsrama === asramaVal || (tab !== 'Tahfid' && selectedAsrama === tab);
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setSelectedAsrama(asramaVal)}
+                    className={`flex-1 min-w-[80px] py-2 rounded-2xl text-xs font-bold transition-all ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white shadow-md scale-105'
+                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-slate-200 dark:border-slate-800'
+                    }`}
+                  >
+                    {tab === 'Tahfid' ? 'Tahfid' : `Asrama ${tab}`}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        )}
-
-        {/* Pengurus/Pengasuh: Badge asrama terkunci */}
-        {!canSwitchAsrama && userAsrama && (
-          <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-emerald-600 text-white font-extrabold text-xs rounded-xl w-full">
-              <MapPin size={14} />
+        ) : (
+          /* Pengurus/Pengasuh: Badge asrama terkunci (rapi seperti kebersihan) */
+          <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 w-full text-center">
+            <div className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow-sm w-full">
+              <MapPin size={16} />
               <span>{displayAsramaName}</span>
             </div>
           </div>
