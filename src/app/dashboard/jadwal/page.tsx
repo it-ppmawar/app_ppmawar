@@ -71,7 +71,6 @@ function TimeInput({
 
   return (
     <div className="w-full flex items-center justify-center gap-1 px-2.5 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus-within:ring-2 focus-within:ring-green-500 focus-within:border-green-500 transition-all">
-      <Clock size={14} className="text-gray-400 shrink-0" />
       <input
         type="text"
         inputMode="numeric"

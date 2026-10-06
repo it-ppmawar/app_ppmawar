@@ -1169,10 +1169,10 @@ function InputAbsenContent() {
 
       {/* Error Banner (Radius / Simpan gagal / Info santri) */}
       {errorMsg && (
-        <div className="bg-red-50 dark:bg-red-900/30 border-2 border-red-400 dark:border-red-600 rounded-2xl p-4 flex items-start gap-3 animate-in slide-in-from-top duration-300">
-          <AlertTriangle size={22} className="text-red-500 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-red-700 dark:text-red-300 font-bold text-sm">
+        <div className="bg-red-50 dark:bg-red-900/30 border-2 border-red-400 dark:border-red-600 rounded-2xl p-4 animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={18} className="text-red-500 shrink-0" />
+            <p className="text-red-700 dark:text-red-300 font-bold text-sm flex-1">
               {errorMsg.toLowerCase().includes('jarak') || errorMsg.toLowerCase().includes('radius')
                 ? 'Absensi Ditolak (Di Luar Radius)'
                 : errorMsg.toLowerCase().includes('gps') || errorMsg.toLowerCase().includes('lokasi')
@@ -1181,19 +1181,19 @@ function InputAbsenContent() {
                 ? 'Pemberitahuan Data Santri & Presensi'
                 : 'Absensi Tidak Dapat Disimpan'}
             </p>
-            <p className="text-red-600 dark:text-red-400 text-xs mt-0.5 leading-relaxed">
-              {errorMsg.toLowerCase().includes('keterangan') || errorMsg.toLowerCase().includes('unknown column')
-                ? 'Tidak ditemukan data santri atau kolom catatan presensi untuk jadwal ini (belum ada santri yang terdaftar pada kelas terpilih). Silakan pastikan data santri di kelas ini sudah diatur melalui menu Data Santri.'
-                : errorMsg}
-            </p>
+            <button
+              onClick={() => setErrorMsg('')}
+              className="text-red-400 hover:text-red-600 transition-colors shrink-0 p-1"
+              aria-label="Tutup notifikasi"
+            >
+              <XIcon size={18} />
+            </button>
           </div>
-          <button
-            onClick={() => setErrorMsg('')}
-            className="text-red-400 hover:text-red-600 transition-colors shrink-0 p-1"
-            aria-label="Tutup notifikasi"
-          >
-            <XIcon size={18} />
-          </button>
+          <p className="text-red-600 dark:text-red-400 text-xs mt-1.5 leading-relaxed pl-7">
+            {errorMsg.toLowerCase().includes('keterangan') || errorMsg.toLowerCase().includes('unknown column')
+              ? 'Tidak ditemukan data santri atau kolom catatan presensi untuk jadwal ini (belum ada santri yang terdaftar pada kelas terpilih). Silakan pastikan data santri di kelas ini sudah diatur melalui menu Data Santri.'
+              : errorMsg}
+          </p>
         </div>
       )}
 
@@ -1228,14 +1228,14 @@ function InputAbsenContent() {
 
       {/* 1. Error Alert Interaktif Lokasi (Dengan Bantuan GPS) */}
       {locationError && (
-        <div className="bg-rose-50 dark:bg-rose-950/90 border border-rose-200 dark:border-rose-500/60 text-rose-800 dark:text-rose-200 p-4 rounded-2xl space-y-2.5 shadow-sm animate-in fade-in duration-200">
+        <div className="bg-rose-50 dark:bg-rose-950/90 border border-rose-200 dark:border-rose-500/60 text-rose-800 dark:text-rose-200 p-4 rounded-2xl shadow-sm animate-in fade-in duration-200">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-rose-500 dark:text-rose-400 flex-shrink-0" />
-            <p className="font-bold text-xs text-rose-900 dark:text-rose-100">
+            <p className="font-bold text-xs text-rose-900 dark:text-rose-100 flex-1">
               Perhatian: Izin Lokasi (GPS) Diperlukan
             </p>
           </div>
-          <p className="text-xs text-rose-700 dark:text-rose-200/90 leading-relaxed pl-7">
+          <p className="text-xs text-rose-700 dark:text-rose-200/90 leading-relaxed pl-7 mt-1.5">
             {locationError}
           </p>
 
