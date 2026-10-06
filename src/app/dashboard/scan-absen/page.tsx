@@ -485,26 +485,56 @@ function ScanAbsenInner() {
     }
   }, [scanMode]);
 
-  // Auto-scroll ke posisi dropdown target absensi & kamera agar seluruh tombol kamera dan dropdown terlihat utuh
+  // Auto-scroll ke posisi kamera agar seluruh tampilan kamera & ujung bawahnya terlihat utuh di layar HP
   const scrollToCamera = useCallback(() => {
     const doScroll = () => {
-      // Prioritaskan scroll ke posisi dropdown target absensi agar pilihan target absensi
-      // dan seluruh kotak kamera (tombol alih kamera & tutup) terlihat secara utuh di bawah navbar
-      const targetEl = targetDropdownRef.current || cameraContainerRef.current;
-      if (!targetEl) return;
-      const rect = targetEl.getBoundingClientRect();
-      // Berikan offset 75px untuk floating navbar di HP agar dropdown dan tombol kamera terlihat utuh
-      const targetScrollY = window.scrollY + rect.top - 75;
+      const cameraEl = cameraContainerRef.current;
+      if (!cameraEl) return;
+
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const rect = cameraEl.getBoundingClientRect();
+      const cameraTopAbsolute = window.scrollY + rect.top;
+
+      // Ambil elemen kotak layar kamera (video Face AI atau container reader QR)
+      const cameraBox = videoRef.current?.parentElement || document.getElementById('reader')?.parentElement || cameraEl;
+      const boxRect = cameraBox.getBoundingClientRect();
+      const cameraBoxBottomAbsolute = window.scrollY + boxRect.bottom;
+
+      // Deteksi posisi navbar bawah jika ada
+      const bottomNav = document.querySelector('nav.fixed.bottom-0');
+      const bottomNavTop = bottomNav ? bottomNav.getBoundingClientRect().top : (window.innerHeight - 70);
+
+      // Target scroll Y dasar:
+      // Di layar HP: default offset ~25px di bawah batas atas viewport (lebih turun/tambah scroll dibanding sebelumnya ~75px)
+      // agar posisi kamera turun dan ujung bawah layar kamera terlihat utuh (seperti diminta di Foto 1).
+      // Di layar Desktop: default offset ~80px agar berada pas di bawah header sticky.
+      const defaultTopOffset = isMobile ? 25 : 80;
+      let targetScrollY = cameraTopAbsolute - defaultTopOffset;
+
+      // Jika di layar HP ujung bawah layar kamera masih menabrak atau tertutup navbar bawah,
+      // tambahkan scroll ke bawah agar ujung bawah kamera memiliki jarak aman (~20px) di atas navbar bawah
+      if (isMobile) {
+        const safeBottomOffset = 20; // Jarak aman ujung bawah kamera di atas navbar bawah
+        const scrollNeededForBottom = cameraBoxBottomAbsolute - (bottomNavTop - safeBottomOffset);
+
+        if (scrollNeededForBottom > targetScrollY) {
+          // Batasi scroll maksimal agar tombol alih kamera & tutup di header kartu tetap terlihat dan tidak terpotong navbar atas
+          const maxScroll = cameraTopAbsolute - 5;
+          targetScrollY = Math.min(scrollNeededForBottom, maxScroll);
+        }
+      }
+
       window.scrollTo({
         top: Math.max(0, targetScrollY),
         behavior: 'smooth',
       });
     };
 
-    // Jalankan segera dan ulangi setelah video stream ter-render penuh oleh browser
+    // Jalankan bertahap untuk mengantisipasi transisi dan saat video stream ter-render penuh oleh browser
     setTimeout(doScroll, 100);
     setTimeout(doScroll, 400);
     setTimeout(doScroll, 800);
+    setTimeout(doScroll, 1200);
   }, []);
 
   // ── QR SCANNER ────────────────────────────────────────────────────
@@ -1225,6 +1255,7 @@ function ScanAbsenInner() {
                     </div>
                   )}
                   <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover"
+                    onLoadedMetadata={() => scrollToCamera()}
                     style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
                   <canvas ref={canvasRef} className="hidden" />
                 </div>
