@@ -390,7 +390,7 @@ function QuickAbsenContent() {
     const allAttended = sakit.length === 0 && izin.length === 0 && alpha.length === 0 && total > 0;
     let doaMsg = '';
     if (allAttended) {
-      doaMsg = `_MasyaAllah, seluruh santri hadir 100%! Semoga senantiasa istiqomah & dianugerahi ilmu yang bermanfaat serta barokah oleh ALLAH Subhaanahu Wata'aala. اللهم آمين._`;
+      doaMsg = `_الحمد لله الذي بنعمته تتم الصالحات, ما شاء الله_\n_seluruh santri hadir 100%! Semoga senantiasa istiqomah & dianugerahi ilmu yang bermanfaat serta barokah oleh ALLAH Subhaanahu Wata'aala,_\n_اللهم آمين_`;
     } else {
       const parts: string[] = [];
       if (sakit.length > 0) parts.push('yang sakit lekas diberikan kesembuhan & keafiatan');
