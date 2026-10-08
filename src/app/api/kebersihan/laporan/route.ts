@@ -48,7 +48,19 @@ export async function GET(request: Request) {
     }
 
     if (['admin', 'staff', 'petugas_kebersihan_umum', 'petugas_umum', 'petugas_sarpras'].includes(role)) {
-      if (asramaFilter && asramaFilter !== 'semua') {
+      if (role === 'staff') {
+        // Staff putra/putri: filter berdasarkan wilayah dengan rumus baku terpusat
+        const { resolveStaffWilayah, getStaffWilayahDetails } = await import('@/lib/auth/resolveAsrama');
+        const wilayah = await resolveStaffWilayah(userId, role, username || '', tokenAsrama);
+        const details = getStaffWilayahDetails(wilayah);
+        if (details.isRestricted) {
+          conditions.push(details.kebersihanCondition);
+        }
+        if (asramaFilter && asramaFilter !== 'semua') {
+          conditions.push('(k.asrama = ? OR k.asrama = ?)');
+          params.push(asramaFilter, asramaFilter.replace('Asrama ', ''));
+        }
+      } else if (asramaFilter && asramaFilter !== 'semua') {
         conditions.push('(k.asrama = ? OR k.asrama = ?)');
         params.push(asramaFilter, asramaFilter.replace('Asrama ', ''));
       }

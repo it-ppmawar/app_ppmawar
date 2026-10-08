@@ -102,6 +102,14 @@ export default function KuponMakanPage() {
   const [canSwitchAsrama, setCanSwitchAsrama] = useState<boolean>(false);
   const [totalSantriLunas, setTotalSantriLunas] = useState<number>(0);
 
+  const isStaffPutri = (userAsrama || '').toLowerCase().includes('putri');
+  const isStaffPutra = (userAsrama || '').toLowerCase().includes('putra') || userAsrama === 'Asrama A';
+  const visibleAsramaList = isStaffPutri
+    ? ['B', 'C', 'D', 'E', 'F', 'Tahfid']
+    : isStaffPutra
+    ? ['A']
+    : ASRAMA_LIST;
+
   // Animasi progress bar interaktif saat memuat data E-Kupon Makan
   useEffect(() => {
     let progressTimer: NodeJS.Timeout;
@@ -631,11 +639,11 @@ export default function KuponMakanPage() {
                   : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 border border-slate-200 dark:border-slate-800'
               }`}
             >
-              🏠 Semua Asrama
+              Semua Asrama
             </button>
             {/* Asrama tabs — wrap equally */}
             <div className="flex flex-wrap gap-2">
-              {ASRAMA_LIST.map((tab) => {
+              {visibleAsramaList.map((tab) => {
                 const asramaVal = tab === 'Tahfid' ? 'Asrama Tahfid' : `Asrama ${tab}`;
                 const isSelected = selectedAsrama === asramaVal || (tab !== 'Tahfid' && selectedAsrama === tab);
                 return (

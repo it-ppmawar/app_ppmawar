@@ -16,7 +16,7 @@ export async function GET() {
     const { role, guruId, muridId, userId, username } = payload;
     const tokenAsrama = payload.namaAsrama || null;
 
-    const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
+    const { resolveAsrama, resolveStaffWilayah } = await import('@/lib/auth/resolveAsrama');
     const namaAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
 
     let whereClauseMadin = '1=1';
@@ -39,6 +39,17 @@ export async function GET() {
         whereClauseQuran = '0=1';
         whereClauseKegiatan = '0=1';
       }
+    } else if (role === 'staff') {
+      // Staff putra/putri: filter berdasarkan wilayah dengan rumus baku terpusat
+      const { getStaffWilayahDetails } = await import('@/lib/auth/resolveAsrama');
+      const wilayah = await resolveStaffWilayah(userId, role, username || '', tokenAsrama);
+      const details = getStaffWilayahDetails(wilayah);
+      if (details.isRestricted) {
+        whereClauseMadin = `LOWER(k.nama_kelas) LIKE '%${details.kelasKeyword}%'`;
+        whereClauseQuran = `LOWER(k.nama_kelas) LIKE '%${details.kelasKeyword}%'`;
+        whereClauseKegiatan = details.kamarCondition;
+      }
+      // wilayah === null: staff umum — tidak ada filter (lihat semua)
     } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (namaAsrama) {
           // Jadwal Madin: kelas yang ada santri dari asrama ini

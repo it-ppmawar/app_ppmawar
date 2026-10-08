@@ -37,6 +37,14 @@ export async function GET(request: Request) {
       }
       whereClause += ' AND (i.asrama = ? OR i.asrama = ?)';
       params.push(myAsrama, myAsrama.replace('Asrama ', ''));
+    } else if (role === 'staff') {
+      // Staff putra/putri: filter berdasarkan wilayah dengan rumus baku terpusat
+      const { resolveStaffWilayah, getStaffWilayahDetails } = await import('@/lib/auth/resolveAsrama');
+      const wilayah = await resolveStaffWilayah(userId, role, username || '', tokenAsrama);
+      const details = getStaffWilayahDetails(wilayah);
+      if (details.isRestricted) {
+        whereClause += ` AND ${details.inventarisCondition}`;
+      }
     }
 
     if (filterStatus) {

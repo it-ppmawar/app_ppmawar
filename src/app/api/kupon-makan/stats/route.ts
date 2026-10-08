@@ -65,7 +65,9 @@ export async function GET(request: NextRequest) {
 
     // --- Resolve asrama user (RBAC) ---
     const { payload, role, isPengasuhOrPengurus, userId } = auth as any;
-    const canSwitchAsrama = ['admin', 'staff'].includes(role);
+    // Staff umum (tanpa wilayah) bisa switch asrama; staff putra/putri tidak bisa
+    // Ditentukan setelah resolve wilayah di bawah
+    let canSwitchAsrama = ['admin', 'staff'].includes(role);
 
     // Resolve user's bound asrama (if any)
     let userAsrama: string | null = null;
@@ -78,14 +80,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Resolve wilayah untuk staff putra/putri
+    let staffWilayah: 'putra' | 'putri' | null = null;
+    if (role === 'staff') {
+      const { resolveStaffWilayah } = await import('@/lib/auth/resolveAsrama');
+      staffWilayah = await resolveStaffWilayah(userId, role, payload.username || '', payload.asrama || payload.namaAsrama || null);
+      if (staffWilayah === 'putra') {
+        canSwitchAsrama = false;
+        userAsrama = 'Asrama A';
+      } else if (staffWilayah === 'putri') {
+        canSwitchAsrama = true;
+        userAsrama = 'Putri';
+      }
+    }
+
     // Active asrama filter: forced for non-admin/staff, chosen by admin/staff
     let activeAsrama: string | null = null;
     if (!canSwitchAsrama) {
-      // Pengurus/Pengasuh: always use their own asrama
+      // Pengurus/Pengasuh atau Staff Putra: always use their own asrama
       activeAsrama = userAsrama;
     } else {
-      // Admin/Staff: use requested param, default to 'Semua'
-      activeAsrama = asramaParam && asramaParam !== 'Semua' ? asramaParam : null;
+      // Admin/Staff Putri: use requested param, default to 'Semua'
+      if (staffWilayah === 'putri' && asramaParam && (asramaParam === 'Asrama A' || asramaParam === 'A')) {
+        activeAsrama = null;
+      } else {
+        activeAsrama = asramaParam && asramaParam !== 'Semua' ? asramaParam : null;
+      }
     }
 
     // Build asrama SQL condition for riwayat_makan & murid queries
@@ -100,6 +120,34 @@ export async function GET(request: NextRequest) {
 
     // Condition for riwayat_makan table (has `asrama` column like 'Asrama A' or 'A')
     const buildRiwayatAsramaCond = (): [string, any[]] => {
+      if (staffWilayah === 'putra') {
+        if (!activeAsramaLetter) {
+          return [
+            `((r.asrama = 'Asrama A' OR r.asrama = 'A' OR r.asrama LIKE 'Asrama A%') OR r.murid_id IN (SELECT m.murid_id FROM murid m WHERE m.jenis_kelamin IN ('Laki-laki', 'L')))`,
+            []
+          ];
+        }
+        return [
+          `(r.asrama = 'Asrama A' OR r.asrama = 'A' OR r.asrama LIKE 'Asrama A%')`,
+          []
+        ];
+      }
+      if (staffWilayah === 'putri') {
+        if (!activeAsramaLetter) {
+          return [
+            `((r.asrama != 'Asrama A' AND r.asrama != 'A' AND r.asrama NOT LIKE 'Asrama A%' AND r.asrama IS NOT NULL AND r.asrama != '') OR r.murid_id IN (SELECT m.murid_id FROM murid m WHERE m.jenis_kelamin IN ('Perempuan', 'P')))`,
+            []
+          ];
+        }
+        const fullName = activeAsramaLetter.toLowerCase() === 'tahfid'
+          ? 'Asrama Tahfid'
+          : `Asrama ${activeAsramaLetter}`;
+        return [
+          `(r.asrama = ? OR r.asrama = ? OR r.asrama LIKE ?)`,
+          [fullName, activeAsramaLetter, `Asrama ${activeAsramaLetter}%`]
+        ];
+      }
+
       if (!activeAsramaLetter) return ['1=1', []];
       const fullName = activeAsramaLetter.toLowerCase() === 'tahfid'
         ? 'Asrama Tahfid'
@@ -171,6 +219,19 @@ export async function GET(request: NextRequest) {
           : `Asrama ${activeAsramaLetter}`;
         asramaWhere = `(b.asrama = ? OR b.asrama = ? OR b.asrama LIKE ?)`;
         asramaParams = [fullName, activeAsramaLetter, `Asrama ${activeAsramaLetter}%`];
+        // Jika staff wilayah aktif, tambahkan filter jenis kelamin
+        if (staffWilayah) {
+          const genderSql = staffWilayah === 'putra'
+            ? "b.nis IN (SELECT nis FROM murid WHERE jenis_kelamin IN ('Laki-laki', 'L'))"
+            : "b.nis IN (SELECT nis FROM murid WHERE jenis_kelamin IN ('Perempuan', 'P'))";
+          asramaWhere += ` AND ${genderSql}`;
+        }
+      } else if (staffWilayah) {
+        // Staff wilayah tanpa filter asrama spesifik: filter berdasarkan wilayah/jenis kelamin
+        const genderSql = staffWilayah === 'putra'
+          ? "(b.asrama = 'Asrama A' OR b.asrama = 'A' OR b.asrama LIKE 'Asrama A%' OR b.nis IN (SELECT nis FROM murid WHERE jenis_kelamin IN ('Laki-laki', 'L')))"
+          : "((b.asrama != 'Asrama A' AND b.asrama != 'A' AND b.asrama NOT LIKE 'Asrama A%') OR b.nis IN (SELECT nis FROM murid WHERE jenis_kelamin IN ('Perempuan', 'P')))";
+        asramaWhere = genderSql;
       }
 
       const [breakdownRows] = await pool.query<RowDataPacket[]>(

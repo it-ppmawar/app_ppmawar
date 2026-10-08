@@ -3,7 +3,7 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
-import { resolveAsrama } from '@/lib/auth/resolveAsrama';
+import { resolveAsrama, resolveStaffWilayah } from '@/lib/auth/resolveAsrama';
 
 export async function GET() {
   try {
@@ -76,6 +76,16 @@ export async function GET() {
 
       queryKegiatan += ` AND j.guru_id = ?`;
       paramsKegiatan.push(guruId);
+    } else if (role === 'staff') {
+      // Staff putra/putri: filter berdasarkan wilayah dengan rumus baku terpusat
+      const { getStaffWilayahDetails } = await import('@/lib/auth/resolveAsrama');
+      const wilayah = await resolveStaffWilayah(userId, role, username || '', tokenAsrama);
+      const details = getStaffWilayahDetails(wilayah);
+      if (details.isRestricted) {
+        queryMadin += ` AND LOWER(m.nama_kelas) LIKE '%${details.kelasKeyword}%'`;
+        queryQuran += ` AND LOWER(q.nama_kelas) LIKE '%${details.kelasKeyword}%'`;
+        queryKegiatan += ` AND ${details.kamarCondition}`;
+      }
     } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       if (namaAsrama) {
         if (role === 'pengasuh') {

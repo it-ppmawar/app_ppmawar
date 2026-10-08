@@ -82,6 +82,11 @@ export default function InventarisPage() {
            setUser(data.user);
           const role = data.user.role || '';
           const asrm = data.user.asrama || '';
+          const staffAsr = ((asrm || '') + ' ' + (data.user.username || '')).toLowerCase();
+          const isPutra = role === 'staff' && (staffAsr.includes('putra') || staffAsr.includes('asrama a') || staffAsr === 'a');
+          if (isPutra) {
+            setActiveTab('A');
+          }
           // Pengurus/pengasuh asrama + petugas inventaris per-asrama → set tab ke asrama mereka
           if (
             role === 'pengurus_asrama' || role === 'pengasuh' ||
@@ -271,19 +276,27 @@ export default function InventarisPage() {
     return true;
   });
 
-  const dorms = ['Semua', 'A', 'B', 'C', 'D', 'E', 'F', 'Tahfid'];
+  const staffAsr = ((user?.asrama || '') + ' ' + (user?.username || '')).toLowerCase();
+  const isStaffPutra = user?.role === 'staff' && (staffAsr.includes('putra') || staffAsr.includes('asrama a') || staffAsr === 'a');
+  const isStaffPutri = user?.role === 'staff' && (staffAsr.includes('putri') || staffAsr.includes('asrama b') || staffAsr.includes('asrama c') || staffAsr.includes('asrama d') || staffAsr.includes('asrama e') || staffAsr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f', 'tahfid'].includes((user?.asrama || '').toLowerCase().trim()));
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'staff';
+  const dorms = isStaffPutra
+    ? ['A']
+    : isStaffPutri
+    ? ['Semua', 'B', 'C', 'D', 'E', 'F', 'Tahfid']
+    : ['Semua', 'A', 'B', 'C', 'D', 'E', 'F', 'Tahfid'];
+
+  const isAdmin = user?.role === 'admin' || (user?.role === 'staff' && !isStaffPutra && !isStaffPutri);
   const uRoleLower = (user?.role || '').toLowerCase();
   const isPengasuhOrPengurus = ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || user?.is_pengasuh || user?.isPengasuh || user?.is_pengurus_asrama || user?.isPengurusAsrama || (user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama));
   const isPetugas = uRoleLower.includes('petugas');
   const isPetugasAsrama = isPetugas && !uRoleLower.includes('umum') && (!!user?.asrama || user?.username?.includes('asrama'));
-  const isRestrictedAsrama = !isAdmin && (isPengasuhOrPengurus || isPetugasAsrama || (!!user?.asrama && user.asrama !== 'Semua'));
-  const canAddDelete = isAdmin || isPengasuhOrPengurus || isPetugasAsrama;
+  const isRestrictedAsrama = isStaffPutra || (!isAdmin && (isPengasuhOrPengurus || isPetugasAsrama || (!!user?.asrama && user.asrama !== 'Semua' && !isStaffPutri)));
+  const canAddDelete = user?.role === 'admin' || user?.role === 'staff' || isPengasuhOrPengurus || isPetugasAsrama;
   const canAdd = canAddDelete;
   const canEdit = canAddDelete || isPetugas;
   const canUpdateLaporan = canAddDelete || isPetugas;
-  const showAllTabs = isAdmin || (isPetugas && !isPetugasAsrama && !user?.asrama);
+  const showAllTabs = !isRestrictedAsrama && (isAdmin || isStaffPutri || (isPetugas && !isPetugasAsrama && !user?.asrama));
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20 fade-in">

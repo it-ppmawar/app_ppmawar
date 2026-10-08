@@ -42,6 +42,19 @@ export async function GET(request: Request) {
       // asrama string in db usually "A", "B", "Tahfid", or "Asrama A" etc.
       whereClause += ' AND (i.asrama = ? OR i.asrama = ?)';
       params.push(myAsrama, myAsrama.replace('Asrama ', ''));
+    } else if (role === 'staff') {
+      // Staff putra/putri: filter data inventaris hanya ke asrama di wilayahnya dengan rumus baku terpusat
+      const { resolveStaffWilayah, getStaffWilayahDetails } = await import('@/lib/auth/resolveAsrama');
+      const wilayah = await resolveStaffWilayah(userId, role, username || '', tokenAsrama);
+      const details = getStaffWilayahDetails(wilayah);
+      if (details.isRestricted) {
+        whereClause += ` AND ${details.inventarisCondition}`;
+      }
+      // wilayah === null: staff umum — lihat semua
+      if (filterAsrama) {
+        whereClause += ' AND (i.asrama = ? OR i.asrama = ?)';
+        params.push(filterAsrama, filterAsrama.replace('Asrama ', ''));
+      }
     } else if (filterAsrama) {
       whereClause += ' AND (i.asrama = ? OR i.asrama = ?)';
       params.push(filterAsrama, filterAsrama.replace('Asrama ', ''));
@@ -96,6 +109,19 @@ export async function POST(request: Request) {
     
     if (!nama_barang || !kategori || !asrama) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
+    }
+
+    if (payload.role === 'staff') {
+      const { resolveStaffWilayah, getStaffWilayahDetails } = await import('@/lib/auth/resolveAsrama');
+      const wilayah = await resolveStaffWilayah(payload.userId, payload.role, payload.username || '', payload.namaAsrama || null);
+      const details = getStaffWilayahDetails(wilayah);
+      if (details.isRestricted) {
+        const normAsr = (asrama || '').replace('Asrama ', '').trim().toUpperCase();
+        const isAllowed = details.dorms.map(d => d.toUpperCase()).includes(normAsr);
+        if (!isAllowed) {
+          return NextResponse.json({ error: `Akses ditolak: Anda hanya dapat menambahkan inventaris wilayah ${details.wilayah}` }, { status: 403 });
+        }
+      }
     }
 
     await pool.execute(

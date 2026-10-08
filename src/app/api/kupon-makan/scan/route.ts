@@ -63,9 +63,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Tentukan apakah operator memiliki batasan asrama
-    const canSwitchAsrama = ['admin', 'staff'].includes(role);
+    let canSwitchAsrama = role === 'admin';
     let operatorAsrama: string | null = null;
-    if (!canSwitchAsrama) {
+    let staffWilayah: 'putra' | 'putri' | null = null;
+
+    if (role === 'staff') {
+      const { resolveStaffWilayah } = await import('@/lib/auth/resolveAsrama');
+      staffWilayah = await resolveStaffWilayah(userId, role, payload.username || '', payload.asrama || payload.namaAsrama || null);
+      if (!staffWilayah) {
+        canSwitchAsrama = true; // Staff umum
+      } else {
+        operatorAsrama = staffWilayah === 'putra' ? 'Asrama A' : 'Asrama Putri';
+      }
+    } else if (!canSwitchAsrama) {
       try {
         operatorAsrama = await resolveAsrama(
           userId,
@@ -100,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     // 1. CARI DATA SANTRI (Berdasarkan barcode_id atau NIS)
     let [muridRows] = await pool.query<RowDataPacket[]>(
-      `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.foto, 
+      `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.foto, m.jenis_kelamin,
               k.nama_asrama, k.nama_kamar 
        FROM murid m 
        LEFT JOIN kamar k ON m.kamar_id = k.kamar_id 
@@ -112,7 +122,7 @@ export async function POST(request: NextRequest) {
     // Fallback jika belum ketemu dan digit >= 5
     if (muridRows.length === 0 && digitsOnly.length >= 5) {
       [muridRows] = await pool.query<RowDataPacket[]>(
-        `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.foto, 
+        `SELECT m.murid_id, m.nama, m.nis, m.barcode_id, m.foto, m.jenis_kelamin,
                 k.nama_asrama, k.nama_kamar 
          FROM murid m 
          LEFT JOIN kamar k ON m.kamar_id = k.kamar_id 
@@ -133,6 +143,25 @@ export async function POST(request: NextRequest) {
     const santri = muridRows[0];
     const santriAsrama = santri.nama_asrama ? (santri.nama_asrama.startsWith('Asrama') ? santri.nama_asrama : `Asrama ${santri.nama_asrama}`) : '-';
     const santriKamar = santri.nama_kamar || '-';
+
+    // Cek batas wilayah untuk Staff Putra/Putri
+    if (staffWilayah) {
+      const isLaki = santri.jenis_kelamin === 'Laki-laki' || santri.jenis_kelamin === 'L' || santriAsrama === 'Asrama A';
+      if (staffWilayah === 'putra' && !isLaki) {
+        return NextResponse.json({
+          success: false,
+          status: 'DITOLAK_WILAYAH',
+          message: 'Akses ditolak: Anda hanya memiliki izin untuk memindai kupon santri Putra.'
+        }, { status: 403 });
+      }
+      if (staffWilayah === 'putri' && isLaki) {
+        return NextResponse.json({
+          success: false,
+          status: 'DITOLAK_WILAYAH',
+          message: 'Akses ditolak: Anda hanya memiliki izin untuk memindai kupon santri Putri.'
+        }, { status: 403 });
+      }
+    }
 
     // Cek cross-asrama warning: pengurus/pengasuh scan santri dari asrama berbeda
     let crossAsramaWarning = false;

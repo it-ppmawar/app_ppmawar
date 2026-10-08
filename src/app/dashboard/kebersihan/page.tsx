@@ -94,15 +94,25 @@ export default function KebersIhanPage() {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'staff';
+  const staffAsr = ((user?.asrama || '') + ' ' + (user?.username || '')).toLowerCase();
+  const isStaffPutra = user?.role === 'staff' && (staffAsr.includes('putra') || staffAsr.includes('asrama a') || staffAsr === 'a');
+  const isStaffPutri = user?.role === 'staff' && (staffAsr.includes('putri') || staffAsr.includes('asrama b') || staffAsr.includes('asrama c') || staffAsr.includes('asrama d') || staffAsr.includes('asrama e') || staffAsr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f', 'tahfid'].includes((user?.asrama || '').toLowerCase().trim()));
+
+  const visibleAsramaList = isStaffPutra
+    ? ['A']
+    : isStaffPutri
+    ? ['B', 'C', 'D', 'E', 'F', 'Tahfid']
+    : ASRAMA_LIST;
+
+  const isAdmin = user?.role === 'admin' || (user?.role === 'staff' && !isStaffPutra && !isStaffPutri);
   const isDoubleRoleAsrama = user?.role === 'guru' && (user?.is_pengasuh || user?.is_pengurus_asrama);
   const uRoleLower = (user?.role || '').toLowerCase();
   const isPengasuhOrPengurus = ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || user?.is_pengasuh || user?.isPengasuh || user?.is_pengurus_asrama || user?.isPengurusAsrama || isDoubleRoleAsrama;
   const isPetugas = uRoleLower.includes('petugas');
   const isPetugasAsrama = isPetugas && !uRoleLower.includes('umum') && (!!user?.asrama || user?.username?.includes('asrama'));
-  const isRestrictedAsrama = !isAdmin && (isPengasuhOrPengurus || isPetugasAsrama || (!!user?.asrama && user.asrama !== 'Semua'));
-  const canAdd = isAdmin || isPengasuhOrPengurus || isPetugasAsrama;
-  const showAllTabs = isAdmin || (isPetugas && !isPetugasAsrama && !user?.asrama);
+  const isRestrictedAsrama = isStaffPutra || (!isAdmin && (isPengasuhOrPengurus || isPetugasAsrama || (!!user?.asrama && user.asrama !== 'Semua' && !isStaffPutri)));
+  const canAdd = user?.role === 'admin' || user?.role === 'staff' || isPengasuhOrPengurus || isPetugasAsrama;
+  const showAllTabs = !isRestrictedAsrama && (isAdmin || isStaffPutri || (isPetugas && !isPetugasAsrama && !user?.asrama));
   const isPengasuhOrAdmin = isAdmin || isPetugas || ['pengurus_asrama', 'pengasuh'].includes(uRoleLower) || isDoubleRoleAsrama;
 
   useEffect(() => {
@@ -113,6 +123,11 @@ export default function KebersIhanPage() {
           setUser(d.user);
           const uRole = (d.user.role || '').toLowerCase();
           const uAsrm = d.user.asrama || '';
+          const sAsr = ((uAsrm || '') + ' ' + (d.user.username || '')).toLowerCase();
+          const isPutraUser = uRole === 'staff' && (sAsr.includes('putra') || sAsr.includes('asrama a') || sAsr === 'a');
+          if (isPutraUser) {
+            setActiveTab('A');
+          }
           if (
             uRole === 'pengurus_asrama' || uRole === 'pengasuh' ||
             (uRole === 'guru' && (d.user.is_pengasuh || d.user.is_pengurus_asrama || uAsrm)) ||
@@ -426,7 +441,7 @@ export default function KebersIhanPage() {
           </button>
           {/* Asrama tabs — wrap equally */}
           <div className="flex flex-wrap gap-2">
-            {ASRAMA_LIST.map(tab => (
+            {visibleAsramaList.map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
