@@ -1,3 +1,4 @@
+# Re-deploy dipicu: 2026-10-08 untuk memulihkan app.ppmawar.or.id
 name: Deploy Next.js to cPanel
 
 on:
