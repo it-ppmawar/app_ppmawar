@@ -1193,38 +1193,41 @@ export default function PenilaianRaportPage() {
                       ) : (
                         filteredAndSortedMurid.map((m, idx) => {
                       const cur = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+                      const fotoUrl = getFotoUrl(m.foto);
 
                       return (
                         <tr key={m.murid_id} className="hover:bg-amber-50/40 dark:hover:bg-gray-700/40 transition-colors">
                           <td className="py-3 px-3 text-center text-gray-500 font-semibold">{idx + 1}</td>
 
-                          {/* Kolom Foto Santri (Avatar Lokal + Foto Mitra + Zoom Klik) */}
+                          {/* Kolom Foto Santri (Persis Pola Halaman Rekapitulasi) */}
                           <td className="py-2.5 px-2 text-center">
                             <div
-                              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full mx-auto overflow-hidden relative shadow-2xs border border-gray-200 dark:border-gray-700 ${m.foto && m.foto !== '-' ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                              onClick={() => m.foto && m.foto !== '-' ? setZoomPhoto(getFotoUrl(m.foto)) : null}
-                              title={m.foto && m.foto !== '-' ? 'Klik untuk memperbesar foto' : m.nama}
+                              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full mx-auto overflow-hidden relative border border-gray-200 dark:border-gray-700 shadow-2xs ${
+                                fotoUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''
+                              }`}
+                              onClick={() => (fotoUrl ? setZoomPhoto(fotoUrl) : null)}
+                              title={fotoUrl ? 'Klik untuk memperbesar foto' : m.nama}
                             >
-                              {/* Avatar inisial lokal — selalu tampil sebagai background */}
-                              <div
-                                className="absolute inset-0 flex items-center justify-center"
-                                style={{ backgroundColor: getAvatarColor(m.nama) }}
-                              >
-                                <span className="text-white text-[11px] font-bold leading-none">{getInitials(m.nama)}</span>
-                              </div>
-                              {/* Overlay foto santri jika ada */}
-                              {m.foto && m.foto !== '-' && (
+                              {fotoUrl ? (
                                 <img
-                                  src={getFotoUrl(m.foto)}
+                                  src={fotoUrl}
                                   alt={m.nama}
-                                  className="absolute inset-0 w-full h-full object-cover"
+                                  className="w-full h-full object-cover"
                                   onError={(e) => {
-                                    e.currentTarget.style.opacity = '0';
                                     e.currentTarget.style.display = 'none';
-                                    e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                                    const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                                    if (fallback) (fallback as HTMLElement).style.display = 'flex';
                                   }}
                                 />
-                              )}
+                              ) : null}
+                              <div
+                                className={`avatar-fallback w-full h-full flex items-center justify-center text-white text-[11px] font-bold ${
+                                  fotoUrl ? 'hidden' : ''
+                                }`}
+                                style={{ backgroundColor: getAvatarColor(m.nama) }}
+                              >
+                                {getInitials(m.nama)}
+                              </div>
                             </div>
                           </td>
 
