@@ -33,6 +33,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data: [] }, { headers: noCacheHeaders });
     }
 
+    // Jika target_id adalah Semua Kelas / Semua Kamar / Agregat, jangan tampilkan variasi mapel
+    // Cukup opsi "Semua Mapel / Semua Majlis / Semua Kegiatan" di frontend
+    const isSemuaTarget = !target_id || ['all', 'putra', 'putri', 'SEMUA'].includes(target_id) || target_id.startsWith('asrama_');
+    if (isSemuaTarget) {
+      return NextResponse.json({ success: true, data: [] }, { headers: noCacheHeaders });
+    }
+
     let rows: RowDataPacket[] = [];
 
     if (tipe === 'madin') {

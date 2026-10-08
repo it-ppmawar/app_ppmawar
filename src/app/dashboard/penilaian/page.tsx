@@ -9,9 +9,50 @@ import {
   Edit3, ArrowUpDown, ArrowUp, ArrowDown, X
 } from 'lucide-react';
 
+// ====== Avatar Lokal & URL Foto Santri (Persis Halaman Data Murid) ======
+const AVATAR_COLORS = [
+  '#2563eb', '#16a34a', '#9333ea', '#dc2626', '#ea580c',
+  '#0891b2', '#65a30d', '#7c3aed', '#db2777', '#059669',
+];
+
+const getInitials = (nama: string): string => {
+  if (!nama) return '?';
+  const parts = nama.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return nama.substring(0, 2).toUpperCase();
+};
+
+const getAvatarColor = (nama: string): string => {
+  if (!nama) return AVATAR_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < nama.length; i++) {
+    hash = nama.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+
+const getFotoUrl = (fotoName: string | null) => {
+  if (!fotoName || fotoName === '-') return '';
+  if (fotoName.startsWith('http://') || fotoName.startsWith('https://')) {
+    return fotoName;
+  }
+  if (fotoName.startsWith('foto_') || fotoName.startsWith('upload_') || fotoName.startsWith('profil_')) {
+    return `/uploads/${fotoName}`;
+  }
+  const baseUrl = process.env.NEXT_PUBLIC_API_MITRA_FOTO_URL || 'https://mawar.smartpesantren.id/sekretariat/berkas/';
+  const cleanFotoName = fotoName.startsWith('/') ? fotoName.substring(1) : fotoName;
+  if (cleanFotoName.includes('sekretariat/berkas')) {
+    return `https://mawar.smartpesantren.id/${cleanFotoName}`;
+  }
+  return `${baseUrl}${cleanFotoName}`;
+};
+
 export default function PenilaianRaportPage() {
   const [activeTab, setActiveTab] = useState<'input' | 'raport'>('input');
   const [showPetunjuk, setShowPetunjuk] = useState(false);
+  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   
   // Data Master
   const [kelasList, setKelasList] = useState<any[]>([]);
@@ -308,6 +349,16 @@ export default function PenilaianRaportPage() {
   // 1b. Reload daftar Mata Pelajaran tiap kali kelas berubah (tersinkronisasi jadwal_madin)
   useEffect(() => {
     if (!selectedKelas) return;
+
+    // Jika "Semua Kelas", kunci pilihan mapel ke "Semua Mapel" saja tanpa variasi mapel lain
+    if (isSemuaKelasMode) {
+      setIsCustomMapel(false);
+      setKurikulumList([{ id: 'SEMUA', mata_pelajaran: 'Semua Mapel', kitab: '' }]);
+      setSelectedMapel('Semua Mapel');
+      setSelectedKitab('');
+      return;
+    }
+
     const fetchMapel = async () => {
       try {
         const res = await fetch(`/api/penilaian/data?kelas_id=${selectedKelas}`);
@@ -320,7 +371,7 @@ export default function PenilaianRaportPage() {
               setSelectedMapel(mList[0].mata_pelajaran);
               setSelectedKitab(mList[0].kitab || '');
             } else {
-              setSelectedMapel('');
+              setSelectedMapel('Semua Mapel');
               setSelectedKitab('');
             }
           }
@@ -330,7 +381,7 @@ export default function PenilaianRaportPage() {
       }
     };
     fetchMapel();
-  }, [selectedKelas]);
+  }, [selectedKelas, isSemuaKelasMode]);
 
   // 2. Load Murid & Nilai saat Kelas / Mapel / Semester / Tahun berubah
   useEffect(() => {
@@ -928,6 +979,11 @@ export default function PenilaianRaportPage() {
                           </div>
                         </th>
 
+                        {/* Kolom Foto (Persis Halaman Data Murid & Rekapitulasi) */}
+                        <th className="py-3.5 px-3 w-14 text-center select-none text-gray-700 dark:text-gray-300 font-bold">
+                          Foto
+                        </th>
+
                         {/* Kolom Nama Santri + Sub-sort: Kelas, Kamar, Alamat */}
                         <th className="py-3.5 px-4 min-w-[210px]">
                           <div className="flex items-center justify-between gap-1 flex-wrap">
@@ -1122,7 +1178,7 @@ export default function PenilaianRaportPage() {
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                       {filteredAndSortedMurid.length === 0 ? (
                         <tr>
-                          <td colSpan={10} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                          <td colSpan={11} className="py-10 text-center text-gray-500 dark:text-gray-400">
                             <AlertCircle size={24} className="mx-auto text-amber-500 mb-2" />
                             <p className="font-semibold text-xs sm:text-sm">Tidak ditemukan data santri yang cocok dengan &quot;{searchQuery}&quot;</p>
                             <button
@@ -1141,6 +1197,37 @@ export default function PenilaianRaportPage() {
                       return (
                         <tr key={m.murid_id} className="hover:bg-amber-50/40 dark:hover:bg-gray-700/40 transition-colors">
                           <td className="py-3 px-3 text-center text-gray-500 font-semibold">{idx + 1}</td>
+
+                          {/* Kolom Foto Santri (Avatar Lokal + Foto Mitra + Zoom Klik) */}
+                          <td className="py-2.5 px-2 text-center">
+                            <div
+                              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full mx-auto overflow-hidden relative shadow-2xs border border-gray-200 dark:border-gray-700 ${m.foto && m.foto !== '-' ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                              onClick={() => m.foto && m.foto !== '-' ? setZoomPhoto(getFotoUrl(m.foto)) : null}
+                              title={m.foto && m.foto !== '-' ? 'Klik untuk memperbesar foto' : m.nama}
+                            >
+                              {/* Avatar inisial lokal — selalu tampil sebagai background */}
+                              <div
+                                className="absolute inset-0 flex items-center justify-center"
+                                style={{ backgroundColor: getAvatarColor(m.nama) }}
+                              >
+                                <span className="text-white text-[11px] font-bold leading-none">{getInitials(m.nama)}</span>
+                              </div>
+                              {/* Overlay foto santri jika ada */}
+                              {m.foto && m.foto !== '-' && (
+                                <img
+                                  src={getFotoUrl(m.foto)}
+                                  alt={m.nama}
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.opacity = '0';
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                                  }}
+                                />
+                              )}
+                            </div>
+                          </td>
+
                           <td className="py-3 px-4 font-bold text-gray-800 dark:text-gray-100 min-w-[160px]">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span>{m.nama}</span>
@@ -1382,8 +1469,30 @@ export default function PenilaianRaportPage() {
                                       setShowMuridDropdown(false);
                                       fetchRaportDetail(String(m.murid_id));
                                     }}
-                                    className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors ${isSelected ? 'bg-amber-50 dark:bg-amber-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/60'}`}
+                                    className={`w-full text-left px-3.5 py-2 flex items-center gap-2.5 transition-colors ${isSelected ? 'bg-amber-50 dark:bg-amber-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/60'}`}
                                   >
+                                    {/* Thumbnail Foto Santri */}
+                                    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 relative border border-gray-200 dark:border-gray-700 shadow-2xs">
+                                      <div
+                                        className="absolute inset-0 flex items-center justify-center"
+                                        style={{ backgroundColor: getAvatarColor(name) }}
+                                      >
+                                        <span className="text-white text-[10px] font-bold leading-none">{getInitials(name)}</span>
+                                      </div>
+                                      {m.foto && m.foto !== '-' && (
+                                        <img
+                                          src={getFotoUrl(m.foto)}
+                                          alt={name}
+                                          className="absolute inset-0 w-full h-full object-cover"
+                                          onError={(e) => {
+                                            e.currentTarget.style.opacity = '0';
+                                            e.currentTarget.style.display = 'none';
+                                            e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                                          }}
+                                        />
+                                      )}
+                                    </div>
+
                                     <div className="flex-1 min-w-0">
                                       <div className={`text-xs font-bold truncate ${isSelected ? 'text-amber-700 dark:text-amber-300' : 'text-gray-800 dark:text-gray-100'}`}>
                                         {highlightText(name)}
@@ -1522,35 +1631,65 @@ export default function PenilaianRaportPage() {
                   </div>
                 </div>
 
-                {/* IDENTITAS SANTRI */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-xs sm:text-sm mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
-                  <div className="space-y-1.5">
-                    <div className="flex">
-                      <span className="w-32 font-bold text-gray-600">Nama Santri</span>
-                      <span className="font-black text-gray-900">: {raportData.santri.nama}</span>
-                    </div>
-                    <div className="flex">
-                      <span className="w-32 font-bold text-gray-600">Nomor Induk (NIS)</span>
-                      <span>: {raportData.santri.nis || '-'}</span>
-                    </div>
-                    <div className="flex">
-                      <span className="w-32 font-bold text-gray-600">Kelas Madin</span>
-                      <span>: {raportData.santri.nama_kelas_madin}</span>
+                {/* IDENTITAS SANTRI DENGAN PAS FOTO RESMI */}
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
+                  {/* Pas Foto Santri Resmi */}
+                  <div className="shrink-0">
+                    <div
+                      className={`w-20 h-24 sm:w-24 sm:h-28 rounded-xl overflow-hidden relative shadow-xs border-2 border-gray-300 dark:border-gray-600 bg-gray-100 ${raportData.santri.foto && raportData.santri.foto !== '-' ? 'cursor-pointer hover:opacity-90' : ''}`}
+                      onClick={() => raportData.santri.foto && raportData.santri.foto !== '-' ? setZoomPhoto(getFotoUrl(raportData.santri.foto)) : null}
+                      title="Foto Santri (klik untuk memperbesar)"
+                    >
+                      <div
+                        className="absolute inset-0 flex items-center justify-center"
+                        style={{ backgroundColor: getAvatarColor(raportData.santri.nama) }}
+                      >
+                        <span className="text-white text-base font-bold leading-none">{getInitials(raportData.santri.nama)}</span>
+                      </div>
+                      {raportData.santri.foto && raportData.santri.foto !== '-' && (
+                        <img
+                          src={getFotoUrl(raportData.santri.foto)}
+                          alt={raportData.santri.nama}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.opacity = '0';
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <div className="flex">
-                      <span className="w-32 font-bold text-gray-600">Semester / TA</span>
-                      <span className="font-bold">: {raportData.semester === '1' ? '1 (Ganjil)' : '2 (Genap)'} / {raportData.tahun_ajaran}</span>
+                  {/* Rincian Identitas Santri */}
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-xs sm:text-sm w-full">
+                    <div className="space-y-1.5">
+                      <div className="flex">
+                        <span className="w-32 font-bold text-gray-600">Nama Santri</span>
+                        <span className="font-black text-gray-900">: {raportData.santri.nama}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="w-32 font-bold text-gray-600">Nomor Induk (NIS)</span>
+                        <span>: {raportData.santri.nis || '-'}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="w-32 font-bold text-gray-600">Kelas Madin</span>
+                        <span>: {raportData.santri.nama_kelas_madin}</span>
+                      </div>
                     </div>
-                    <div className="flex">
-                      <span className="w-32 font-bold text-gray-600">Kamar / Asrama</span>
-                      <span>: {raportData.santri.nama_kamar} ({raportData.santri.nama_asrama})</span>
-                    </div>
-                    <div className="flex">
-                      <span className="w-32 font-bold text-gray-600">Wali Kelas</span>
-                      <span>: {raportData.santri.wali_kelas || '-'}</span>
+
+                    <div className="space-y-1.5">
+                      <div className="flex">
+                        <span className="w-32 font-bold text-gray-600">Semester / TA</span>
+                        <span className="font-bold">: {raportData.semester === '1' ? '1 (Ganjil)' : '2 (Genap)'} / {raportData.tahun_ajaran}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="w-32 font-bold text-gray-600">Kamar / Asrama</span>
+                        <span>: {raportData.santri.nama_kamar} ({raportData.santri.nama_asrama})</span>
+                      </div>
+                      <div className="flex">
+                        <span className="w-32 font-bold text-gray-600">Wali Kelas</span>
+                        <span>: {raportData.santri.wali_kelas || '-'}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1793,6 +1932,24 @@ export default function PenilaianRaportPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Zoom Photo Modal (Persis Halaman Data Murid) */}
+      {zoomPhoto && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm cursor-zoom-out animate-[fadeIn_0.15s_ease-out]"
+          onClick={() => setZoomPhoto(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex items-center justify-center animate-[zoomIn_0.2s_ease-out]">
+            <img src={zoomPhoto} alt="Zoomed Foto Santri" className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" />
+            <button
+              onClick={() => setZoomPhoto(null)}
+              className="absolute -top-3 -right-3 bg-white text-black rounded-full w-8 h-8 flex items-center justify-center font-bold hover:scale-110 transition-transform shadow-lg cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
     </div>

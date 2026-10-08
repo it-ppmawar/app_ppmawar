@@ -4,6 +4,35 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Printer, BookOpen, RefreshCw } from 'lucide-react';
 
+const AVATAR_COLORS = [
+  '#2563eb', '#16a34a', '#9333ea', '#dc2626', '#ea580c',
+  '#0891b2', '#65a30d', '#7c3aed', '#db2777', '#059669',
+];
+
+const getInitials = (nama: string): string => {
+  if (!nama) return '?';
+  const parts = nama.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return nama.substring(0, 2).toUpperCase();
+};
+
+const getAvatarColor = (nama: string): string => {
+  if (!nama) return AVATAR_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < nama.length; i++) hash = nama.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+
+const getFotoUrl = (fotoName: string | null) => {
+  if (!fotoName || fotoName === '-') return '';
+  if (fotoName.startsWith('http://') || fotoName.startsWith('https://')) return fotoName;
+  if (fotoName.startsWith('foto_') || fotoName.startsWith('upload_') || fotoName.startsWith('profil_')) return `/uploads/${fotoName}`;
+  const baseUrl = process.env.NEXT_PUBLIC_API_MITRA_FOTO_URL || 'https://mawar.smartpesantren.id/sekretariat/berkas/';
+  const cleanFotoName = fotoName.startsWith('/') ? fotoName.substring(1) : fotoName;
+  if (cleanFotoName.includes('sekretariat/berkas')) return `https://mawar.smartpesantren.id/${cleanFotoName}`;
+  return `${baseUrl}${cleanFotoName}`;
+};
+
 function PreviewContent() {
   const params = useSearchParams();
   const murid_id = params.get('murid_id') || '';
@@ -81,17 +110,42 @@ function PreviewContent() {
             </div>
           </div>
 
-          {/* IDENTITAS SANTRI */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-xs sm:text-sm mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
-            <div className="space-y-1.5">
-              <div className="flex"><span className="w-36 font-bold text-gray-600">Nama Santri</span><span className="font-black text-gray-900">: {d.santri?.nama}</span></div>
-              <div className="flex"><span className="w-36 font-bold text-gray-600">Nomor Induk (NIS)</span><span>: {d.santri?.nis || '-'}</span></div>
-              <div className="flex"><span className="w-36 font-bold text-gray-600">Kelas Madin</span><span>: {d.santri?.nama_kelas_madin}</span></div>
+          {/* IDENTITAS SANTRI DENGAN PAS FOTO */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
+            {/* Pas Foto Santri */}
+            <div className="shrink-0">
+              <div className="w-20 h-24 sm:w-24 sm:h-28 rounded-xl overflow-hidden relative shadow-xs border-2 border-gray-300 bg-gray-100">
+                <div
+                  className="absolute inset-0 flex items-center justify-center"
+                  style={{ backgroundColor: getAvatarColor(d.santri?.nama || '') }}
+                >
+                  <span className="text-white text-base font-bold leading-none">{getInitials(d.santri?.nama || '')}</span>
+                </div>
+                {d.santri?.foto && d.santri.foto !== '-' && (
+                  <img
+                    src={getFotoUrl(d.santri.foto)}
+                    alt={d.santri?.nama}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.opacity = '0';
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                )}
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <div className="flex"><span className="w-36 font-bold text-gray-600">Semester / TA</span><span className="font-bold">: {semLabel} / {d.tahun_ajaran}</span></div>
-              <div className="flex"><span className="w-36 font-bold text-gray-600">Kamar / Asrama</span><span>: {d.santri?.nama_kamar} ({d.santri?.nama_asrama})</span></div>
-              <div className="flex"><span className="w-36 font-bold text-gray-600">Wali Kelas</span><span>: {d.santri?.wali_kelas || '-'}</span></div>
+
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-xs sm:text-sm w-full">
+              <div className="space-y-1.5">
+                <div className="flex"><span className="w-36 font-bold text-gray-600">Nama Santri</span><span className="font-black text-gray-900">: {d.santri?.nama}</span></div>
+                <div className="flex"><span className="w-36 font-bold text-gray-600">Nomor Induk (NIS)</span><span>: {d.santri?.nis || '-'}</span></div>
+                <div className="flex"><span className="w-36 font-bold text-gray-600">Kelas Madin</span><span>: {d.santri?.nama_kelas_madin}</span></div>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex"><span className="w-36 font-bold text-gray-600">Semester / TA</span><span className="font-bold">: {semLabel} / {d.tahun_ajaran}</span></div>
+                <div className="flex"><span className="w-36 font-bold text-gray-600">Kamar / Asrama</span><span>: {d.santri?.nama_kamar} ({d.santri?.nama_asrama})</span></div>
+                <div className="flex"><span className="w-36 font-bold text-gray-600">Wali Kelas</span><span>: {d.santri?.wali_kelas || '-'}</span></div>
+              </div>
             </div>
           </div>
 

@@ -273,6 +273,12 @@ export default function RekapitulasiPage() {
       setSubFilter('');
       return;
     }
+    const isSemuaTarget = !targetId || ['all', 'putra', 'putri', 'SEMUA'].includes(targetId) || targetId.startsWith('asrama_');
+    if (isSemuaTarget) {
+      setSubFilterOptions([]);
+      setSubFilter('');
+      return;
+    }
     setLoadingSubFilter(true);
     try {
       const qs = new URLSearchParams({ tipe, target_id: targetId }).toString();

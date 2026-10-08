@@ -112,42 +112,40 @@ export async function GET(request: Request) {
     }
 
     // 2. Ambil daftar mata pelajaran dari jadwal_madin
-    //    RBAC: Jika guru, hanya tampilkan mapel yang diajarkan guru tersebut
+    //    Jika "Semua Kelas" dipilih: hanya sediakan opsi "Semua Mapel" (mode leger kolektif)
+    //    Variasi/macam mapel hanya muncul saat filter kelas spesifik dipilih
     let kurikulumList: any[] = [];
     try {
-      let query = `SELECT DISTINCT mata_pelajaran as mata_pelajaran
-                   FROM jadwal_madin
-                   WHERE mata_pelajaran IS NOT NULL AND mata_pelajaran != ''`;
-      const params: any[] = [];
+      if (isSemuaKelas) {
+        kurikulumList = [
+          { id: 'SEMUA', mata_pelajaran: 'Semua Mapel', kitab: '' },
+        ];
+      } else {
+        let query = `SELECT DISTINCT mata_pelajaran as mata_pelajaran
+                     FROM jadwal_madin
+                     WHERE mata_pelajaran IS NOT NULL AND mata_pelajaran != '' AND kelas_madin_id = ?`;
+        const params: any[] = [kelasId];
 
-      if (!isSemuaKelas) {
-        query += ` AND kelas_madin_id = ?`;
-        params.push(kelasId);
-      } else if (role === 'guru' && guruId) {
-        // Jika Semua Kelas dan user adalah Guru: ambil mapel dari seluruh kelas ajar guru ini
-        query += ` AND kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?)`;
-        params.push(guruId);
+        if (role === 'guru' && guruId) {
+          query += ` AND guru_id = ?`;
+          params.push(guruId);
+        }
+
+        query += ` ORDER BY mata_pelajaran ASC`;
+        const [rows] = await pool.execute<RowDataPacket[]>(query, params);
+        
+        const distinctMapels = rows.map((r: any, i: number) => ({
+          id: i + 1,
+          mata_pelajaran: r.mata_pelajaran,
+          kitab: '',
+        }));
+
+        // Tambahkan opsi "Semua Mapel" di posisi pertama
+        kurikulumList = [
+          { id: 'SEMUA', mata_pelajaran: 'Semua Mapel', kitab: '' },
+          ...distinctMapels,
+        ];
       }
-
-      if (role === 'guru' && guruId) {
-        query += ` AND guru_id = ?`;
-        params.push(guruId);
-      }
-
-      query += ` ORDER BY mata_pelajaran ASC`;
-      const [rows] = await pool.execute<RowDataPacket[]>(query, params);
-      
-      const distinctMapels = rows.map((r: any, i: number) => ({
-        id: i + 1,
-        mata_pelajaran: r.mata_pelajaran,
-        kitab: '',
-      }));
-
-      // Tambahkan opsi "Semua Mapel" di posisi pertama
-      kurikulumList = [
-        { id: 'SEMUA', mata_pelajaran: 'Semua Mapel', kitab: '' },
-        ...distinctMapels,
-      ];
     } catch (err) {
       console.warn('Error fetching mapel from jadwal_madin:', err);
       kurikulumList = [{ id: 'SEMUA', mata_pelajaran: 'Semua Mapel', kitab: '' }];
@@ -196,6 +194,7 @@ export async function GET(request: Request) {
 
       const [muridRows] = await pool.execute<RowDataPacket[]>(
         `SELECT m.murid_id, m.nama, m.nis, m.jenis_kelamin,
+                COALESCE(m.foto, '') as foto,
                 COALESCE(m.alamat, '') as alamat,
                 COALESCE(k.nama_kamar, '') as nama_kamar,
                 COALESCE(k.nama_asrama, '') as nama_asrama,
@@ -206,7 +205,7 @@ export async function GET(request: Request) {
          LEFT JOIN kelas_madin km1 ON m.kelas_madin_id = km1.kelas_id
          LEFT JOIN kelas_madin km2 ON m.kelas_madin_2_id = km2.kelas_id
          ${whereMurid}
-         GROUP BY m.murid_id, m.nama, m.nis, m.jenis_kelamin, m.alamat,
+         GROUP BY m.murid_id, m.nama, m.nis, m.jenis_kelamin, m.foto, m.alamat,
                   k.nama_kamar, k.nama_asrama, km1.nama_kelas, km2.nama_kelas, m.kelas_madin_id
          ORDER BY COALESCE(km1.nama_kelas, km2.nama_kelas, '') ASC, m.nama ASC`,
         paramsMurid

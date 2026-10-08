@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     const [muridRows] = await pool.execute<RowDataPacket[]>(`
       SELECT 
         m.murid_id, m.nama, m.nis, m.jenis_kelamin, m.nama_wali, m.no_hp_wali,
+        COALESCE(m.foto, '') as foto,
         COALESCE(km.nama_kelas, '-') as nama_kelas_madin,
         COALESCE(km.nama_kelas, '-') as tingkat_madin,
         COALESCE(kq.nama_kelas, '-') as nama_kelas_quran,
