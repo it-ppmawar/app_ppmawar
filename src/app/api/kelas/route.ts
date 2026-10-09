@@ -91,8 +91,8 @@ export async function GET(request: Request) {
     } else if (role !== 'admin' && role !== 'staff') {
       if (muridId) {
         if (actualType === 'madin') {
-          whereClause = `WHERE k.kelas_id = (SELECT kelas_madin_id FROM murid WHERE murid_id = ? LIMIT 1)`;
-          params = [muridId];
+          whereClause = `WHERE (k.kelas_id = (SELECT kelas_madin_id FROM murid WHERE murid_id = ? LIMIT 1) OR k.kelas_id = (SELECT kelas_madin_2_id FROM murid WHERE murid_id = ? LIMIT 1))`;
+          params = [muridId, muridId];
         } else if (actualType === 'quran') {
           whereClause = `WHERE k.id = (SELECT kelas_quran_id FROM murid WHERE murid_id = ? LIMIT 1)`;
           params = [muridId];

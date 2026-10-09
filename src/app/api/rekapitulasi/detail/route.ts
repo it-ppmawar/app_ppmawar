@@ -24,12 +24,16 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const tipe = searchParams.get("tipe") || "madin";
-    const murid_id = searchParams.get("murid_id");
-    const guru_id = searchParams.get("guru_id");
-    const bulan = searchParams.get("bulan");
-    const tahun = searchParams.get("tahun");
-    const tanggal_dari = searchParams.get("tanggal_dari");
-    const tanggal_sampai = searchParams.get("tanggal_sampai");
+    let murid_id = searchParams.get("murid_id");
+    let guru_id = searchParams.get("guru_id");
+
+    if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
+      if (!payload.muridId) {
+        return NextResponse.json({ error: "Murid ID tidak valid" }, { status: 400, headers: noCacheHeaders });
+      }
+      murid_id = String(payload.muridId);
+      guru_id = null; // Wali murid tidak boleh mengakses detail presensi guru
+    }
 
     if (!murid_id && !guru_id) {
       return NextResponse.json({ error: "murid_id atau guru_id diperlukan" }, { status: 400, headers: noCacheHeaders });

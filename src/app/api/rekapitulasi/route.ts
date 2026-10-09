@@ -39,60 +39,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data: [] }, { headers: noCacheHeaders });
     }
 
-    // Wali Murid & Wali Alumni Logic (akses rekap anak masing-masing)
+    // Wali Murid & Wali Alumni Logic: pastikan muridId valid
     if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
       if (!payload.muridId) return NextResponse.json({ error: 'Murid ID tidak valid' }, { status: 400, headers: noCacheHeaders });
-      
-      const muridId = payload.muridId;
-
-      let dateCondMadin = 'MONTH(tanggal) = ? AND YEAR(tanggal) = ?';
-      let dateCondQuran = 'MONTH(tanggal) = ? AND YEAR(tanggal) = ?';
-      let dateCondKegiatan = 'MONTH(tanggal) = ? AND YEAR(tanggal) = ?';
-      let dateParamsMadin = [muridId, bulan, tahun];
-      let dateParamsQuran = [muridId, bulan, tahun];
-      let dateParamsKegiatan = [muridId, bulan, tahun];
-
-      if (isRentang) {
-        dateCondMadin = 'tanggal BETWEEN ? AND ?';
-        dateCondQuran = 'tanggal BETWEEN ? AND ?';
-        dateCondKegiatan = 'tanggal BETWEEN ? AND ?';
-        dateParamsMadin = [muridId, tanggal_dari, tanggal_sampai];
-        dateParamsQuran = [muridId, tanggal_dari, tanggal_sampai];
-        dateParamsKegiatan = [muridId, tanggal_dari, tanggal_sampai];
-      }
-
-      const [madinRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT 'Madin' as tipe, 
-          SUM(CASE WHEN LOWER(status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
-          SUM(CASE WHEN LOWER(status) = 'izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN LOWER(status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') OR status = '' OR status IS NULL THEN 1 ELSE 0 END) as alpha
-         FROM absensi WHERE murid_id = ? AND ${dateCondMadin}`,
-        dateParamsMadin
-      );
-      const [quranRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT 'Quran' as tipe, 
-          SUM(CASE WHEN LOWER(status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
-          SUM(CASE WHEN LOWER(status) = 'izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN LOWER(status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') OR status = '' OR status IS NULL THEN 1 ELSE 0 END) as alpha
-         FROM absensi_quran WHERE murid_id = ? AND ${dateCondQuran}`,
-        dateParamsQuran
-      );
-      const [kegiatanRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT 'Kegiatan' as tipe, 
-          SUM(CASE WHEN LOWER(status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
-          SUM(CASE WHEN LOWER(status) = 'izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN LOWER(status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') OR status = '' OR status IS NULL THEN 1 ELSE 0 END) as alpha
-         FROM absensi_kegiatan WHERE murid_id = ? AND ${dateCondKegiatan}`,
-        dateParamsKegiatan
-      );
-
-      return NextResponse.json({
-        success: true,
-        data: [madinRows[0], quranRows[0], kegiatanRows[0]]
-      }, { headers: noCacheHeaders });
     }
 
     // Admin/Staff/Guru Logic
@@ -118,7 +67,9 @@ export async function GET(request: Request) {
     let params: any[] = [];
 
     if (tipe === 'madin') {
-      if (!target_id) return NextResponse.json({ error: 'Pilih Kelas Madin' }, { status: 400, headers: noCacheHeaders });
+      if (!target_id && payload.role !== 'wali_murid' && payload.role !== 'wali_alumni') {
+        return NextResponse.json({ error: 'Pilih Kelas Madin' }, { status: 400, headers: noCacheHeaders });
+      }
 
       const { cond: subDateCond, params: subDateParams } = makeDateCond('tanggal');
       const { cond: scanDateCond, params: scanDateParams } = makeDateCond('ak.tanggal');
@@ -127,7 +78,10 @@ export async function GET(request: Request) {
       let whereCond = 'WHERE (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?)';
       let whereParams: any[] = [target_id, target_id];
 
-      if (target_id === 'all') {
+      if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
+        whereCond = 'WHERE m.murid_id = ?';
+        whereParams = [payload.muridId];
+      } else if (target_id === 'all') {
         if (payload.role === 'guru' && payload.guruId) {
           whereCond = 'WHERE (m.kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?) OR m.kelas_madin_2_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?) OR km.guru_id = ?)';
           whereParams = [payload.guruId, payload.guruId, payload.guruId];
@@ -175,7 +129,9 @@ export async function GET(request: Request) {
         ORDER BY m.nama ASC
       `;
     } else if (tipe === 'quran') {
-      if (!target_id) return NextResponse.json({ error: "Pilih Kelas Qur'an" }, { status: 400, headers: noCacheHeaders });
+      if (!target_id && payload.role !== 'wali_murid' && payload.role !== 'wali_alumni') {
+        return NextResponse.json({ error: "Pilih Kelas Qur'an" }, { status: 400, headers: noCacheHeaders });
+      }
 
       const { cond: subDateCond, params: subDateParams } = makeDateCond('tanggal');
       const { cond: scanDateCond, params: scanDateParams } = makeDateCond('ak.tanggal');
@@ -184,7 +140,10 @@ export async function GET(request: Request) {
       let whereCond = 'WHERE m.kelas_quran_id = ?';
       let whereParams: any[] = [target_id];
 
-      if (target_id === 'all') {
+      if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
+        whereCond = 'WHERE m.murid_id = ?';
+        whereParams = [payload.muridId];
+      } else if (target_id === 'all') {
         if (payload.role === 'guru' && payload.guruId) {
           whereCond = 'WHERE (m.kelas_quran_id IN (SELECT kelas_quran_id FROM jadwal_quran WHERE guru_id = ?) OR kq.guru_id = ?)';
           whereParams = [payload.guruId, payload.guruId];
@@ -231,7 +190,9 @@ export async function GET(request: Request) {
         ORDER BY m.nama ASC
       `;
     } else if (tipe === 'kegiatan') {
-      if (!target_id) return NextResponse.json({ error: 'Pilih Kamar Asrama' }, { status: 400, headers: noCacheHeaders });
+      if (!target_id && payload.role !== 'wali_murid' && payload.role !== 'wali_alumni') {
+        return NextResponse.json({ error: 'Pilih Kamar Asrama' }, { status: 400, headers: noCacheHeaders });
+      }
 
       // Auto-fix: Perbaiki tanggal di absensi_kamar jika sempat salah akibat timezone UTC offset
       try {
@@ -260,7 +221,10 @@ export async function GET(request: Request) {
       let whereCond = 'WHERE m.kamar_id = ?';
       let whereParams: any[] = [target_id];
 
-      if (target_id === 'all') {
+      if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
+        whereCond = 'WHERE m.murid_id = ?';
+        whereParams = [payload.muridId];
+      } else if (target_id === 'all') {
         whereCond = 'WHERE m.kamar_id IS NOT NULL';
         whereParams = [];
       } else if (target_id.startsWith('asrama_')) {

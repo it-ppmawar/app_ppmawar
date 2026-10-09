@@ -175,33 +175,29 @@ export default function RekapitulasiPage() {
           setRole(userRole);
           setIsPengasuh(userIsPengasuh);
 
-          if (userRole === 'wali_murid' || userRole === 'wali_alumni') {
-            // Auto fetch for wali murid / wali alumni
-            fetchRekap(true);
-          } else {
-            const isFullRole = ['admin', 'staff'].includes(userRole);
-            let allowedTipes = ['madin', 'quran', 'kegiatan'];
+          const isFullRole = ['admin', 'staff'].includes(userRole);
+          let allowedTipes = ['madin', 'quran', 'kegiatan'];
 
-            if (!isFullRole && jadwalData.success && Array.isArray(jadwalData.data)) {
-              const activeTipes = (['madin', 'quran', 'kegiatan'] as const).filter(t =>
-                jadwalData.data.some((j: any) => j.tipe === t)
-              );
-              if (activeTipes.length > 0) {
-                allowedTipes = activeTipes;
-              }
+          if (!isFullRole && jadwalData.success && Array.isArray(jadwalData.data)) {
+            const activeTipes = (['madin', 'quran', 'kegiatan'] as const).filter(t =>
+              jadwalData.data.some((j: any) => j.tipe === t)
+            );
+            if (activeTipes.length > 0) {
+              allowedTipes = activeTipes;
             }
-
-            setAvailableTipes(allowedTipes);
-            const initialTipe = allowedTipes.includes('madin') ? 'madin' : allowedTipes[0];
-            setFilter(prev => ({ ...prev, tipe: initialTipe }));
-            loadOptions(initialTipe);
           }
+
+          setAvailableTipes(allowedTipes);
+          const initialTipe = allowedTipes.includes('madin') ? 'madin' : allowedTipes[0];
+          setFilter(prev => ({ ...prev, tipe: initialTipe }));
+          loadOptions(initialTipe, userRole);
         }
       })
       .catch(() => setErrorMsg('Gagal memverifikasi akses'));
   }, []);
 
-  const loadOptions = async (tipe: string) => {
+  const loadOptions = async (tipe: string, currentRole?: string) => {
+    const activeRole = currentRole || role;
     // Special handling for dewan_guru: fixed list of homebases
     if (tipe === 'dewan_guru') {
       const homebases = [
@@ -254,14 +250,31 @@ export default function RekapitulasiPage() {
         }
 
         setOptions(optData);
+        let targetId = optData[0].id.toString();
         if (tipe === 'guru') {
+          targetId = 'all';
           setFilter(prev => ({ ...prev, target_id: 'all' })); // Default to all gurus
         } else {
-          setFilter(prev => ({ ...prev, target_id: optData[0].id.toString() }));
+          setFilter(prev => ({ ...prev, target_id: targetId }));
+        }
+
+        if (['madin', 'quran', 'kegiatan'].includes(tipe)) {
+          loadSubFilterOptions(tipe, targetId);
+        }
+
+        if (activeRole === 'wali_murid' || activeRole === 'wali_alumni') {
+          fetchRekap({ tipe, target_id: targetId });
         }
       } else {
-        setOptions([]);
-        setFilter(prev => ({ ...prev, target_id: '' }));
+        if (activeRole === 'wali_murid' || activeRole === 'wali_alumni') {
+          const fallbackOpt = [{ id: 'my_child', nama: 'Santri Anda' }];
+          setOptions(fallbackOpt);
+          setFilter(prev => ({ ...prev, target_id: 'my_child' }));
+          fetchRekap({ tipe, target_id: 'my_child' });
+        } else {
+          setOptions([]);
+          setFilter(prev => ({ ...prev, target_id: '' }));
+        }
       }
     } catch (e) {
       console.error(e);
@@ -317,8 +330,10 @@ export default function RekapitulasiPage() {
     loadOptions(t);
   };
 
-  const fetchRekap = async (isWaliMurid = false) => {
-    if (!isWaliMurid && !filter.target_id) {
+  const fetchRekap = async (customFilter?: Partial<typeof filter>) => {
+    const activeFilter = { ...filter, ...(customFilter || {}) };
+    const isWali = role === 'wali_murid' || role === 'wali_alumni';
+    if (!isWali && !activeFilter.target_id) {
       setErrorMsg('Silakan pilih kelas/kamar/target terlebih dahulu');
       return;
     }
@@ -330,19 +345,19 @@ export default function RekapitulasiPage() {
       let qs: string;
       if (modeRentang) {
         const p = new URLSearchParams({
-          tipe: filter.tipe,
-          target_id: filter.target_id,
-          tanggal_dari: filter.tanggal_dari,
-          tanggal_sampai: filter.tanggal_sampai,
+          tipe: activeFilter.tipe,
+          target_id: activeFilter.target_id || '',
+          tanggal_dari: activeFilter.tanggal_dari,
+          tanggal_sampai: activeFilter.tanggal_sampai,
         });
         if (subFilter) p.set('sub_filter', subFilter);
         qs = p.toString();
       } else {
         const p = new URLSearchParams({
-          tipe: filter.tipe,
-          target_id: filter.target_id,
-          bulan: filter.bulan,
-          tahun: filter.tahun,
+          tipe: activeFilter.tipe,
+          target_id: activeFilter.target_id || '',
+          bulan: activeFilter.bulan,
+          tahun: activeFilter.tahun,
         });
         if (subFilter) p.set('sub_filter', subFilter);
         qs = p.toString();
@@ -695,59 +710,6 @@ export default function RekapitulasiPage() {
     }
   };
 
-  if (role === 'wali_murid' || role === 'wali_alumni') {
-    return (
-      <div className="space-y-6 max-w-4xl mx-auto pb-20">
-        <div className="bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-indigo-900/40 dark:to-blue-900/40 rounded-3xl p-6 shadow-sm border border-indigo-200 dark:border-indigo-800/50 relative overflow-hidden transition-colors duration-300">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 text-indigo-200/50 dark:text-indigo-800/30">
-            <FileText size={120} />
-          </div>
-          <div className="relative z-10">
-            <h1 className="text-2xl font-extrabold text-indigo-800 dark:text-indigo-400 drop-shadow-sm flex items-center gap-2">
-              <FileText size={28} /> Rekapitulasi {role === 'wali_alumni' ? 'Alumni' : 'Anak'} Anda
-            </h1>
-            <p className="text-indigo-600 dark:text-indigo-300 text-sm mt-1 font-medium max-w-md">
-              {role === 'wali_alumni' ? 'Laporan ringkas kehadiran anak Anda semasa masih aktif di pesantren.' : 'Laporan ringkas kehadiran santri bulan ini.'}
-            </p>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-20 text-indigo-500 font-bold animate-pulse">Memuat rekap...</div>
-        ) : errorMsg ? (
-          <div className="bg-red-50 text-red-600 p-4 rounded-xl text-center font-bold">{errorMsg}</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {data.map((item, i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
-                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-4 pb-2 border-b dark:border-gray-700">{item.tipe}</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-600 dark:text-green-400 font-bold">Hadir</span>
-                    <span className="bg-gray-100 dark:bg-gray-900 px-3 py-1 rounded-lg font-mono font-bold">{item.hadir || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-blue-600 dark:text-blue-400 font-bold">Izin</span>
-                    <span className="bg-gray-100 dark:bg-gray-900 px-3 py-1 rounded-lg font-mono font-bold">{item.izin || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-orange-600 dark:text-orange-400 font-bold">Sakit</span>
-                    <span className="bg-gray-100 dark:bg-gray-900 px-3 py-1 rounded-lg font-mono font-bold">{item.sakit || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-red-600 dark:text-red-400 font-bold">Alpha</span>
-                    <span className="bg-gray-100 dark:bg-gray-900 px-3 py-1 rounded-lg font-mono font-bold">{item.alpha || 0}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // View for Admin, Staff, Guru
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-20">
       <div className="bg-gradient-to-br from-purple-50 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 rounded-3xl p-6 shadow-sm border border-purple-200 dark:border-purple-800/50 relative overflow-hidden transition-colors duration-300">
@@ -757,10 +719,12 @@ export default function RekapitulasiPage() {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-purple-800 dark:text-purple-400 drop-shadow-sm flex items-center gap-2">
-              <FileText size={28} /> Laporan Rekapitulasi
+              <FileText size={28} /> {role === 'wali_alumni' ? 'Rekapitulasi Alumni' : role === 'wali_murid' ? 'Rekapitulasi Santri' : 'Laporan Rekapitulasi'}
             </h1>
             <p className="text-purple-600 dark:text-purple-300 text-sm mt-1 font-medium max-w-md">
-              Filter dan lihat laporan rekap kehadiran kelas dan guru.
+              {role === 'wali_murid' || role === 'wali_alumni'
+                ? 'Filter dan pantau laporan rekapitulasi kehadiran santri/anak Anda.'
+                : 'Filter dan lihat laporan rekap kehadiran kelas dan guru.'}
             </p>
           </div>
           <div className="grid grid-cols-3 md:flex w-full md:w-auto gap-2 self-start md:self-center">
