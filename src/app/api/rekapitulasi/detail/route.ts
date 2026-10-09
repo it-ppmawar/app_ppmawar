@@ -26,6 +26,12 @@ export async function GET(request: Request) {
     const tipe = searchParams.get("tipe") || "madin";
     let murid_id = searchParams.get("murid_id");
     let guru_id = searchParams.get("guru_id");
+    const now = new Date();
+    const bulan = searchParams.get("bulan") || String(now.getMonth() + 1);
+    const tahun = searchParams.get("tahun") || String(now.getFullYear());
+    const tanggal_dari = searchParams.get("tanggal_dari");
+    const tanggal_sampai = searchParams.get("tanggal_sampai");
+    const sub_filter = searchParams.get("sub_filter") || "";
 
     if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
       if (!payload.muridId) {
@@ -156,6 +162,11 @@ export async function GET(request: Request) {
     if (tipe === "madin" && murid_id) {
       const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const dateParams: any[] = isRentang ? [murid_id, tanggal_dari, tanggal_sampai] : [murid_id, bulan, tahun];
+      let subFilterWhere = "";
+      if (sub_filter && sub_filter.trim() !== "") {
+        subFilterWhere = " AND jm.mata_pelajaran = ?";
+        dateParams.push(sub_filter.trim());
+      }
       const [result] = await pool.execute<RowDataPacket[]>(
         `SELECT a.tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
           COALESCE(jm.hari, "") as hari,
@@ -169,7 +180,7 @@ export async function GET(request: Request) {
          LEFT JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
          LEFT JOIN kelas_madin km ON jm.kelas_madin_id = km.kelas_id
          LEFT JOIN guru g ON jm.guru_id = g.guru_id
-         WHERE a.murid_id = ? AND ${dateWhere}
+         WHERE a.murid_id = ? AND ${dateWhere}${subFilterWhere}
          ORDER BY a.tanggal DESC, jm.jam_mulai ASC`,
         dateParams
       );
@@ -177,6 +188,11 @@ export async function GET(request: Request) {
     } else if (tipe === "quran" && murid_id) {
       const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const dateParams: any[] = isRentang ? [murid_id, tanggal_dari, tanggal_sampai] : [murid_id, bulan, tahun];
+      let subFilterWhere = "";
+      if (sub_filter && sub_filter.trim() !== "") {
+        subFilterWhere = " AND jq.mata_pelajaran = ?";
+        dateParams.push(sub_filter.trim());
+      }
       const [result] = await pool.execute<RowDataPacket[]>(
         `SELECT a.tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
           COALESCE(jq.hari, "") as hari,
@@ -190,7 +206,7 @@ export async function GET(request: Request) {
          LEFT JOIN jadwal_quran jq ON a.jadwal_quran_id = jq.id
          LEFT JOIN kelas_quran kq ON jq.kelas_quran_id = kq.id
          LEFT JOIN guru g ON jq.guru_id = g.guru_id
-         WHERE a.murid_id = ? AND ${dateWhere}
+         WHERE a.murid_id = ? AND ${dateWhere}${subFilterWhere}
          ORDER BY a.tanggal DESC, jq.jam_mulai ASC`,
         dateParams
       );
@@ -198,6 +214,11 @@ export async function GET(request: Request) {
     } else if (tipe === "kegiatan" && murid_id) {
       const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const dateParams: any[] = isRentang ? [murid_id, tanggal_dari, tanggal_sampai] : [murid_id, bulan, tahun];
+      let subFilterWhere = "";
+      if (sub_filter && sub_filter.trim() !== "") {
+        subFilterWhere = " AND jk.nama_kegiatan = ?";
+        dateParams.push(sub_filter.trim());
+      }
       const [result] = await pool.execute<RowDataPacket[]>(
         `SELECT a.tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
           COALESCE(jk.hari, "") as hari,
@@ -211,7 +232,7 @@ export async function GET(request: Request) {
          LEFT JOIN jadwal_kegiatan jk ON a.kegiatan_id = jk.kegiatan_id
          LEFT JOIN kamar k ON jk.kamar_id = k.kamar_id
          LEFT JOIN guru g ON jk.guru_id = g.guru_id
-         WHERE a.murid_id = ? AND ${dateWhere}
+         WHERE a.murid_id = ? AND ${dateWhere}${subFilterWhere}
          ORDER BY a.tanggal DESC, jk.jam_mulai ASC`,
         dateParams
       );
