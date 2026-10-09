@@ -162,6 +162,10 @@ export default function RekapitulasiPage() {
   const [subFilterOptions, setSubFilterOptions] = useState<string[]>([]);
   const [loadingSubFilter, setLoadingSubFilter] = useState(false);
 
+  // Data timeline riwayat aktivitas presensi santri (khusus akun wali santri)
+  const [timelineData, setTimelineData] = useState<any[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = useState(false);
+
   useEffect(() => {
     // Check User Role & Fetch User's Jadwal
     Promise.all([
@@ -330,6 +334,40 @@ export default function RekapitulasiPage() {
     loadOptions(t);
   };
 
+  const fetchTimeline = async (muridId: number | string, activeFilter: any) => {
+    setLoadingTimeline(true);
+    try {
+      const p = new URLSearchParams({
+        tipe: activeFilter.tipe,
+        murid_id: String(muridId),
+        ...(modeRentang ? {
+          tanggal_dari: activeFilter.tanggal_dari,
+          tanggal_sampai: activeFilter.tanggal_sampai,
+        } : {
+          bulan: activeFilter.bulan,
+          tahun: activeFilter.tahun,
+        })
+      });
+      if (subFilter) p.set('sub_filter', subFilter);
+      const res = await fetch(`/api/rekapitulasi/detail?${p.toString()}`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const sorted = [...json.data].sort((a: any, b: any) => {
+          const dtA = `${a.tanggal || ''} ${a.jam_mulai || ''}`;
+          const dtB = `${b.tanggal || ''} ${b.jam_mulai || ''}`;
+          return dtB.localeCompare(dtA);
+        });
+        setTimelineData(sorted);
+      } else {
+        setTimelineData([]);
+      }
+    } catch {
+      setTimelineData([]);
+    } finally {
+      setLoadingTimeline(false);
+    }
+  };
+
   const fetchRekap = async (customFilter?: Partial<typeof filter>) => {
     const activeFilter = { ...filter, ...(customFilter || {}) };
     const isWali = role === 'wali_murid' || role === 'wali_alumni';
@@ -367,11 +405,18 @@ export default function RekapitulasiPage() {
       if (json.success) {
         setData(json.data);
         setSelectedIds(json.data.map((d: any) => d.id));
+        if (isWali && json.data.length > 0) {
+          fetchTimeline(json.data[0].id, activeFilter);
+        } else {
+          setTimelineData([]);
+        }
       } else {
         setErrorMsg(json.error);
+        setTimelineData([]);
       }
     } catch (e) {
       setErrorMsg('Terjadi kesalahan jaringan');
+      setTimelineData([]);
     } finally {
       setLoading(false);
     }
@@ -493,21 +538,29 @@ export default function RekapitulasiPage() {
     const pctSakit = totalPresensi > 0 ? (totalSakit / totalPresensi) * 100 : 0;
     const pctAlpha = totalPresensi > 0 ? (totalAlpha / totalPresensi) * 100 : 0;
 
-    // Kategori Individu berdasarkan persentase kehadiran
+    // Kategori Individu berdasarkan kepatuhan kehadiran & catatan pelanggaran (Alpha)
     const tierPrima = filteredData.filter(d => {
       const tot = Number(d.hadir || 0) + Number(d.izin || 0) + Number(d.sakit || 0) + Number(d.alpha || 0);
-      return tot > 0 && (Number(d.hadir || 0) / tot) >= 0.90;
+      if (tot === 0) return false;
+      const alpha = Number(d.alpha || 0);
+      const pctHadir = Number(d.hadir || 0) / tot;
+      // Prima jika kehadiran murni >= 90% ATAU (nihil alpha dan kehadiran terkonfirmasi dengan hadir mayoritas)
+      return (pctHadir >= 0.90) || (alpha === 0 && (Number(d.hadir || 0) + Number(d.izin || 0) + Number(d.sakit || 0)) === tot && pctHadir >= 0.50);
     });
     const tierCukup = filteredData.filter(d => {
       const tot = Number(d.hadir || 0) + Number(d.izin || 0) + Number(d.sakit || 0) + Number(d.alpha || 0);
       if (tot === 0) return false;
-      const pct = Number(d.hadir || 0) / tot;
-      return pct >= 0.75 && pct < 0.90;
+      const alpha = Number(d.alpha || 0);
+      const pctHadir = Number(d.hadir || 0) / tot;
+      // Jika alpha === 0 tapi belum masuk prima, otomatis masuk Cukup (izin/sakit resmi terkonfirmasi)
+      if (alpha === 0 && !tierPrima.some(p => p.id === d.id)) return true;
+      return pctHadir >= 0.75 && pctHadir < 0.90 && alpha <= 1;
     });
     const tierKurang = filteredData.filter(d => {
       const tot = Number(d.hadir || 0) + Number(d.izin || 0) + Number(d.sakit || 0) + Number(d.alpha || 0);
-      if (tot === 0) return true;
-      return (Number(d.hadir || 0) / tot) < 0.75;
+      if (tot === 0) return false;
+      // Hanya masuk Perlu Perhatian jika ada Alpha > 0 dan belum masuk kategori prima atau cukup
+      return !tierPrima.some(p => p.id === d.id) && !tierCukup.some(c => c.id === d.id);
     });
 
     // Top individu dengan catatan Alpha terbanyak (perlu perhatian / pembinaan)
@@ -1329,256 +1382,417 @@ export default function RekapitulasiPage() {
                     </div>
                   </div>
 
-                  {/* Card 2: Distribusi Kedisiplinan Individu */}
-                  <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
-                            <BarChart3 size={18} />
+                  {/* Card 2: Timeline Kehadiran (untuk Wali Santri) ATAU Distribusi Kedisiplinan (untuk Guru/Admin/Staf) */}
+                  {role === 'wali_murid' || role === 'wali_alumni' ? (
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+                              <Clock size={18} />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-sm text-gray-800 dark:text-white">Timeline Riwayat Kehadiran</h4>
+                              <p className="text-[11px] text-gray-400">Alur kronologis aktivitas absensi santri</p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-bold text-sm text-gray-800 dark:text-white">Distribusi Kedisiplinan</h4>
-                            <p className="text-[11px] text-gray-400">Klasifikasi tingkat kehadiran per individu</p>
-                          </div>
+                          <span className="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/40">
+                            {timelineData.length} Pertemuan
+                          </span>
                         </div>
-                        <span className="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                          {statsSummary.totalOrang} {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'Guru' : 'Santri'}
-                        </span>
+
+                        {loadingTimeline ? (
+                          <div className="py-12 text-center text-gray-400 flex flex-col items-center gap-2">
+                            <Loader2 size={24} className="animate-spin text-purple-600" />
+                            <span className="text-xs font-medium">Memuat alur riwayat presensi...</span>
+                          </div>
+                        ) : timelineData.length === 0 ? (
+                          <div className="py-10 text-center bg-gray-50/60 dark:bg-gray-900/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                            <CalendarDays size={28} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                              Belum ada catatan aktivitas presensi pada periode ini.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1">
+                            {timelineData.map((item: any, idx: number) => {
+                              const st = (item.status || '').toLowerCase();
+                              const isHadir = st === 'hadir';
+                              const isIzin = st === 'izin';
+                              const isSakit = st === 'sakit';
+
+                              const badgeColor = isHadir
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40'
+                                : isIzin
+                                ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/40'
+                                : isSakit
+                                ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/40'
+                                : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/40';
+
+                              const dotColor = isHadir ? 'bg-emerald-500' : isIzin ? 'bg-blue-500' : isSakit ? 'bg-orange-500' : 'bg-red-500';
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className="flex items-start gap-3 p-3 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 hover:bg-gray-100/70 dark:hover:bg-gray-900/80 transition-all text-xs"
+                                >
+                                  {/* Indicator dot */}
+                                  <div className="mt-1 flex flex-col items-center">
+                                    <span className={`w-2.5 h-2.5 rounded-full ${dotColor} ring-4 ring-white dark:ring-gray-800 shrink-0`} />
+                                  </div>
+
+                                  {/* Content */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                                      <span className="font-extrabold text-gray-800 dark:text-gray-100 truncate">
+                                        {item.mata_pelajaran || item.nama_sesi || 'Kegiatan'}
+                                      </span>
+                                      <span className={`px-2 py-0.5 rounded-md font-extrabold text-[10px] uppercase border shrink-0 ${badgeColor}`}>
+                                        {item.status || 'Alpha'}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+                                      <span>{item.hari}, {item.tanggal}</span>
+                                      {item.jam_mulai && (
+                                        <>
+                                          <span>•</span>
+                                          <span>{item.jam_mulai}{item.jam_selesai ? ` - ${item.jam_selesai}` : ''}</span>
+                                        </>
+                                      )}
+                                    </div>
+
+                                    {item.keterangan && (
+                                      <div className="mt-1 text-[11px] text-gray-600 dark:text-gray-300 bg-white/80 dark:bg-gray-800/80 px-2 py-1 rounded-lg border border-gray-100 dark:border-gray-700/50">
+                                        <span className="font-semibold text-gray-400">Ket:</span> {item.keterangan}
+                                      </div>
+                                    )}
+
+                                    {item.penginput && (
+                                      <div className="mt-0.5 text-[10px] text-gray-400">
+                                        Dicatat: {item.penginput}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-
-                      <div className="space-y-4">
-                        {/* Tier 1: Prima */}
-                        <div>
-                          <div className="flex justify-between items-center text-xs font-bold mb-1">
-                            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
-                              <span className="text-emerald-500">🌟</span> Kehadiran Prima (≥ 90%)
-                            </span>
-                            <span className="text-gray-500 dark:text-gray-400">
-                              <strong className="text-emerald-600 dark:text-emerald-400">{statsSummary.tierPrima.length}</strong> orang ({statsSummary.totalOrang > 0 ? ((statsSummary.tierPrima.length / statsSummary.totalOrang) * 100).toFixed(0) : 0}%)
-                            </span>
+                    </div>
+                  ) : (
+                    /* Card 2: Distribusi Kedisiplinan Individu (Untuk Guru, Admin, Staf) */
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+                              <BarChart3 size={18} />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-sm text-gray-800 dark:text-white">Distribusi Kedisiplinan</h4>
+                              <p className="text-[11px] text-gray-400">Klasifikasi tingkat kehadiran per individu</p>
+                            </div>
                           </div>
-                          <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2.5 overflow-hidden">
-                            <div
-                              className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                              style={{ width: `${statsSummary.totalOrang > 0 ? (statsSummary.tierPrima.length / statsSummary.totalOrang) * 100 : 0}%` }}
-                            />
-                          </div>
-                          <p className="text-[10px] text-gray-400 mt-1">Sangat disiplin dan konsisten hadir</p>
+                          <span className="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                            {statsSummary.totalOrang} {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'Guru' : 'Santri'}
+                          </span>
                         </div>
 
-                        {/* Tier 2: Cukup */}
-                        <div>
-                          <div className="flex justify-between items-center text-xs font-bold mb-1">
-                            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
-                              <span className="text-amber-500">🟡</span> Kehadiran Cukup (75% – 89%)
-                            </span>
-                            <span className="text-gray-500 dark:text-gray-400">
-                              <strong className="text-amber-600 dark:text-amber-400">{statsSummary.tierCukup.length}</strong> orang ({statsSummary.totalOrang > 0 ? ((statsSummary.tierCukup.length / statsSummary.totalOrang) * 100).toFixed(0) : 0}%)
-                            </span>
+                        <div className="space-y-4">
+                          {/* Tier 1: Prima */}
+                          <div>
+                            <div className="flex justify-between items-center text-xs font-bold mb-1">
+                              <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
+                                <span className="text-emerald-500">🌟</span> Kehadiran Prima (≥ 90%)
+                              </span>
+                              <span className="text-gray-500 dark:text-gray-400">
+                                <strong className="text-emerald-600 dark:text-emerald-400">{statsSummary.tierPrima.length}</strong> orang ({statsSummary.totalOrang > 0 ? ((statsSummary.tierPrima.length / statsSummary.totalOrang) * 100).toFixed(0) : 0}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2.5 overflow-hidden">
+                              <div
+                                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                style={{ width: `${statsSummary.totalOrang > 0 ? (statsSummary.tierPrima.length / statsSummary.totalOrang) * 100 : 0}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-1">Sangat disiplin dan konsisten hadir</p>
                           </div>
-                          <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2.5 overflow-hidden">
-                            <div
-                              className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                              style={{ width: `${statsSummary.totalOrang > 0 ? (statsSummary.tierCukup.length / statsSummary.totalOrang) * 100 : 0}%` }}
-                            />
-                          </div>
-                          <p className="text-[10px] text-gray-400 mt-1">Tingkat kehadiran wajar dengan izin/sakit</p>
-                        </div>
 
-                        {/* Tier 3: Kurang / Perlu Perhatian */}
-                        <div>
-                          <div className="flex justify-between items-center text-xs font-bold mb-1">
-                            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
-                              <span className="text-rose-500">🔴</span> Perlu Perhatian (&lt; 75%)
-                            </span>
-                            <span className="text-gray-500 dark:text-gray-400">
-                              <strong className="text-rose-600 dark:text-rose-400">{statsSummary.tierKurang.length}</strong> orang ({statsSummary.totalOrang > 0 ? ((statsSummary.tierKurang.length / statsSummary.totalOrang) * 100).toFixed(0) : 0}%)
-                            </span>
+                          {/* Tier 2: Cukup */}
+                          <div>
+                            <div className="flex justify-between items-center text-xs font-bold mb-1">
+                              <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
+                                <span className="text-amber-500">🟡</span> Kehadiran Cukup (75% – 89%)
+                              </span>
+                              <span className="text-gray-500 dark:text-gray-400">
+                                <strong className="text-amber-600 dark:text-amber-400">{statsSummary.tierCukup.length}</strong> orang ({statsSummary.totalOrang > 0 ? ((statsSummary.tierCukup.length / statsSummary.totalOrang) * 100).toFixed(0) : 0}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2.5 overflow-hidden">
+                              <div
+                                className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                                style={{ width: `${statsSummary.totalOrang > 0 ? (statsSummary.tierCukup.length / statsSummary.totalOrang) * 100 : 0}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-1">Tingkat kehadiran wajar dengan izin/sakit</p>
                           </div>
-                          <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2.5 overflow-hidden">
-                            <div
-                              className="bg-rose-500 h-full rounded-full transition-all duration-500"
-                              style={{ width: `${statsSummary.totalOrang > 0 ? (statsSummary.tierKurang.length / statsSummary.totalOrang) * 100 : 0}%` }}
-                            />
+
+                          {/* Tier 3: Kurang / Perlu Perhatian */}
+                          <div>
+                            <div className="flex justify-between items-center text-xs font-bold mb-1">
+                              <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
+                                <span className="text-rose-500">🔴</span> Perlu Perhatian (&lt; 75%)
+                              </span>
+                              <span className="text-gray-500 dark:text-gray-400">
+                                <strong className="text-rose-600 dark:text-rose-400">{statsSummary.tierKurang.length}</strong> orang ({statsSummary.totalOrang > 0 ? ((statsSummary.tierKurang.length / statsSummary.totalOrang) * 100).toFixed(0) : 0}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2.5 overflow-hidden">
+                              <div
+                                className="bg-rose-500 h-full rounded-full transition-all duration-500"
+                                style={{ width: `${statsSummary.totalOrang > 0 ? (statsSummary.tierKurang.length / statsSummary.totalOrang) * 100 : 0}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-1">Sering tidak hadir, perlu koordinasi/tindak lanjut</p>
                           </div>
-                          <p className="text-[10px] text-gray-400 mt-1">Sering tidak hadir, perlu koordinasi/tindak lanjut</p>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* 2 Highlights Cards: Alpha Terbanyak & Teladan Disiplin */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Highlight 1: Alpha Terbanyak */}
+                {/* Highlights Section: Khusus Wali Santri (Evaluasi Personal) ATAU Guru/Admin (2 Ranking Cards) */}
+                {role === 'wali_murid' || role === 'wali_alumni' ? (
                   <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400">
-                          <AlertTriangle size={18} />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-sm text-gray-800 dark:text-white">Perhatian: Alpha Terbanyak</h4>
-                          <p className="text-[11px] text-gray-400">Individu yang paling membutuhkan perhatian / tindak lanjut</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {statsSummary.listAlpha.length === 0 ? (
-                      <div className="p-6 text-center bg-emerald-50/70 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200 dark:border-emerald-800/40">
-                        <CheckCircle2 size={32} className="mx-auto text-emerald-500 mb-2" />
-                        <div className="font-bold text-sm text-emerald-800 dark:text-emerald-300">Nihil Catatan Alpha</div>
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-                          MasyaAllah! Seluruh {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'pengajar' : 'santri'} tertib (0 Alpha pada periode ini).
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2.5">
-                        {statsSummary.listAlpha.map((item, idx) => {
-                          const fotoUrl = getFotoUrl(item.foto);
-                          const totalPertemuan = Number(item.hadir) + Number(item.izin) + Number(item.sakit) + Number(item.alpha);
-                          const presentase = totalPertemuan === 0 ? 0 : Math.round((Number(item.hadir) / totalPertemuan) * 100);
-                          return (
-                            <div
-                              key={item.id}
-                              className="flex items-center justify-between p-2.5 bg-gray-50/70 dark:bg-gray-900/40 hover:bg-red-50/40 dark:hover:bg-red-950/20 rounded-2xl transition-colors border border-gray-100 dark:border-gray-700/50"
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <span className="w-5 text-center text-xs font-bold text-gray-400">{idx + 1}</span>
-                                <div
-                                  className={`w-9 h-9 rounded-full overflow-hidden relative border border-gray-200 dark:border-gray-700 shrink-0 ${fotoUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                                  onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
-                                  title={fotoUrl ? 'Klik untuk memperbesar' : item.nama}
-                                >
-                                  {fotoUrl ? (
-                                    <img src={fotoUrl} alt={item.nama} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div
-                                      className="w-full h-full flex items-center justify-center text-white text-[11px] font-bold"
-                                      style={{ backgroundColor: getAvatarColor(item.nama) }}
-                                    >
-                                      {getInitials(item.nama)}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="min-w-0">
-                                  <div
-                                    onClick={() => openDetail(item, 'Alpha')}
-                                    className="text-xs font-bold text-gray-800 dark:text-gray-100 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer truncate max-w-[150px] sm:max-w-[200px]"
-                                    title={item.nama}
-                                  >
-                                    {item.nama}
-                                  </div>
-                                  <div className="text-[10px] text-gray-400 truncate">
-                                    {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'NIP' : 'NIS'}: {item.identifier || '-'} • Kehadiran {presentase}%
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-extrabold text-xs px-2.5 py-1 rounded-lg">
-                                  {item.alpha}x Alpha
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => openDetail(item, 'Alpha')}
-                                  className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline px-1 py-1 cursor-pointer"
-                                  title="Buka rincian data absensi"
-                                >
-                                  Rincian
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Highlight 2: Disiplin Tertinggi (Teladan) */}
-                  <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                        <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
                           <Award size={18} />
                         </div>
                         <div>
-                          <h4 className="font-bold text-sm text-gray-800 dark:text-white">Apresiasi: Disiplin Tertinggi</h4>
-                          <p className="text-[11px] text-gray-400">Individu dengan kehadiran terbanyak tanpa catatan alpha</p>
+                          <h4 className="font-bold text-sm text-gray-800 dark:text-white">Evaluasi & Catatan Kehadiran Santri</h4>
+                          <p className="text-[11px] text-gray-400">Ringkasan kedisiplinan dan pembinaan ananda</p>
                         </div>
                       </div>
                     </div>
 
-                    {statsSummary.listTeladan.length === 0 ? (
-                      <div className="p-6 text-center bg-gray-50 dark:bg-gray-900/30 rounded-2xl border border-gray-200 dark:border-gray-700">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Belum ada catatan kehadiran santri dengan 0 alpha pada periode yang dipilih.
+                    {statsSummary.totalAlpha === 0 ? (
+                      <div className="p-6 text-center bg-emerald-50/70 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200 dark:border-emerald-800/40">
+                        <CheckCircle2 size={36} className="mx-auto text-emerald-500 mb-2" />
+                        <div className="font-bold text-base text-emerald-800 dark:text-emerald-300">MasyaAllah! Nihil Catatan Alpha</div>
+                        <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1 max-w-md mx-auto">
+                          Ananda tertib dan tidak memiliki catatan bolos / alpha pada periode ini. Ketidakhadiran (jika ada) telah terkonfirmasi dengan izin resmi. Terima kasih atas dukungan dan perhatian Bapak/Ibu Wali Santri.
                         </p>
+                        <div className="flex flex-wrap items-center justify-center gap-2 mt-4 text-xs font-bold">
+                          <span className="px-3 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200">
+                            ✅ {statsSummary.totalHadir}x Hadir
+                          </span>
+                          <span className="px-3 py-1 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200">
+                            📝 {statsSummary.totalIzin}x Izin Resmi
+                          </span>
+                          <span className="px-3 py-1 rounded-xl bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200">
+                            💊 {statsSummary.totalSakit}x Sakit
+                          </span>
+                          <span className="px-3 py-1 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                            🎉 0 Alpha
+                          </span>
+                        </div>
                       </div>
                     ) : (
-                      <div className="space-y-2.5">
-                        {statsSummary.listTeladan.map((item, idx) => {
-                          const fotoUrl = getFotoUrl(item.foto);
-                          const totalPertemuan = Number(item.hadir) + Number(item.izin) + Number(item.sakit) + Number(item.alpha);
-                          const presentase = totalPertemuan === 0 ? 0 : Math.round((Number(item.hadir) / totalPertemuan) * 100);
-                          return (
-                            <div
-                              key={item.id}
-                              className="flex items-center justify-between p-2.5 bg-gray-50/70 dark:bg-gray-900/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 rounded-2xl transition-colors border border-gray-100 dark:border-gray-700/50"
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <span className="w-5 text-center text-xs font-bold text-amber-500">#{idx + 1}</span>
-                                <div
-                                  className={`w-9 h-9 rounded-full overflow-hidden relative border border-gray-200 dark:border-gray-700 shrink-0 ${fotoUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                                  onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
-                                  title={fotoUrl ? 'Klik untuk memperbesar' : item.nama}
-                                >
-                                  {fotoUrl ? (
-                                    <img src={fotoUrl} alt={item.nama} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div
-                                      className="w-full h-full flex items-center justify-center text-white text-[11px] font-bold"
-                                      style={{ backgroundColor: getAvatarColor(item.nama) }}
-                                    >
-                                      {getInitials(item.nama)}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="min-w-0">
-                                  <div
-                                    onClick={() => openDetail(item, 'Hadir')}
-                                    className="text-xs font-bold text-gray-800 dark:text-gray-100 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer truncate max-w-[150px] sm:max-w-[200px]"
-                                    title={item.nama}
-                                  >
-                                    {item.nama}
-                                  </div>
-                                  <div className="text-[10px] text-gray-400 truncate">
-                                    {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'NIP' : 'NIS'}: {item.identifier || '-'} • Kehadiran {presentase}%
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 font-extrabold text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
-                                  <CheckCircle2 size={12} /> {item.hadir}x Hadir
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => openDetail(item, 'Hadir')}
-                                  className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline px-1 py-1 cursor-pointer"
-                                  title="Buka rincian data absensi"
-                                >
-                                  Rincian
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
+                      <div className="p-6 text-center bg-red-50/70 dark:bg-red-950/20 rounded-2xl border border-red-200 dark:border-red-800/40">
+                        <AlertTriangle size={36} className="mx-auto text-red-500 mb-2" />
+                        <div className="font-bold text-base text-red-800 dark:text-red-300">
+                          Catatan Pembinaan: Terdapat {statsSummary.totalAlpha}x Pertemuan Alpha
+                        </div>
+                        <p className="text-xs text-red-700 dark:text-red-400 mt-1 max-w-md mx-auto">
+                          Terdapat catatan ketidakhadiran tanpa keterangan pada periode ini. Mohon berkenan konfirmasi atau berkoordinasi dengan wali kelas / pengurus asrama.
+                        </p>
+                        {filteredData.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => openDetail(filteredData[0], 'Alpha')}
+                            className="mt-4 inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-red-600/20 cursor-pointer"
+                          >
+                            <Eye size={14} /> Lihat Tanggal & Detail Alpha
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
-                </div>
+                ) : (
+                  /* 2 Highlights Cards untuk Guru/Admin/Staf (Alpha Terbanyak & Teladan Disiplin) */
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Highlight 1: Alpha Terbanyak */}
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                            <AlertTriangle size={18} />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm text-gray-800 dark:text-white">Perhatian: Alpha Terbanyak</h4>
+                            <p className="text-[11px] text-gray-400">Individu yang paling membutuhkan perhatian / tindak lanjut</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {statsSummary.listAlpha.length === 0 ? (
+                        <div className="p-6 text-center bg-emerald-50/70 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200 dark:border-emerald-800/40">
+                          <CheckCircle2 size={32} className="mx-auto text-emerald-500 mb-2" />
+                          <div className="font-bold text-sm text-emerald-800 dark:text-emerald-300">Nihil Catatan Alpha</div>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                            MasyaAllah! Seluruh {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'pengajar' : 'santri'} tertib (0 Alpha pada periode ini).
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {statsSummary.listAlpha.map((item, idx) => {
+                            const fotoUrl = getFotoUrl(item.foto);
+                            const totalPertemuan = Number(item.hadir) + Number(item.izin) + Number(item.sakit) + Number(item.alpha);
+                            const presentase = totalPertemuan === 0 ? 0 : Math.round((Number(item.hadir) / totalPertemuan) * 100);
+                            return (
+                              <div
+                                key={item.id}
+                                className="flex items-center justify-between p-2.5 bg-gray-50/70 dark:bg-gray-900/40 hover:bg-red-50/40 dark:hover:bg-red-950/20 rounded-2xl transition-colors border border-gray-100 dark:border-gray-700/50"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="w-5 text-center text-xs font-bold text-gray-400">{idx + 1}</span>
+                                  <div
+                                    className={`w-9 h-9 rounded-full overflow-hidden relative border border-gray-200 dark:border-gray-700 shrink-0 ${fotoUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                                    onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
+                                    title={fotoUrl ? 'Klik untuk memperbesar' : item.nama}
+                                  >
+                                    {fotoUrl ? (
+                                      <img src={fotoUrl} alt={item.nama} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div
+                                        className="w-full h-full flex items-center justify-center text-white text-[11px] font-bold"
+                                        style={{ backgroundColor: getAvatarColor(item.nama) }}
+                                      >
+                                        {getInitials(item.nama)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div
+                                      onClick={() => openDetail(item, 'Alpha')}
+                                      className="text-xs font-bold text-gray-800 dark:text-gray-100 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer truncate max-w-[150px] sm:max-w-[200px]"
+                                      title={item.nama}
+                                    >
+                                      {item.nama}
+                                    </div>
+                                    <div className="text-[10px] text-gray-400 truncate">
+                                      {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'NIP' : 'NIS'}: {item.identifier || '-'} • Kehadiran {presentase}%
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-extrabold text-xs px-2.5 py-1 rounded-lg">
+                                    {item.alpha}x Alpha
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => openDetail(item, 'Alpha')}
+                                    className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline px-1 py-1 cursor-pointer"
+                                    title="Buka rincian data absensi"
+                                  >
+                                    Rincian
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Highlight 2: Disiplin Tertinggi (Teladan) */}
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                            <Award size={18} />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm text-gray-800 dark:text-white">Apresiasi: Disiplin Tertinggi</h4>
+                            <p className="text-[11px] text-gray-400">Individu dengan kehadiran terbanyak tanpa catatan alpha</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {statsSummary.listTeladan.length === 0 ? (
+                        <div className="p-6 text-center bg-gray-50 dark:bg-gray-900/30 rounded-2xl border border-gray-200 dark:border-gray-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Belum ada catatan kehadiran santri dengan 0 alpha pada periode yang dipilih.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {statsSummary.listTeladan.map((item, idx) => {
+                            const fotoUrl = getFotoUrl(item.foto);
+                            const totalPertemuan = Number(item.hadir) + Number(item.izin) + Number(item.sakit) + Number(item.alpha);
+                            const presentase = totalPertemuan === 0 ? 0 : Math.round((Number(item.hadir) / totalPertemuan) * 100);
+                            return (
+                              <div
+                                key={item.id}
+                                className="flex items-center justify-between p-2.5 bg-gray-50/70 dark:bg-gray-900/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 rounded-2xl transition-colors border border-gray-100 dark:border-gray-700/50"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="w-5 text-center text-xs font-bold text-amber-500">#{idx + 1}</span>
+                                  <div
+                                    className={`w-9 h-9 rounded-full overflow-hidden relative border border-gray-200 dark:border-gray-700 shrink-0 ${fotoUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                                    onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
+                                    title={fotoUrl ? 'Klik untuk memperbesar' : item.nama}
+                                  >
+                                    {fotoUrl ? (
+                                      <img src={fotoUrl} alt={item.nama} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div
+                                        className="w-full h-full flex items-center justify-center text-white text-[11px] font-bold"
+                                        style={{ backgroundColor: getAvatarColor(item.nama) }}
+                                      >
+                                        {getInitials(item.nama)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div
+                                      onClick={() => openDetail(item, 'Hadir')}
+                                      className="text-xs font-bold text-gray-800 dark:text-gray-100 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer truncate max-w-[150px] sm:max-w-[200px]"
+                                      title={item.nama}
+                                    >
+                                      {item.nama}
+                                    </div>
+                                    <div className="text-[10px] text-gray-400 truncate">
+                                      {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'NIP' : 'NIS'}: {item.identifier || '-'} • Kehadiran {presentase}%
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 font-extrabold text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                    <CheckCircle2 size={12} /> {item.hadir}x Hadir
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => openDetail(item, 'Hadir')}
+                                    className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline px-1 py-1 cursor-pointer"
+                                    title="Buka rincian data absensi"
+                                  >
+                                    Rincian
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           )}
