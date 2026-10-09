@@ -65,6 +65,8 @@ export async function GET(request: Request) {
 
     let query = '';
     let params: any[] = [];
+    let trendQuery = '';
+    let trendParams: any[] = [];
 
     if (tipe === 'madin') {
       if (!target_id && payload.role !== 'wali_murid' && payload.role !== 'wali_alumni') {
@@ -128,6 +130,45 @@ export async function GET(request: Request) {
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
       `;
+
+      // Trend query madin
+      const { cond: trendDateCond, params: trendDateParams } = makeDateCond('a.tanggal');
+      let trendWhere = '';
+      trendParams = [...trendDateParams];
+
+      if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
+        trendWhere = 'AND a.murid_id = ?';
+        trendParams.push(payload.muridId);
+      } else if (target_id === 'all') {
+        if (payload.role === 'guru' && payload.guruId) {
+          trendWhere = 'AND (m.kelas_madin_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?) OR m.kelas_madin_2_id IN (SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?) OR km.guru_id = ?)';
+          trendParams.push(payload.guruId, payload.guruId, payload.guruId);
+        }
+      } else if (target_id === 'putra') {
+        trendWhere = `AND (km.nama_kelas LIKE '%PUTRA%' OR km.nama_kelas LIKE '%PA%' OR m.jenis_kelamin = 'Laki-laki' OR m.jenis_kelamin = 'L')`;
+      } else if (target_id === 'putri') {
+        trendWhere = `AND (km.nama_kelas LIKE '%PUTRI%' OR km.nama_kelas LIKE '%PI%' OR m.jenis_kelamin = 'Perempuan' OR m.jenis_kelamin = 'P')`;
+      } else if (target_id) {
+        trendWhere = 'AND (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?)';
+        trendParams.push(target_id, target_id);
+      }
+
+      trendQuery = `
+        SELECT 
+          DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal,
+          SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total
+        FROM absensi a
+        JOIN murid m ON a.murid_id = m.murid_id
+        LEFT JOIN kelas_madin km ON (m.kelas_madin_id = km.kelas_id OR m.kelas_madin_2_id = km.kelas_id)
+        WHERE ${trendDateCond} ${trendWhere}
+          ${sub_filter ? `AND a.jadwal_madin_id IN (SELECT jadwal_id FROM jadwal_madin WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
+        GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')
+        ORDER BY tanggal ASC
+      `;
     } else if (tipe === 'quran') {
       if (!target_id && payload.role !== 'wali_murid' && payload.role !== 'wali_alumni') {
         return NextResponse.json({ error: "Pilih Kelas Qur'an" }, { status: 400, headers: noCacheHeaders });
@@ -188,6 +229,45 @@ export async function GET(request: Request) {
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
+      `;
+
+      // Trend query quran
+      const { cond: trendDateCond, params: trendDateParams } = makeDateCond('a.tanggal');
+      let trendWhere = '';
+      trendParams = [...trendDateParams];
+
+      if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
+        trendWhere = 'AND a.murid_id = ?';
+        trendParams.push(payload.muridId);
+      } else if (target_id === 'all') {
+        if (payload.role === 'guru' && payload.guruId) {
+          trendWhere = 'AND (m.kelas_quran_id IN (SELECT kelas_quran_id FROM jadwal_quran WHERE guru_id = ?) OR kq.guru_id = ?)';
+          trendParams.push(payload.guruId, payload.guruId);
+        }
+      } else if (target_id === 'putra') {
+        trendWhere = `AND (kq.nama_kelas LIKE '%PUTRA%' OR kq.nama_kelas LIKE '%PA%' OR m.jenis_kelamin = 'Laki-laki' OR m.jenis_kelamin = 'L')`;
+      } else if (target_id === 'putri') {
+        trendWhere = `AND (kq.nama_kelas LIKE '%PUTRI%' OR kq.nama_kelas LIKE '%PI%' OR m.jenis_kelamin = 'Perempuan' OR m.jenis_kelamin = 'P')`;
+      } else if (target_id) {
+        trendWhere = 'AND m.kelas_quran_id = ?';
+        trendParams.push(target_id);
+      }
+
+      trendQuery = `
+        SELECT 
+          DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal,
+          SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total
+        FROM absensi_quran a
+        JOIN murid m ON a.murid_id = m.murid_id
+        LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+        WHERE ${trendDateCond} ${trendWhere}
+          ${sub_filter ? `AND a.jadwal_quran_id IN (SELECT id FROM jadwal_quran WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
+        GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')
+        ORDER BY tanggal ASC
       `;
     } else if (tipe === 'kegiatan') {
       if (!target_id && payload.role !== 'wali_murid' && payload.role !== 'wali_alumni') {
@@ -257,6 +337,41 @@ export async function GET(request: Request) {
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
       `;
+
+      // Trend query kegiatan
+      const { cond: trendDateCond, params: trendDateParams } = makeDateCond('a.tanggal');
+      let trendWhere = '';
+      trendParams = [...trendDateParams];
+
+      if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
+        trendWhere = 'AND a.murid_id = ?';
+        trendParams.push(payload.muridId);
+      } else if (target_id === 'all') {
+        trendWhere = 'AND m.kamar_id IS NOT NULL';
+      } else if (target_id && target_id.startsWith('asrama_')) {
+        trendWhere = 'AND km.nama_asrama = ?';
+        trendParams.push(target_id.replace('asrama_', ''));
+      } else if (target_id) {
+        trendWhere = 'AND m.kamar_id = ?';
+        trendParams.push(target_id);
+      }
+
+      trendQuery = `
+        SELECT 
+          DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal,
+          SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total
+        FROM absensi_kegiatan a
+        JOIN murid m ON a.murid_id = m.murid_id
+        LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
+        WHERE ${trendDateCond} ${trendWhere}
+          ${sub_filter ? `AND a.kegiatan_id IN (SELECT kegiatan_id FROM jadwal_kegiatan WHERE nama_kegiatan = '${sub_filter.replace(/'/g, "''")}')` : ''}
+        GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')
+        ORDER BY tanggal ASC
+      `;
     } else if (tipe === 'guru') {
       if (payload.role !== 'admin' && payload.role !== 'staff') {
         return NextResponse.json({ error: 'Akses ditolak. Rekapitulasi/monitoring kehadiran guru hanya khusus Admin dan Staf.' }, { status: 403, headers: noCacheHeaders });
@@ -292,6 +407,29 @@ export async function GET(request: Request) {
         `;
         params = [...joinDateParams];
       }
+
+      // Trend query guru
+      const { cond: trendDateCond, params: trendDateParams } = makeDateCond('a.tanggal');
+      let trendWhere = '';
+      trendParams = [...trendDateParams];
+      if (target_id && target_id !== 'all') {
+        trendWhere = 'AND a.guru_id = ?';
+        trendParams.push(target_id);
+      }
+
+      trendQuery = `
+        SELECT 
+          DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal,
+          SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total
+        FROM absensi_guru a
+        WHERE ${trendDateCond} ${trendWhere}
+        GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')
+        ORDER BY tanggal ASC
+      `;
     } else if (tipe === 'dewan_guru') {
       const isPengasuh = payload.role === 'pengasuh' || payload.is_pengasuh || payload.isPengasuh;
       if (payload.role !== 'admin' && payload.role !== 'staff' && !isPengasuh) {
@@ -321,12 +459,69 @@ export async function GET(request: Request) {
         ORDER BY dg.homebase ASC, dg.nama ASC
       `;
       params = [...joinDateParams, ...whereParams];
+
+      // Trend query dewan_guru
+      const { cond: trendDateCond, params: trendDateParams } = makeDateCond('a.tanggal');
+      let trendWhere = 'AND dg.aktif = 1';
+      trendParams = [...trendDateParams];
+      if (target_id && target_id !== 'SEMUA' && target_id !== 'all') {
+        trendWhere += ' AND dg.homebase = ?';
+        trendParams.push(target_id);
+      }
+
+      trendQuery = `
+        SELECT 
+          DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal,
+          SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total
+        FROM absensi_dewan_guru a
+        JOIN dewan_guru dg ON a.guru_id = dg.id
+        WHERE ${trendDateCond} ${trendWhere}
+        GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')
+        ORDER BY tanggal ASC
+      `;
     } else {
       return NextResponse.json({ error: 'Tipe rekap tidak valid' }, { status: 400, headers: noCacheHeaders });
     }
 
     const [rows] = await pool.execute<RowDataPacket[]>(query, params);
-    return NextResponse.json({ success: true, data: rows }, { headers: noCacheHeaders });
+
+    let trendRows: RowDataPacket[] = [];
+    if (trendQuery) {
+      try {
+        const [tr] = await pool.execute<RowDataPacket[]>(trendQuery, trendParams);
+        trendRows = tr;
+      } catch (trendErr) {
+        console.warn("Trend query error:", trendErr);
+      }
+    }
+
+    const formattedTrend = trendRows.map(r => {
+      const h = Number(r.hadir || 0);
+      const i = Number(r.izin || 0);
+      const s = Number(r.sakit || 0);
+      const a = Number(r.alpha || 0);
+      const tot = Number(r.total || (h + i + s + a));
+      const pct = tot > 0 ? Math.round((h / tot) * 1000) / 10 : 0;
+      return {
+        tanggal: r.tanggal,
+        hadir: h,
+        izin: i,
+        sakit: s,
+        alpha: a,
+        total: tot,
+        pctHadir: pct,
+      };
+    });
+
+    return NextResponse.json({ 
+      success: true, 
+      data: rows,
+      trend: formattedTrend
+    }, { headers: noCacheHeaders });
 
   } catch (error: any) {
     return NextResponse.json({ error: 'Server error: ' + error.message }, { status: 500, headers: noCacheHeaders });

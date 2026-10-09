@@ -166,6 +166,18 @@ export default function RekapitulasiPage() {
   const [timelineData, setTimelineData] = useState<any[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
 
+  // Data tren grafik fluktuasi kehadiran harian (untuk semua role akun)
+  const [trendData, setTrendData] = useState<Array<{
+    tanggal: string;
+    hadir: number;
+    izin: number;
+    sakit: number;
+    alpha: number;
+    total: number;
+    pctHadir: number;
+  }>>([]);
+  const [hoveredTrend, setHoveredTrend] = useState<any | null>(null);
+
   useEffect(() => {
     // Check User Role & Fetch User's Jadwal
     Promise.all([
@@ -405,6 +417,7 @@ export default function RekapitulasiPage() {
       if (json.success) {
         setData(json.data);
         setSelectedIds(json.data.map((d: any) => d.id));
+        setTrendData(json.trend || []);
         if (isWali && json.data.length > 0) {
           fetchTimeline(json.data[0].id, activeFilter);
         } else {
@@ -413,10 +426,12 @@ export default function RekapitulasiPage() {
       } else {
         setErrorMsg(json.error);
         setTimelineData([]);
+        setTrendData([]);
       }
     } catch (e) {
       setErrorMsg('Terjadi kesalahan jaringan');
       setTimelineData([]);
+      setTrendData([]);
     } finally {
       setLoading(false);
     }
@@ -1382,185 +1397,260 @@ export default function RekapitulasiPage() {
                     </div>
                   </div>
 
-                  {/* Card 2: Timeline Kehadiran (untuk Wali Santri) ATAU Distribusi Kedisiplinan (untuk Guru/Admin/Staf) */}
-                  {role === 'wali_murid' || role === 'wali_alumni' ? (
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
-                              <Clock size={18} />
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-sm text-gray-800 dark:text-white">Timeline Riwayat Kehadiran</h4>
-                              <p className="text-[11px] text-gray-400">Alur kronologis aktivitas absensi santri</p>
-                            </div>
+                  {/* Card 2: Grafik Tren Kehadiran Harian (%) — Time-Series Line & Area Chart (Untuk Semua Role Akun) */}
+                  <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
+                    <div>
+                      {/* Header Card 2 */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shrink-0">
+                            <TrendingUp size={18} />
                           </div>
-                          <span className="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/40">
-                            {timelineData.length} Pertemuan
-                          </span>
-                        </div>
-
-                        {loadingTimeline ? (
-                          <div className="py-12 text-center text-gray-400 flex flex-col items-center gap-2">
-                            <Loader2 size={24} className="animate-spin text-purple-600" />
-                            <span className="text-xs font-medium">Memuat alur riwayat presensi...</span>
-                          </div>
-                        ) : timelineData.length === 0 ? (
-                          <div className="py-10 text-center bg-gray-50/60 dark:bg-gray-900/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
-                            <CalendarDays size={28} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                              Belum ada catatan aktivitas presensi pada periode ini.
+                          <div>
+                            <h4 className="font-bold text-sm text-gray-800 dark:text-white">
+                              Tren Kehadiran {modeRentang ? 'Rentang Tanggal' : 'Bulanan'} (%)
+                            </h4>
+                            <p className="text-[11px] text-gray-400">
+                              Fluktuasi tingkat kehadiran per tanggal sesi
                             </p>
                           </div>
+                        </div>
+
+                        {/* Legend & Summary Pill */}
+                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+                          <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-200/50 dark:border-emerald-800/40">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            Tingkat Hadir (%)
+                          </span>
+                          <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg border border-amber-200/50 dark:border-amber-800/40">
+                            <span className="w-3 h-0.5 bg-amber-500 rounded-full" />
+                            Target 85%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Interactive Hover Info Bar */}
+                      <div className="min-h-[30px] mb-2 flex items-center justify-between text-xs px-3 py-1.5 rounded-xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 transition-all">
+                        {hoveredTrend ? (
+                          <div className="flex items-center justify-between w-full flex-wrap gap-2 animate-in fade-in duration-200">
+                            <span className="font-extrabold text-gray-800 dark:text-gray-100 flex items-center gap-1.5">
+                              <Calendar size={13} className="text-purple-600 dark:text-purple-400" />
+                              {(() => {
+                                const parts = (hoveredTrend.tanggal || '').split('-');
+                                if (parts.length !== 3) return hoveredTrend.tanggal;
+                                const dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                                return dt.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                              })()}
+                            </span>
+                            <div className="flex items-center gap-3 text-[11px]">
+                              <span className="font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md">
+                                {hoveredTrend.pctHadir.toFixed(1)}% Hadir
+                              </span>
+                              <span className="text-gray-500 dark:text-gray-400 font-medium">
+                                ({hoveredTrend.hadir} Hadir • {hoveredTrend.izin} Izin • {hoveredTrend.sakit} Sakit • {hoveredTrend.alpha} Alpha)
+                              </span>
+                            </div>
+                          </div>
                         ) : (
-                          <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1">
-                            {timelineData.map((item: any, idx: number) => {
-                              const st = (item.status || '').toLowerCase();
-                              const isHadir = st === 'hadir';
-                              const isIzin = st === 'izin';
-                              const isSakit = st === 'sakit';
-
-                              const badgeColor = isHadir
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40'
-                                : isIzin
-                                ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/40'
-                                : isSakit
-                                ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/40'
-                                : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/40';
-
-                              const dotColor = isHadir ? 'bg-emerald-500' : isIzin ? 'bg-blue-500' : isSakit ? 'bg-orange-500' : 'bg-red-500';
-
-                              return (
-                                <div
-                                  key={idx}
-                                  className="flex items-start gap-3 p-3 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 hover:bg-gray-100/70 dark:hover:bg-gray-900/80 transition-all text-xs"
-                                >
-                                  {/* Indicator dot */}
-                                  <div className="mt-1 flex flex-col items-center">
-                                    <span className={`w-2.5 h-2.5 rounded-full ${dotColor} ring-4 ring-white dark:ring-gray-800 shrink-0`} />
-                                  </div>
-
-                                  {/* Content */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-2 mb-0.5">
-                                      <span className="font-extrabold text-gray-800 dark:text-gray-100 truncate">
-                                        {item.mata_pelajaran || item.nama_sesi || 'Kegiatan'}
-                                      </span>
-                                      <span className={`px-2 py-0.5 rounded-md font-extrabold text-[10px] uppercase border shrink-0 ${badgeColor}`}>
-                                        {item.status || 'Alpha'}
-                                      </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
-                                      <span>{item.hari}, {item.tanggal}</span>
-                                      {item.jam_mulai && (
-                                        <>
-                                          <span>•</span>
-                                          <span>{item.jam_mulai}{item.jam_selesai ? ` - ${item.jam_selesai}` : ''}</span>
-                                        </>
-                                      )}
-                                    </div>
-
-                                    {item.keterangan && (
-                                      <div className="mt-1 text-[11px] text-gray-600 dark:text-gray-300 bg-white/80 dark:bg-gray-800/80 px-2 py-1 rounded-lg border border-gray-100 dark:border-gray-700/50">
-                                        <span className="font-semibold text-gray-400">Ket:</span> {item.keterangan}
-                                      </div>
-                                    )}
-
-                                    {item.penginput && (
-                                      <div className="mt-0.5 text-[10px] text-gray-400">
-                                        Dicatat: {item.penginput}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                          <div className="flex items-center justify-between w-full text-[11px] text-gray-500 dark:text-gray-400">
+                            <span>Arahkan kursor atau sentuh titik grafik untuk melihat rincian tanggal</span>
+                            <span className="font-bold text-gray-700 dark:text-gray-300">
+                              {trendData.length} Hari Pertemuan
+                            </span>
                           </div>
                         )}
                       </div>
-                    </div>
-                  ) : (
-                    /* Card 2: Distribusi Kedisiplinan Individu (Untuk Guru, Admin, Staf) */
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
-                              <BarChart3 size={18} />
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-sm text-gray-800 dark:text-white">Distribusi Kedisiplinan</h4>
-                              <p className="text-[11px] text-gray-400">Klasifikasi tingkat kehadiran per individu</p>
-                            </div>
-                          </div>
-                          <span className="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                            {statsSummary.totalOrang} {filter.tipe === 'guru' || filter.tipe === 'dewan_guru' ? 'Guru' : 'Santri'}
-                          </span>
+
+                      {/* SVG Chart Area */}
+                      {trendData.length === 0 ? (
+                        <div className="py-12 text-center bg-gray-50/60 dark:bg-gray-900/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                          <CalendarDays size={28} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                            Belum ada catatan aktivitas presensi pada rentang waktu ini.
+                          </p>
                         </div>
+                      ) : (
+                        (() => {
+                          const svgW = 600;
+                          const svgH = 210;
+                          const padL = 40;
+                          const padR = 20;
+                          const padT = 20;
+                          const padB = 40;
+                          const plotW = svgW - padL - padR;
+                          const plotH = svgH - padT - padB;
 
-                        <div className="space-y-4">
-                          {/* Tier 1: Prima */}
-                          <div>
-                            <div className="flex justify-between items-center text-xs font-bold mb-1">
-                              <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
-                                <span className="text-emerald-500">🌟</span> Kehadiran Prima (≥ 90%)
-                              </span>
-                              <span className="text-gray-500 dark:text-gray-400">
-                                <strong className="text-emerald-600 dark:text-emerald-400">{statsSummary.tierPrima.length}</strong> orang ({statsSummary.totalOrang > 0 ? ((statsSummary.tierPrima.length / statsSummary.totalOrang) * 100).toFixed(0) : 0}%)
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2.5 overflow-hidden">
-                              <div
-                                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                                style={{ width: `${statsSummary.totalOrang > 0 ? (statsSummary.tierPrima.length / statsSummary.totalOrang) * 100 : 0}%` }}
-                              />
-                            </div>
-                            <p className="text-[10px] text-gray-400 mt-1">Sangat disiplin dan konsisten hadir</p>
-                          </div>
+                          const getY = (pct: number) => padT + plotH * (1 - Math.max(0, Math.min(100, pct)) / 100);
+                          const getX = (idx: number) => {
+                            if (trendData.length === 1) return padL + plotW / 2;
+                            return padL + (idx / (trendData.length - 1)) * plotW;
+                          };
 
-                          {/* Tier 2: Cukup */}
-                          <div>
-                            <div className="flex justify-between items-center text-xs font-bold mb-1">
-                              <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
-                                <span className="text-amber-500">🟡</span> Kehadiran Cukup (75% – 89%)
-                              </span>
-                              <span className="text-gray-500 dark:text-gray-400">
-                                <strong className="text-amber-600 dark:text-amber-400">{statsSummary.tierCukup.length}</strong> orang ({statsSummary.totalOrang > 0 ? ((statsSummary.tierCukup.length / statsSummary.totalOrang) * 100).toFixed(0) : 0}%)
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2.5 overflow-hidden">
-                              <div
-                                className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                                style={{ width: `${statsSummary.totalOrang > 0 ? (statsSummary.tierCukup.length / statsSummary.totalOrang) * 100 : 0}%` }}
-                              />
-                            </div>
-                            <p className="text-[10px] text-gray-400 mt-1">Tingkat kehadiran wajar dengan izin/sakit</p>
-                          </div>
+                          const targetY = getY(85);
 
-                          {/* Tier 3: Kurang / Perlu Perhatian */}
-                          <div>
-                            <div className="flex justify-between items-center text-xs font-bold mb-1">
-                              <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
-                                <span className="text-rose-500">🔴</span> Perlu Perhatian (&lt; 75%)
-                              </span>
-                              <span className="text-gray-500 dark:text-gray-400">
-                                <strong className="text-rose-600 dark:text-rose-400">{statsSummary.tierKurang.length}</strong> orang ({statsSummary.totalOrang > 0 ? ((statsSummary.tierKurang.length / statsSummary.totalOrang) * 100).toFixed(0) : 0}%)
-                              </span>
+                          const points = trendData.map((d, i) => ({
+                            x: getX(i),
+                            y: getY(d.pctHadir),
+                            data: d,
+                          }));
+
+                          // Buat smooth bezier curve path
+                          const linePath = points.reduce((acc, p, i, arr) => {
+                            if (i === 0) return `M ${p.x} ${p.y}`;
+                            const prev = arr[i - 1];
+                            const cp1x = prev.x + (p.x - prev.x) / 2;
+                            const cp1y = prev.y;
+                            const cp2x = prev.x + (p.x - prev.x) / 2;
+                            const cp2y = p.y;
+                            return `${acc} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p.x} ${p.y}`;
+                          }, '');
+
+                          const areaPath = points.length > 0
+                            ? `${linePath} L ${points[points.length - 1].x} ${padT + plotH} L ${points[0].x} ${padT + plotH} Z`
+                            : '';
+
+                          // Interval label tanggal agar tidak bertumpukan
+                          const totalPoints = points.length;
+                          const labelInterval = totalPoints > 20 ? 4 : totalPoints > 10 ? 2 : 1;
+
+                          return (
+                            <div className="relative w-full overflow-hidden select-none">
+                              <svg
+                                className="w-full h-auto"
+                                viewBox={`0 0 ${svgW} ${svgH}`}
+                                onMouseLeave={() => setHoveredTrend(null)}
+                              >
+                                <defs>
+                                  <linearGradient id="trendAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.32" />
+                                    <stop offset="90%" stopColor="#10b981" stopOpacity="0.02" />
+                                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                                  </linearGradient>
+                                </defs>
+
+                                {/* Grid Horizontal Y-Axis (0%, 25%, 50%, 75%, 100%) */}
+                                {[100, 75, 50, 25, 0].map(pct => {
+                                  const y = getY(pct);
+                                  return (
+                                    <g key={pct}>
+                                      <line
+                                        x1={padL}
+                                        y1={y}
+                                        x2={padL + plotW}
+                                        y2={y}
+                                        stroke="currentColor"
+                                        strokeWidth="1"
+                                        strokeDasharray={pct === 0 ? 'none' : '3 3'}
+                                        className="text-gray-100 dark:text-gray-700/60"
+                                      />
+                                      <text
+                                        x={padL - 6}
+                                        y={y + 3}
+                                        textAnchor="end"
+                                        className="text-[9px] font-bold fill-gray-400 dark:fill-gray-500"
+                                      >
+                                        {pct}%
+                                      </text>
+                                    </g>
+                                  );
+                                })}
+
+                                {/* Garis Ambang Batas Target 85% */}
+                                <line
+                                  x1={padL}
+                                  y1={targetY}
+                                  x2={padL + plotW}
+                                  y2={targetY}
+                                  stroke="#f59e0b"
+                                  strokeWidth="1.2"
+                                  strokeDasharray="4 4"
+                                  className="opacity-75"
+                                />
+
+                                {/* Area Gradient di bawah Garis Tren */}
+                                {areaPath && (
+                                  <path d={areaPath} fill="url(#trendAreaGradient)" />
+                                )}
+
+                                {/* Garis Tren Utama */}
+                                {linePath && (
+                                  <path
+                                    d={linePath}
+                                    fill="none"
+                                    stroke="#10b981"
+                                    strokeWidth="2.75"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                )}
+
+                                {/* Titik Dots & Tooltip Hitbox */}
+                                {points.map((p, idx) => {
+                                  const isHovered = hoveredTrend?.tanggal === p.data.tanggal;
+                                  const showLabel = idx === 0 || idx === points.length - 1 || idx % labelInterval === 0;
+                                  const tglParts = (p.data.tanggal || '').split('-');
+                                  const displayLabel = tglParts.length === 3 ? `${tglParts[2]}/${tglParts[1]}` : p.data.tanggal;
+
+                                  return (
+                                    <g
+                                      key={idx}
+                                      className="cursor-pointer"
+                                      onMouseEnter={() => setHoveredTrend(p.data)}
+                                      onTouchStart={() => setHoveredTrend(p.data)}
+                                    >
+                                      {/* Invisible Hitbox untuk mempermudah hover/touch */}
+                                      <circle cx={p.x} cy={p.y} r="14" fill="transparent" />
+
+                                      {/* Titik Lingkaran Visual */}
+                                      <circle
+                                        cx={p.x}
+                                        cy={p.y}
+                                        r={isHovered ? 6 : 3.5}
+                                        fill={isHovered ? '#10b981' : '#ffffff'}
+                                        stroke="#10b981"
+                                        strokeWidth={isHovered ? 2.5 : 2}
+                                        className="transition-all duration-150"
+                                      />
+
+                                      {/* Garis bantu vertikal saat di-hover */}
+                                      {isHovered && (
+                                        <line
+                                          x1={p.x}
+                                          y1={padT}
+                                          x2={p.x}
+                                          y2={padT + plotH}
+                                          stroke="#10b981"
+                                          strokeWidth="1"
+                                          strokeDasharray="2 2"
+                                          className="opacity-60"
+                                        />
+                                      )}
+
+                                      {/* Label Sumbu X (Tanggal) */}
+                                      {showLabel && (
+                                        <text
+                                          x={p.x}
+                                          y={padT + plotH + 18}
+                                          textAnchor="middle"
+                                          className={`text-[9px] font-semibold transition-colors ${
+                                            isHovered
+                                              ? 'fill-emerald-600 dark:fill-emerald-400 font-bold'
+                                              : 'fill-gray-400 dark:fill-gray-500'
+                                          }`}
+                                        >
+                                          {displayLabel}
+                                        </text>
+                                      )}
+                                    </g>
+                                  );
+                                })}
+                              </svg>
                             </div>
-                            <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2.5 overflow-hidden">
-                              <div
-                                className="bg-rose-500 h-full rounded-full transition-all duration-500"
-                                style={{ width: `${statsSummary.totalOrang > 0 ? (statsSummary.tierKurang.length / statsSummary.totalOrang) * 100 : 0}%` }}
-                              />
-                            </div>
-                            <p className="text-[10px] text-gray-400 mt-1">Sering tidak hadir, perlu koordinasi/tindak lanjut</p>
-                          </div>
-                        </div>
-                      </div>
+                          );
+                        })()
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Highlights Section: Khusus Wali Santri (Evaluasi Personal) ATAU Guru/Admin (2 Ranking Cards) */}
