@@ -82,6 +82,305 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
   }
 };
 
+export interface StatsExportOptions {
+  title: string;
+  subtitle?: string;
+  period?: string;
+  summary: {
+    totalOrang: number;
+    totalPresensi: number;
+    totalHadir: number;
+    totalIzin: number;
+    totalSakit: number;
+    totalAlpha: number;
+    pctHadir: number;
+    pctIzin: number;
+    pctSakit: number;
+    pctAlpha: number;
+  };
+  trendRows?: {
+    tanggal: string;
+    hadir: number;
+    izin: number;
+    sakit: number;
+    alpha: number;
+    total: number;
+    pctHadir: number;
+    pctIzin?: number;
+    pctSakit?: number;
+    pctAlpha?: number;
+  }[];
+  listAlpha?: {
+    nama: string;
+    identifier?: string;
+    alpha: number;
+    hadir?: number;
+  }[];
+  listTeladan?: {
+    nama: string;
+    identifier?: string;
+    hadir: number;
+  }[];
+  detailTable?: {
+    columns: string[];
+    rows: any[][];
+  };
+  filename: string;
+  previewOnly?: boolean;
+}
+
+export const exportStatsPDF = (options: StatsExportOptions): string | void => {
+  const { title, subtitle, period, summary, trendRows, listAlpha, listTeladan, detailTable, filename, previewOnly } = options;
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  // Header Title
+  doc.setFontSize(14);
+  doc.setFont('courier', 'bold');
+  doc.text(sanitizeTextForPDF(title), 105, 16, { align: 'center' });
+
+  doc.setFontSize(8.5);
+  doc.setFont('courier', 'normal');
+  let startY = 23;
+  if (subtitle) {
+    const cleanSubtitle = sanitizeTextForPDF(subtitle);
+    cleanSubtitle.split('\n').forEach(line => {
+      if (line.trim()) {
+        doc.text(line.trim(), 14, startY);
+        startY += 4.5;
+      }
+    });
+  }
+  if (period) {
+    const cleanPeriod = sanitizeTextForPDF(period);
+    cleanPeriod.split('\n').forEach(line => {
+      if (line.trim()) {
+        doc.text(`Periode: ${line.trim()}`, 14, startY);
+        startY += 4.5;
+      }
+    });
+  }
+  startY += 2;
+
+  // I. RINGKASAN INDIKATOR KINERJA KEHADIRAN (KPI)
+  doc.setFontSize(9.5);
+  doc.setFont('courier', 'bold');
+  doc.text('I. RINGKASAN INDIKATOR KINERJA KEHADIRAN (KPI)', 14, startY);
+  startY += 3;
+
+  const kpiHead = [['Indikator Status', 'Jumlah Sesi', 'Rasio (%)', 'Standar & Catatan']];
+  const kpiRows = [
+    [
+      'Tingkat Kehadiran (Hadir)',
+      `${summary.totalHadir} pertemuan`,
+      `${summary.pctHadir.toFixed(1)}%`,
+      summary.pctHadir >= 85 ? 'MEMENUHI TARGET (>= 85%)' : 'DI BAWAH TARGET (< 85%)'
+    ],
+    [
+      'Tingkat Izin Resmi (Izin)',
+      `${summary.totalIzin} pertemuan`,
+      `${summary.pctIzin.toFixed(1)}%`,
+      'Izin Resmi Terkonfirmasi'
+    ],
+    [
+      'Tingkat Sakit (Sakit)',
+      `${summary.totalSakit} pertemuan`,
+      `${summary.pctSakit.toFixed(1)}%`,
+      'Kondisi Medis / Istirahat'
+    ],
+    [
+      'Tingkat Bolos / Tanpa Keterangan (Alpha)',
+      `${summary.totalAlpha} pertemuan`,
+      `${summary.pctAlpha.toFixed(1)}%`,
+      summary.totalAlpha === 0 ? 'TERTIB (NIHIL ALPHA)' : 'PERLU PEMBINAAN KHUSUS'
+    ],
+    [
+      'TOTAL SELURUH PRESENSI',
+      `${summary.totalPresensi} catatan`,
+      '100.0%',
+      `${summary.totalOrang} Individu Terdata`
+    ]
+  ];
+
+  autoTable(doc, {
+    head: kpiHead,
+    body: kpiRows,
+    startY: startY,
+    theme: 'grid',
+    styles: { font: 'courier', fontSize: 8, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
+    headStyles: { font: 'courier', fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
+    bodyStyles: { font: 'courier' }
+  });
+
+  startY = (doc as any).lastAutoTable.finalY + 7;
+
+  // II. RIWAYAT TREN KEHADIRAN HARIAN
+  if (trendRows && trendRows.length > 0) {
+    if (startY > 230) {
+      doc.addPage();
+      startY = 20;
+    }
+
+    doc.setFontSize(9.5);
+    doc.setFont('courier', 'bold');
+    doc.text(`II. RIWAYAT TREN KEHADIRAN HARIAN (${trendRows.length} Pertemuan)`, 14, startY);
+    startY += 3;
+
+    const trendHead = [['No', 'Tanggal Sesi', 'Hadir', 'Izin', 'Sakit', 'Alpha', 'Total', '% Hadir', 'Keterangan']];
+    const trendBody = trendRows.map((r, idx) => {
+      const pct = r.pctHadir ?? (r.total > 0 ? (r.hadir / r.total) * 100 : 0);
+      return [
+        idx + 1,
+        r.tanggal,
+        r.hadir,
+        r.izin,
+        r.sakit,
+        r.alpha,
+        r.total,
+        `${pct.toFixed(1)}%`,
+        pct >= 85 ? 'Disiplin Baik' : 'Di Bawah 85%'
+      ];
+    });
+
+    autoTable(doc, {
+      head: trendHead,
+      body: trendBody,
+      startY: startY,
+      theme: 'grid',
+      styles: { font: 'courier', fontSize: 7.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
+      headStyles: { font: 'courier', fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
+      bodyStyles: { font: 'courier' }
+    });
+
+    startY = (doc as any).lastAutoTable.finalY + 7;
+  }
+
+  // III. EVALUASI KEDISIPLINAN INDIVIDU
+  if (startY > 210) {
+    doc.addPage();
+    startY = 20;
+  }
+
+  doc.setFontSize(9.5);
+  doc.setFont('courier', 'bold');
+  doc.text('III. EVALUASI KEDISIPLINAN INDIVIDU', 14, startY);
+  startY += 4;
+
+  // A. Alpha Terbanyak
+  doc.setFontSize(8.5);
+  doc.setFont('courier', 'bold');
+  doc.text('A. Perhatian Khusus: Catatan Alpha Tertinggi', 14, startY);
+  startY += 2.5;
+
+  if (!listAlpha || listAlpha.length === 0) {
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(8);
+    doc.text('- MasyaAllah! Seluruh santri/pengajar tertib (Nihil catatan bolos/alpha).', 18, startY);
+    startY += 6;
+  } else {
+    const alphaHead = [['No', 'Nama Lengkap', 'NIS / NIP', 'Jumlah Alpha', 'Rekomendasi Tindak Lanjut']];
+    const alphaBody = listAlpha.slice(0, 10).map((item, idx) => [
+      idx + 1,
+      sanitizeTextForPDF(item.nama),
+      item.identifier || '-',
+      `${item.alpha}x Alpha`,
+      'Pembinaan Wali Kelas / Asrama'
+    ]);
+
+    autoTable(doc, {
+      head: alphaHead,
+      body: alphaBody,
+      startY: startY,
+      theme: 'grid',
+      styles: { font: 'courier', fontSize: 7.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
+      headStyles: { font: 'courier', fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
+      bodyStyles: { font: 'courier' }
+    });
+
+    startY = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // B. Disiplin Tertinggi
+  if (startY > 225) {
+    doc.addPage();
+    startY = 20;
+  }
+
+  doc.setFontSize(8.5);
+  doc.setFont('courier', 'bold');
+  doc.text('B. Apresiasi: Disiplin Tertinggi (Nihil Catatan Alpha)', 14, startY);
+  startY += 2.5;
+
+  if (!listTeladan || listTeladan.length === 0) {
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(8);
+    doc.text('- Belum ada data catatan santri teladan pada periode ini.', 18, startY);
+    startY += 6;
+  } else {
+    const teladanHead = [['No', 'Nama Lengkap', 'NIS / NIP', 'Kehadiran', 'Keterangan Apresiasi']];
+    const teladanBody = listTeladan.slice(0, 10).map((item, idx) => [
+      idx + 1,
+      sanitizeTextForPDF(item.nama),
+      item.identifier || '-',
+      `${item.hadir}x Hadir`,
+      'Teladan Tertib (0 Alpha)'
+    ]);
+
+    autoTable(doc, {
+      head: teladanHead,
+      body: teladanBody,
+      startY: startY,
+      theme: 'grid',
+      styles: { font: 'courier', fontSize: 7.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
+      headStyles: { font: 'courier', fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
+      bodyStyles: { font: 'courier' }
+    });
+
+    startY = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // IV. LAMPIRAN DAFTAR RINCIAN (Jika Mode Keduanya)
+  if (detailTable && detailTable.rows.length > 0) {
+    doc.addPage();
+    doc.setFontSize(12);
+    doc.setFont('courier', 'bold');
+    doc.text('LAMPIRAN: DAFTAR RINCIAN PRESENSI INDIVIDU', 105, 16, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont('courier', 'normal');
+    doc.text(`Total Individu: ${detailTable.rows.length} Data`, 14, 22);
+
+    const cleanColumns = detailTable.columns.map(c => typeof c === 'string' ? sanitizeTextForPDF(c) : c);
+    const cleanRows = detailTable.rows.map(r => r.map(cell => typeof cell === 'string' ? sanitizeTextForPDF(cell) : cell));
+
+    autoTable(doc, {
+      head: [cleanColumns],
+      body: cleanRows,
+      startY: 25,
+      theme: 'grid',
+      styles: { font: 'courier', fontSize: 7, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
+      headStyles: { font: 'courier', fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
+      bodyStyles: { font: 'courier' }
+    });
+  }
+
+  // Footer Page Numbers
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7.5);
+    doc.setFont('courier', 'normal');
+    doc.text(`Halaman ${i} dari ${totalPages}`, 196, 287, { align: 'right' });
+    doc.text("Sistem Informasi Akademik & Presensi PP Matholi'ul Anwar", 14, 287);
+  }
+
+  if (previewOnly) {
+    const blobURL = doc.output('bloburl');
+    return blobURL.toString();
+  } else {
+    doc.save(`${filename}.pdf`);
+  }
+};
+
 export const exportToExcel = (options: ExportOptions) => {
   const { title, subtitle, period, columns, rows, filename } = options;
   

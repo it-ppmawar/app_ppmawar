@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight, ArrowUpDown, ArrowUp, ArrowDown, MapPin, List, ChevronRight, CheckCircle, AlertTriangle, Info, Loader2, BarChart3, PieChart, TrendingUp, Award, Users, CheckCircle2, XCircle, LayoutGrid, Table } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
+import { exportToPDF, exportToExcel, exportStatsPDF } from '@/lib/exportUtils';
 
 // ====== Avatar & Foto Helpers ======
 const AVATAR_COLORS = [
@@ -712,7 +712,62 @@ export default function RekapitulasiPage() {
     if (format === 'excel') {
       exportToExcel({ title, subtitle, period, columns: tableColumn, rows: tableRows, filename });
     } else {
-      const result = exportToPDF({ title, subtitle, period, columns: tableColumn, rows: tableRows, filename, previewOnly });
+      let result: string | void;
+
+      if (viewMode === 'grafik') {
+        result = exportStatsPDF({
+          title: filter.tipe === 'dewan_guru' ? 'REKAPITULASI STATISTIK DEWAN GURU YPMA' : 'REKAPITULASI STATISTIK & TREN KEHADIRAN',
+          subtitle,
+          period,
+          summary: {
+            totalOrang: statsSummary.totalOrang,
+            totalPresensi: statsSummary.totalPresensi,
+            totalHadir: statsSummary.totalHadir,
+            totalIzin: statsSummary.totalIzin,
+            totalSakit: statsSummary.totalSakit,
+            totalAlpha: statsSummary.totalAlpha,
+            pctHadir: statsSummary.pctHadir,
+            pctIzin: statsSummary.pctIzin,
+            pctSakit: statsSummary.pctSakit,
+            pctAlpha: statsSummary.pctAlpha,
+          },
+          trendRows: trendData,
+          listAlpha: statsSummary.listAlpha,
+          listTeladan: statsSummary.listTeladan,
+          filename: `${filename}_Statistik`,
+          previewOnly
+        });
+      } else if (viewMode === 'keduanya') {
+        result = exportStatsPDF({
+          title: filter.tipe === 'dewan_guru' ? 'REKAPITULASI PRESENSI DEWAN GURU YPMA (KOMPREHENSIF)' : 'REKAPITULASI KEHADIRAN KOMPREHENSIF',
+          subtitle,
+          period,
+          summary: {
+            totalOrang: statsSummary.totalOrang,
+            totalPresensi: statsSummary.totalPresensi,
+            totalHadir: statsSummary.totalHadir,
+            totalIzin: statsSummary.totalIzin,
+            totalSakit: statsSummary.totalSakit,
+            totalAlpha: statsSummary.totalAlpha,
+            pctHadir: statsSummary.pctHadir,
+            pctIzin: statsSummary.pctIzin,
+            pctSakit: statsSummary.pctSakit,
+            pctAlpha: statsSummary.pctAlpha,
+          },
+          trendRows: trendData,
+          listAlpha: statsSummary.listAlpha,
+          listTeladan: statsSummary.listTeladan,
+          detailTable: {
+            columns: tableColumn,
+            rows: tableRows
+          },
+          filename: `${filename}_Komprehensif`,
+          previewOnly
+        });
+      } else {
+        result = exportToPDF({ title, subtitle, period, columns: tableColumn, rows: tableRows, filename, previewOnly });
+      }
+
       if (previewOnly && result) {
         setPdfUrl(result);
         setShowPdfPreview(true);
@@ -1489,6 +1544,28 @@ export default function RekapitulasiPage() {
                             <span className="w-3 h-0.5 bg-amber-500 rounded-full" />
                             Target 85%
                           </span>
+
+                          {/* Tombol Cepat Cetak PDF Statistik & Tren */}
+                          <div className="flex items-center gap-1 border-l border-gray-200 dark:border-gray-700 pl-1.5 ml-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleExport('pdf', true)}
+                              className="flex items-center gap-1 text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800/40 transition-all cursor-pointer shadow-xs"
+                              title="Pratinjau PDF Laporan Statistik & Tren"
+                            >
+                              <FileText size={12} />
+                              <span>Preview PDF</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleExport('pdf', false)}
+                              className="flex items-center gap-1 text-[11px] font-bold text-white bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded-lg transition-all shadow-xs cursor-pointer"
+                              title="Unduh PDF Laporan Statistik & Tren"
+                            >
+                              <Download size={12} />
+                              <span>PDF</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -2329,7 +2406,7 @@ export default function RekapitulasiPage() {
             <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
               <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
                 <FileText className="text-purple-500" size={20} />
-                Preview PDF Laporan
+                Preview PDF Laporan {viewMode === 'grafik' ? 'Statistik & Tren' : viewMode === 'keduanya' ? 'Komprehensif (Statistik & Tabel)' : 'Rekapitulasi'}
               </h3>
               <div className="flex gap-2">
                 <button
