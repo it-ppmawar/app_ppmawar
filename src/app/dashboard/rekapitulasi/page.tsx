@@ -175,8 +175,28 @@ export default function RekapitulasiPage() {
     alpha: number;
     total: number;
     pctHadir: number;
+    pctIzin?: number;
+    pctSakit?: number;
+    pctAlpha?: number;
   }>>([]);
   const [hoveredTrend, setHoveredTrend] = useState<any | null>(null);
+
+  // Toggle status garis pada grafik tren kehadiran (Hadir, Izin, Sakit, Alpha)
+  const [visibleTrendLines, setVisibleTrendLines] = useState<{
+    hadir: boolean;
+    izin: boolean;
+    sakit: boolean;
+    alpha: boolean;
+  }>({
+    hadir: true,
+    izin: true,
+    sakit: true,
+    alpha: true,
+  });
+
+  const toggleTrendLine = (key: 'hadir' | 'izin' | 'sakit' | 'alpha') => {
+    setVisibleTrendLines(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   useEffect(() => {
     // Check User Role & Fetch User's Jadwal
@@ -1129,90 +1149,97 @@ export default function RekapitulasiPage() {
               ) : null
             ) : (
               <div className="space-y-4">
-                {/* 5 KPI Metric Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  {/* KPI 1: % Tingkat Kehadiran */}
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden">
+                {/* 5 KPI Metric Cards: Tingkat Hadir 1 baris penuh di HP, 4 kartu status berdampingan di bawahnya */}
+                <div className="grid grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+                  {/* KPI 1: % Tingkat Kehadiran — Full-width di HP */}
+                  <div className="col-span-4 lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl p-3.5 sm:p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden flex flex-col justify-between">
                     <div className="flex items-center justify-between text-xs font-bold text-purple-600 dark:text-purple-400 mb-1">
-                      <span>Tingkat Hadir</span>
-                      <TrendingUp size={15} />
+                      <span className="flex items-center gap-1.5">
+                        <TrendingUp size={15} />
+                        Tingkat Hadir
+                      </span>
+                      <span className="text-[11px] font-semibold text-gray-400 sm:hidden">
+                        {statsSummary.totalHadir} dari {statsSummary.totalPresensi} presensi
+                      </span>
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black text-gray-800 dark:text-white">
-                      {statsSummary.totalPresensi > 0 ? `${statsSummary.pctHadir.toFixed(1)}%` : '0%'}
+                    <div className="flex items-baseline justify-between my-0.5">
+                      <div className="text-2xl sm:text-3xl font-black text-gray-800 dark:text-white">
+                        {statsSummary.totalPresensi > 0 ? `${statsSummary.pctHadir.toFixed(1)}%` : '0%'}
+                      </div>
+                      <p className="text-[11px] text-gray-400 hidden sm:block truncate">
+                        {statsSummary.totalHadir} dari {statsSummary.totalPresensi} presensi
+                      </p>
                     </div>
-                    <p className="text-[11px] text-gray-400 mt-1 truncate">
-                      {statsSummary.totalHadir} dari {statsSummary.totalPresensi} presensi
-                    </p>
-                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full mt-2.5 overflow-hidden">
-                      <div className="bg-purple-600 h-full rounded-full" style={{ width: `${statsSummary.pctHadir}%` }} />
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                      <div className="bg-purple-600 h-full rounded-full transition-all duration-500" style={{ width: `${statsSummary.pctHadir}%` }} />
                     </div>
                   </div>
 
-                  {/* KPI 2: Hadir */}
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden">
-                    <div className="flex items-center justify-between text-xs font-bold text-green-600 dark:text-green-400 mb-1">
-                      <span>Total Hadir</span>
-                      <CheckCircle2 size={15} />
+                  {/* KPI 2: Hadir — Ramping berdampingan (Kolom 1 dari 4) */}
+                  <div className="col-span-1 bg-white dark:bg-gray-800 rounded-2xl p-2 sm:p-3.5 lg:p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold text-green-600 dark:text-green-400 mb-0.5 sm:mb-1">
+                      <span className="truncate">Hadir</span>
+                      <CheckCircle2 size={12} className="shrink-0 hidden sm:inline" />
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black text-gray-800 dark:text-white">
+                    <div className="text-sm sm:text-2xl lg:text-3xl font-black text-gray-800 dark:text-white truncate">
                       {statsSummary.totalHadir}
                     </div>
-                    <p className="text-[11px] text-gray-400 mt-1 truncate">
-                      {statsSummary.pctHadir.toFixed(1)}% dari total
+                    <p className="text-[9px] sm:text-[11px] text-gray-400 mt-0.5 truncate">
+                      {statsSummary.pctHadir.toFixed(0)}% <span className="hidden sm:inline">dari total</span>
                     </p>
-                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full mt-2.5 overflow-hidden">
-                      <div className="bg-green-500 h-full rounded-full" style={{ width: `${statsSummary.pctHadir}%` }} />
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 sm:h-1.5 rounded-full mt-1.5 sm:mt-2.5 overflow-hidden">
+                      <div className="bg-green-500 h-full rounded-full transition-all duration-500" style={{ width: `${statsSummary.pctHadir}%` }} />
                     </div>
                   </div>
 
-                  {/* KPI 3: Izin */}
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden">
-                    <div className="flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">
-                      <span>Total Izin</span>
-                      <Info size={15} />
+                  {/* KPI 3: Izin — Ramping berdampingan (Kolom 2 dari 4) */}
+                  <div className="col-span-1 bg-white dark:bg-gray-800 rounded-2xl p-2 sm:p-3.5 lg:p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold text-blue-600 dark:text-blue-400 mb-0.5 sm:mb-1">
+                      <span className="truncate">Izin</span>
+                      <Info size={12} className="shrink-0 hidden sm:inline" />
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black text-gray-800 dark:text-white">
+                    <div className="text-sm sm:text-2xl lg:text-3xl font-black text-gray-800 dark:text-white truncate">
                       {statsSummary.totalIzin}
                     </div>
-                    <p className="text-[11px] text-gray-400 mt-1 truncate">
-                      {statsSummary.pctIzin.toFixed(1)}% dari total
+                    <p className="text-[9px] sm:text-[11px] text-gray-400 mt-0.5 truncate">
+                      {statsSummary.pctIzin.toFixed(0)}% <span className="hidden sm:inline">dari total</span>
                     </p>
-                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full mt-2.5 overflow-hidden">
-                      <div className="bg-blue-500 h-full rounded-full" style={{ width: `${statsSummary.pctIzin}%` }} />
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 sm:h-1.5 rounded-full mt-1.5 sm:mt-2.5 overflow-hidden">
+                      <div className="bg-blue-500 h-full rounded-full transition-all duration-500" style={{ width: `${statsSummary.pctIzin}%` }} />
                     </div>
                   </div>
 
-                  {/* KPI 4: Sakit */}
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden">
-                    <div className="flex items-center justify-between text-xs font-bold text-orange-600 dark:text-orange-400 mb-1">
-                      <span>Total Sakit</span>
-                      <Clock size={15} />
+                  {/* KPI 4: Sakit — Ramping berdampingan (Kolom 3 dari 4) */}
+                  <div className="col-span-1 bg-white dark:bg-gray-800 rounded-2xl p-2 sm:p-3.5 lg:p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold text-orange-600 dark:text-orange-400 mb-0.5 sm:mb-1">
+                      <span className="truncate">Sakit</span>
+                      <Clock size={12} className="shrink-0 hidden sm:inline" />
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black text-gray-800 dark:text-white">
+                    <div className="text-sm sm:text-2xl lg:text-3xl font-black text-gray-800 dark:text-white truncate">
                       {statsSummary.totalSakit}
                     </div>
-                    <p className="text-[11px] text-gray-400 mt-1 truncate">
-                      {statsSummary.pctSakit.toFixed(1)}% dari total
+                    <p className="text-[9px] sm:text-[11px] text-gray-400 mt-0.5 truncate">
+                      {statsSummary.pctSakit.toFixed(0)}% <span className="hidden sm:inline">dari total</span>
                     </p>
-                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full mt-2.5 overflow-hidden">
-                      <div className="bg-orange-500 h-full rounded-full" style={{ width: `${statsSummary.pctSakit}%` }} />
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 sm:h-1.5 rounded-full mt-1.5 sm:mt-2.5 overflow-hidden">
+                      <div className="bg-orange-500 h-full rounded-full transition-all duration-500" style={{ width: `${statsSummary.pctSakit}%` }} />
                     </div>
                   </div>
 
-                  {/* KPI 5: Alpha */}
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden col-span-2 sm:col-span-1">
-                    <div className="flex items-center justify-between text-xs font-bold text-red-600 dark:text-red-400 mb-1">
-                      <span>Total Alpha</span>
-                      <AlertTriangle size={15} />
+                  {/* KPI 5: Alpha — Ramping berdampingan (Kolom 4 dari 4) */}
+                  <div className="col-span-1 bg-white dark:bg-gray-800 rounded-2xl p-2 sm:p-3.5 lg:p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold text-red-600 dark:text-red-400 mb-0.5 sm:mb-1">
+                      <span className="truncate">Alpha</span>
+                      <AlertTriangle size={12} className="shrink-0 hidden sm:inline" />
                     </div>
-                    <div className="text-2xl sm:text-3xl font-black text-gray-800 dark:text-white">
+                    <div className="text-sm sm:text-2xl lg:text-3xl font-black text-gray-800 dark:text-white truncate">
                       {statsSummary.totalAlpha}
                     </div>
-                    <p className="text-[11px] text-gray-400 mt-1 truncate">
-                      {statsSummary.pctAlpha.toFixed(1)}% dari total
+                    <p className="text-[9px] sm:text-[11px] text-gray-400 mt-0.5 truncate">
+                      {statsSummary.pctAlpha.toFixed(0)}% <span className="hidden sm:inline">dari total</span>
                     </p>
-                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full mt-2.5 overflow-hidden">
-                      <div className="bg-red-500 h-full rounded-full" style={{ width: `${statsSummary.pctAlpha}%` }} />
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 sm:h-1.5 rounded-full mt-1.5 sm:mt-2.5 overflow-hidden">
+                      <div className="bg-red-500 h-full rounded-full transition-all duration-500" style={{ width: `${statsSummary.pctAlpha}%` }} />
                     </div>
                   </div>
                 </div>
@@ -1416,13 +1443,65 @@ export default function RekapitulasiPage() {
                           </div>
                         </div>
 
-                        {/* Legend & Summary Pill */}
-                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
-                          <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-200/50 dark:border-emerald-800/40">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            Tingkat Hadir (%)
-                          </span>
-                          <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg border border-amber-200/50 dark:border-amber-800/40">
+                        {/* Legend & Interactive Status Toggle Pills */}
+                        <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => toggleTrendLine('hadir')}
+                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                              visibleTrendLines.hadir
+                                ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 shadow-xs'
+                                : 'text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-60 line-through'
+                            }`}
+                            title="Klik untuk tampilkan/sembunyikan tren Hadir"
+                          >
+                            <span className={`w-2 h-2 rounded-full ${visibleTrendLines.hadir ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                            Hadir
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleTrendLine('izin')}
+                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                              visibleTrendLines.izin
+                                ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 shadow-xs'
+                                : 'text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-60 line-through'
+                            }`}
+                            title="Klik untuk tampilkan/sembunyikan tren Izin"
+                          >
+                            <span className={`w-2 h-2 rounded-full ${visibleTrendLines.izin ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                            Izin
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleTrendLine('sakit')}
+                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                              visibleTrendLines.sakit
+                                ? 'text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-950/40 border-orange-300 dark:border-orange-700 shadow-xs'
+                                : 'text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-60 line-through'
+                            }`}
+                            title="Klik untuk tampilkan/sembunyikan tren Sakit"
+                          >
+                            <span className={`w-2 h-2 rounded-full ${visibleTrendLines.sakit ? 'bg-orange-500' : 'bg-gray-400'}`} />
+                            Sakit
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleTrendLine('alpha')}
+                            className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                              visibleTrendLines.alpha
+                                ? 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-700 shadow-xs'
+                                : 'text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-60 line-through'
+                            }`}
+                            title="Klik untuk tampilkan/sembunyikan tren Alpha"
+                          >
+                            <span className={`w-2 h-2 rounded-full ${visibleTrendLines.alpha ? 'bg-red-500' : 'bg-gray-400'}`} />
+                            Alpha
+                          </button>
+
+                          <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-lg border border-amber-200/50 dark:border-amber-800/40">
                             <span className="w-3 h-0.5 bg-amber-500 rounded-full" />
                             Target 85%
                           </span>
@@ -1430,10 +1509,10 @@ export default function RekapitulasiPage() {
                       </div>
 
                       {/* Interactive Hover Info Bar */}
-                      <div className="min-h-[30px] mb-2 flex items-center justify-between text-xs px-3 py-1.5 rounded-xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 transition-all">
+                      <div className="min-h-[38px] mb-2 flex items-center justify-between text-xs px-3 py-1.5 rounded-xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 transition-all">
                         {hoveredTrend ? (
-                          <div className="flex items-center justify-between w-full flex-wrap gap-2 animate-in fade-in duration-200">
-                            <span className="font-extrabold text-gray-800 dark:text-gray-100 flex items-center gap-1.5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-1.5 sm:gap-2 animate-in fade-in duration-200">
+                            <span className="font-extrabold text-gray-800 dark:text-gray-100 flex items-center gap-1.5 shrink-0">
                               <Calendar size={13} className="text-purple-600 dark:text-purple-400" />
                               {(() => {
                                 const parts = (hoveredTrend.tanggal || '').split('-');
@@ -1442,18 +1521,24 @@ export default function RekapitulasiPage() {
                                 return dt.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
                               })()}
                             </span>
-                            <div className="flex items-center gap-3 text-[11px]">
-                              <span className="font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md">
-                                {hoveredTrend.pctHadir.toFixed(1)}% Hadir
+                            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] flex-wrap">
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 px-1.5 py-0.5 rounded-md">
+                                {(hoveredTrend.pctHadir ?? 0).toFixed(1)}% Hadir ({hoveredTrend.hadir})
                               </span>
-                              <span className="text-gray-500 dark:text-gray-400 font-medium">
-                                ({hoveredTrend.hadir} Hadir • {hoveredTrend.izin} Izin • {hoveredTrend.sakit} Sakit • {hoveredTrend.alpha} Alpha)
+                              <span className="font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/40 px-1.5 py-0.5 rounded-md">
+                                {(hoveredTrend.pctIzin ?? 0).toFixed(1)}% Izin ({hoveredTrend.izin})
+                              </span>
+                              <span className="font-bold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 border border-orange-200/60 dark:border-orange-800/40 px-1.5 py-0.5 rounded-md">
+                                {(hoveredTrend.pctSakit ?? 0).toFixed(1)}% Sakit ({hoveredTrend.sakit})
+                              </span>
+                              <span className="font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200/60 dark:border-red-800/40 px-1.5 py-0.5 rounded-md">
+                                {(hoveredTrend.pctAlpha ?? 0).toFixed(1)}% Alpha ({hoveredTrend.alpha})
                               </span>
                             </div>
                           </div>
                         ) : (
                           <div className="flex items-center justify-between w-full text-[11px] text-gray-500 dark:text-gray-400">
-                            <span>Arahkan kursor atau sentuh titik grafik untuk melihat rincian tanggal</span>
+                            <span>Arahkan kursor atau sentuh titik grafik untuk rincian status</span>
                             <span className="font-bold text-gray-700 dark:text-gray-300">
                               {trendData.length} Hari Pertemuan
                             </span>
@@ -1488,29 +1573,57 @@ export default function RekapitulasiPage() {
 
                           const targetY = getY(85);
 
-                          const points = trendData.map((d, i) => ({
+                          const buildSmoothPath = (pts: { x: number; y: number }[]) => {
+                            return pts.reduce((acc, p, i, arr) => {
+                              if (i === 0) return `M ${p.x} ${p.y}`;
+                              const prev = arr[i - 1];
+                              const cp1x = prev.x + (p.x - prev.x) / 2;
+                              const cp1y = prev.y;
+                              const cp2x = prev.x + (p.x - prev.x) / 2;
+                              const cp2y = p.y;
+                              return `${acc} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p.x} ${p.y}`;
+                            }, '');
+                          };
+
+                          const pointsHadir = trendData.map((d, i) => ({
                             x: getX(i),
-                            y: getY(d.pctHadir),
+                            y: getY(d.pctHadir ?? 0),
+                            val: d.pctHadir ?? 0,
                             data: d,
                           }));
 
-                          // Buat smooth bezier curve path
-                          const linePath = points.reduce((acc, p, i, arr) => {
-                            if (i === 0) return `M ${p.x} ${p.y}`;
-                            const prev = arr[i - 1];
-                            const cp1x = prev.x + (p.x - prev.x) / 2;
-                            const cp1y = prev.y;
-                            const cp2x = prev.x + (p.x - prev.x) / 2;
-                            const cp2y = p.y;
-                            return `${acc} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p.x} ${p.y}`;
-                          }, '');
+                          const pointsIzin = trendData.map((d, i) => ({
+                            x: getX(i),
+                            y: getY(d.pctIzin ?? 0),
+                            val: d.pctIzin ?? 0,
+                            data: d,
+                          }));
 
-                          const areaPath = points.length > 0
-                            ? `${linePath} L ${points[points.length - 1].x} ${padT + plotH} L ${points[0].x} ${padT + plotH} Z`
+                          const pointsSakit = trendData.map((d, i) => ({
+                            x: getX(i),
+                            y: getY(d.pctSakit ?? 0),
+                            val: d.pctSakit ?? 0,
+                            data: d,
+                          }));
+
+                          const pointsAlpha = trendData.map((d, i) => ({
+                            x: getX(i),
+                            y: getY(d.pctAlpha ?? 0),
+                            val: d.pctAlpha ?? 0,
+                            data: d,
+                          }));
+
+                          const pathHadir = buildSmoothPath(pointsHadir);
+                          const pathIzin = buildSmoothPath(pointsIzin);
+                          const pathSakit = buildSmoothPath(pointsSakit);
+                          const pathAlpha = buildSmoothPath(pointsAlpha);
+
+                          const areaPathHadir = pointsHadir.length > 0
+                            ? `${pathHadir} L ${pointsHadir[pointsHadir.length - 1].x} ${padT + plotH} L ${pointsHadir[0].x} ${padT + plotH} Z`
                             : '';
 
                           // Interval label tanggal agar tidak bertumpukan
-                          const totalPoints = points.length;
+                          const totalPoints = pointsHadir.length;
                           const labelInterval = totalPoints > 20 ? 4 : totalPoints > 10 ? 2 : 1;
 
                           return (
@@ -1522,7 +1635,7 @@ export default function RekapitulasiPage() {
                               >
                                 <defs>
                                   <linearGradient id="trendAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.32" />
+                                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.28" />
                                     <stop offset="90%" stopColor="#10b981" stopOpacity="0.02" />
                                     <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
                                   </linearGradient>
@@ -1567,15 +1680,51 @@ export default function RekapitulasiPage() {
                                   className="opacity-75"
                                 />
 
-                                {/* Area Gradient di bawah Garis Tren */}
-                                {areaPath && (
-                                  <path d={areaPath} fill="url(#trendAreaGradient)" />
+                                {/* Area Gradient di bawah Garis Tren Hadir (jika aktif) */}
+                                {visibleTrendLines.hadir && areaPathHadir && (
+                                  <path d={areaPathHadir} fill="url(#trendAreaGradient)" />
                                 )}
 
-                                {/* Garis Tren Utama */}
-                                {linePath && (
+                                {/* Garis Tren Izin (Biru) */}
+                                {visibleTrendLines.izin && pathIzin && (
                                   <path
-                                    d={linePath}
+                                    d={pathIzin}
+                                    fill="none"
+                                    stroke="#3b82f6"
+                                    strokeWidth="2.2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                )}
+
+                                {/* Garis Tren Sakit (Orange) */}
+                                {visibleTrendLines.sakit && pathSakit && (
+                                  <path
+                                    d={pathSakit}
+                                    fill="none"
+                                    stroke="#f97316"
+                                    strokeWidth="2.2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                )}
+
+                                {/* Garis Tren Alpha (Merah) */}
+                                {visibleTrendLines.alpha && pathAlpha && (
+                                  <path
+                                    d={pathAlpha}
+                                    fill="none"
+                                    stroke="#ef4444"
+                                    strokeWidth="2.2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                )}
+
+                                {/* Garis Tren Hadir (Hijau Emerald) */}
+                                {visibleTrendLines.hadir && pathHadir && (
+                                  <path
+                                    d={pathHadir}
                                     fill="none"
                                     stroke="#10b981"
                                     strokeWidth="2.75"
@@ -1585,9 +1734,9 @@ export default function RekapitulasiPage() {
                                 )}
 
                                 {/* Titik Dots & Tooltip Hitbox */}
-                                {points.map((p, idx) => {
+                                {pointsHadir.map((p, idx) => {
                                   const isHovered = hoveredTrend?.tanggal === p.data.tanggal;
-                                  const showLabel = idx === 0 || idx === points.length - 1 || idx % labelInterval === 0;
+                                  const showLabel = idx === 0 || idx === pointsHadir.length - 1 || idx % labelInterval === 0;
                                   const tglParts = (p.data.tanggal || '').split('-');
                                   const displayLabel = tglParts.length === 3 ? `${tglParts[2]}/${tglParts[1]}` : p.data.tanggal;
 
@@ -1598,18 +1747,13 @@ export default function RekapitulasiPage() {
                                       onMouseEnter={() => setHoveredTrend(p.data)}
                                       onTouchStart={() => setHoveredTrend(p.data)}
                                     >
-                                      {/* Invisible Hitbox untuk mempermudah hover/touch */}
-                                      <circle cx={p.x} cy={p.y} r="14" fill="transparent" />
-
-                                      {/* Titik Lingkaran Visual */}
-                                      <circle
-                                        cx={p.x}
-                                        cy={p.y}
-                                        r={isHovered ? 6 : 3.5}
-                                        fill={isHovered ? '#10b981' : '#ffffff'}
-                                        stroke="#10b981"
-                                        strokeWidth={isHovered ? 2.5 : 2}
-                                        className="transition-all duration-150"
+                                      {/* Invisible Hitbox tinggi penuh untuk memudahkan hover / touch pada ponsel */}
+                                      <rect
+                                        x={p.x - 12}
+                                        y={padT}
+                                        width="24"
+                                        height={plotH}
+                                        fill="transparent"
                                       />
 
                                       {/* Garis bantu vertikal saat di-hover */}
@@ -1619,10 +1763,62 @@ export default function RekapitulasiPage() {
                                           y1={padT}
                                           x2={p.x}
                                           y2={padT + plotH}
-                                          stroke="#10b981"
+                                          stroke="#6b7280"
                                           strokeWidth="1"
                                           strokeDasharray="2 2"
-                                          className="opacity-60"
+                                          className="opacity-50"
+                                        />
+                                      )}
+
+                                      {/* Dots untuk Izin */}
+                                      {visibleTrendLines.izin && (
+                                        <circle
+                                          cx={p.x}
+                                          cy={pointsIzin[idx].y}
+                                          r={isHovered ? 5 : 2.5}
+                                          fill={isHovered ? '#3b82f6' : '#ffffff'}
+                                          stroke="#3b82f6"
+                                          strokeWidth={isHovered ? 2 : 1.5}
+                                          className="transition-all duration-150"
+                                        />
+                                      )}
+
+                                      {/* Dots untuk Sakit */}
+                                      {visibleTrendLines.sakit && (
+                                        <circle
+                                          cx={p.x}
+                                          cy={pointsSakit[idx].y}
+                                          r={isHovered ? 5 : 2.5}
+                                          fill={isHovered ? '#f97316' : '#ffffff'}
+                                          stroke="#f97316"
+                                          strokeWidth={isHovered ? 2 : 1.5}
+                                          className="transition-all duration-150"
+                                        />
+                                      )}
+
+                                      {/* Dots untuk Alpha */}
+                                      {visibleTrendLines.alpha && (
+                                        <circle
+                                          cx={p.x}
+                                          cy={pointsAlpha[idx].y}
+                                          r={isHovered ? 5 : 2.5}
+                                          fill={isHovered ? '#ef4444' : '#ffffff'}
+                                          stroke="#ef4444"
+                                          strokeWidth={isHovered ? 2 : 1.5}
+                                          className="transition-all duration-150"
+                                        />
+                                      )}
+
+                                      {/* Dots untuk Hadir (Paling Depan) */}
+                                      {visibleTrendLines.hadir && (
+                                        <circle
+                                          cx={p.x}
+                                          cy={p.y}
+                                          r={isHovered ? 6 : 3}
+                                          fill={isHovered ? '#10b981' : '#ffffff'}
+                                          stroke="#10b981"
+                                          strokeWidth={isHovered ? 2.5 : 2}
+                                          className="transition-all duration-150"
                                         />
                                       )}
 
@@ -1745,10 +1941,10 @@ export default function RekapitulasiPage() {
                             return (
                               <div
                                 key={item.id}
-                                className="flex items-center justify-between p-2.5 bg-gray-50/70 dark:bg-gray-900/40 hover:bg-red-50/40 dark:hover:bg-red-950/20 rounded-2xl transition-colors border border-gray-100 dark:border-gray-700/50"
+                                className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3 bg-gray-50/70 dark:bg-gray-900/40 hover:bg-red-50/40 dark:hover:bg-red-950/20 rounded-2xl transition-colors border border-gray-100 dark:border-gray-700/50 gap-2 sm:gap-3"
                               >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <span className="w-5 text-center text-xs font-bold text-gray-400">{idx + 1}</span>
+                                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                                  <span className="w-5 text-center text-xs font-bold text-gray-400 shrink-0">{idx + 1}</span>
                                   <div
                                     className={`w-9 h-9 rounded-full overflow-hidden relative border border-gray-200 dark:border-gray-700 shrink-0 ${fotoUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                                     onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
@@ -1765,10 +1961,10 @@ export default function RekapitulasiPage() {
                                       </div>
                                     )}
                                   </div>
-                                  <div className="min-w-0">
+                                  <div className="min-w-0 flex-1">
                                     <div
                                       onClick={() => openDetail(item, 'Alpha')}
-                                      className="text-xs font-bold text-gray-800 dark:text-gray-100 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer truncate max-w-[150px] sm:max-w-[200px]"
+                                      className="text-xs font-bold text-gray-800 dark:text-gray-100 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer truncate"
                                       title={item.nama}
                                     >
                                       {item.nama}
@@ -1779,14 +1975,14 @@ export default function RekapitulasiPage() {
                                   </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pl-7 sm:pl-0 pt-1.5 sm:pt-0 border-t border-gray-100 dark:border-gray-800/60 sm:border-t-0">
                                   <span className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-extrabold text-xs px-2.5 py-1 rounded-lg">
                                     {item.alpha}x Alpha
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => openDetail(item, 'Alpha')}
-                                    className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline px-1 py-1 cursor-pointer"
+                                    className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline px-2 py-1 cursor-pointer bg-purple-50 dark:bg-purple-950/30 sm:bg-transparent sm:dark:bg-transparent rounded-lg sm:rounded-none"
                                     title="Buka rincian data absensi"
                                   >
                                     Rincian
@@ -1828,10 +2024,10 @@ export default function RekapitulasiPage() {
                             return (
                               <div
                                 key={item.id}
-                                className="flex items-center justify-between p-2.5 bg-gray-50/70 dark:bg-gray-900/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 rounded-2xl transition-colors border border-gray-100 dark:border-gray-700/50"
+                                className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3 bg-gray-50/70 dark:bg-gray-900/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 rounded-2xl transition-colors border border-gray-100 dark:border-gray-700/50 gap-2 sm:gap-3"
                               >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <span className="w-5 text-center text-xs font-bold text-amber-500">#{idx + 1}</span>
+                                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                                  <span className="w-5 text-center text-xs font-bold text-amber-500 shrink-0">#{idx + 1}</span>
                                   <div
                                     className={`w-9 h-9 rounded-full overflow-hidden relative border border-gray-200 dark:border-gray-700 shrink-0 ${fotoUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                                     onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
@@ -1848,10 +2044,10 @@ export default function RekapitulasiPage() {
                                       </div>
                                     )}
                                   </div>
-                                  <div className="min-w-0">
+                                  <div className="min-w-0 flex-1">
                                     <div
                                       onClick={() => openDetail(item, 'Hadir')}
-                                      className="text-xs font-bold text-gray-800 dark:text-gray-100 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer truncate max-w-[150px] sm:max-w-[200px]"
+                                      className="text-xs font-bold text-gray-800 dark:text-gray-100 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer truncate"
                                       title={item.nama}
                                     >
                                       {item.nama}
@@ -1862,14 +2058,14 @@ export default function RekapitulasiPage() {
                                   </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pl-7 sm:pl-0 pt-1.5 sm:pt-0 border-t border-gray-100 dark:border-gray-800/60 sm:border-t-0">
                                   <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 font-extrabold text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
                                     <CheckCircle2 size={12} /> {item.hadir}x Hadir
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => openDetail(item, 'Hadir')}
-                                    className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline px-1 py-1 cursor-pointer"
+                                    className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline px-2 py-1 cursor-pointer bg-purple-50 dark:bg-purple-950/30 sm:bg-transparent sm:dark:bg-transparent rounded-lg sm:rounded-none"
                                     title="Buka rincian data absensi"
                                   >
                                     Rincian

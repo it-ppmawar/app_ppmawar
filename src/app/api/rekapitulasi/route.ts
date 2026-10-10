@@ -505,7 +505,10 @@ export async function GET(request: Request) {
       const s = Number(r.sakit || 0);
       const a = Number(r.alpha || 0);
       const tot = Number(r.total || (h + i + s + a));
-      const pct = tot > 0 ? Math.round((h / tot) * 1000) / 10 : 0;
+      const pctHadir = tot > 0 ? Math.round((h / tot) * 1000) / 10 : 0;
+      const pctIzin = tot > 0 ? Math.round((i / tot) * 1000) / 10 : 0;
+      const pctSakit = tot > 0 ? Math.round((s / tot) * 1000) / 10 : 0;
+      const pctAlpha = tot > 0 ? Math.round((a / tot) * 1000) / 10 : 0;
       return {
         tanggal: r.tanggal,
         hadir: h,
@@ -513,7 +516,10 @@ export async function GET(request: Request) {
         sakit: s,
         alpha: a,
         total: tot,
-        pctHadir: pct,
+        pctHadir,
+        pctIzin,
+        pctSakit,
+        pctAlpha,
       };
     });
 
