@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight, ArrowUpDown, ArrowUp, ArrowDown, MapPin, List, ChevronRight, CheckCircle, AlertTriangle, Info, Loader2, BarChart3, PieChart, TrendingUp, Award, Users, CheckCircle2, XCircle, LayoutGrid, Table } from 'lucide-react';
+import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight, ArrowUpDown, ArrowUp, ArrowDown, MapPin, List, ChevronRight, CheckCircle, AlertTriangle, Info, Loader2, BarChart3, TrendingUp, Award, Users, CheckCircle2, XCircle, LayoutGrid, Table } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { exportToPDF, exportToExcel, exportStatsPDF } from '@/lib/exportUtils';
@@ -743,16 +743,12 @@ export default function RekapitulasiPage() {
       let result: string | void;
 
       if (viewMode === 'grafik') {
-        // Capture chart SVGs as images for PDF
-        const [donutChartImg, trendChartImg] = await Promise.all([
-          svgToDataUrl('rekap-donut-svg'),
-          svgToDataUrl('rekap-trend-svg'),
-        ]);
+        // Capture trend chart SVG as image for PDF
+        const trendChartImg = await svgToDataUrl('rekap-trend-svg');
         result = exportStatsPDF({
           title: filter.tipe === 'dewan_guru' ? 'REKAPITULASI STATISTIK DEWAN GURU YPMA' : 'REKAPITULASI STATISTIK & TREN KEHADIRAN',
           subtitle,
           period,
-          donutChartImg: donutChartImg ?? undefined,
           trendChartImg: trendChartImg ?? undefined,
           summary: {
             totalOrang: statsSummary.totalOrang,
@@ -773,16 +769,12 @@ export default function RekapitulasiPage() {
           previewOnly
         });
       } else if (viewMode === 'keduanya') {
-        // Capture chart SVGs as images for PDF
-        const [donutChartImg, trendChartImg] = await Promise.all([
-          svgToDataUrl('rekap-donut-svg'),
-          svgToDataUrl('rekap-trend-svg'),
-        ]);
+        // Capture trend chart SVG as image for PDF
+        const trendChartImg = await svgToDataUrl('rekap-trend-svg');
         result = exportStatsPDF({
           title: filter.tipe === 'dewan_guru' ? 'REKAPITULASI PRESENSI DEWAN GURU YPMA (KOMPREHENSIF)' : 'REKAPITULASI KEHADIRAN KOMPREHENSIF',
           subtitle,
           period,
-          donutChartImg: donutChartImg ?? undefined,
           trendChartImg: trendChartImg ?? undefined,
           summary: {
             totalOrang: statsSummary.totalOrang,
@@ -1326,187 +1318,9 @@ export default function RekapitulasiPage() {
                   </div>
                 </div>
 
-                {/* 2 Main Visualizations: Donut Chart & Distribusi Kedisiplinan */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Card 1: Donut Chart Proporsi */}
-                  <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
-                          <PieChart size={18} />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-sm text-gray-800 dark:text-white">Proporsi Kehadiran</h4>
-                          <p className="text-[11px] text-gray-400">Rasio persentase status dari {statsSummary.totalPresensi} catatan</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-center gap-6 py-2">
-                      {/* SVG Donut Chart */}
-                      {(() => {
-                        const circumference = 251.327; // 2 * PI * 40
-                        const hadirDash = (statsSummary.pctHadir / 100) * circumference;
-                        const izinDash = (statsSummary.pctIzin / 100) * circumference;
-                        const sakitDash = (statsSummary.pctSakit / 100) * circumference;
-                        const alphaDash = (statsSummary.pctAlpha / 100) * circumference;
-
-                        const offsetHadir = 0;
-                        const offsetIzin = -hadirDash;
-                        const offsetSakit = -(hadirDash + izinDash);
-                        const offsetAlpha = -(hadirDash + izinDash + sakitDash);
-
-                        return (
-                          <div className="relative w-40 h-40 sm:w-44 sm:h-44 flex items-center justify-center shrink-0">
-                            <svg id="rekap-donut-svg" className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
-                              <circle
-                                cx="50"
-                                cy="50"
-                                r="40"
-                                fill="transparent"
-                                stroke="currentColor"
-                                strokeWidth="12"
-                                className="text-gray-100 dark:text-gray-700/60"
-                              />
-                              {statsSummary.totalPresensi > 0 && (
-                                <>
-                                  {hadirDash > 0 && (
-                                    <circle
-                                      cx="50"
-                                      cy="50"
-                                      r="40"
-                                      fill="transparent"
-                                      stroke="#22c55e"
-                                      strokeWidth="12"
-                                      strokeDasharray={`${hadirDash} ${circumference}`}
-                                      strokeDashoffset={offsetHadir}
-                                      className="transition-all duration-500"
-                                    />
-                                  )}
-                                  {izinDash > 0 && (
-                                    <circle
-                                      cx="50"
-                                      cy="50"
-                                      r="40"
-                                      fill="transparent"
-                                      stroke="#3b82f6"
-                                      strokeWidth="12"
-                                      strokeDasharray={`${izinDash} ${circumference}`}
-                                      strokeDashoffset={offsetIzin}
-                                      className="transition-all duration-500"
-                                    />
-                                  )}
-                                  {sakitDash > 0 && (
-                                    <circle
-                                      cx="50"
-                                      cy="50"
-                                      r="40"
-                                      fill="transparent"
-                                      stroke="#f97316"
-                                      strokeWidth="12"
-                                      strokeDasharray={`${sakitDash} ${circumference}`}
-                                      strokeDashoffset={offsetSakit}
-                                      className="transition-all duration-500"
-                                    />
-                                  )}
-                                  {alphaDash > 0 && (
-                                    <circle
-                                      cx="50"
-                                      cy="50"
-                                      r="40"
-                                      fill="transparent"
-                                      stroke="#ef4444"
-                                      strokeWidth="12"
-                                      strokeDasharray={`${alphaDash} ${circumference}`}
-                                      strokeDashoffset={offsetAlpha}
-                                      className="transition-all duration-500"
-                                    />
-                                  )}
-                                </>
-                              )}
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center select-none pointer-events-none">
-                              <span className="text-2xl sm:text-3xl font-black text-gray-800 dark:text-white leading-none">
-                                {statsSummary.totalPresensi > 0 ? `${statsSummary.pctHadir.toFixed(0)}%` : '0%'}
-                              </span>
-                              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-1">
-                                Hadir
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Detail Status Breakdown */}
-                      <div className="flex-1 space-y-2.5 w-full">
-                        {/* Hadir */}
-                        <div>
-                          <div className="flex justify-between items-center text-xs font-bold mb-1">
-                            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
-                              <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
-                              Hadir
-                            </span>
-                            <span className="text-gray-500 dark:text-gray-400">
-                              <strong className="text-green-600 dark:text-green-400">{statsSummary.totalHadir}</strong> ({statsSummary.pctHadir.toFixed(1)}%)
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2 overflow-hidden">
-                            <div className="bg-green-500 h-full rounded-full transition-all duration-500" style={{ width: `${statsSummary.pctHadir}%` }} />
-                          </div>
-                        </div>
-
-                        {/* Izin */}
-                        <div>
-                          <div className="flex justify-between items-center text-xs font-bold mb-1">
-                            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
-                              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
-                              Izin
-                            </span>
-                            <span className="text-gray-500 dark:text-gray-400">
-                              <strong className="text-blue-600 dark:text-blue-400">{statsSummary.totalIzin}</strong> ({statsSummary.pctIzin.toFixed(1)}%)
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2 overflow-hidden">
-                            <div className="bg-blue-500 h-full rounded-full transition-all duration-500" style={{ width: `${statsSummary.pctIzin}%` }} />
-                          </div>
-                        </div>
-
-                        {/* Sakit */}
-                        <div>
-                          <div className="flex justify-between items-center text-xs font-bold mb-1">
-                            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
-                              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0" />
-                              Sakit
-                            </span>
-                            <span className="text-gray-500 dark:text-gray-400">
-                              <strong className="text-orange-600 dark:text-orange-400">{statsSummary.totalSakit}</strong> ({statsSummary.pctSakit.toFixed(1)}%)
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2 overflow-hidden">
-                            <div className="bg-orange-500 h-full rounded-full transition-all duration-500" style={{ width: `${statsSummary.pctSakit}%` }} />
-                          </div>
-                        </div>
-
-                        {/* Alpha */}
-                        <div>
-                          <div className="flex justify-between items-center text-xs font-bold mb-1">
-                            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
-                              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
-                              Alpha
-                            </span>
-                            <span className="text-gray-500 dark:text-gray-400">
-                              <strong className="text-red-600 dark:text-red-400">{statsSummary.totalAlpha}</strong> ({statsSummary.pctAlpha.toFixed(1)}%)
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-100 dark:bg-gray-700/60 rounded-full h-2 overflow-hidden">
-                            <div className="bg-red-500 h-full rounded-full transition-all duration-500" style={{ width: `${statsSummary.pctAlpha}%` }} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Grafik Tren Kehadiran Harian (%) — Time-Series Line & Area Chart (Untuk Semua Role Akun) */}
+                {/* Visualisasi Utama: Grafik Tren Kehadiran Harian (%) — Full Width */}
+                <div className="w-full">
+                  {/* Card: Grafik Tren Kehadiran Harian (%) — Time-Series Line & Area Chart (Full Width) */}
                   <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
                     <div>
                       {/* Header Card 2 — Ramping 2 Baris (PC & HP) */}
@@ -1668,7 +1482,7 @@ export default function RekapitulasiPage() {
                         </div>
                       ) : (
                         (() => {
-                          const svgW = 600;
+                          const svgW = 800;
                           const svgH = 210;
                           const padL = 40;
                           const padR = 20;
@@ -1736,7 +1550,7 @@ export default function RekapitulasiPage() {
 
                           // Interval label tanggal agar tidak bertumpukan
                           const totalPoints = pointsHadir.length;
-                          const labelInterval = totalPoints > 20 ? 4 : totalPoints > 10 ? 2 : 1;
+                          const labelInterval = totalPoints > 28 ? 3 : totalPoints > 14 ? 2 : 1;
 
                           return (
                             <div className="relative w-full overflow-hidden select-none">
