@@ -1509,24 +1509,48 @@ export default function RekapitulasiPage() {
                   {/* Card 2: Grafik Tren Kehadiran Harian (%) — Time-Series Line & Area Chart (Untuk Semua Role Akun) */}
                   <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
                     <div>
-                      {/* Header Card 2 — 3-row stacked layout */}
-                      <div className="flex flex-col gap-2 mb-3">
-                        {/* Baris 1: Ikon + Judul + Subjudul */}
-                        <div className="flex items-center gap-2">
-                          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shrink-0">
-                            <TrendingUp size={18} />
+                      {/* Header Card 2 — Ramping 2 Baris (PC & HP) */}
+                      <div className="flex flex-col gap-2.5 mb-3">
+                        {/* Baris 1: Ikon + Judul + Subjudul di kiri, Tombol Preview & PDF di kanan */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shrink-0">
+                              <TrendingUp size={18} />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-xs sm:text-sm text-gray-800 dark:text-white truncate">
+                                Tren Kehadiran {modeRentang ? 'Rentang Tanggal' : 'Bulanan'} (%)
+                              </h4>
+                              <p className="text-[10px] sm:text-[11px] text-gray-400 truncate">
+                                Fluktuasi tingkat kehadiran per tanggal sesi
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-bold text-sm text-gray-800 dark:text-white">
-                              Tren Kehadiran {modeRentang ? 'Rentang Tanggal' : 'Bulanan'} (%)
-                            </h4>
-                            <p className="text-[11px] text-gray-400">
-                              Fluktuasi tingkat kehadiran per tanggal sesi
-                            </p>
+
+                          {/* Tombol Preview & PDF sebaris di kanan */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleExport('pdf', true)}
+                              className="flex items-center gap-1 text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800/40 transition-all cursor-pointer shadow-xs"
+                              title="Pratinjau PDF Laporan Statistik & Tren"
+                            >
+                              <FileText size={12} />
+                              <span>Preview</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleExport('pdf', false)}
+                              className="flex items-center gap-1 text-[11px] font-bold text-white bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded-lg transition-all shadow-xs cursor-pointer"
+                              title="Unduh PDF Laporan Statistik & Tren"
+                            >
+                              <Download size={12} />
+                              <span>PDF</span>
+                            </button>
                           </div>
                         </div>
 
-                        {/* Baris 2: Toggle Pills Status — rata tengah */}
+                        {/* Baris 2: Toggle Pills Status + Badge Target 85% — satu baris rata tengah */}
                         <div className="flex flex-wrap justify-center items-center gap-1.5 w-full">
                           <button
                             type="button"
@@ -1583,52 +1607,36 @@ export default function RekapitulasiPage() {
                             <span className={`w-2 h-2 rounded-full ${visibleTrendLines.alpha ? 'bg-red-500' : 'bg-gray-400'}`} />
                             Alpha
                           </button>
-                        </div>
 
-                        {/* Baris 3: Target 85% + Preview PDF + PDF — rata tengah */}
-                        <div className="flex flex-wrap justify-center items-center gap-1.5 w-full">
                           <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-lg border border-amber-200/50 dark:border-amber-800/40">
                             <span className="w-3 h-0.5 bg-amber-500 rounded-full" />
                             Target 85%
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => handleExport('pdf', true)}
-                            className="flex items-center gap-1 text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800/40 transition-all cursor-pointer shadow-xs"
-                            title="Pratinjau PDF Laporan Statistik & Tren"
-                          >
-                            <FileText size={12} />
-                            <span>Preview PDF</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleExport('pdf', false)}
-                            className="flex items-center gap-1 text-[11px] font-bold text-white bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded-lg transition-all shadow-xs cursor-pointer"
-                            title="Unduh PDF Laporan Statistik & Tren"
-                          >
-                            <Download size={12} />
-                            <span>PDF</span>
-                          </button>
                         </div>
                       </div>
 
-                      {/* Interactive Hover Info Bar */}
-                      <div className="min-h-[38px] mb-2 flex items-center justify-between text-xs px-3 py-1.5 rounded-xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 transition-all">
+                      {/* Interactive Hover Info Bar — 2 Baris Rata Tengah */}
+                      <div className="min-h-[44px] mb-2 flex items-center justify-center text-xs px-3 py-1.5 rounded-xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 transition-all">
                         {hoveredTrend ? (
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-1.5 sm:gap-2 animate-in fade-in duration-200">
-                            <span className="font-extrabold text-gray-800 dark:text-gray-100 flex items-center gap-1.5 shrink-0">
-                              <Calendar size={13} className="text-purple-600 dark:text-purple-400" />
-                              {(() => {
-                                const parts = (hoveredTrend.tanggal || '').split('-');
-                                if (parts.length !== 3) return hoveredTrend.tanggal;
-                                const dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-                                return dt.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-                              })()}
-                            </span>
-                            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] flex-wrap">
-                              <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 px-1.5 py-0.5 rounded-md">
+                          <div className="flex flex-col items-center justify-center w-full gap-1 animate-in fade-in duration-200 text-center">
+                            {/* Baris 1: Tanggal & Prosentase Hadir rata tengah */}
+                            <div className="flex items-center justify-center gap-2 flex-wrap">
+                              <span className="font-extrabold text-gray-800 dark:text-gray-100 flex items-center gap-1.5 shrink-0 text-xs">
+                                <Calendar size={13} className="text-purple-600 dark:text-purple-400" />
+                                {(() => {
+                                  const parts = (hoveredTrend.tanggal || '').split('-');
+                                  if (parts.length !== 3) return hoveredTrend.tanggal;
+                                  const dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                                  return dt.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                                })()}
+                              </span>
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 px-2 py-0.5 rounded-md text-[11px]">
                                 {(hoveredTrend.pctHadir ?? 0).toFixed(1)}% Hadir ({hoveredTrend.hadir})
                               </span>
+                            </div>
+
+                            {/* Baris 2: Prosentase yang lain (Izin, Sakit, Alpha) rata tengah */}
+                            <div className="flex items-center justify-center gap-1.5 flex-wrap text-[10px] sm:text-[11px]">
                               <span className="font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/40 px-1.5 py-0.5 rounded-md">
                                 {(hoveredTrend.pctIzin ?? 0).toFixed(1)}% Izin ({hoveredTrend.izin})
                               </span>
@@ -1644,7 +1652,7 @@ export default function RekapitulasiPage() {
                           <div className="flex items-center justify-between w-full text-[11px] text-gray-500 dark:text-gray-400">
                             <span>Arahkan kursor atau sentuh titik grafik untuk rincian status</span>
                             <span className="font-bold text-gray-700 dark:text-gray-300">
-                              {trendData.length} Hari Pertemuan
+                              {trendData.length} Sesi
                             </span>
                           </div>
                         )}
