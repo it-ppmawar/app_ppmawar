@@ -951,8 +951,8 @@ export default function RekapitulasiPage() {
           </div>
         </div>
 
-        {/* ── Baris 2: Filter waktu + Pilihan Tampilan + Tombol Tampilkan — 5 kolom seragam & presisi ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+        {/* ── Baris 2: Filter waktu + Tombol Tampilkan — 4 kolom seimbang & presisi ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
 
           {/* Kolom 1: Toggle Mode Waktu */}
           <div>
@@ -1024,23 +1024,7 @@ export default function RekapitulasiPage() {
             </>
           )}
 
-          {/* Kolom 4: Pilihan Tampilan (Dropdown Filter) */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1">
-              Pilihan Tampilan
-            </label>
-            <select
-              value={viewMode}
-              onChange={e => setViewMode(e.target.value as 'tabel' | 'grafik' | 'keduanya')}
-              className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all cursor-pointer"
-            >
-              <option value="tabel">📋 Data Tabel</option>
-              <option value="grafik">📊 Data Grafik</option>
-              <option value="keduanya">📑 Keduanya / Semua</option>
-            </select>
-          </div>
-
-          {/* Kolom 5: Tombol Tampilkan */}
+          {/* Kolom 4: Tombol Tampilkan */}
           <div>
             <label className="block text-xs font-bold text-transparent mb-1 select-none hidden lg:block">
               Aksi
@@ -1072,8 +1056,8 @@ export default function RekapitulasiPage() {
 
           {/* Status Bar Jumlah, Hint Sort & Quick Switcher Tampilan */}
           {data.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl px-5 py-3 shadow-xs border border-gray-100 dark:border-gray-700 flex flex-wrap justify-between items-center text-xs text-gray-500 dark:text-gray-400 gap-3">
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl px-4 sm:px-5 py-3 shadow-xs border border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-center text-xs text-gray-500 dark:text-gray-400 gap-2.5 sm:gap-3">
+              <div className="flex items-center justify-center sm:justify-start w-full sm:w-auto gap-2 flex-wrap text-center sm:text-left">
                 <span className="font-medium">
                   Menampilkan <strong className="text-gray-800 dark:text-gray-200">{filteredData.length}</strong> dari <strong className="text-gray-800 dark:text-gray-200">{data.length}</strong> data
                   {searchNama && <span> untuk kata kunci &quot;<strong className="text-purple-600 dark:text-purple-400">{searchNama}</strong>&quot;</span>}
@@ -1085,45 +1069,45 @@ export default function RekapitulasiPage() {
                 )}
               </div>
 
-              {/* Quick View Mode Switcher Pills */}
-              <div className="flex items-center bg-gray-100 dark:bg-gray-700/70 p-1 rounded-xl text-xs font-bold gap-1">
+              {/* Quick View Mode Switcher Pills (Memenuhi ruang & rata tengah di HP) */}
+              <div className="w-full sm:w-auto grid grid-cols-3 sm:flex items-center bg-gray-100 dark:bg-gray-700/70 p-1 rounded-xl text-xs font-bold gap-1 shadow-inner">
                 <button
                   type="button"
                   onClick={() => setViewMode('tabel')}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                  className={`px-2 sm:px-3 py-2 sm:py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none text-center ${
                     viewMode === 'tabel'
-                      ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-xs'
+                      ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-xs font-black'
                       : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
                   }`}
                   title="Tampilkan data dalam bentuk tabel saja"
                 >
-                  <Table size={13} />
+                  <Table size={14} className="shrink-0" />
                   <span>Tabel</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('grafik')}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                  className={`px-2 sm:px-3 py-2 sm:py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none text-center ${
                     viewMode === 'grafik'
-                      ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-xs'
+                      ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-xs font-black'
                       : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
                   }`}
                   title="Tampilkan data dalam bentuk grafik statistik saja"
                 >
-                  <BarChart3 size={13} />
+                  <BarChart3 size={14} className="shrink-0" />
                   <span>Grafik</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('keduanya')}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                  className={`px-2 sm:px-3 py-2 sm:py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none text-center ${
                     viewMode === 'keduanya'
-                      ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-xs'
+                      ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-xs font-black'
                       : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
                   }`}
                   title="Tampilkan grafik statistik dan tabel rincian sekaligus"
                 >
-                  <LayoutGrid size={13} />
+                  <LayoutGrid size={14} className="shrink-0" />
                   <span>Keduanya</span>
                 </button>
               </div>
