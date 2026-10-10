@@ -640,7 +640,35 @@ export default function RekapitulasiPage() {
     return `${months[parseInt(filter.bulan) - 1]} ${filter.tahun}`;
   };
 
-  const handleExport = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
+  // Helper: Capture SVG element as PNG data URL for PDF embedding
+  const svgToDataUrl = (svgId: string): Promise<string | null> => {
+    const el = document.getElementById(svgId) as SVGSVGElement | null;
+    if (!el) return Promise.resolve(null);
+    const serialized = new XMLSerializer().serializeToString(el);
+    const blob = new Blob([serialized], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const vb = el.viewBox?.baseVal;
+        const canvas = document.createElement('canvas');
+        canvas.width = (vb?.width || 600) * 2;
+        canvas.height = (vb?.height || 210) * 2;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  };
+
+  const handleExport = async (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
     const baseData = searchNama.trim() ? filteredData : sortedData;
     const exportData = selectedIds.length > 0 
       ? baseData.filter(d => selectedIds.includes(d.id))
@@ -715,10 +743,17 @@ export default function RekapitulasiPage() {
       let result: string | void;
 
       if (viewMode === 'grafik') {
+        // Capture chart SVGs as images for PDF
+        const [donutChartImg, trendChartImg] = await Promise.all([
+          svgToDataUrl('rekap-donut-svg'),
+          svgToDataUrl('rekap-trend-svg'),
+        ]);
         result = exportStatsPDF({
           title: filter.tipe === 'dewan_guru' ? 'REKAPITULASI STATISTIK DEWAN GURU YPMA' : 'REKAPITULASI STATISTIK & TREN KEHADIRAN',
           subtitle,
           period,
+          donutChartImg: donutChartImg ?? undefined,
+          trendChartImg: trendChartImg ?? undefined,
           summary: {
             totalOrang: statsSummary.totalOrang,
             totalPresensi: statsSummary.totalPresensi,
@@ -738,10 +773,17 @@ export default function RekapitulasiPage() {
           previewOnly
         });
       } else if (viewMode === 'keduanya') {
+        // Capture chart SVGs as images for PDF
+        const [donutChartImg, trendChartImg] = await Promise.all([
+          svgToDataUrl('rekap-donut-svg'),
+          svgToDataUrl('rekap-trend-svg'),
+        ]);
         result = exportStatsPDF({
           title: filter.tipe === 'dewan_guru' ? 'REKAPITULASI PRESENSI DEWAN GURU YPMA (KOMPREHENSIF)' : 'REKAPITULASI KEHADIRAN KOMPREHENSIF',
           subtitle,
           period,
+          donutChartImg: donutChartImg ?? undefined,
+          trendChartImg: trendChartImg ?? undefined,
           summary: {
             totalOrang: statsSummary.totalOrang,
             totalPresensi: statsSummary.totalPresensi,
@@ -774,6 +816,7 @@ export default function RekapitulasiPage() {
       }
     }
   };
+
 
   const handleExportDetail = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
     if (!detailModal || detailModal.data.length === 0) {
@@ -1315,7 +1358,7 @@ export default function RekapitulasiPage() {
 
                         return (
                           <div className="relative w-40 h-40 sm:w-44 sm:h-44 flex items-center justify-center shrink-0">
-                            <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+                            <svg id="rekap-donut-svg" className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
                               <circle
                                 cx="50"
                                 cy="50"
@@ -1466,8 +1509,9 @@ export default function RekapitulasiPage() {
                   {/* Card 2: Grafik Tren Kehadiran Harian (%) — Time-Series Line & Area Chart (Untuk Semua Role Akun) */}
                   <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
                     <div>
-                      {/* Header Card 2 */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                      {/* Header Card 2 — 3-row stacked layout */}
+                      <div className="flex flex-col gap-2 mb-3">
+                        {/* Baris 1: Ikon + Judul + Subjudul */}
                         <div className="flex items-center gap-2">
                           <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shrink-0">
                             <TrendingUp size={18} />
@@ -1482,8 +1526,8 @@ export default function RekapitulasiPage() {
                           </div>
                         </div>
 
-                        {/* Legend & Interactive Status Toggle Pills */}
-                        <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0 flex-wrap">
+                        {/* Baris 2: Toggle Pills Status — rata tengah */}
+                        <div className="flex flex-wrap justify-center items-center gap-1.5 w-full">
                           <button
                             type="button"
                             onClick={() => toggleTrendLine('hadir')}
@@ -1539,33 +1583,32 @@ export default function RekapitulasiPage() {
                             <span className={`w-2 h-2 rounded-full ${visibleTrendLines.alpha ? 'bg-red-500' : 'bg-gray-400'}`} />
                             Alpha
                           </button>
+                        </div>
 
+                        {/* Baris 3: Target 85% + Preview PDF + PDF — rata tengah */}
+                        <div className="flex flex-wrap justify-center items-center gap-1.5 w-full">
                           <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-lg border border-amber-200/50 dark:border-amber-800/40">
                             <span className="w-3 h-0.5 bg-amber-500 rounded-full" />
                             Target 85%
                           </span>
-
-                          {/* Tombol Cepat Cetak PDF Statistik & Tren */}
-                          <div className="flex items-center gap-1 border-l border-gray-200 dark:border-gray-700 pl-1.5 ml-0.5">
-                            <button
-                              type="button"
-                              onClick={() => handleExport('pdf', true)}
-                              className="flex items-center gap-1 text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800/40 transition-all cursor-pointer shadow-xs"
-                              title="Pratinjau PDF Laporan Statistik & Tren"
-                            >
-                              <FileText size={12} />
-                              <span>Preview PDF</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleExport('pdf', false)}
-                              className="flex items-center gap-1 text-[11px] font-bold text-white bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded-lg transition-all shadow-xs cursor-pointer"
-                              title="Unduh PDF Laporan Statistik & Tren"
-                            >
-                              <Download size={12} />
-                              <span>PDF</span>
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleExport('pdf', true)}
+                            className="flex items-center gap-1 text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800/40 transition-all cursor-pointer shadow-xs"
+                            title="Pratinjau PDF Laporan Statistik & Tren"
+                          >
+                            <FileText size={12} />
+                            <span>Preview PDF</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleExport('pdf', false)}
+                            className="flex items-center gap-1 text-[11px] font-bold text-white bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded-lg transition-all shadow-xs cursor-pointer"
+                            title="Unduh PDF Laporan Statistik & Tren"
+                          >
+                            <Download size={12} />
+                            <span>PDF</span>
+                          </button>
                         </div>
                       </div>
 
@@ -1690,6 +1733,7 @@ export default function RekapitulasiPage() {
                           return (
                             <div className="relative w-full overflow-hidden select-none">
                               <svg
+                                id="rekap-trend-svg"
                                 className="w-full h-auto"
                                 viewBox={`0 0 ${svgW} ${svgH}`}
                                 onMouseLeave={() => setHoveredTrend(null)}

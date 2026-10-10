@@ -86,6 +86,8 @@ export interface StatsExportOptions {
   title: string;
   subtitle?: string;
   period?: string;
+  donutChartImg?: string;
+  trendChartImg?: string;
   summary: {
     totalOrang: number;
     totalPresensi: number;
@@ -130,7 +132,7 @@ export interface StatsExportOptions {
 }
 
 export const exportStatsPDF = (options: StatsExportOptions): string | void => {
-  const { title, subtitle, period, summary, trendRows, listAlpha, listTeladan, detailTable, filename, previewOnly } = options;
+  const { title, subtitle, period, donutChartImg, trendChartImg, summary, trendRows, listAlpha, listTeladan, detailTable, filename, previewOnly } = options;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -162,69 +164,94 @@ export const exportStatsPDF = (options: StatsExportOptions): string | void => {
   }
   startY += 2;
 
-  // I. RINGKASAN INDIKATOR KINERJA KEHADIRAN (KPI)
+  // I. RINGKASAN INDIKATOR KINERJA KEHADIRAN (KPI) & PROPORSI
   doc.setFontSize(9.5);
   doc.setFont('courier', 'bold');
-  doc.text('I. RINGKASAN INDIKATOR KINERJA KEHADIRAN (KPI)', 14, startY);
+  doc.text('I. RINGKASAN INDIKATOR KINERJA & PROPORSI KEHADIRAN', 14, startY);
   startY += 3;
 
-  const kpiHead = [['Indikator Status', 'Jumlah Sesi', 'Rasio (%)', 'Standar & Catatan']];
+  const kpiHead = [['Indikator Status', 'Jumlah Absensi', 'Rasio (%)', 'Standar & Catatan']];
   const kpiRows = [
     [
       'Tingkat Kehadiran (Hadir)',
-      `${summary.totalHadir} pertemuan`,
+      `${summary.totalHadir} absensi`,
       `${summary.pctHadir.toFixed(1)}%`,
       summary.pctHadir >= 85 ? 'MEMENUHI TARGET (>= 85%)' : 'DI BAWAH TARGET (< 85%)'
     ],
     [
       'Tingkat Izin Resmi (Izin)',
-      `${summary.totalIzin} pertemuan`,
+      `${summary.totalIzin} absensi`,
       `${summary.pctIzin.toFixed(1)}%`,
       'Izin Resmi Terkonfirmasi'
     ],
     [
       'Tingkat Sakit (Sakit)',
-      `${summary.totalSakit} pertemuan`,
+      `${summary.totalSakit} absensi`,
       `${summary.pctSakit.toFixed(1)}%`,
       'Kondisi Medis / Istirahat'
     ],
     [
       'Tingkat Bolos / Tanpa Keterangan (Alpha)',
-      `${summary.totalAlpha} pertemuan`,
+      `${summary.totalAlpha} absensi`,
       `${summary.pctAlpha.toFixed(1)}%`,
       summary.totalAlpha === 0 ? 'TERTIB (NIHIL ALPHA)' : 'PERLU PEMBINAAN KHUSUS'
     ],
     [
       'TOTAL SELURUH PRESENSI',
-      `${summary.totalPresensi} catatan`,
+      `${summary.totalPresensi} total absensi`,
       '100.0%',
       `${summary.totalOrang} Individu Terdata`
     ]
   ];
+
+  const hasDonut = Boolean(donutChartImg);
 
   autoTable(doc, {
     head: kpiHead,
     body: kpiRows,
     startY: startY,
     theme: 'grid',
-    styles: { font: 'courier', fontSize: 8, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
+    margin: { left: 14, right: hasDonut ? 66 : 14 },
+    styles: { font: 'courier', fontSize: 7.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
     headStyles: { font: 'courier', fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
     bodyStyles: { font: 'courier' }
   });
 
-  startY = (doc as any).lastAutoTable.finalY + 7;
+  if (hasDonut && donutChartImg) {
+    try {
+      doc.addImage(donutChartImg, 'PNG', 148, startY - 1, 48, 48);
+    } catch (e) {
+      console.warn('Failed to add donut chart image to PDF', e);
+    }
+  }
 
-  // II. RIWAYAT TREN KEHADIRAN HARIAN
+  startY = Math.max((doc as any).lastAutoTable.finalY, hasDonut ? startY + 49 : 0) + 7;
+
+  // II. GRAFIK & RIWAYAT TREN KEHADIRAN HARIAN
   if (trendRows && trendRows.length > 0) {
-    if (startY > 230) {
+    if (startY > 200) {
       doc.addPage();
       startY = 20;
     }
 
     doc.setFontSize(9.5);
     doc.setFont('courier', 'bold');
-    doc.text(`II. RIWAYAT TREN KEHADIRAN HARIAN (${trendRows.length} Pertemuan)`, 14, startY);
+    doc.text(`II. GRAFIK & RIWAYAT TREN KEHADIRAN HARIAN (${trendRows.length} Sesi)`, 14, startY);
     startY += 3;
+
+    if (trendChartImg) {
+      try {
+        doc.addImage(trendChartImg, 'PNG', 14, startY, 182, 62);
+        startY += 65;
+      } catch (e) {
+        console.warn('Failed to add trend chart image to PDF', e);
+      }
+    }
+
+    if (startY > 225) {
+      doc.addPage();
+      startY = 20;
+    }
 
     const trendHead = [['No', 'Tanggal Sesi', 'Hadir', 'Izin', 'Sakit', 'Alpha', 'Total', '% Hadir', 'Keterangan']];
     const trendBody = trendRows.map((r, idx) => {
@@ -232,10 +259,10 @@ export const exportStatsPDF = (options: StatsExportOptions): string | void => {
       return [
         idx + 1,
         r.tanggal,
-        r.hadir,
-        r.izin,
-        r.sakit,
-        r.alpha,
+        `${r.hadir} abs`,
+        `${r.izin} abs`,
+        `${r.sakit} abs`,
+        `${r.alpha} abs`,
         r.total,
         `${pct.toFixed(1)}%`,
         pct >= 85 ? 'Disiplin Baik' : 'Di Bawah 85%'
@@ -247,7 +274,7 @@ export const exportStatsPDF = (options: StatsExportOptions): string | void => {
       body: trendBody,
       startY: startY,
       theme: 'grid',
-      styles: { font: 'courier', fontSize: 7.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
+      styles: { font: 'courier', fontSize: 7, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
       headStyles: { font: 'courier', fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
       bodyStyles: { font: 'courier' }
     });
