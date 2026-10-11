@@ -5,10 +5,11 @@ import {
   RefreshCw, Users, Check, Smartphone, Info, ChevronDown, ChevronUp, 
   Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar, Trash2, Award, Power, QrCode 
 } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { formatHariTanggalPesantren, formatHariPesantren } from '@/lib/formatHariPesantren';
 
 function NotifikasiContent() {
+  const router = useRouter();
   const [showSettingsGuide, setShowSettingsGuide] = useState(false);
   const [showChromeGuide, setShowChromeGuide] = useState(false);
   const [muridList, setMuridList] = useState<any[]>([]);
@@ -258,6 +259,10 @@ function NotifikasiContent() {
   const [saveStatus, setSaveStatus] = useState<Record<string, string>>({});
 
   const saveTemplate = async (key: string, value: string) => {
+    if (role === 'tamu' || role === 'wali_murid' || role === 'wali_alumni') {
+      alert('Akses ditolak: Mode tamu tidak diizinkan mengubah templat');
+      return;
+    }
     setSaveStatus(prev => ({ ...prev, [key]: 'saving' }));
     try {
       if (typeof window !== 'undefined') {
@@ -394,6 +399,10 @@ function NotifikasiContent() {
         if (data.success) {
           const userRole = data.user.role;
           setRole(userRole);
+          if (userRole === 'tamu' || userRole === 'wali_murid' || userRole === 'wali_alumni') {
+            router.replace('/dashboard/rekapitulasi');
+            return;
+          }
           setIsPengasuh(!!(data.user.is_pengasuh || data.user.isPengasuh || userRole === 'pengasuh'));
           // Untuk guru/pengurus_asrama: filter tipe jadwal berdasarkan jadwal aktual
           if (userRole !== 'admin' && userRole !== 'staff') {
@@ -833,7 +842,7 @@ function NotifikasiContent() {
       .replace(/{kegiatan}/g, tipeLabel)
       .replace(/{kelas}/g, tempatLabel || '-')
       .replace(/{status}/g, statusAbsen)
-      .replace(/{link_laporan}/g, 'https://app.ppmawar.or.id/dashboard/notifikasi');
+      .replace(/{link_laporan}/g, 'https://app.ppmawar.or.id/dashboard/rekapitulasi');
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };
@@ -1025,6 +1034,26 @@ function NotifikasiContent() {
       .catch(() => setGuruQuickUrl(''))
       .finally(() => setFetchingQuickUrl(false));
   }, [selectedGuruId, tipeGuru, activeReminders]);
+
+  if (role === 'tamu' || role === 'wali_murid' || role === 'wali_alumni') {
+    return (
+      <div className="max-w-md mx-auto my-12 p-6 bg-white dark:bg-gray-800 rounded-3xl shadow-lg border border-amber-200 dark:border-amber-900/40 text-center animate-in fade-in">
+        <div className="w-16 h-16 mx-auto mb-4 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-full flex items-center justify-center">
+          <AlertTriangle size={32} />
+        </div>
+        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">Akses Dibatasi</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          Halaman siaran notifikasi dan templat pesan hanya diperuntukkan bagi pengurus dan dewan guru. Anda dialihkan ke halaman rekapitulasi.
+        </p>
+        <button
+          onClick={() => router.replace('/dashboard/rekapitulasi')}
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all"
+        >
+          Menuju Rekapitulasi Presensi
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto animate-[fadeIn_0.5s_ease-out] pb-20">

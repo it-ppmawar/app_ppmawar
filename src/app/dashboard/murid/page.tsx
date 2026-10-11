@@ -658,7 +658,7 @@ export default function DataMuridPage() {
     try {
       const payload: any = { murid_ids: selectedMurid };
       if (bulkType === 'madin') payload.kelas_madin_id = bulkTargetId;
-      else if (bulkType === 'madin2') payload.kelas_madin_2_id = bulkTargetId;
+      else if (bulkType === 'madin2') payload.kelas_madin_2_id = bulkTargetId === 'none' ? null : bulkTargetId;
       else if (bulkType === 'quran') payload.kelas_quran_id = bulkTargetId;
       else payload.kamar_id = bulkTargetId;
 
@@ -671,12 +671,12 @@ export default function DataMuridPage() {
       if (json.success) {
         // Update local state
         const targetOption = classOptions.find(o => o.id == bulkTargetId);
-        const targetName = targetOption ? targetOption.nama : bulkTargetId;
+        const targetName = bulkTargetId === 'none' ? null : (targetOption ? targetOption.nama : bulkTargetId);
 
         setMurid(murid.map(m => {
           if (selectedMurid.includes(m.murid_id)) {
             if (bulkType === 'madin') return { ...m, kelas_madin_id: bulkTargetId, kelas_madin: targetName };
-            if (bulkType === 'madin2') return { ...m, kelas_madin_2_id: bulkTargetId, kelas_madin_2: targetName };
+            if (bulkType === 'madin2') return { ...m, kelas_madin_2_id: bulkTargetId === 'none' ? null : bulkTargetId, kelas_madin_2: targetName };
             if (bulkType === 'quran') return { ...m, kelas_quran_id: bulkTargetId, kelas_quran: targetName };
             if (bulkType === 'kamar') return { ...m, kamar_id: bulkTargetId, nama_kamar: targetName };
           }
@@ -1218,6 +1218,9 @@ export default function DataMuridPage() {
                   required
                 >
                   <option value="" disabled>-- Pilih Tujuan --</option>
+                  {bulkType === 'madin2' && (
+                    <option value="none">-- Tidak ada --</option>
+                  )}
                   {classOptions.map(k => (
                     <option key={k.id} value={k.id}>
                       {k.nama}
@@ -1236,9 +1239,9 @@ export default function DataMuridPage() {
                 <button
                   type="submit"
                   disabled={savingBulk || !bulkTargetId}
-                  className={`flex-1 py-2 text-white font-bold rounded-xl transition-colors disabled:opacity-50 ${bulkType === 'madin' ? 'bg-teal-600 hover:bg-teal-700' : bulkType === 'quran' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-600 hover:bg-orange-600'}`}
+                  className={`flex-1 py-2 text-white font-bold rounded-xl transition-colors disabled:opacity-50 ${bulkType === 'madin' ? 'bg-teal-600 hover:bg-teal-700' : bulkType === 'madin2' ? 'bg-cyan-600 hover:bg-cyan-700' : bulkType === 'quran' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-600 hover:bg-orange-700'}`}
                 >
-                  {savingBulk ? 'Memproses...' : 'Pindahkan'}
+                  {savingBulk ? 'Memproses...' : bulkTargetId === 'none' ? 'Hapus Madin 2' : bulkType === 'madin2' ? 'Simpan' : 'Pindahkan'}
                 </button>
               </div>
             </form>

@@ -307,7 +307,7 @@ export async function GET(request: Request) {
       } else if (target_id === 'all') {
         whereCond = 'WHERE m.kamar_id IS NOT NULL';
         whereParams = [];
-      } else if (target_id.startsWith('asrama_')) {
+      } else if (target_id && target_id.startsWith('asrama_')) {
         const asr = target_id.replace('asrama_', '');
         whereCond = 'WHERE km.nama_asrama = ?';
         whereParams = [asr];

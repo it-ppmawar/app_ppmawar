@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, SwitchCamera, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy, Search, Key, Link as LinkIcon, Sun, Moon, MessageCircle, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { formatHariTanggalPesantren } from '@/lib/formatHariPesantren';
+import { Html5Qrcode } from 'html5-qrcode';
 
 // Avatar & Photo helper
 const AVATAR_COLORS = [
@@ -93,6 +94,153 @@ function QuickAbsenContent() {
       .catch(() => {});
   }, []);
 
+  // State & Handler Scanner QR Langsung di Halaman Pintasan
+  const [showQuickScanModal, setShowQuickScanModal] = useState(false);
+  const [isQuickScanning, setIsQuickScanning] = useState(false);
+  const [quickFacingMode, setQuickFacingMode] = useState<'environment' | 'user'>('environment');
+  const [quickScanFeedback, setQuickScanFeedback] = useState<{ type: 'success' | 'warning'; message: string; name?: string } | null>(null);
+  const [quickRecentScans, setQuickRecentScans] = useState<Array<{ id: number; nama: string; time: string }>>([]);
+  const quickQrCodeRef = useRef<Html5Qrcode | null>(null);
+  const quickScanBtnRef = useRef<HTMLButtonElement | null>(null);
+  const lastScannedCodeRef = useRef<string>('');
+  const lastScannedTimeRef = useRef<number>(0);
+
+  // Audio Beep helper untuk feedback suara
+  const playScanBeep = (isSuccess: boolean) => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (isSuccess) {
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      } else {
+        osc.frequency.setValueAtTime(320, ctx.currentTime);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      }
+    } catch (e) {}
+  };
+
+  // Autoscroll ke tengah tombol "Mulai Scan" tepat saat modal scan dibuka
+  useEffect(() => {
+    if (showQuickScanModal && !isQuickScanning) {
+      const timer = setTimeout(() => {
+        quickScanBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [showQuickScanModal, isQuickScanning]);
+
+  const stopQuickScanner = async () => {
+    if (quickQrCodeRef.current) {
+      try {
+        if (quickQrCodeRef.current.isScanning) {
+          await quickQrCodeRef.current.stop();
+        }
+        quickQrCodeRef.current.clear();
+      } catch (e) {}
+      quickQrCodeRef.current = null;
+    }
+    setIsQuickScanning(false);
+  };
+
+  const startQuickScanner = async (facing: 'environment' | 'user' = quickFacingMode) => {
+    try {
+      setIsQuickScanning(true);
+      setQuickScanFeedback(null);
+      setTimeout(async () => {
+        try {
+          const scanner = new Html5Qrcode('quick-qr-reader');
+          quickQrCodeRef.current = scanner;
+          await scanner.start(
+            { facingMode: facing },
+            {
+              fps: 10,
+              qrbox: { width: 240, height: 240 },
+              aspectRatio: 1.0,
+            },
+            (decodedText) => handleQuickScanSuccess(decodedText),
+            () => {}
+          );
+        } catch (err: any) {
+          console.error('Start quick scan error:', err);
+          setIsQuickScanning(false);
+          alert('Gagal membuka kamera: ' + (err.message || 'Izin kamera ditolak atau tidak ditemukan'));
+        }
+      }, 150);
+    } catch (e) {
+      setIsQuickScanning(false);
+    }
+  };
+
+  const handleQuickScanSuccess = (decodedText: string) => {
+    const now = Date.now();
+    const code = decodedText.trim();
+    if (code === lastScannedCodeRef.current && now - lastScannedTimeRef.current < 2000) {
+      return;
+    }
+    lastScannedCodeRef.current = code;
+    lastScannedTimeRef.current = now;
+
+    const listMurid: any[] = data?.murid || [];
+    const matched = listMurid.find((m: any) => 
+      (m.barcode_id && String(m.barcode_id).trim() === code) ||
+      (m.nis && String(m.nis).trim() === code)
+    );
+
+    if (matched) {
+      playScanBeep(true);
+      setKehadiran(prev => ({ ...prev, [matched.murid_id]: 'hadir' }));
+      const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setQuickRecentScans(prev => [
+        { id: matched.murid_id, nama: matched.nama, time: timeStr },
+        ...prev.filter(x => x.id !== matched.murid_id)
+      ].slice(0, 10));
+      setQuickScanFeedback({
+        type: 'success',
+        name: matched.nama,
+        message: 'Berhasil dicatat Hadir!',
+      });
+    } else {
+      playScanBeep(false);
+      setQuickScanFeedback({
+        type: 'warning',
+        message: `Kartu [${code}] terdeteksi, namun santri tidak terdaftar di kelas ini.`,
+      });
+    }
+  };
+
+  const switchQuickFacing = async () => {
+    const nextFacing = quickFacingMode === 'environment' ? 'user' : 'environment';
+    setQuickFacingMode(nextFacing);
+    await stopQuickScanner();
+    setTimeout(() => {
+      startQuickScanner(nextFacing);
+    }, 200);
+  };
+
+  // Bersihkan scanner saat modal ditutup atau unmount
+  useEffect(() => {
+    return () => {
+      if (quickQrCodeRef.current) {
+        try {
+          if (quickQrCodeRef.current.isScanning) {
+            quickQrCodeRef.current.stop();
+          }
+          quickQrCodeRef.current.clear();
+        } catch (e) {}
+      }
+    };
+  }, []);
+
   const handleSendSingleWaliWa = (murid: any) => {
     let phone = (murid.no_wali || murid.no_hp || '').replace(/[^0-9]/g, '');
     if (!phone) {
@@ -110,7 +258,7 @@ function QuickAbsenContent() {
     const kegiatan = mapel ? `${tipeLabel} (${mapel})` : tipeLabel;
     const namaSantri = murid.nama_panggilan ? `${murid.nama} [${murid.nama_panggilan}]` : murid.nama;
     const statusText = murid.keterangan ? `${statusLabel} (${murid.keterangan})` : statusLabel;
-    const linkLaporan = 'https://app.ppmawar.or.id/dashboard/notifikasi';
+    const linkLaporan = 'https://app.ppmawar.or.id/dashboard/rekapitulasi';
     const guruPengajar = data?.jadwal?.guru_nama || 'Pengajar PP. Matholi\'ul Anwar';
 
     // Ambil templat aktif yang tersinkronisasi dengan halaman Notifikasi
@@ -1604,14 +1752,18 @@ function QuickAbsenContent() {
               </div>
             </div>
 
-            {/* Tombol Pintasan Absen (Scan QR & Scan Wajah AI) */}
+            {/* Tombol Pintasan Absen (Scan QR Kartu Langsung) */}
             <div className="grid grid-cols-2 gap-3">
-              <Link
-                href="/dashboard/scan-absen?mode=qr"
-                className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl shadow-sm text-xs font-bold transition active:scale-95"
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickScanModal(true);
+                  setQuickScanFeedback(null);
+                }}
+                className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl shadow-sm text-xs font-bold transition active:scale-95 cursor-pointer"
               >
                 <QrCode size={16} /> Scan QR Kartu
-              </Link>
+              </button>
               <Link
                 href="/dashboard/scan-absen?mode=face"
                 className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl shadow-sm text-xs font-bold transition active:scale-95"
@@ -2439,6 +2591,177 @@ function QuickAbsenContent() {
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition cursor-pointer"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Scan QR Kartu Santri Langsung (Khusus Halaman Pintasan) */}
+      {showQuickScanModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 w-full max-w-lg rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <QrCode size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white leading-tight">
+                    Scan QR Kartu Santri
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {data?.jadwal?.nama_kelas || data?.jadwal?.kelas_nama || 'Kelas'} • Langsung Hadir Otomatis
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  stopQuickScanner();
+                  setShowQuickScanModal(false);
+                }}
+                className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                aria-label="Tutup Scan"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Statistik Kehadiran Terkini */}
+            {(() => {
+              const listMurid: any[] = data?.murid || [];
+              const hadirCount = listMurid.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'hadir').length;
+              const totalCount = listMurid.length;
+              return (
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 text-xs mb-3 shrink-0">
+                  <span className="font-medium text-slate-600 dark:text-slate-300">
+                    Progres Kehadiran:
+                  </span>
+                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                    {hadirCount} / {totalCount} Santri Hadir
+                  </span>
+                </div>
+              );
+            })()}
+
+            {/* Area Scanner / Tombol Mulai Scan */}
+            <div className="space-y-4 my-2">
+              {!isQuickScanning ? (
+                <div className="text-center py-6 px-4 bg-emerald-50/50 dark:bg-emerald-950/20 border-2 border-dashed border-emerald-200 dark:border-emerald-800/50 rounded-2xl space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center shadow-inner">
+                    <Camera size={32} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                      Kamera Scanner Belum Aktif
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                      Arahkan kamera ke QR / Barcode kartu santri untuk mencatat kehadiran secara langsung dan cepat.
+                    </p>
+                  </div>
+                  <button
+                    ref={quickScanBtnRef}
+                    type="button"
+                    onClick={() => startQuickScanner()}
+                    className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-sm rounded-xl shadow-md transition-all active:scale-95 inline-flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Camera size={18} /> Mulai Scan QR Sekarang
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3 animate-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between bg-slate-900 text-white p-3 rounded-t-2xl">
+                    <span className="text-xs font-bold flex items-center gap-1.5">
+                      <Camera size={15} className="text-red-400 animate-pulse" />
+                      Arahkan ke Kartu Santri
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={switchQuickFacing}
+                        className="text-xs px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center gap-1 font-medium transition cursor-pointer"
+                      >
+                        <SwitchCamera size={14} /> Ganti Kamera
+                      </button>
+                      <button
+                        type="button"
+                        onClick={stopQuickScanner}
+                        className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition cursor-pointer"
+                        title="Hentikan Kamera"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="relative rounded-b-2xl overflow-hidden border-2 border-emerald-500 bg-black min-h-[260px] flex items-center justify-center">
+                    <div id="quick-qr-reader" className="w-full h-full border-none [&_video]:w-full [&_video]:h-full [&_video]:object-cover" />
+                  </div>
+                </div>
+              )}
+
+              {/* Banner Feedback Scan */}
+              {quickScanFeedback && (
+                <div className={`p-3.5 rounded-xl border text-xs font-medium flex items-center gap-2.5 animate-in slide-in-from-top-2 duration-150 ${
+                  quickScanFeedback.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                    : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200'
+                }`}>
+                  {quickScanFeedback.type === 'success' ? (
+                    <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  ) : (
+                    <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                  )}
+                  <div className="leading-tight">
+                    {quickScanFeedback.name && (
+                      <span className="font-extrabold block text-sm">{quickScanFeedback.name}</span>
+                    )}
+                    <span>{quickScanFeedback.message}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Daftar Santri Ter-scan Terakhir */}
+              {quickRecentScans.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-emerald-500" />
+                    Santri Berhasil Diabsen ({quickRecentScans.length}):
+                  </h5>
+                  <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                    {quickRecentScans.map((item, idx) => (
+                      <div
+                        key={item.id + '-' + idx}
+                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Check size={14} className="text-emerald-500 shrink-0" />
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                            {item.nama}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 shrink-0 font-mono">
+                          {item.time}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Modal */}
+            <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  stopQuickScanner();
+                  setShowQuickScanModal(false);
+                }}
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+              >
+                Selesai &amp; Kembali ke Daftar Santri
               </button>
             </div>
           </div>

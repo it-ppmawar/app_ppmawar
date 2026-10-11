@@ -324,6 +324,17 @@ function ScanAbsenInner() {
   const [isGpsRequired, setIsGpsRequired] = useState<boolean>(false);
   const [pesantrenCoords, setPesantrenCoords] = useState<{ lat: number; lng: number } | null>(null);
 
+  const startScanBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!isScanning) {
+      const timer = setTimeout(() => {
+        startScanBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [scanMode, isScanning]);
+
   const checkGpsLocation = useCallback((targetLat?: number, targetLng?: number, maxRadius?: number) => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
       setGpsStatus('denied');
@@ -931,18 +942,20 @@ function ScanAbsenInner() {
     <div className="max-w-xl mx-auto space-y-5 pb-24 animate-[fadeIn_0.5s_ease-out]">
 
       {/* Switcher Tab Terpadu: Mode Manual vs Mode Scan vs Kupon Makan */}
-      {/* Kupon Makan disembunyikan untuk murni role guru saja */}
-      <div className={`grid ${!canAccessKuponMakan ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-800/90 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner`}>
-        <Link
-          href="/dashboard/absen"
-          className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
-        >
-          <ClipboardCheck size={20} className="mb-1 flex-shrink-0" />
-          <span className="leading-tight">
-            Mode Manual
-            <span className="block text-[10px] font-normal opacity-80">(Pilih Jadwal)</span>
-          </span>
-        </Link>
+      {/* Kupon Makan disembunyikan untuk murni role guru saja, Mode Manual disembunyikan untuk role tamu */}
+      <div className={`grid ${userRole === 'tamu' ? 'grid-cols-1' : !canAccessKuponMakan ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-800/90 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner`}>
+        {userRole !== 'tamu' && (
+          <Link
+            href="/dashboard/absen"
+            className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
+          >
+            <ClipboardCheck size={20} className="mb-1 flex-shrink-0" />
+            <span className="leading-tight">
+              Mode Manual
+              <span className="block text-[10px] font-normal opacity-80">(Pilih Jadwal)</span>
+            </span>
+          </Link>
+        )}
         <Link
           href="/dashboard/scan-absen"
           className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-black text-xs sm:text-sm transition-all bg-white dark:bg-gray-700 text-emerald-700 dark:text-emerald-300 shadow-sm border border-gray-200/60 dark:border-gray-600"
@@ -953,7 +966,7 @@ function ScanAbsenInner() {
             <span className="block text-[10px] font-normal opacity-80">(QR &amp; Wajah)</span>
           </span>
         </Link>
-        {canAccessKuponMakan && (
+        {canAccessKuponMakan && userRole !== 'tamu' && (
           <Link
             href="/dashboard/kupon-makan"
             className="flex flex-col items-center justify-center text-center py-2.5 px-1 rounded-xl font-bold text-xs sm:text-sm transition-all text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50"
@@ -1170,7 +1183,9 @@ function ScanAbsenInner() {
         {scanMode === 'qr' && (
           <>
             {!isScanning ? (
-              <button onClick={startScanner}
+              <button
+                ref={startScanBtnRef}
+                onClick={startScanner}
                 className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-lg py-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3">
                 <Camera size={26} /> Mulai Scan QR
               </button>
@@ -1217,7 +1232,9 @@ function ScanAbsenInner() {
         {scanMode === 'face' && (
           <>
             {!isScanning ? (
-              <button onClick={startScanner}
+              <button
+                ref={startScanBtnRef}
+                onClick={startScanner}
                 className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold text-lg py-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3">
                 <ScanFace size={26} /> Mulai Scan Wajah AI
               </button>

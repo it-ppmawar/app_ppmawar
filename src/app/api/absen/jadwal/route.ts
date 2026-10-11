@@ -20,8 +20,8 @@ export async function GET() {
       ? await resolveAsrama(userId, role, username || '', tokenAsrama)
       : tokenAsrama;
 
-    if (role === 'wali_murid' || role === 'wali_alumni') {
-      return NextResponse.json({ error: 'Akses ditolak. Wali murid/alumni tidak memiliki akses ke fitur absensi.' }, { status: 403 });
+    if (role === 'tamu' || role === 'wali_murid' || role === 'wali_alumni') {
+      return NextResponse.json({ error: 'Akses ditolak. Mode tamu/wali tidak memiliki akses ke fitur absensi manual.' }, { status: 403 });
     }
 
     if (role === 'guru' && !guruId) {

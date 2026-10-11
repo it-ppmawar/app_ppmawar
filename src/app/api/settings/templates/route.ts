@@ -21,6 +21,8 @@ async function ensureUtf8mb4Table() {
       // Pastikan tabel dan kolom 'nilai' menggunakan utf8mb4_unicode_ci agar teks Arab & Emoji tidak berubah jadi '?'
       await pool.query("ALTER TABLE pengaturan_absensi_otomatis CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci").catch(() => {});
       await pool.query("ALTER TABLE pengaturan_absensi_otomatis MODIFY nilai TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci").catch(() => {});
+      // Migrasi tautan lama dari dashboard/notifikasi ke dashboard/rekapitulasi
+      await pool.query("UPDATE pengaturan_absensi_otomatis SET nilai = REPLACE(nilai, 'dashboard/notifikasi', 'dashboard/rekapitulasi') WHERE nilai LIKE '%dashboard/notifikasi%'").catch(() => {});
       isTableChecked = true;
     }
   } catch (e) {
@@ -48,7 +50,12 @@ export async function GET(request: Request) {
 
     const templates: Record<string, string> = {};
     rows.forEach((row) => {
-      templates[row.nama_pengaturan] = row.nilai;
+      let val = row.nilai;
+      if (typeof val === 'string' && val.includes('dashboard/notifikasi')) {
+        val = val.replace(/https:\/\/app\.ppmawar\.or\.id\/dashboard\/notifikasi/g, 'https://app.ppmawar.or.id/dashboard/rekapitulasi');
+        val = val.replace(/\/dashboard\/notifikasi/g, '/dashboard/rekapitulasi');
+      }
+      templates[row.nama_pengaturan] = val;
     });
 
     return NextResponse.json({ success: true, templates });
@@ -63,6 +70,12 @@ export async function POST(request: Request) {
     const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Role check: tamu dan wali tidak diizinkan mengubah templat sistem
+    const allowedRoles = ['admin', 'staff', 'guru', 'pengurus_asrama'];
+    if (!allowedRoles.includes(user.role)) {
+      return NextResponse.json({ error: 'Forbidden: Anda tidak memiliki hak akses untuk mengubah templat pesan' }, { status: 403 });
     }
 
     await ensureUtf8mb4Table();

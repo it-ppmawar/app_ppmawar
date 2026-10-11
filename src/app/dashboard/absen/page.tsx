@@ -119,6 +119,36 @@ export default function InputAbsenPage() {
   const isMurniGuru = role === 'guru' && !isPengasuhOrPengurus;
   const canAccessKuponMakan = (['admin', 'staff', 'pengurus_asrama', 'pengasuh', 'pengurus'].includes(role) || isPengasuhOrPengurus) && !isMurniGuru;
 
+  if (role === 'tamu') {
+    return (
+      <div className="space-y-6 max-w-xl mx-auto pb-20 pt-8 text-center animate-in fade-in">
+        <div className="p-8 bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-amber-200 dark:border-amber-900/40">
+          <div className="w-16 h-16 mx-auto mb-4 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-full flex items-center justify-center">
+            <AlertCircle size={32} />
+          </div>
+          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">Akses Terbatas Mode Tamu</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+            Akun mode tamu tidak memiliki izin untuk menginput absensi secara manual atau mengakses seluruh jadwal santri. Silakan gunakan tautan pintasan khusus yang telah disediakan atau hubungi pengurus.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/dashboard/scan-absen"
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
+            >
+              <QrCode size={16} /> Ke Halaman Scan Absen
+            </Link>
+            <Link
+              href="/dashboard/rekapitulasi"
+              className="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition"
+            >
+              Lihat Rekapitulasi
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
       {/* Switcher Tab Terpadu: Mode Manual vs Mode Scan vs Kupon Makan */}
