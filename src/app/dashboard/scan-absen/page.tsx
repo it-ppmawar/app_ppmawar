@@ -1199,9 +1199,9 @@ function ScanAbsenInner() {
                     <button onClick={switchCamera} disabled={isSwitchingCamera}
                       title={facingMode === 'environment' ? 'Ganti ke Kamera Depan' : 'Ganti ke Kamera Belakang'}
                       aria-label="Ganti Kamera Depan/Belakang"
-                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all active:scale-95 ${isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-sm'}`}>
+                      className={`flex items-center justify-center p-2 sm:px-3 sm:py-1.5 text-xs font-bold rounded-xl transition-all active:scale-95 ${isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-sm'}`}>
                       <SwitchCamera size={16} className={isSwitchingCamera ? 'animate-spin' : ''} />
-                      <span className="hidden sm:inline">{isSwitchingCamera ? 'Mengganti...' : facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
+                      <span className="hidden sm:inline sm:ml-1.5">{isSwitchingCamera ? 'Mengganti...' : facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
                     </button>
                     <button onClick={stopAll} className="bg-red-500 hover:bg-red-600 p-1.5 rounded-lg"><XCircle size={18} /></button>
                   </div>
@@ -1252,9 +1252,9 @@ function ScanAbsenInner() {
                     <button onClick={switchCamera} disabled={isSwitchingCamera}
                       title={facingMode === 'environment' ? 'Ganti ke Kamera Depan' : 'Ganti ke Kamera Belakang'}
                       aria-label="Ganti Kamera Depan/Belakang"
-                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all active:scale-95 ${isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-sm'}`}>
+                      className={`flex items-center justify-center p-2 sm:px-3 sm:py-1.5 text-xs font-bold rounded-xl transition-all active:scale-95 ${isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-sm'}`}>
                       <SwitchCamera size={16} className={isSwitchingCamera ? 'animate-spin' : ''} />
-                      <span className="hidden sm:inline">{isSwitchingCamera ? 'Mengganti...' : facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
+                      <span className="hidden sm:inline sm:ml-1.5">{isSwitchingCamera ? 'Mengganti...' : facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
                     </button>
                     <button onClick={stopAll} className="bg-red-500 hover:bg-red-600 p-1.5 rounded-lg"><XCircle size={18} /></button>
                   </div>

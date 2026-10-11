@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, SwitchCamera, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy, Search, Key, Link as LinkIcon, Sun, Moon, MessageCircle, Phone } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, ArrowLeft, LogIn, Send, Sparkles, QrCode, Brain, ScanFace, X, User, MapPin, Camera, Image as ImageIcon, FlipHorizontal, SwitchCamera, BookOpen, HeartPulse, Check, AlertTriangle, FileText, RefreshCw, HelpCircle, Navigation, ShieldCheck, Copy, Search, Key, Link as LinkIcon, Sun, Moon, MessageCircle, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { formatHariTanggalPesantren } from '@/lib/formatHariPesantren';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -240,6 +240,191 @@ function QuickAbsenContent() {
       }
     };
   }, []);
+
+  // ── State & Logic Face AI Modal Langsung di Halaman Pintasan ───────
+  type QuickFaceStatus = 'idle' | 'loading-models' | 'loading-db' | 'scanning' | 'detected' | 'error';
+  interface QuickFaceDescriptor { murid_id: number; nama: string; descriptor: number[]; }
+
+  const [showQuickFaceModal, setShowQuickFaceModal] = useState(false);
+  const [quickFaceStatus, setQuickFaceStatus] = useState<QuickFaceStatus>('idle');
+  const [quickFaceStatusMsg, setQuickFaceStatusMsg] = useState('');
+  const [quickFaceDetectResult, setQuickFaceDetectResult] = useState<{ nama: string; score: number; murid_id: number } | null>(null);
+  const [quickFaceConfirmPending, setQuickFaceConfirmPending] = useState(false);
+  const [quickFaceCamMode, setQuickFaceCamMode] = useState<'user' | 'environment'>('user');
+  const [quickFaceIsSwitching, setQuickFaceIsSwitching] = useState(false);
+  const [quickFaceRecentScans, setQuickFaceRecentScans] = useState<Array<{ id: number; nama: string; time: string }>>([]);
+  const [quickFaceFeedback, setQuickFaceFeedback] = useState<{ type: 'success' | 'warning'; message: string; name?: string } | null>(null);
+
+  const quickFaceVideoRef = useRef<HTMLVideoElement | null>(null);
+  const quickFaceStreamRef = useRef<MediaStream | null>(null);
+  const quickFaceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const quickFaceApiRef = useRef<any>(null);
+  const quickFaceDbRef = useRef<QuickFaceDescriptor[]>([]);
+  const quickFaceScanBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (showQuickFaceModal && quickFaceStatus === 'idle') {
+      const timer = setTimeout(() => {
+        quickFaceScanBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [showQuickFaceModal, quickFaceStatus]);
+
+  const euclideanDistQuick = (a: number[], b: number[]) => {
+    let sum = 0;
+    for (let i = 0; i < a.length; i++) sum += (a[i] - b[i]) ** 2;
+    return Math.sqrt(sum);
+  };
+
+  const loadFaceApiQuick = async () => {
+    if (quickFaceApiRef.current) return quickFaceApiRef.current;
+    const faceapi = await import('@vladmandic/face-api');
+    const MODEL_URL = '/models';
+    await Promise.all([
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+    ]);
+    quickFaceApiRef.current = faceapi;
+    return faceapi;
+  };
+
+  const stopQuickFaceScanner = (resetStatus = true) => {
+    if (quickFaceIntervalRef.current) { clearInterval(quickFaceIntervalRef.current); quickFaceIntervalRef.current = null; }
+    if (quickFaceStreamRef.current) { quickFaceStreamRef.current.getTracks().forEach(t => { try { t.stop(); } catch {} }); quickFaceStreamRef.current = null; }
+    if (quickFaceVideoRef.current) quickFaceVideoRef.current.srcObject = null;
+    if (resetStatus) { setQuickFaceStatus('idle'); setQuickFaceDetectResult(null); }
+  };
+
+  const runQuickFaceDetection = (faceapi: any, db: QuickFaceDescriptor[]) => {
+    quickFaceIntervalRef.current = setInterval(async () => {
+      if (!quickFaceVideoRef.current || !faceapi) return;
+      try {
+        const det = await faceapi
+          .detectSingleFace(quickFaceVideoRef.current, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+          .withFaceLandmarks().withFaceDescriptor();
+        if (!det) return;
+        const desc = Array.from(det.descriptor) as number[];
+        let bestMatch: QuickFaceDescriptor | null = null;
+        let bestDist = Infinity;
+        for (const entry of db) {
+          if (!entry.descriptor || !Array.isArray(entry.descriptor)) continue;
+          const d = euclideanDistQuick(desc, entry.descriptor);
+          if (d < bestDist) { bestDist = d; bestMatch = entry; }
+        }
+        if (bestMatch && bestDist < 0.45) {
+          const similarity = Math.round((1 - bestDist / 0.6) * 100);
+          setQuickFaceDetectResult({ nama: bestMatch.nama, score: similarity, murid_id: bestMatch.murid_id });
+          setQuickFaceStatus('detected');
+          clearInterval(quickFaceIntervalRef.current!);
+          quickFaceIntervalRef.current = null;
+        }
+      } catch (e) {}
+    }, 800);
+  };
+
+  const startQuickFaceScanner = async (facing: 'user' | 'environment' = quickFaceCamMode) => {
+    setQuickFaceStatus('loading-models');
+    setQuickFaceStatusMsg('Memuat model AI Face Recognition...');
+    setQuickFaceDetectResult(null);
+    setQuickFaceFeedback(null);
+    try {
+      const faceapi = await loadFaceApiQuick();
+      setQuickFaceStatus('loading-db');
+      setQuickFaceStatusMsg('Memuat database wajah santri...');
+      let db = quickFaceDbRef.current;
+      if (!db.length) {
+        const res = await fetch('/api/murid/face-descriptor');
+        const dbData = await res.json();
+        if (!dbData.success || !dbData.data?.length) {
+          setQuickFaceStatus('error');
+          setQuickFaceStatusMsg('Belum ada santri ter-enroll. Minta admin untuk enrollment.');
+          return;
+        }
+        quickFaceDbRef.current = dbData.data;
+        db = dbData.data;
+      }
+      setQuickFaceStatusMsg('Membuka kamera...');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } }
+      });
+      quickFaceStreamRef.current = stream;
+      if (quickFaceVideoRef.current) { quickFaceVideoRef.current.srcObject = stream; await quickFaceVideoRef.current.play(); }
+      setQuickFaceStatus('scanning');
+      setQuickFaceStatusMsg(`${db.length} santri ter-enroll. Arahkan wajah ke kamera...`);
+      runQuickFaceDetection(faceapi, db);
+    } catch (err: any) {
+      setQuickFaceStatus('error');
+      setQuickFaceStatusMsg('Gagal membuka kamera: ' + (err.message || 'Izin ditolak'));
+    }
+  };
+
+  const switchQuickFaceCamera = async () => {
+    if (quickFaceIsSwitching) return;
+    setQuickFaceIsSwitching(true);
+    const next: 'user' | 'environment' = quickFaceCamMode === 'user' ? 'environment' : 'user';
+    setQuickFaceCamMode(next);
+    stopQuickFaceScanner(false);
+    await new Promise(r => setTimeout(r, 350));
+    await startQuickFaceScanner(next);
+    setQuickFaceIsSwitching(false);
+  };
+
+  const confirmQuickFaceAbsen = () => {
+    if (!quickFaceDetectResult) return;
+    setQuickFaceConfirmPending(true);
+    const scannedId = quickFaceDetectResult.murid_id;
+    const scannedNama = quickFaceDetectResult.nama;
+
+    const listMurid: any[] = data?.murid || [];
+    const matched = listMurid.find((m: any) => Number(m.murid_id) === Number(scannedId));
+
+    if (matched) {
+      playScanBeep(true);
+      setKehadiran(prev => ({ ...prev, [scannedId]: 'hadir' }));
+      const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setQuickFaceRecentScans(prev => [
+        { id: scannedId, nama: matched.nama || scannedNama, time: timeStr },
+        ...prev.filter(x => x.id !== scannedId)
+      ].slice(0, 10));
+      setQuickFaceFeedback({
+        type: 'success',
+        name: matched.nama || scannedNama,
+        message: 'Berhasil dicatat Hadir!',
+      });
+    } else {
+      playScanBeep(false);
+      setQuickFaceFeedback({
+        type: 'warning',
+        message: `Wajah [${scannedNama}] terdeteksi, namun santri tidak terdaftar di kelas ini.`,
+      });
+    }
+
+    setQuickFaceDetectResult(null);
+    setQuickFaceConfirmPending(false);
+    setQuickFaceStatus('scanning');
+    setQuickFaceStatusMsg('Arahkan wajah berikutnya ke kamera...');
+    if (quickFaceApiRef.current && quickFaceDbRef.current.length > 0) {
+      runQuickFaceDetection(quickFaceApiRef.current, quickFaceDbRef.current);
+    }
+  };
+
+  const rejectQuickFaceAndRescan = () => {
+    setQuickFaceDetectResult(null);
+    setQuickFaceStatus('scanning');
+    setQuickFaceStatusMsg('Arahkan wajah ke kamera...');
+    if (quickFaceApiRef.current && quickFaceDbRef.current.length > 0) {
+      runQuickFaceDetection(quickFaceApiRef.current, quickFaceDbRef.current);
+    }
+  };
+
+  // Cleanup face scanner on unmount
+  useEffect(() => {
+    return () => { stopQuickFaceScanner(); };
+  }, []);
+
+
 
   const handleSendSingleWaliWa = (murid: any) => {
     let phone = (murid.no_wali || murid.no_hp || '').replace(/[^0-9]/g, '');
@@ -1764,12 +1949,18 @@ function QuickAbsenContent() {
               >
                 <QrCode size={16} /> Scan QR Kartu
               </button>
-              <Link
-                href="/dashboard/scan-absen?mode=face"
-                className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl shadow-sm text-xs font-bold transition active:scale-95"
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickFaceModal(true);
+                  setQuickFaceFeedback(null);
+                  setQuickFaceStatus('idle');
+                  setQuickFaceDetectResult(null);
+                }}
+                className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl shadow-sm text-xs font-bold transition active:scale-95 cursor-pointer"
               >
                 <Brain size={16} /> Scan Wajah AI
-              </Link>
+              </button>
             </div>
 
         {/* Quick Batch Select (Set Massal Sesuai Desain HP) */}
@@ -2681,9 +2872,11 @@ function QuickAbsenContent() {
                       <button
                         type="button"
                         onClick={switchQuickFacing}
-                        className="text-xs px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center gap-1 font-medium transition cursor-pointer"
+                        title={quickFacingMode === 'environment' ? 'Ganti ke Kamera Depan' : 'Ganti ke Kamera Belakang'}
+                        aria-label="Ganti Kamera"
+                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center justify-center transition cursor-pointer"
                       >
-                        <SwitchCamera size={14} /> Ganti Kamera
+                        <SwitchCamera size={16} />
                       </button>
                       <button
                         type="button"
@@ -2760,6 +2953,271 @@ function QuickAbsenContent() {
                   setShowQuickScanModal(false);
                 }}
                 className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+              >
+                Selesai &amp; Kembali ke Daftar Santri
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Scan Wajah AI (Face AI) Langsung (Khusus Halaman Pintasan) */}
+      {showQuickFaceModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 w-full max-w-lg rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                  <Brain size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white leading-tight">
+                    Scan Wajah AI (Face AI)
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {data?.jadwal?.nama_kelas || data?.jadwal?.kelas_nama || 'Kelas'} • Langsung Hadir Otomatis
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  stopQuickFaceScanner();
+                  setShowQuickFaceModal(false);
+                }}
+                className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                aria-label="Tutup Scan Wajah"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Statistik Kehadiran Terkini */}
+            {(() => {
+              const listMurid: any[] = data?.murid || [];
+              const hadirCount = listMurid.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'hadir').length;
+              const totalCount = listMurid.length;
+              return (
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 text-xs mb-3 shrink-0">
+                  <span className="font-medium text-slate-600 dark:text-slate-300">
+                    Progres Kehadiran:
+                  </span>
+                  <span className="font-extrabold text-purple-600 dark:text-purple-400">
+                    {hadirCount} / {totalCount} Santri Hadir
+                  </span>
+                </div>
+              );
+            })()}
+
+            {/* Area Scanner / Tombol Mulai Scan */}
+            <div className="space-y-4 my-2">
+              {quickFaceStatus === 'idle' ? (
+                <div className="text-center py-6 px-4 bg-purple-50/50 dark:bg-purple-950/20 border-2 border-dashed border-purple-200 dark:border-purple-800/50 rounded-2xl space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center shadow-inner">
+                    <Brain size={32} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                      Kamera Face AI Belum Aktif
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                      Arahkan kamera ke wajah santri untuk mendeteksi identitas dan mencatat kehadiran otomatis dengan AI.
+                    </p>
+                  </div>
+                  <button
+                    ref={quickFaceScanBtnRef}
+                    type="button"
+                    onClick={() => startQuickFaceScanner()}
+                    className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl shadow-md transition-all active:scale-95 inline-flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Brain size={18} /> Mulai Scan Wajah Sekarang
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3 animate-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between bg-slate-900 text-white p-3 rounded-t-2xl">
+                    <span className="text-xs font-bold flex items-center gap-1.5">
+                      <Brain size={15} className="text-purple-400 animate-pulse" />
+                      Arahkan ke Wajah Santri
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {/* Tombol Ganti Kamera — Ikon saja tanpa teks di HP */}
+                      <button
+                        type="button"
+                        onClick={switchQuickFaceCamera}
+                        disabled={quickFaceIsSwitching}
+                        title={quickFaceCamMode === 'user' ? 'Ganti ke Kamera Belakang' : 'Ganti ke Kamera Depan'}
+                        aria-label="Ganti Kamera"
+                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center justify-center transition cursor-pointer disabled:opacity-50"
+                      >
+                        <SwitchCamera size={16} className={quickFaceIsSwitching ? 'animate-spin' : ''} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => stopQuickFaceScanner(true)}
+                        className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition cursor-pointer"
+                        title="Hentikan Kamera"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 bg-slate-800 py-1.5 -mt-3">
+                    <span className={`w-2 h-2 rounded-full ${quickFaceCamMode === 'user' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                    <span className="text-[11px] font-semibold text-slate-300">
+                      {quickFaceCamMode === 'user' ? '🤳 Kamera Depan' : '📷 Kamera Belakang'}
+                    </span>
+                  </div>
+
+                  {/* Status loading AI / Error */}
+                  {(quickFaceStatus === 'loading-models' || quickFaceStatus === 'loading-db') && (
+                    <div className="flex items-center gap-2.5 bg-slate-800/90 text-slate-200 p-3 rounded-xl text-xs -mt-2">
+                      <Loader2 size={16} className="text-purple-400 animate-spin shrink-0" />
+                      <span>{quickFaceStatusMsg}</span>
+                    </div>
+                  )}
+                  {quickFaceStatus === 'error' && (
+                    <div className="flex items-center gap-2.5 bg-rose-950/80 text-rose-200 border border-rose-800/60 p-3 rounded-xl text-xs -mt-2">
+                      <AlertCircle size={16} className="text-rose-400 shrink-0" />
+                      <span>{quickFaceStatusMsg}</span>
+                    </div>
+                  )}
+
+                  {/* Video Box with Face Guide Box */}
+                  <div className="relative rounded-b-2xl overflow-hidden border-2 border-purple-500 bg-black min-h-[260px] flex items-center justify-center">
+                    {quickFaceStatus === 'scanning' && (
+                      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                        <div className="w-44 h-56 rounded-2xl border-2 border-purple-400/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
+                      </div>
+                    )}
+                    <video
+                      ref={quickFaceVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover min-h-[260px]"
+                      style={{ transform: quickFaceCamMode === 'user' ? 'scaleX(-1)' : 'none' }}
+                    />
+                  </div>
+
+                  {quickFaceStatus === 'scanning' && (
+                    <div className="text-center pt-1">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {quickFaceStatusMsg}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Dialog Konfirmasi Deteksi Wajah */}
+                  {quickFaceStatus === 'detected' && quickFaceDetectResult && (
+                    <div className="p-4 bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-purple-500 rounded-2xl text-center space-y-3 animate-in zoom-in-95 duration-150">
+                      <div className="w-12 h-12 mx-auto rounded-full bg-purple-600/30 text-purple-400 flex items-center justify-center border border-purple-400/40">
+                        <ScanFace size={26} />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300">
+                          Wajah Teridentifikasi
+                        </span>
+                        <h4 className="font-extrabold text-base text-white mt-0.5">
+                          {quickFaceDetectResult.nama}
+                        </h4>
+                        <p className="text-xs text-purple-200 mt-1">
+                          Tingkat Kemiripan: <strong className="text-amber-300">{quickFaceDetectResult.score}%</strong>
+                        </p>
+                      </div>
+                      <p className="text-xs text-slate-300">
+                        Apakah ini santri yang bersangkutan?
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={rejectQuickFaceAndRescan}
+                          className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer"
+                        >
+                          Bukan
+                        </button>
+                        <button
+                          type="button"
+                          onClick={confirmQuickFaceAbsen}
+                          disabled={quickFaceConfirmPending}
+                          className="py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          {quickFaceConfirmPending ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" /> Menyimpan...
+                            </>
+                          ) : (
+                            <>
+                              <Check size={14} /> Benar (Hadir)
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Banner Feedback Scan */}
+              {quickFaceFeedback && (
+                <div className={`p-3.5 rounded-xl border text-xs font-medium flex items-center gap-2.5 animate-in slide-in-from-top-2 duration-150 ${
+                  quickFaceFeedback.type === 'success'
+                    ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 text-purple-800 dark:text-purple-200'
+                    : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200'
+                }`}>
+                  {quickFaceFeedback.type === 'success' ? (
+                    <CheckCircle2 size={18} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                  ) : (
+                    <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                  )}
+                  <div className="leading-tight">
+                    {quickFaceFeedback.name && (
+                      <span className="font-extrabold block text-sm">{quickFaceFeedback.name}</span>
+                    )}
+                    <span>{quickFaceFeedback.message}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Daftar Santri Ter-scan Terakhir */}
+              {quickFaceRecentScans.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-purple-500" />
+                    Santri Berhasil Diabsen ({quickFaceRecentScans.length}):
+                  </h5>
+                  <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                    {quickFaceRecentScans.map((item, idx) => (
+                      <div
+                        key={item.id + '-' + idx}
+                        className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Check size={14} className="text-purple-500 shrink-0" />
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                            {item.nama}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 shrink-0 font-mono">
+                          {item.time}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Modal */}
+            <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  stopQuickFaceScanner();
+                  setShowQuickFaceModal(false);
+                }}
+                className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
               >
                 Selesai &amp; Kembali ke Daftar Santri
               </button>
