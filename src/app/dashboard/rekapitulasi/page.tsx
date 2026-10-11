@@ -2272,7 +2272,12 @@ export default function RekapitulasiPage() {
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
           <div className="bg-white dark:bg-gray-800 w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out]">
             <div className="relative p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-              {/* Tombol Tutup (X) absolut di pojok kanan atas pada HP */}
+              {/* Ikon FileText — absolut pojok kiri atas pada HP */}
+              <div className="absolute top-3 left-3 sm:hidden bg-purple-100 dark:bg-purple-900/40 text-purple-500 p-2 rounded-xl pointer-events-none z-10">
+                <FileText size={18} />
+              </div>
+
+              {/* Tombol Tutup (X) — absolut pojok kanan atas pada HP */}
               <button
                 onClick={() => setShowPdfPreview(false)}
                 className="absolute top-3 right-3 sm:hidden bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 p-2 rounded-xl transition-colors z-10"
@@ -2281,13 +2286,15 @@ export default function RekapitulasiPage() {
                 <X size={18} />
               </button>
 
-              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left pr-8 sm:pr-0">
-                <FileText className="text-purple-500 shrink-0" size={20} />
+              {/* Judul — rata tengah di HP, dengan padding agar tidak tertimpa ikon absolut di kiri/kanan */}
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left w-full sm:w-auto px-10 sm:px-0">
+                <FileText className="hidden sm:block text-purple-500 shrink-0" size={20} />
                 <h3 className="font-bold text-sm sm:text-base text-gray-800 dark:text-white leading-snug">
                   Preview PDF Laporan {viewMode === 'grafik' ? 'Statistik & Tren' : viewMode === 'keduanya' ? 'Komprehensif (Statistik & Tabel)' : 'Rekapitulasi'}
                 </h3>
               </div>
 
+              {/* Tombol Download — full width rata tengah di HP, auto-width di desktop */}
               <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
                 <button
                   onClick={() => handleExport('pdf', false)}
