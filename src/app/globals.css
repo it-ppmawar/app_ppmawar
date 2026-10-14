@@ -102,3 +102,33 @@ body {
   transform: rotate(-90deg);
   animation: drawAndEraseCircle 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
+
+/* Quick QR Reader containment: pastikan tampilan kamera tidak meluas dari layar HP */
+#quick-qr-reader {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+#quick-qr-reader video {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  object-fit: cover !important;
+}
+
+#quick-qr-reader canvas {
+  display: none !important;
+}
+
+#quick-qr-reader__scan_region {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}

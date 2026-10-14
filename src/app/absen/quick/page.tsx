@@ -164,8 +164,7 @@ function QuickAbsenContent() {
             { facingMode: facing },
             {
               fps: 10,
-              qrbox: { width: 240, height: 240 },
-              aspectRatio: 1.0,
+              qrbox: { width: 210, height: 210 },
             },
             (decodedText) => handleQuickScanSuccess(decodedText),
             () => {}
@@ -2791,9 +2790,9 @@ function QuickAbsenContent() {
       {/* Modal Scan QR Kartu Santri Langsung (Khusus Halaman Pintasan) */}
       {showQuickScanModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 w-full max-w-lg rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 w-full max-w-md rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto overflow-x-hidden min-w-0">
             {/* Header Modal */}
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-3 shrink-0">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-2 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                   <QrCode size={20} />
@@ -2826,7 +2825,7 @@ function QuickAbsenContent() {
               const hadirCount = listMurid.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'hadir').length;
               const totalCount = listMurid.length;
               return (
-                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 text-xs mb-3 shrink-0">
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 px-3 py-2 sm:p-2.5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 text-xs mb-1.5 shrink-0">
                   <span className="font-medium text-slate-600 dark:text-slate-300">
                     Progres Kehadiran:
                   </span>
@@ -2838,7 +2837,7 @@ function QuickAbsenContent() {
             })()}
 
             {/* Area Scanner / Tombol Mulai Scan */}
-            <div className="space-y-4 my-2">
+            <div className="space-y-2 mt-0.5 mb-2">
               {!isQuickScanning ? (
                 <div className="text-center py-6 px-4 bg-emerald-50/50 dark:bg-emerald-950/20 border-2 border-dashed border-emerald-200 dark:border-emerald-800/50 rounded-2xl space-y-4">
                   <div className="w-16 h-16 mx-auto bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center shadow-inner">
@@ -2862,13 +2861,13 @@ function QuickAbsenContent() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-3 animate-in zoom-in-95 duration-150">
-                  <div className="flex items-center justify-between bg-slate-900 text-white p-3 rounded-t-2xl">
+                <div className="animate-in zoom-in-95 duration-150 overflow-hidden rounded-2xl border-2 border-emerald-500 shadow-md">
+                  <div className="flex items-center justify-between bg-slate-900 text-white px-3 py-2 sm:py-2.5">
                     <span className="text-xs font-bold flex items-center gap-1.5">
                       <Camera size={15} className="text-red-400 animate-pulse" />
                       Arahkan ke Kartu Santri
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={switchQuickFacing}
@@ -2888,8 +2887,18 @@ function QuickAbsenContent() {
                       </button>
                     </div>
                   </div>
-                  <div className="relative rounded-b-2xl overflow-hidden border-2 border-emerald-500 bg-black min-h-[260px] flex items-center justify-center">
-                    <div id="quick-qr-reader" className="w-full h-full border-none [&_video]:w-full [&_video]:h-full [&_video]:object-cover" />
+
+                  {/* Keterangan Kamera Depan / Belakang diseragamkan */}
+                  <div className="flex items-center justify-center gap-2 bg-slate-800/90 py-1.5 border-t border-slate-700/50">
+                    <span className={`w-2 h-2 rounded-full ${quickFacingMode === 'user' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                    <span className="text-[11px] font-semibold text-slate-300">
+                      {quickFacingMode === 'user' ? '🤳 Kamera Depan' : '📷 Kamera Belakang'}
+                    </span>
+                  </div>
+
+                  {/* Area Layar Kamera Seragam & Pas di Layar HP */}
+                  <div className="relative overflow-hidden bg-black h-[280px] sm:h-[300px] w-full flex items-center justify-center">
+                    <div id="quick-qr-reader" className="w-full h-full border-none !max-w-full overflow-hidden flex items-center justify-center [&_video]:!w-full [&_video]:!h-full [&_video]:!object-cover [&_video]:!max-w-full [&>div]:!w-full [&>div]:!h-full [&>div]:!max-w-full [&_canvas]:!hidden" />
                   </div>
                 </div>
               )}
@@ -2964,9 +2973,9 @@ function QuickAbsenContent() {
       {/* Modal Scan Wajah AI (Face AI) Langsung (Khusus Halaman Pintasan) */}
       {showQuickFaceModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 w-full max-w-lg rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 w-full max-w-md rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto overflow-x-hidden min-w-0">
             {/* Header Modal */}
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-3 shrink-0">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-2 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center">
                   <Brain size={20} />
@@ -2999,7 +3008,7 @@ function QuickAbsenContent() {
               const hadirCount = listMurid.filter(m => (kehadiran[m.murid_id] || 'hadir') === 'hadir').length;
               const totalCount = listMurid.length;
               return (
-                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 text-xs mb-3 shrink-0">
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/60 px-3 py-2 sm:p-2.5 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 text-xs mb-1.5 shrink-0">
                   <span className="font-medium text-slate-600 dark:text-slate-300">
                     Progres Kehadiran:
                   </span>
@@ -3011,7 +3020,7 @@ function QuickAbsenContent() {
             })()}
 
             {/* Area Scanner / Tombol Mulai Scan */}
-            <div className="space-y-4 my-2">
+            <div className="space-y-2 mt-0.5 mb-2">
               {quickFaceStatus === 'idle' ? (
                 <div className="text-center py-6 px-4 bg-purple-50/50 dark:bg-purple-950/20 border-2 border-dashed border-purple-200 dark:border-purple-800/50 rounded-2xl space-y-4">
                   <div className="w-16 h-16 mx-auto bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center shadow-inner">
@@ -3036,12 +3045,13 @@ function QuickAbsenContent() {
                 </div>
               ) : (
                 <div className="space-y-3 animate-in zoom-in-95 duration-150">
-                  <div className="flex items-center justify-between bg-slate-900 text-white p-3 rounded-t-2xl">
+                  <div className="overflow-hidden rounded-2xl border-2 border-purple-500 shadow-md">
+                    <div className="flex items-center justify-between bg-slate-900 text-white px-3 py-2 sm:py-2.5">
                     <span className="text-xs font-bold flex items-center gap-1.5">
                       <Brain size={15} className="text-purple-400 animate-pulse" />
                       Arahkan ke Wajah Santri
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       {/* Tombol Ganti Kamera — Ikon saja tanpa teks di HP */}
                       <button
                         type="button"
@@ -3063,7 +3073,9 @@ function QuickAbsenContent() {
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-center gap-2 bg-slate-800 py-1.5 -mt-3">
+
+                  {/* Keterangan Kamera Depan / Belakang diseragamkan */}
+                  <div className="flex items-center justify-center gap-2 bg-slate-800/90 py-1.5 border-t border-slate-700/50">
                     <span className={`w-2 h-2 rounded-full ${quickFaceCamMode === 'user' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
                     <span className="text-[11px] font-semibold text-slate-300">
                       {quickFaceCamMode === 'user' ? '🤳 Kamera Depan' : '📷 Kamera Belakang'}
@@ -3072,23 +3084,23 @@ function QuickAbsenContent() {
 
                   {/* Status loading AI / Error */}
                   {(quickFaceStatus === 'loading-models' || quickFaceStatus === 'loading-db') && (
-                    <div className="flex items-center gap-2.5 bg-slate-800/90 text-slate-200 p-3 rounded-xl text-xs -mt-2">
-                      <Loader2 size={16} className="text-purple-400 animate-spin shrink-0" />
+                    <div className="flex items-center gap-2 bg-slate-900/95 text-slate-200 px-3 py-2 text-xs border-t border-slate-800">
+                      <Loader2 size={15} className="text-purple-400 animate-spin shrink-0" />
                       <span>{quickFaceStatusMsg}</span>
                     </div>
                   )}
                   {quickFaceStatus === 'error' && (
-                    <div className="flex items-center gap-2.5 bg-rose-950/80 text-rose-200 border border-rose-800/60 p-3 rounded-xl text-xs -mt-2">
-                      <AlertCircle size={16} className="text-rose-400 shrink-0" />
+                    <div className="flex items-center gap-2 bg-rose-950/90 text-rose-200 border-t border-rose-800 px-3 py-2 text-xs">
+                      <AlertCircle size={15} className="text-rose-400 shrink-0" />
                       <span>{quickFaceStatusMsg}</span>
                     </div>
                   )}
 
-                  {/* Video Box with Face Guide Box */}
-                  <div className="relative rounded-b-2xl overflow-hidden border-2 border-purple-500 bg-black min-h-[260px] flex items-center justify-center">
+                  {/* Area Layar Kamera Seragam & Pas di Layar HP */}
+                  <div className="relative overflow-hidden bg-black h-[280px] sm:h-[300px] w-full flex items-center justify-center">
                     {quickFaceStatus === 'scanning' && (
                       <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                        <div className="w-44 h-56 rounded-2xl border-2 border-purple-400/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
+                        <div className="w-40 h-52 sm:w-44 sm:h-56 rounded-2xl border-2 border-purple-400/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
                       </div>
                     )}
                     <video
@@ -3096,10 +3108,11 @@ function QuickAbsenContent() {
                       autoPlay
                       playsInline
                       muted
-                      className="w-full h-full object-cover min-h-[260px]"
+                      className="w-full h-full object-cover"
                       style={{ transform: quickFaceCamMode === 'user' ? 'scaleX(-1)' : 'none' }}
                     />
                   </div>
+                </div>
 
                   {quickFaceStatus === 'scanning' && (
                     <div className="text-center pt-1">
