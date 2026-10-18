@@ -107,9 +107,9 @@ export async function GET(request: Request) {
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
           COUNT(DISTINCT att.tanggal) as hadir,
-          SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
+          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_id END) as izin,
+          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_id END) as sakit,
+          COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_id END) as alpha
         FROM murid m
         LEFT JOIN kelas_madin km ON (m.kelas_madin_id = km.kelas_id OR m.kelas_madin_2_id = km.kelas_id)
         LEFT JOIN (
@@ -207,9 +207,9 @@ export async function GET(request: Request) {
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
           COUNT(DISTINCT att.tanggal) as hadir,
-          SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
+          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_quran_id END) as izin,
+          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_quran_id END) as sakit,
+          COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_quran_id END) as alpha
         FROM murid m
         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
         LEFT JOIN (
@@ -319,9 +319,9 @@ export async function GET(request: Request) {
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
           COUNT(DISTINCT att.tanggal) as hadir,
-          SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
+          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_kegiatan_id END) as izin,
+          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_kegiatan_id END) as sakit,
+          COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_kegiatan_id END) as alpha
         FROM murid m
         LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
         LEFT JOIN (
