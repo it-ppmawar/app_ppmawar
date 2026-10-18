@@ -675,8 +675,7 @@ function InputAbsenContent() {
     }
     msg += `🤲 *Doa & Harapan:*\n${doaMsg}\n\n`;
 
-    msg += `🔗 *Lihat Detail Absensi:* https://app.ppmawar.or.id/dashboard/absen\n`;
-    msg += `\n_Diinput via Pintasan Salam Mawar_\nhttps://app.ppmawar.or.id`;
+    msg += `_Diinput via Pintasan Salam Mawar_\nhttps://app.ppmawar.or.id`;
     return msg;
   };
 
@@ -901,9 +900,9 @@ function InputAbsenContent() {
 
           {/* Camera live view */}
           {showCamera && (
-            <div className="rounded-2xl overflow-hidden border-2 border-indigo-400 dark:border-indigo-600 bg-black relative mb-3">
-              {/* Camera toolbar */}
-              <div className="flex justify-between items-center bg-gray-900 px-3 py-2 flex-wrap gap-2">
+            <div className="space-y-2 mb-3">
+              {/* Camera toolbar — Rounded Seragam (Atas & Bawah) */}
+              <div className="flex justify-between items-center bg-gray-900 border border-indigo-400/30 dark:border-indigo-600/30 px-3 py-2 rounded-2xl flex-wrap gap-2 shadow-sm">
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
                   <span className="text-xs font-semibold text-gray-300">
@@ -942,8 +941,8 @@ function InputAbsenContent() {
                   </button>
                 </div>
               </div>
-              {/* Video preview */}
-              <div className="relative min-h-[240px] bg-black">
+              {/* Video preview — Semua Sudut Melengkung Elegan */}
+              <div className="relative rounded-2xl overflow-hidden border-2 border-indigo-400 dark:border-indigo-600 bg-black">
                 {isSwitchingCamera && (
                   <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 gap-2">
                     <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
@@ -959,16 +958,16 @@ function InputAbsenContent() {
                     cameraOrientation === 'portrait' ? 'aspect-[3/4] max-h-[480px]' : 'aspect-[4/3] max-h-[360px]'
                   }`}
                 />
-              </div>
-              {/* Capture button */}
-              <div className="flex justify-center bg-gray-900 py-3 px-4">
-                <button
-                  type="button"
-                  onClick={capturePhoto}
-                  className="bg-white hover:bg-gray-100 active:scale-95 text-gray-900 font-bold px-8 py-2.5 rounded-full shadow-lg transition-all flex items-center gap-2 text-sm"
-                >
-                  <Camera size={16} /> Ambil Foto
-                </button>
+                {/* Capture button di dalam layar kamera */}
+                <div className="absolute bottom-0 inset-x-0 flex justify-center bg-gradient-to-t from-black/80 to-transparent py-4 px-4">
+                  <button
+                    type="button"
+                    onClick={capturePhoto}
+                    className="bg-white hover:bg-gray-100 active:scale-95 text-gray-900 font-bold px-8 py-2.5 rounded-full shadow-lg transition-all flex items-center gap-2 text-sm"
+                  >
+                    <Camera size={16} /> Ambil Foto
+                  </button>
+                </div>
               </div>
             </div>
           )}

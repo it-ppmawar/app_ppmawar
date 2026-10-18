@@ -1190,10 +1190,11 @@ function ScanAbsenInner() {
                 <Camera size={26} /> Mulai Scan QR
               </button>
             ) : (
-              <div ref={cameraContainerRef} className="space-y-3 animate-[zoomIn_0.3s_ease-out]">
-                <div className="flex justify-between items-center bg-gray-900 p-3 rounded-t-2xl text-white">
+              <div ref={cameraContainerRef} className="space-y-2 animate-[zoomIn_0.3s_ease-out]">
+                {/* Header Bar — Rounded Seragam (Atas & Bawah) */}
+                <div className="flex justify-between items-center bg-gray-900 border border-green-500/30 p-3 rounded-2xl text-white shadow-sm">
                   <span className="font-bold text-sm flex items-center gap-2">
-                    <Camera size={16} className="animate-pulse text-red-400" /> Arahkan ke QR / Barcode Kartu
+                    <Camera size={16} className="animate-pulse text-red-400" /> Arahkan ke Kartu Santri
                   </span>
                   <div className="flex items-center gap-2">
                     <button onClick={switchCamera} disabled={isSwitchingCamera}
@@ -1206,11 +1207,13 @@ function ScanAbsenInner() {
                     <button onClick={stopAll} className="bg-red-500 hover:bg-red-600 p-1.5 rounded-lg"><XCircle size={18} /></button>
                   </div>
                 </div>
-                <div className="flex items-center justify-center gap-2 bg-gray-800 py-1.5 -mt-3">
-                  <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
-                  <span className="text-xs font-semibold text-gray-300">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
-                </div>
-                <div className="relative rounded-b-2xl overflow-hidden border-2 border-green-500 shadow-xl bg-black" style={{ minHeight: 300 }}>
+                {/* Layar Kamera — Semua Sudut Melengkung Elegan */}
+                <div className="relative rounded-2xl overflow-hidden border-2 border-green-500 shadow-xl bg-black" style={{ minHeight: 300 }}>
+                  {/* Kamera Label Mengambang */}
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-black/75 backdrop-blur-md rounded-full border border-green-500/40 flex items-center gap-1.5 shadow-md pointer-events-none">
+                    <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
+                    <span className="text-xs font-semibold text-gray-200">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
+                  </div>
                   {isSwitchingCamera && (
                     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 gap-3">
                       <div className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
@@ -1239,10 +1242,11 @@ function ScanAbsenInner() {
                 <ScanFace size={26} /> Mulai Scan Wajah AI
               </button>
             ) : (
-              <div ref={cameraContainerRef} className="space-y-3 animate-[zoomIn_0.3s_ease-out]">
-                <div className="flex justify-between items-center bg-gray-900 p-3 rounded-t-2xl text-white">
+              <div ref={cameraContainerRef} className="space-y-2 animate-[zoomIn_0.3s_ease-out]">
+                {/* Header Bar Face AI — Rounded Seragam */}
+                <div className="flex justify-between items-center bg-gray-900 border border-violet-500/30 p-3 rounded-2xl text-white shadow-sm">
                   <span className="font-bold text-sm flex items-center gap-2">
-                    <Brain size={16} className="text-violet-400 animate-pulse" /> Face AI — Scan Wajah
+                    <Brain size={16} className="text-violet-400 animate-pulse" /> Arahkan ke Wajah Santri
                   </span>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs font-semibold ${faceStatusColor[faceStatus]}`}>
@@ -1259,25 +1263,29 @@ function ScanAbsenInner() {
                     <button onClick={stopAll} className="bg-red-500 hover:bg-red-600 p-1.5 rounded-lg"><XCircle size={18} /></button>
                   </div>
                 </div>
-                <div className="flex items-center justify-center gap-2 bg-gray-800 py-1.5 -mt-3">
-                  <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
-                  <span className="text-xs font-semibold text-gray-300">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
-                </div>
 
-                {(faceStatus === 'loading-models' || faceStatus === 'loading-db') && (
-                  <div className="flex items-center gap-3 bg-gray-800 p-3 -mt-3">
-                    <Loader2 size={16} className="text-violet-400 animate-spin flex-shrink-0" />
-                    <span className="text-xs text-gray-300">{faceStatusMsg}</span>
+                {/* Layar Kamera Face AI — Semua Sudut Melengkung Elegan */}
+                <div className="relative rounded-2xl overflow-hidden border-2 border-violet-500 shadow-xl bg-black" style={{ minHeight: 300 }}>
+                  {/* Kamera Label Mengambang */}
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-black/75 backdrop-blur-md rounded-full border border-violet-500/40 flex items-center gap-1.5 shadow-md pointer-events-none">
+                    <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
+                    <span className="text-xs font-semibold text-gray-200">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
                   </div>
-                )}
-                {faceStatus === 'error' && (
-                  <div className="flex items-center gap-3 bg-red-950 p-3 -mt-3">
-                    <XCircle size={16} className="text-red-400 flex-shrink-0" />
-                    <span className="text-xs text-red-300">{faceStatusMsg}</span>
-                  </div>
-                )}
 
-                <div className="relative rounded-b-2xl overflow-hidden border-2 border-violet-500 shadow-xl bg-black" style={{ minHeight: 300 }}>
+                  {/* Status loading AI / Error (di dalam layar kamera) */}
+                  {(faceStatus === 'loading-models' || faceStatus === 'loading-db') && (
+                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/85 backdrop-blur-sm gap-3">
+                      <Loader2 size={24} className="text-violet-400 animate-spin" />
+                      <span className="text-xs text-gray-300">{faceStatusMsg}</span>
+                    </div>
+                  )}
+                  {faceStatus === 'error' && (
+                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-red-950/90 backdrop-blur-sm gap-3">
+                      <XCircle size={24} className="text-red-400" />
+                      <span className="text-xs text-red-300">{faceStatusMsg}</span>
+                    </div>
+                  )}
+
                   {faceStatus === 'scanning' && (
                     <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                       <div className="w-52 h-64 rounded-2xl border-4 border-violet-400/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />

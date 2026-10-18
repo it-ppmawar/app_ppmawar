@@ -40,6 +40,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [pwaInstallable, setPwaInstallable] = useState(false);
   const [userSchedules, setUserSchedules] = useState<any[]>([]);
 
+  const hasActiveAbsen = !!activeSchedule || ((user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0);
+
   let navItems = [
     { name: 'Beranda', href: '/dashboard', icon: Home },
     { name: 'Jadwal', href: '/dashboard/jadwal', icon: CalendarDays },
@@ -1281,7 +1283,55 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex justify-around items-center py-1 px-3">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isAbsen = item.name === 'Absen';
+            const isActive = isAbsen ? pathname.startsWith('/dashboard/absen') : pathname === item.href;
+
+            if (isAbsen) {
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className="flex flex-col items-center -mt-5 group transition-all duration-300 relative focus:outline-none"
+                >
+                  <div className="relative">
+                    {/* Garis luar yang berdetak (Radar Ping & Outline Pulse) jika ada jadwal / input absen yang aktif */}
+                    {hasActiveAbsen && (
+                      <>
+                        <span className="absolute -inset-1.5 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
+                        <span className="absolute -inset-1 rounded-full border-2 border-emerald-400 dark:border-emerald-300 animate-pulse pointer-events-none" />
+                      </>
+                    )}
+
+                    {/* Tombol Lingkaran Besar Melewati Ukuran Bottombar */}
+                    <div
+                      className={`w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-300 ring-4 ring-white dark:ring-gray-800 ${
+                        isActive
+                          ? 'bg-gradient-to-tr from-emerald-600 via-green-600 to-teal-500 text-white shadow-lg shadow-emerald-600/40 scale-105'
+                          : 'bg-gradient-to-tr from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-700/30 group-hover:scale-105 active:scale-95'
+                      }`}
+                    >
+                      <Icon size={24} strokeWidth={2.5} className="text-white drop-shadow-sm" />
+
+                      {/* Notifikasi Dot Merah Berdetak (Identik dengan Lonceng Sidebar) */}
+                      {hasActiveAbsen && (
+                        <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse shadow-sm z-20 flex items-center justify-center">
+                          <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <span
+                    className={`text-[10px] font-bold mt-1 transition-colors ${
+                      isActive ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    {item.name}
+                  </span>
+                </Link>
+              );
+            }
+
             return (
               <Link key={item.name} href={item.href} className="flex flex-col items-center gap-0.5 w-16 group transition-all duration-300">
                 <div className={`p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 shadow-sm scale-105' : 'text-gray-400 dark:text-gray-500 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'}`}>

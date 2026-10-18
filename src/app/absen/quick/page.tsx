@@ -2861,8 +2861,9 @@ function QuickAbsenContent() {
                   </button>
                 </div>
               ) : (
-                <div className="animate-in zoom-in-95 duration-150 overflow-hidden rounded-2xl border-2 border-emerald-500 shadow-md">
-                  <div className="flex items-center justify-between bg-slate-900 text-white px-3 py-2 sm:py-2.5">
+                <div className="animate-in zoom-in-95 duration-150 space-y-2">
+                  {/* Baris Header / Kontrol Kamera (Kedua Ujung Atas & Bawah Dibuat Rounded Seragam) */}
+                  <div className="flex items-center justify-between bg-slate-900 border border-emerald-500/30 text-white px-3.5 py-2 sm:py-2.5 rounded-2xl shadow-sm">
                     <span className="text-xs font-bold flex items-center gap-1.5">
                       <Camera size={15} className="text-red-400 animate-pulse" />
                       Arahkan ke Kartu Santri
@@ -2888,16 +2889,16 @@ function QuickAbsenContent() {
                     </div>
                   </div>
 
-                  {/* Keterangan Kamera Depan / Belakang diseragamkan */}
-                  <div className="flex items-center justify-center gap-2 bg-slate-800/90 py-1.5 border-t border-slate-700/50">
-                    <span className={`w-2 h-2 rounded-full ${quickFacingMode === 'user' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
-                    <span className="text-[11px] font-semibold text-slate-300">
-                      {quickFacingMode === 'user' ? '🤳 Kamera Depan' : '📷 Kamera Belakang'}
-                    </span>
-                  </div>
+                  {/* Area Layar Kamera Seragam & Elegan: Keempat Sudut Melengkung (rounded-2xl) */}
+                  <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500 shadow-md bg-black h-[280px] sm:h-[300px] w-full flex items-center justify-center">
+                    {/* Keterangan Kamera Depan / Belakang Mengambang Elegan di Atas Layar Kamera */}
+                    <div className="absolute top-2.5 z-20 px-3 py-1 bg-slate-900/85 backdrop-blur-md rounded-full border border-emerald-500/40 flex items-center gap-1.5 shadow-md pointer-events-none">
+                      <span className={`w-2 h-2 rounded-full ${quickFacingMode === 'user' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                      <span className="text-[11px] font-semibold text-slate-200">
+                        {quickFacingMode === 'user' ? '🤳 Kamera Depan' : '📷 Kamera Belakang'}
+                      </span>
+                    </div>
 
-                  {/* Area Layar Kamera Seragam & Pas di Layar HP */}
-                  <div className="relative overflow-hidden bg-black h-[280px] sm:h-[300px] w-full flex items-center justify-center">
                     <div id="quick-qr-reader" className="w-full h-full border-none !max-w-full overflow-hidden flex items-center justify-center [&_video]:!w-full [&_video]:!h-full [&_video]:!object-cover [&_video]:!max-w-full [&>div]:!w-full [&>div]:!h-full [&>div]:!max-w-full [&_canvas]:!hidden" />
                   </div>
                 </div>
@@ -3044,9 +3045,9 @@ function QuickAbsenContent() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-3 animate-in zoom-in-95 duration-150">
-                  <div className="overflow-hidden rounded-2xl border-2 border-purple-500 shadow-md">
-                    <div className="flex items-center justify-between bg-slate-900 text-white px-3 py-2 sm:py-2.5">
+                <div className="space-y-2 animate-in zoom-in-95 duration-150">
+                  {/* Baris Header / Kontrol Kamera (Kedua Ujung Atas & Bawah Dibuat Rounded Seragam) */}
+                  <div className="flex items-center justify-between bg-slate-900 border border-purple-500/30 text-white px-3.5 py-2 sm:py-2.5 rounded-2xl shadow-sm">
                     <span className="text-xs font-bold flex items-center gap-1.5">
                       <Brain size={15} className="text-purple-400 animate-pulse" />
                       Arahkan ke Wajah Santri
@@ -3074,30 +3075,30 @@ function QuickAbsenContent() {
                     </div>
                   </div>
 
-                  {/* Keterangan Kamera Depan / Belakang diseragamkan */}
-                  <div className="flex items-center justify-center gap-2 bg-slate-800/90 py-1.5 border-t border-slate-700/50">
-                    <span className={`w-2 h-2 rounded-full ${quickFaceCamMode === 'user' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
-                    <span className="text-[11px] font-semibold text-slate-300">
-                      {quickFaceCamMode === 'user' ? '🤳 Kamera Depan' : '📷 Kamera Belakang'}
-                    </span>
-                  </div>
-
-                  {/* Status loading AI / Error */}
-                  {(quickFaceStatus === 'loading-models' || quickFaceStatus === 'loading-db') && (
-                    <div className="flex items-center gap-2 bg-slate-900/95 text-slate-200 px-3 py-2 text-xs border-t border-slate-800">
-                      <Loader2 size={15} className="text-purple-400 animate-spin shrink-0" />
-                      <span>{quickFaceStatusMsg}</span>
+                  {/* Area Layar Kamera Seragam & Elegan: Keempat Sudut Melengkung (rounded-2xl) */}
+                  <div className="relative overflow-hidden rounded-2xl border-2 border-purple-500 shadow-md bg-black h-[280px] sm:h-[300px] w-full flex items-center justify-center">
+                    {/* Keterangan Kamera Depan / Belakang Mengambang Elegan */}
+                    <div className="absolute top-2.5 z-20 px-3 py-1 bg-slate-900/85 backdrop-blur-md rounded-full border border-purple-500/40 flex items-center gap-1.5 shadow-md pointer-events-none">
+                      <span className={`w-2 h-2 rounded-full ${quickFaceCamMode === 'user' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                      <span className="text-[11px] font-semibold text-slate-200">
+                        {quickFaceCamMode === 'user' ? '🤳 Kamera Depan' : '📷 Kamera Belakang'}
+                      </span>
                     </div>
-                  )}
-                  {quickFaceStatus === 'error' && (
-                    <div className="flex items-center gap-2 bg-rose-950/90 text-rose-200 border-t border-rose-800 px-3 py-2 text-xs">
-                      <AlertCircle size={15} className="text-rose-400 shrink-0" />
-                      <span>{quickFaceStatusMsg}</span>
-                    </div>
-                  )}
 
-                  {/* Area Layar Kamera Seragam & Pas di Layar HP */}
-                  <div className="relative overflow-hidden bg-black h-[280px] sm:h-[300px] w-full flex items-center justify-center">
+                    {/* Status loading AI / Error */}
+                    {(quickFaceStatus === 'loading-models' || quickFaceStatus === 'loading-db') && (
+                      <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/85 backdrop-blur-sm gap-2.5 p-4 text-center">
+                        <Loader2 size={24} className="text-purple-400 animate-spin" />
+                        <span className="text-xs text-slate-200 font-medium">{quickFaceStatusMsg}</span>
+                      </div>
+                    )}
+                    {quickFaceStatus === 'error' && (
+                      <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-rose-950/90 backdrop-blur-sm gap-2 p-4 text-center">
+                        <AlertCircle size={24} className="text-rose-400" />
+                        <span className="text-xs text-rose-200 font-medium">{quickFaceStatusMsg}</span>
+                      </div>
+                    )}
+
                     {quickFaceStatus === 'scanning' && (
                       <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                         <div className="w-40 h-52 sm:w-44 sm:h-56 rounded-2xl border-2 border-purple-400/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
@@ -3112,7 +3113,6 @@ function QuickAbsenContent() {
                       style={{ transform: quickFaceCamMode === 'user' ? 'scaleX(-1)' : 'none' }}
                     />
                   </div>
-                </div>
 
                   {quickFaceStatus === 'scanning' && (
                     <div className="text-center pt-1">
