@@ -469,11 +469,6 @@ export default function DashboardPage() {
                           {gStat.total} Terjadwal
                         </span>
                       </div>
-                      {/* Baris Total: 1 baris memenuhi ruang kanan dan kiri kartu */}
-                      <div className="px-4 py-2.5 bg-gray-50/70 dark:bg-gray-900/40 border-b dark:border-gray-700/80 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Terjadwal</span>
-                        <span className="text-base font-extrabold text-gray-900 dark:text-gray-100">{gStat.total} Guru</span>
-                      </div>
                       {/* Hadir, Sakit, Izin, Alpha berdampingan dalam 1 baris */}
                       <div className="grid grid-cols-4 divide-x dark:divide-gray-700 border-b dark:border-gray-700">
                         <div className="p-2.5 text-center">
@@ -518,11 +513,6 @@ export default function DashboardPage() {
                           {gStat.total} Terjadwal
                         </span>
                       </div>
-                      {/* Baris Total: 1 baris memenuhi ruang kanan dan kiri kartu */}
-                      <div className="px-4 py-2.5 bg-gray-50/70 dark:bg-gray-900/40 border-b dark:border-gray-700/80 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Terjadwal</span>
-                        <span className="text-base font-extrabold text-gray-900 dark:text-gray-100">{gStat.total} Guru</span>
-                      </div>
                       {/* Hadir, Sakit, Izin, Alpha berdampingan dalam 1 baris */}
                       <div className="grid grid-cols-4 divide-x dark:divide-gray-700 border-b dark:border-gray-700">
                         <div className="p-2.5 text-center">
@@ -566,11 +556,6 @@ export default function DashboardPage() {
                         <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">
                           {gStat.total} Terjadwal
                         </span>
-                      </div>
-                      {/* Baris Total: 1 baris memenuhi ruang kanan dan kiri kartu */}
-                      <div className="px-4 py-2.5 bg-gray-50/70 dark:bg-gray-900/40 border-b dark:border-gray-700/80 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Terjadwal</span>
-                        <span className="text-base font-extrabold text-gray-900 dark:text-gray-100">{gStat.total} Pembina</span>
                       </div>
                       {/* Hadir, Sakit, Izin, Alpha berdampingan dalam 1 baris */}
                       <div className="grid grid-cols-4 divide-x dark:divide-gray-700 border-b dark:border-gray-700">
