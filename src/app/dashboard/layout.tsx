@@ -1311,13 +1311,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       }`}
                     >
                       <Icon size={24} strokeWidth={2.5} className="text-white drop-shadow-sm" />
-
-                      {/* Notifikasi Dot Merah Berdetak (Identik dengan Lonceng Sidebar) */}
-                      {hasActiveAbsen && (
-                        <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 animate-pulse shadow-sm z-20 flex items-center justify-center">
-                          <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-                        </span>
-                      )}
                     </div>
                   </div>
 
