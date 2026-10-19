@@ -1192,11 +1192,12 @@ function ScanAbsenInner() {
             ) : (
               <div ref={cameraContainerRef} className="space-y-2 animate-[zoomIn_0.3s_ease-out]">
                 {/* Header Bar — Rounded Seragam (Atas & Bawah) */}
-                <div className="flex justify-between items-center bg-gray-900 border border-green-500/30 p-3 rounded-2xl text-white shadow-sm">
-                  <span className="font-bold text-sm flex items-center gap-2">
-                    <Camera size={16} className="animate-pulse text-red-400" /> Arahkan ke Kartu Santri
+                <div className="flex justify-between items-center bg-gray-900 border border-green-500/30 px-3.5 py-2.5 rounded-2xl text-white shadow-sm">
+                  <span className="font-bold text-sm flex items-center gap-2 whitespace-nowrap">
+                    <Camera size={16} className="animate-pulse text-red-400 shrink-0" />
+                    <span>Arahkan ke Kartu Santri</span>
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button onClick={switchCamera} disabled={isSwitchingCamera}
                       title={facingMode === 'environment' ? 'Ganti ke Kamera Depan' : 'Ganti ke Kamera Belakang'}
                       aria-label="Ganti Kamera Depan/Belakang"
@@ -1209,10 +1210,10 @@ function ScanAbsenInner() {
                 </div>
                 {/* Layar Kamera — Semua Sudut Melengkung Elegan */}
                 <div className="relative rounded-2xl overflow-hidden border-2 border-green-500 shadow-xl bg-black" style={{ minHeight: 300 }}>
-                  {/* Kamera Label Mengambang */}
-                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-black/75 backdrop-blur-md rounded-full border border-green-500/40 flex items-center gap-1.5 shadow-md pointer-events-none">
-                    <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
-                    <span className="text-xs font-semibold text-gray-200">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
+                  {/* Kamera Label Mengambang — 1 Baris Ramping & Utuh */}
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 px-3.5 py-1 bg-black/75 backdrop-blur-md rounded-full border border-green-500/40 flex items-center gap-1.5 shadow-md pointer-events-none whitespace-nowrap">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
+                    <span className="text-xs font-semibold text-gray-200 whitespace-nowrap">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
                   </div>
                   {isSwitchingCamera && (
                     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 gap-3">
@@ -1243,16 +1244,22 @@ function ScanAbsenInner() {
               </button>
             ) : (
               <div ref={cameraContainerRef} className="space-y-2 animate-[zoomIn_0.3s_ease-out]">
-                {/* Header Bar Face AI — Rounded Seragam */}
-                <div className="flex justify-between items-center bg-gray-900 border border-violet-500/30 p-3 rounded-2xl text-white shadow-sm">
-                  <span className="font-bold text-sm flex items-center gap-2">
-                    <Brain size={16} className="text-violet-400 animate-pulse" /> Arahkan ke Wajah Santri
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-semibold ${faceStatusColor[faceStatus]}`}>
-                      {faceStatus === 'loading-models' && '⏳ Loading AI...'}{faceStatus === 'loading-db' && '📥 Loading DB...'}
-                      {faceStatus === 'scanning' && '🟢 Aktif'}{faceStatus === 'detected' && '✅ Terdeteksi!'}{faceStatus === 'error' && '❌ Error'}
+                {/* Header Bar Face AI — Rounded Seragam, Judul 1 Baris & Status di Bawahnya */}
+                <div className="flex justify-between items-center bg-gray-900 border border-violet-500/30 px-3.5 py-2.5 rounded-2xl text-white shadow-sm">
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-sm flex items-center gap-2 whitespace-nowrap">
+                      <Brain size={16} className="text-violet-400 animate-pulse shrink-0" />
+                      <span>Arahkan ke Wajah Santri</span>
                     </span>
+                    <span className={`text-[11px] font-semibold whitespace-nowrap pl-6 mt-0.5 ${faceStatusColor[faceStatus]}`}>
+                      {faceStatus === 'loading-models' && '⏳ Loading AI...'}
+                      {faceStatus === 'loading-db' && '📥 Loading DB...'}
+                      {faceStatus === 'scanning' && '🟢 Aktif'}
+                      {faceStatus === 'detected' && '✅ Terdeteksi!'}
+                      {faceStatus === 'error' && '❌ Error'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
                     <button onClick={switchCamera} disabled={isSwitchingCamera}
                       title={facingMode === 'environment' ? 'Ganti ke Kamera Depan' : 'Ganti ke Kamera Belakang'}
                       aria-label="Ganti Kamera Depan/Belakang"
@@ -1266,10 +1273,10 @@ function ScanAbsenInner() {
 
                 {/* Layar Kamera Face AI — Semua Sudut Melengkung Elegan */}
                 <div className="relative rounded-2xl overflow-hidden border-2 border-violet-500 shadow-xl bg-black" style={{ minHeight: 300 }}>
-                  {/* Kamera Label Mengambang */}
-                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-black/75 backdrop-blur-md rounded-full border border-violet-500/40 flex items-center gap-1.5 shadow-md pointer-events-none">
-                    <span className={`w-2 h-2 rounded-full ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
-                    <span className="text-xs font-semibold text-gray-200">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
+                  {/* Kamera Label Mengambang — 1 Baris Ramping & Utuh */}
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 px-3.5 py-1 bg-black/75 backdrop-blur-md rounded-full border border-violet-500/40 flex items-center gap-1.5 shadow-md pointer-events-none whitespace-nowrap">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
+                    <span className="text-xs font-semibold text-gray-200 whitespace-nowrap">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
                   </div>
 
                   {/* Status loading AI / Error (di dalam layar kamera) */}
