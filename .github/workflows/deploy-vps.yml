@@ -26,8 +26,8 @@ jobs:
         if: env.SSH_KEY != ''
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
+          host: ${{ secrets.VPS_HOST || secrets.FTP_SERVER }}
+          username: ${{ secrets.VPS_USERNAME || secrets.FTP_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script_stop: true
@@ -36,7 +36,7 @@ jobs:
             source ~/.bashrc 2>/dev/null || true
             source ~/.profile 2>/dev/null || true
             [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
-            cd ${{ secrets.VPS_TARGET_DIR }}
+            cd ${{ secrets.VPS_TARGET_DIR || secrets.FTP_TARGET_DIR }}
             echo "📂 Direktori aplikasi: $(pwd)"
             git pull origin main
             npm run build
@@ -49,9 +49,9 @@ jobs:
         if: env.SSH_KEY == ''
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          password: ${{ secrets.VPS_PASSWORD }}
+          host: ${{ secrets.VPS_HOST || secrets.FTP_SERVER }}
+          username: ${{ secrets.VPS_USERNAME || secrets.FTP_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD || secrets.FTP_PASSWORD }}
           port: 22
           script_stop: true
           script: |
@@ -59,7 +59,7 @@ jobs:
             source ~/.bashrc 2>/dev/null || true
             source ~/.profile 2>/dev/null || true
             [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
-            cd ${{ secrets.VPS_TARGET_DIR }}
+            cd ${{ secrets.VPS_TARGET_DIR || secrets.FTP_TARGET_DIR }}
             echo "📂 Direktori aplikasi: $(pwd)"
             git pull origin main
             npm run build
