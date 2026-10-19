@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight, ArrowUpDown, ArrowUp, ArrowDown, MapPin, List, ChevronRight, CheckCircle, AlertTriangle, Info, Loader2, BarChart3, TrendingUp, Award, Users, CheckCircle2, XCircle, LayoutGrid, Table } from 'lucide-react';
+import { FileText, Clock, CalendarDays, Download, Filter, User, BookOpen, AlertCircle, ArrowRight, Search, Eye, X, Calendar, ToggleLeft, ToggleRight, ArrowUpDown, ArrowUp, ArrowDown, MapPin, List, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, CheckCircle, AlertTriangle, Info, Loader2, BarChart3, TrendingUp, Award, Users, CheckCircle2, XCircle, LayoutGrid, Table } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { exportToPDF, exportToExcel, exportStatsPDF } from '@/lib/exportUtils';
@@ -133,6 +133,10 @@ export default function RekapitulasiPage() {
 
   // Mode rentang tanggal
   const [modeRentang, setModeRentang] = useState(false);
+
+  // Pagination tabel
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(50);
 
   // Pilihan Tampilan: 'tabel' (Data Tabel Saja) | 'grafik' (Data Grafik Saja) | 'keduanya' (Semua)
   const [viewMode, setViewMode] = useState<'tabel' | 'grafik' | 'keduanya'>('tabel');
@@ -408,9 +412,28 @@ export default function RekapitulasiPage() {
       return;
     }
 
+    if (modeRentang) {
+      if (!activeFilter.tanggal_dari || !activeFilter.tanggal_sampai) {
+        setErrorMsg('Silakan tentukan tanggal awal dan akhir rentang');
+        return;
+      }
+      if (activeFilter.tanggal_dari > activeFilter.tanggal_sampai) {
+        setErrorMsg('Tanggal awal tidak boleh lebih besar dari tanggal akhir');
+        return;
+      }
+      const tAwal = new Date(activeFilter.tanggal_dari).getTime();
+      const tAkhir = new Date(activeFilter.tanggal_sampai).getTime();
+      const diffHari = Math.round((tAkhir - tAwal) / (1000 * 60 * 60 * 24));
+      if (diffHari > 365) {
+        setErrorMsg('Rentang tanggal maksimal 1 tahun (365 hari) agar proses rekapitulasi cepat & optimal.');
+        return;
+      }
+    }
+
     setLoading(true);
     setErrorMsg('');
     setSearchNama(''); // Reset pencarian saat fetch baru
+    setCurrentPage(1); // Reset pagination ke halaman 1
     try {
       let qs: string;
       if (modeRentang) {
@@ -558,6 +581,29 @@ export default function RekapitulasiPage() {
         (item.alamat || '').toLowerCase().includes(searchNama.trim().toLowerCase())
       )
     : sortedData;
+
+  // Hitung jumlah hari jika mode rentang aktif
+  const selectedRentangHari = (() => {
+    if (!modeRentang || !filter.tanggal_dari || !filter.tanggal_sampai) return null;
+    const tAwal = new Date(filter.tanggal_dari).getTime();
+    const tAkhir = new Date(filter.tanggal_sampai).getTime();
+    if (isNaN(tAwal) || isNaN(tAkhir) || tAkhir < tAwal) return null;
+    return Math.round((tAkhir - tAwal) / (1000 * 60 * 60 * 24)) + 1;
+  })();
+
+  // Pagination kalkulasi
+  const totalItems = filteredData.length;
+  const effectivePageSize = pageSize === 'all' ? (totalItems || 1) : (pageSize as number);
+  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalItems / effectivePageSize));
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validCurrentPage - 1) * effectivePageSize;
+  const paginatedData = pageSize === 'all'
+    ? filteredData
+    : filteredData.slice(startIndex, startIndex + effectivePageSize);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchNama, sortField, sortOrder, pageSize]);
 
   // Komputasi Metrik & Statistik untuk Visualisasi Grafik & Ringkasan
   const statsSummary = (() => {
@@ -1046,9 +1092,20 @@ export default function RekapitulasiPage() {
 
           {/* Kolom 1: Toggle Mode Waktu */}
           <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1 truncate">
-              {modeRentang ? '📅 Rentang Tanggal' : '🗓️ Bulan / Tahun'}
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-gray-500 truncate">
+                {modeRentang ? '📅 Rentang Tanggal' : '🗓️ Bulan / Tahun'}
+              </label>
+              {modeRentang && selectedRentangHari !== null && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                  selectedRentangHari > 180
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                    : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                }`}>
+                  {selectedRentangHari} Hari
+                </span>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => setModeRentang(v => !v)}
@@ -2153,7 +2210,8 @@ export default function RekapitulasiPage() {
                     {data.length === 0 ? 'Klik Tampilkan untuk memuat data.' : `Tidak ada hasil untuk "${searchNama}"`}
                   </td></tr>
                 ) : (
-                  filteredData.map((item, idx) => {
+                  paginatedData.map((item, idx) => {
+                    const rowNum = pageSize === 'all' ? idx + 1 : (validCurrentPage - 1) * (pageSize as number) + idx + 1;
                     const totalPertemuan = Number(item.hadir) + Number(item.izin) + Number(item.sakit) + Number(item.alpha);
                     const presentase = totalPertemuan === 0 ? 0 : Math.round((Number(item.hadir) / totalPertemuan) * 100);
                     const fotoUrl = getFotoUrl(item.foto);
@@ -2170,7 +2228,7 @@ export default function RekapitulasiPage() {
                             }}
                           />
                         </td>
-                        <td className="px-5 py-4 text-center text-gray-400 font-medium">{idx + 1}</td>
+                        <td className="px-5 py-4 text-center text-gray-400 font-medium">{rowNum}</td>
                         <td className="px-3 py-4 text-center">
                           <div
                             className={`w-10 h-10 rounded-full mx-auto overflow-hidden relative border border-gray-200 dark:border-gray-700 shadow-sm ${
@@ -2261,6 +2319,90 @@ export default function RekapitulasiPage() {
               </tbody>
             </table>
             </div>
+
+            {/* Pagination Controls Bar */}
+            {filteredData.length > 0 && (
+              <div className="px-5 py-4 bg-gray-50/70 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                {/* Info & Page Size Selector */}
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 text-gray-500 dark:text-gray-400">
+                  <span>
+                    Menampilkan{' '}
+                    <strong className="text-gray-900 dark:text-white">
+                      {pageSize === 'all'
+                        ? `1 - ${totalItems}`
+                        : `${totalItems === 0 ? 0 : startIndex + 1} - ${Math.min(startIndex + (pageSize as number), totalItems)}`}
+                    </strong>{' '}
+                    dari <strong className="text-gray-900 dark:text-white">{totalItems}</strong> data
+                  </span>
+                  <span className="text-gray-300 dark:text-gray-600">|</span>
+                  <div className="flex items-center gap-1.5">
+                    <span>Baris per hal:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                        setPageSize(val);
+                        setCurrentPage(1);
+                      }}
+                      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-2xs"
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={200}>200</option>
+                      <option value="all">Semua ({totalItems})</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Page Navigation Buttons */}
+                {pageSize !== 'all' && totalPages > 1 && (
+                  <div className="flex items-center gap-1 select-none">
+                    <button
+                      type="button"
+                      disabled={validCurrentPage <= 1}
+                      onClick={() => setCurrentPage(1)}
+                      className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                      title="Halaman Pertama"
+                    >
+                      <ChevronsLeft size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={validCurrentPage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                      title="Halaman Sebelumnya"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+
+                    <span className="px-3 py-1 font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800/50 rounded-lg">
+                      Hal {validCurrentPage} / {totalPages}
+                    </span>
+
+                    <button
+                      type="button"
+                      disabled={validCurrentPage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                      title="Halaman Berikutnya"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={validCurrentPage >= totalPages}
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                      title="Halaman Terakhir"
+                    >
+                      <ChevronsRight size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           )}
 

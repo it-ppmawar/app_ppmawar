@@ -106,26 +106,43 @@ export async function GET(request: Request) {
       params = [...subDateParams, ...scanDateParams, ...joinDateParams, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
-          COUNT(DISTINCT att.tanggal) as hadir,
-          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_id END) as izin,
-          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_id END) as sakit,
-          COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_id END) as alpha
+          COALESCE(MAX(att.hadir), 0) as hadir,
+          COALESCE(MAX(a_sum.izin), 0) as izin,
+          COALESCE(MAX(a_sum.sakit), 0) as sakit,
+          COALESCE(MAX(a_sum.alpha), 0) as alpha
         FROM murid m
         LEFT JOIN kelas_madin km ON (m.kelas_madin_id = km.kelas_id OR m.kelas_madin_2_id = km.kelas_id)
         LEFT JOIN (
-          SELECT ab.murid_id, ab.tanggal FROM absensi ab
-          ${sub_filter ? 'JOIN jadwal_madin jm_sub ON ab.jadwal_madin_id = jm_sub.jadwal_id ' + subFilterAbsensiCond : ''}
-          WHERE LOWER(ab.status) = 'hadir' AND ${subDateCond}
-          UNION
-          SELECT ak.murid_id, ak.tanggal
-          FROM absensi_kamar ak
-          JOIN jadwal_madin jm_sf ON jm_sf.kelas_madin_id = (
-            SELECT kelas_madin_id FROM murid WHERE murid_id = ak.murid_id LIMIT 1
-          ) AND jm_sf.hari = DAYNAME(ak.tanggal) ${subFilterMapelCond}
-          WHERE ${scanDateCond}
+          SELECT att_u.murid_id, COUNT(DISTINCT att_u.tanggal) as hadir
+          FROM (
+            SELECT ab.murid_id, ab.tanggal 
+            FROM absensi ab
+            ${sub_filter ? 'JOIN jadwal_madin jm_sub ON ab.jadwal_madin_id = jm_sub.jadwal_id ' + subFilterAbsensiCond : ''}
+            WHERE LOWER(ab.status) = 'hadir' AND ${subDateCond}
+            UNION
+            SELECT ak.murid_id, ak.tanggal
+            FROM absensi_kamar ak
+            JOIN murid m_ak ON ak.murid_id = m_ak.murid_id
+            JOIN jadwal_madin jm_sf ON (jm_sf.kelas_madin_id = m_ak.kelas_madin_id OR jm_sf.kelas_madin_id = m_ak.kelas_madin_2_id)
+              AND (
+                LOWER(jm_sf.hari) = LOWER(DAYNAME(ak.tanggal))
+                OR LOWER(jm_sf.hari) = LOWER(ELT(DAYOFWEEK(ak.tanggal), 'Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'))
+              ) ${subFilterMapelCond}
+            WHERE ${scanDateCond}
+          ) att_u
+          GROUP BY att_u.murid_id
         ) att ON m.murid_id = att.murid_id
-        LEFT JOIN absensi a ON m.murid_id = a.murid_id AND ${joinDateCond}
-          ${sub_filter ? `AND a.jadwal_madin_id IN (SELECT jadwal_id FROM jadwal_madin WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
+        LEFT JOIN (
+          SELECT 
+            a.murid_id,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_id END) as izin,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_id END) as sakit,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_id END) as alpha
+          FROM absensi a
+          WHERE ${joinDateCond}
+            ${sub_filter ? `AND a.jadwal_madin_id IN (SELECT jadwal_id FROM jadwal_madin WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
+          GROUP BY a.murid_id
+        ) a_sum ON m.murid_id = a_sum.murid_id
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
@@ -206,26 +223,43 @@ export async function GET(request: Request) {
       params = [...subDateParams, ...scanDateParams, ...joinDateParams, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
-          COUNT(DISTINCT att.tanggal) as hadir,
-          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_quran_id END) as izin,
-          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_quran_id END) as sakit,
-          COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_quran_id END) as alpha
+          COALESCE(MAX(att.hadir), 0) as hadir,
+          COALESCE(MAX(a_sum.izin), 0) as izin,
+          COALESCE(MAX(a_sum.sakit), 0) as sakit,
+          COALESCE(MAX(a_sum.alpha), 0) as alpha
         FROM murid m
         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
         LEFT JOIN (
-          SELECT aq.murid_id, aq.tanggal FROM absensi_quran aq
-          ${sub_filter ? 'JOIN jadwal_quran jq_sub ON aq.jadwal_quran_id = jq_sub.id ' + subFilterQuranAbsensiCond : ''}
-          WHERE LOWER(aq.status) = 'hadir' AND ${subDateCond}
-          UNION
-          SELECT ak.murid_id, ak.tanggal
-          FROM absensi_kamar ak
-          JOIN jadwal_quran jq_sf ON jq_sf.kelas_quran_id = (
-            SELECT kelas_quran_id FROM murid WHERE murid_id = ak.murid_id LIMIT 1
-          ) AND jq_sf.hari = DAYNAME(ak.tanggal) ${subFilterQuranCond}
-          WHERE ${scanDateCond}
+          SELECT att_u.murid_id, COUNT(DISTINCT att_u.tanggal) as hadir
+          FROM (
+            SELECT aq.murid_id, aq.tanggal 
+            FROM absensi_quran aq
+            ${sub_filter ? 'JOIN jadwal_quran jq_sub ON aq.jadwal_quran_id = jq_sub.id ' + subFilterQuranAbsensiCond : ''}
+            WHERE LOWER(aq.status) = 'hadir' AND ${subDateCond}
+            UNION
+            SELECT ak.murid_id, ak.tanggal
+            FROM absensi_kamar ak
+            JOIN murid m_ak ON ak.murid_id = m_ak.murid_id
+            JOIN jadwal_quran jq_sf ON jq_sf.kelas_quran_id = m_ak.kelas_quran_id
+              AND (
+                LOWER(jq_sf.hari) = LOWER(DAYNAME(ak.tanggal))
+                OR LOWER(jq_sf.hari) = LOWER(ELT(DAYOFWEEK(ak.tanggal), 'Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'))
+              ) ${subFilterQuranCond}
+            WHERE ${scanDateCond}
+          ) att_u
+          GROUP BY att_u.murid_id
         ) att ON m.murid_id = att.murid_id
-        LEFT JOIN absensi_quran a ON m.murid_id = a.murid_id AND ${joinDateCond}
-          ${sub_filter ? `AND a.jadwal_quran_id IN (SELECT id FROM jadwal_quran WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
+        LEFT JOIN (
+          SELECT 
+            a.murid_id,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_quran_id END) as izin,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_quran_id END) as sakit,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_quran_id END) as alpha
+          FROM absensi_quran a
+          WHERE ${joinDateCond}
+            ${sub_filter ? `AND a.jadwal_quran_id IN (SELECT id FROM jadwal_quran WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
+          GROUP BY a.murid_id
+        ) a_sum ON m.murid_id = a_sum.murid_id
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC
@@ -318,21 +352,37 @@ export async function GET(request: Request) {
       params = [...subDateParams1, ...subDateParams2, ...joinDateParams, ...whereParams];
       query = `
         SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
-          COUNT(DISTINCT att.tanggal) as hadir,
-          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_kegiatan_id END) as izin,
-          COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_kegiatan_id END) as sakit,
-          COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_kegiatan_id END) as alpha
+          COALESCE(MAX(att.hadir), 0) as hadir,
+          COALESCE(MAX(a_sum.izin), 0) as izin,
+          COALESCE(MAX(a_sum.sakit), 0) as sakit,
+          COALESCE(MAX(a_sum.alpha), 0) as alpha
         FROM murid m
         LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
         LEFT JOIN (
-          SELECT att_k.murid_id, att_k.tanggal FROM absensi_kegiatan att_k
-          ${sub_filter ? `JOIN jadwal_kegiatan jk_sf ON att_k.kegiatan_id = jk_sf.kegiatan_id ${subFilterKegiatanCond}` : ''}
-          WHERE LOWER(att_k.status) = 'hadir' AND ${subDateCond1}
-          UNION
-          SELECT murid_id, tanggal FROM absensi_kamar att_s WHERE ${subDateCond2}
+          SELECT att_u.murid_id, COUNT(DISTINCT att_u.tanggal) as hadir
+          FROM (
+            SELECT att_k.murid_id, att_k.tanggal 
+            FROM absensi_kegiatan att_k
+            ${sub_filter ? `JOIN jadwal_kegiatan jk_sf ON att_k.kegiatan_id = jk_sf.kegiatan_id ${subFilterKegiatanCond}` : ''}
+            WHERE LOWER(att_k.status) = 'hadir' AND ${subDateCond1}
+            UNION
+            SELECT murid_id, tanggal 
+            FROM absensi_kamar att_s 
+            WHERE ${subDateCond2}
+          ) att_u
+          GROUP BY att_u.murid_id
         ) att ON m.murid_id = att.murid_id
-        LEFT JOIN absensi_kegiatan a ON m.murid_id = a.murid_id AND ${joinDateCond}
-          ${sub_filter ? `AND a.kegiatan_id IN (SELECT kegiatan_id FROM jadwal_kegiatan WHERE nama_kegiatan = '${sub_filter.replace(/'/g, "''")}')` : ''}
+        LEFT JOIN (
+          SELECT 
+            a.murid_id,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_kegiatan_id END) as izin,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_kegiatan_id END) as sakit,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_kegiatan_id END) as alpha
+          FROM absensi_kegiatan a
+          WHERE ${joinDateCond}
+            ${sub_filter ? `AND a.kegiatan_id IN (SELECT kegiatan_id FROM jadwal_kegiatan WHERE nama_kegiatan = '${sub_filter.replace(/'/g, "''")}')` : ''}
+          GROUP BY a.murid_id
+        ) a_sum ON m.murid_id = a_sum.murid_id
         ${whereCond}
         GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
         ORDER BY m.nama ASC

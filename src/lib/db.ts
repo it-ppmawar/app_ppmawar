@@ -12,13 +12,14 @@ const pool = mysql.createPool({
   waitForConnections: true,
   // Gunakan connectionLimit 10 agar request paralel dan multi-tab tidak kehabisan pool koneksi
   connectionLimit: 10,
+  maxIdle: 10,
   queueLimit: 0,
-  connectTimeout: 15000,
+  connectTimeout: 60000,
   // PERF: Lepas koneksi idle setelah 60 detik agar tidak habis limit koneksi hosting
   idleTimeout: 60000,
   // PERF: Aktifkan keep-alive agar koneksi yang ada tidak di-drop server MySQL
   enableKeepAlive: true,
-  keepAliveInitialDelay: 0,
+  keepAliveInitialDelay: 10000,
 });
 
 export default pool;
