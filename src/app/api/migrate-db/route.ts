@@ -675,6 +675,28 @@ export async function GET() {
       results.push('❌ Absensi keterangan migration error: ' + e.message);
     }
 
+    // ── Fix Status Column to VARCHAR(20) to prevent ENUM Data Truncation Error ────
+    try {
+      const statusTables = [
+        { table: 'absensi', defaultVal: 'Hadir' },
+        { table: 'absensi_quran', defaultVal: 'Hadir' },
+        { table: 'absensi_guru', defaultVal: 'Alpa' },
+        { table: 'absensi_kamar', defaultVal: 'Alpa' },
+        { table: 'absensi_dewan_guru', defaultVal: 'Hadir' },
+        { table: 'absensi_kegiatan', defaultVal: 'Hadir' }
+      ];
+      for (const item of statusTables) {
+        try {
+          await pool.execute(`ALTER TABLE ${item.table} MODIFY COLUMN status VARCHAR(20) NOT NULL DEFAULT '${item.defaultVal}'`);
+          results.push(`✅ Modified ${item.table}.status to VARCHAR(20)`);
+        } catch (sErr: any) {
+          results.push(`❌ ${item.table} status column modify: ` + sErr.message);
+        }
+      }
+    } catch (e: any) {
+      results.push('❌ Status column migration error: ' + e.message);
+    }
+
     return NextResponse.json({ success: true, results });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
