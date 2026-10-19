@@ -1,0 +1,71 @@
+name: Deploy Next.js to VPS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to VPS via SSH
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Validate Secrets
+        if: "${{ secrets.VPS_HOST == '' || secrets.VPS_USERNAME == '' || (secrets.VPS_SSH_KEY == '' && secrets.VPS_PASSWORD == '') || secrets.VPS_TARGET_DIR == '' }}"
+        run: |
+          echo "::error::Secret VPS belum lengkap! Pastikan VPS_HOST, VPS_USERNAME, VPS_TARGET_DIR, dan salah satu dari VPS_SSH_KEY atau VPS_PASSWORD sudah diatur di GitHub Repository (Settings -> Secrets and variables -> Actions)."
+          exit 1
+
+      - name: Deploy with SSH Key
+        if: "${{ secrets.VPS_SSH_KEY != '' }}"
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script_stop: true
+          script: |
+            echo "🚀 Menjalankan deployment di VPS..."
+            source ~/.bashrc 2>/dev/null || true
+            source ~/.profile 2>/dev/null || true
+            [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+            cd ${{ secrets.VPS_TARGET_DIR }}
+            echo "📂 Direktori aplikasi: $(pwd)"
+            git pull origin main
+            npm install --legacy-peer-deps --no-audit --no-fund
+            npm run build
+            pm2 restart app-ppmawar || pm2 restart all
+            echo "✅ Deployment ke VPS berhasil selesai!"
+
+      - name: Deploy with Password
+        if: "${{ secrets.VPS_SSH_KEY == '' && secrets.VPS_PASSWORD != '' }}"
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script_stop: true
+          script: |
+            echo "🚀 Menjalankan deployment di VPS..."
+            source ~/.bashrc 2>/dev/null || true
+            source ~/.profile 2>/dev/null || true
+            [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+            cd ${{ secrets.VPS_TARGET_DIR }}
+            echo "📂 Direktori aplikasi: $(pwd)"
+            git pull origin main
+            npm install --legacy-peer-deps --no-audit --no-fund
+            npm run build
+            pm2 restart app-ppmawar || pm2 restart all
+            echo "✅ Deployment ke VPS berhasil selesai!"

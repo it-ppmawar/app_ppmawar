@@ -1,19 +1,10 @@
 # Re-deploy dipicu: 2026-10-08 untuk memulihkan app.ppmawar.or.id
 name: Deploy Next.js to cPanel
 
+# Deployment otomatis ke cPanel dinonaktifkan karena telah beralih ke VPS (deploy-vps.yml).
+# Dapat dipicu secara manual lewat tab GitHub Actions -> Run workflow jika diperlukan.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'scripts/**'
-      - 'package*.json'
-      - 'next.config.ts'
-      - 'server.js'
-      - '.github/workflows/**'
 
 concurrency:
   group: deploy-cpanel
