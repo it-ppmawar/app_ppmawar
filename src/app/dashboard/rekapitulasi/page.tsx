@@ -1282,26 +1282,19 @@ export default function RekapitulasiPage() {
               <div className="space-y-4">
                 {/* 5 KPI Metric Cards: Tingkat Hadir 1 baris penuh di HP, 4 kartu status berdampingan di bawahnya */}
                 <div className="grid grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
-                  {/* KPI 1: % Tingkat Kehadiran — Full-width di HP */}
-                  <div className="col-span-4 lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl p-3.5 sm:p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden flex flex-col justify-between">
-                    <div className="flex items-center justify-between text-xs font-bold text-purple-600 dark:text-purple-400 mb-1">
-                      <span className="flex items-center gap-1.5">
-                        <TrendingUp size={15} />
-                        Tingkat Hadir
-                      </span>
-                      <span className="text-[11px] font-semibold text-gray-400 sm:hidden">
-                        {statsSummary.totalHadir} dari {statsSummary.totalPresensi} presensi
-                      </span>
+                  {/* KPI 1: % Tingkat Kehadiran — Full-width di HP, 1 kolom di Desktop */}
+                  <div className="col-span-4 lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl p-2 sm:p-3.5 lg:p-4 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden flex flex-col justify-between">
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold text-purple-600 dark:text-purple-400 mb-0.5 sm:mb-1">
+                      <span className="truncate">Tingkat Hadir</span>
+                      <TrendingUp size={12} className="shrink-0 hidden sm:inline" />
                     </div>
-                    <div className="flex items-baseline justify-between my-0.5">
-                      <div className="text-2xl sm:text-3xl font-black text-gray-800 dark:text-white">
-                        {statsSummary.totalPresensi > 0 ? `${statsSummary.pctHadir.toFixed(1)}%` : '0%'}
-                      </div>
-                      <p className="text-[11px] text-gray-400 hidden sm:block truncate">
-                        {statsSummary.totalHadir} dari {statsSummary.totalPresensi} presensi
-                      </p>
+                    <div className="text-sm sm:text-2xl lg:text-3xl font-black text-gray-800 dark:text-white truncate">
+                      {statsSummary.totalPresensi > 0 ? `${statsSummary.pctHadir.toFixed(1)}%` : '0%'}
                     </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                    <p className="text-[9px] sm:text-[11px] text-gray-400 mt-0.5 truncate" title={`${statsSummary.totalHadir} dari ${statsSummary.totalPresensi}`}>
+                      {statsSummary.totalHadir} dari {statsSummary.totalPresensi}
+                    </p>
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 sm:h-1.5 rounded-full mt-1.5 sm:mt-2.5 overflow-hidden">
                       <div className="bg-purple-600 h-full rounded-full transition-all duration-500" style={{ width: `${statsSummary.pctHadir}%` }} />
                     </div>
                   </div>
