@@ -504,6 +504,7 @@ export default function RekapitulasiPage() {
         } else {
           p.set('murid_id', item.id.toString());
         }
+        if (subFilter) p.set('sub_filter', subFilter);
         qs = p.toString();
       } else {
         const p = new URLSearchParams({
@@ -516,6 +517,7 @@ export default function RekapitulasiPage() {
         } else {
           p.set('murid_id', item.id.toString());
         }
+        if (subFilter) p.set('sub_filter', subFilter);
         qs = p.toString();
       }
 
