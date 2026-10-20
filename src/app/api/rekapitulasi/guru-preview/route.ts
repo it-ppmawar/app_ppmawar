@@ -95,20 +95,26 @@ export async function GET(request: Request) {
       for (const item of Array.from(madinMap.values())) {
         const [students] = await pool.execute<RowDataPacket[]>(
           `SELECT m.murid_id as id, m.nis, m.nama, m.foto, m.jenis_kelamin,
-            COUNT(DISTINCT CASE WHEN LOWER(att.status) = 'hadir' THEN att.tanggal END) as hadir,
-            SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
-            SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
+            COALESCE(MAX(a_sum.hadir), 0) as hadir,
+            COALESCE(MAX(a_sum.izin), 0) as izin,
+            COALESCE(MAX(a_sum.sakit), 0) as sakit,
+            COALESCE(MAX(a_sum.alpha), 0) as alpha
            FROM murid m
            LEFT JOIN (
-             SELECT murid_id, tanggal, status FROM absensi 
-             WHERE MONTH(tanggal) = ? AND YEAR(tanggal) = ?
-           ) att ON m.murid_id = att.murid_id
-           LEFT JOIN absensi a ON m.murid_id = a.murid_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
+             SELECT 
+               a.murid_id,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN a.absensi_id END) as hadir,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_id END) as izin,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_id END) as sakit,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_id END) as alpha
+             FROM absensi a
+             WHERE MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
+             GROUP BY a.murid_id
+           ) a_sum ON m.murid_id = a_sum.murid_id
            WHERE m.kelas_madin_id = ?
            GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.jenis_kelamin
            ORDER BY m.nama ASC`,
-          [bulan, tahun, bulan, tahun, item.kelas_id]
+          [bulan, tahun, item.kelas_id]
         );
         item.students = students;
         classesList.push(item);
@@ -147,20 +153,26 @@ export async function GET(request: Request) {
       for (const item of Array.from(quranMap.values())) {
         const [students] = await pool.execute<RowDataPacket[]>(
           `SELECT m.murid_id as id, m.nis, m.nama, m.foto, m.jenis_kelamin,
-            COUNT(DISTINCT CASE WHEN LOWER(att.status) = 'hadir' THEN att.tanggal END) as hadir,
-            SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
-            SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
+            COALESCE(MAX(a_sum.hadir), 0) as hadir,
+            COALESCE(MAX(a_sum.izin), 0) as izin,
+            COALESCE(MAX(a_sum.sakit), 0) as sakit,
+            COALESCE(MAX(a_sum.alpha), 0) as alpha
            FROM murid m
            LEFT JOIN (
-             SELECT murid_id, tanggal, status FROM absensi_quran 
-             WHERE MONTH(tanggal) = ? AND YEAR(tanggal) = ?
-           ) att ON m.murid_id = att.murid_id
-           LEFT JOIN absensi_quran a ON m.murid_id = a.murid_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
+             SELECT 
+               a.murid_id,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN a.absensi_quran_id END) as hadir,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_quran_id END) as izin,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_quran_id END) as sakit,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_quran_id END) as alpha
+             FROM absensi_quran a
+             WHERE MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
+             GROUP BY a.murid_id
+           ) a_sum ON m.murid_id = a_sum.murid_id
            WHERE m.kelas_quran_id = ?
            GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.jenis_kelamin
            ORDER BY m.nama ASC`,
-          [bulan, tahun, bulan, tahun, item.kelas_id]
+          [bulan, tahun, item.kelas_id]
         );
         item.students = students;
         classesList.push(item);
@@ -199,20 +211,26 @@ export async function GET(request: Request) {
       for (const item of Array.from(kamarMap.values())) {
         const [students] = await pool.execute<RowDataPacket[]>(
           `SELECT m.murid_id as id, m.nis, m.nama, m.foto, m.jenis_kelamin,
-            COUNT(DISTINCT CASE WHEN LOWER(att.status) = 'hadir' THEN att.tanggal END) as hadir,
-            SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
-            SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
+            COALESCE(MAX(a_sum.hadir), 0) as hadir,
+            COALESCE(MAX(a_sum.izin), 0) as izin,
+            COALESCE(MAX(a_sum.sakit), 0) as sakit,
+            COALESCE(MAX(a_sum.alpha), 0) as alpha
            FROM murid m
            LEFT JOIN (
-             SELECT murid_id, tanggal, status FROM absensi_kegiatan 
-             WHERE MONTH(tanggal) = ? AND YEAR(tanggal) = ?
-           ) att ON m.murid_id = att.murid_id
-           LEFT JOIN absensi_kegiatan a ON m.murid_id = a.murid_id AND MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
+             SELECT 
+               a.murid_id,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN a.absensi_kegiatan_id END) as hadir,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_kegiatan_id END) as izin,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_kegiatan_id END) as sakit,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_kegiatan_id END) as alpha
+             FROM absensi_kegiatan a
+             WHERE MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
+             GROUP BY a.murid_id
+           ) a_sum ON m.murid_id = a_sum.murid_id
            WHERE m.kamar_id = ?
            GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.jenis_kelamin
            ORDER BY m.nama ASC`,
-          [bulan, tahun, bulan, tahun, item.kelas_id]
+          [bulan, tahun, item.kelas_id]
         );
         item.students = students;
         classesList.push(item);
