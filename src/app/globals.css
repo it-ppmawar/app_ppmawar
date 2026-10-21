@@ -104,7 +104,8 @@ body {
 }
 
 /* Quick QR Reader containment: pastikan tampilan kamera tidak meluas dari layar HP */
-#quick-qr-reader {
+#quick-qr-reader,
+#reader {
   width: 100% !important;
   max-width: 100% !important;
   height: 100% !important;
@@ -112,7 +113,8 @@ body {
   position: relative !important;
 }
 
-#quick-qr-reader video {
+#quick-qr-reader video,
+#reader video {
   width: 100% !important;
   max-width: 100% !important;
   height: 100% !important;
@@ -120,11 +122,13 @@ body {
   object-fit: cover !important;
 }
 
-#quick-qr-reader canvas {
+#quick-qr-reader canvas,
+#reader canvas {
   display: none !important;
 }
 
-#quick-qr-reader__scan_region {
+#quick-qr-reader__scan_region,
+#reader__scan_region {
   width: 100% !important;
   max-width: 100% !important;
   height: 100% !important;

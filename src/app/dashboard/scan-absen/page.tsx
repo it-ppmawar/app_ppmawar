@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Camera, CheckCircle, XCircle, QrCode, Shield, Wifi, RefreshCw,
+  Camera, CheckCircle, XCircle, X, QrCode, Shield, Wifi, RefreshCw,
   ChevronDown, FlipHorizontal, SwitchCamera, Layers, Sparkles, Brain, ScanFace,
   Loader2, Users, Zap, Info, Link2, Search, UserPlus, CheckCircle2,
   AlertTriangle, Settings, Upload, Image, HelpCircle, MapPin, ClipboardCheck, Utensils
@@ -1155,7 +1155,7 @@ function ScanAbsenInner() {
 
 
       {/* ====== SCAN CARD ====== */}
-      <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl p-3.5 sm:p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
         {/* Target dropdown */}
         <div ref={targetDropdownRef}>
           <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
@@ -1191,67 +1191,14 @@ function ScanAbsenInner() {
               </button>
             ) : (
               <div ref={cameraContainerRef} className="space-y-2 animate-[zoomIn_0.3s_ease-out]">
-                {/* Header Bar — Rounded Seragam (Atas & Bawah) */}
-                <div className="flex justify-between items-center bg-gray-900 border border-green-500/30 px-3.5 py-2.5 rounded-2xl text-white shadow-sm">
-                  <span className="font-bold text-sm flex items-center gap-2 whitespace-nowrap">
-                    <Camera size={16} className="animate-pulse text-red-400 shrink-0" />
-                    <span>Arahkan ke Kartu Santri</span>
-                  </span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={switchCamera} disabled={isSwitchingCamera}
-                      title={facingMode === 'environment' ? 'Ganti ke Kamera Depan' : 'Ganti ke Kamera Belakang'}
-                      aria-label="Ganti Kamera Depan/Belakang"
-                      className={`flex items-center justify-center p-2 sm:px-3 sm:py-1.5 text-xs font-bold rounded-xl transition-all active:scale-95 ${isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-sm'}`}>
-                      <SwitchCamera size={16} className={isSwitchingCamera ? 'animate-spin' : ''} />
-                      <span className="hidden sm:inline sm:ml-1.5">{isSwitchingCamera ? 'Mengganti...' : facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
-                    </button>
-                    <button onClick={stopAll} className="bg-red-500 hover:bg-red-600 p-1.5 rounded-lg"><XCircle size={18} /></button>
-                  </div>
-                </div>
-                {/* Layar Kamera — Semua Sudut Melengkung Elegan */}
-                <div className="relative rounded-2xl overflow-hidden border-2 border-green-500 shadow-xl bg-black" style={{ minHeight: 300 }}>
-                  {/* Kamera Label Mengambang — 1 Baris Ramping & Utuh */}
-                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 px-3.5 py-1 bg-black/75 backdrop-blur-md rounded-full border border-green-500/40 flex items-center gap-1.5 shadow-md pointer-events-none whitespace-nowrap">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
-                    <span className="text-xs font-semibold text-gray-200 whitespace-nowrap">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
-                  </div>
-                  {isSwitchingCamera && (
-                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 gap-3">
-                      <div className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-white text-sm font-semibold">Mengganti kamera...</span>
-                    </div>
-                  )}
-                  <div id="reader" className="w-full h-full border-none [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_video]:block" />
-                </div>
-                <div className="flex items-center gap-2 justify-center">
-                  <Wifi size={14} className="text-gray-400" />
-                  <p className="text-xs text-gray-500 italic">Pastikan pencahayaan cukup & QR Code tidak silau</p>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── FACE AI SCANNER ── */}
-        {scanMode === 'face' && (
-          <>
-            {!isScanning ? (
-              <button
-                ref={startScanBtnRef}
-                onClick={startScanner}
-                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold text-lg py-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3">
-                <ScanFace size={26} /> Mulai Scan Wajah AI
-              </button>
-            ) : (
-              <div ref={cameraContainerRef} className="space-y-2 animate-[zoomIn_0.3s_ease-out]">
-                {/* Header Bar Face AI — Rounded Seragam, Judul 1 Baris & Status di Bawahnya */}
-                <div className="flex justify-between items-center bg-gray-900 border border-violet-500/30 px-3.5 py-2.5 rounded-2xl text-white shadow-sm">
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-bold text-sm flex items-center gap-2 whitespace-nowrap">
-                      <Brain size={16} className="text-violet-400 animate-pulse shrink-0" />
-                      <span>Arahkan ke Wajah Santri</span>
+                {/* Header Bar Face AI — Seragam & Ramping seperti Pintasan */}
+                <div className="flex justify-between items-center bg-slate-900 border border-violet-500/30 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl text-white shadow-sm">
+                  <div className="flex flex-col min-w-0 mr-2">
+                    <span className="font-bold text-xs sm:text-sm flex items-center gap-1.5 min-w-0">
+                      <Brain size={15} className="text-violet-400 animate-pulse shrink-0" />
+                      <span className="truncate">Arahkan ke Wajah Santri</span>
                     </span>
-                    <span className={`text-[11px] font-semibold whitespace-nowrap pl-6 mt-0.5 ${faceStatusColor[faceStatus]}`}>
+                    <span className={`text-[10px] sm:text-[11px] font-semibold pl-5 mt-0.5 truncate ${faceStatusColor[faceStatus]}`}>
                       {faceStatus === 'loading-models' && '⏳ Loading AI...'}
                       {faceStatus === 'loading-db' && '📥 Loading DB...'}
                       {faceStatus === 'scanning' && '🟢 Aktif'}
@@ -1259,24 +1206,30 @@ function ScanAbsenInner() {
                       {faceStatus === 'error' && '❌ Error'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button onClick={switchCamera} disabled={isSwitchingCamera}
+                      type="button"
                       title={facingMode === 'environment' ? 'Ganti ke Kamera Depan' : 'Ganti ke Kamera Belakang'}
-                      aria-label="Ganti Kamera Depan/Belakang"
-                      className={`flex items-center justify-center p-2 sm:px-3 sm:py-1.5 text-xs font-bold rounded-xl transition-all active:scale-95 ${isSwitchingCamera ? 'bg-gray-600 text-gray-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-sm'}`}>
+                      aria-label="Ganti Kamera"
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center justify-center transition cursor-pointer disabled:opacity-50 active:scale-95">
                       <SwitchCamera size={16} className={isSwitchingCamera ? 'animate-spin' : ''} />
-                      <span className="hidden sm:inline sm:ml-1.5">{isSwitchingCamera ? 'Mengganti...' : facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
                     </button>
-                    <button onClick={stopAll} className="bg-red-500 hover:bg-red-600 p-1.5 rounded-lg"><XCircle size={18} /></button>
+                    <button onClick={stopAll}
+                      type="button"
+                      title="Hentikan Kamera"
+                      aria-label="Tutup Kamera"
+                      className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition cursor-pointer active:scale-95">
+                      <X size={16} />
+                    </button>
                   </div>
                 </div>
 
-                {/* Layar Kamera Face AI — Semua Sudut Melengkung Elegan */}
-                <div className="relative rounded-2xl overflow-hidden border-2 border-violet-500 shadow-xl bg-black" style={{ minHeight: 300 }}>
+                {/* Layar Kamera Face AI — Seragam & Pas di Layar HP (h-[280px] sm:h-[300px]) */}
+                <div className="relative overflow-hidden rounded-2xl border-2 border-violet-500 shadow-md bg-black h-[280px] sm:h-[300px] w-full flex items-center justify-center">
                   {/* Kamera Label Mengambang — 1 Baris Ramping & Utuh */}
-                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 px-3.5 py-1 bg-black/75 backdrop-blur-md rounded-full border border-violet-500/40 flex items-center gap-1.5 shadow-md pointer-events-none whitespace-nowrap">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${facingMode === 'environment' ? 'bg-green-400' : 'bg-blue-400'}`} />
-                    <span className="text-xs font-semibold text-gray-200 whitespace-nowrap">{facingMode === 'environment' ? '📷 Kamera Belakang' : '🤳 Kamera Depan'}</span>
+                  <div className="absolute top-2.5 z-20 px-3 py-1 bg-slate-900/85 backdrop-blur-md rounded-full border border-violet-500/40 flex items-center gap-1.5 shadow-md pointer-events-none whitespace-nowrap">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${facingMode === 'user' ? 'bg-blue-400' : 'bg-violet-400'}`} />
+                    <span className="text-[11px] font-semibold text-slate-200 whitespace-nowrap">{facingMode === 'user' ? '🤳 Kamera Depan' : '📷 Kamera Belakang'}</span>
                   </div>
 
                   {/* Status loading AI / Error (di dalam layar kamera) */}
@@ -1295,7 +1248,7 @@ function ScanAbsenInner() {
 
                   {faceStatus === 'scanning' && (
                     <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                      <div className="w-52 h-64 rounded-2xl border-4 border-violet-400/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
+                      <div className="w-40 h-52 sm:w-44 sm:h-56 rounded-2xl border-2 border-violet-400/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
                     </div>
                   )}
                   <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover"
