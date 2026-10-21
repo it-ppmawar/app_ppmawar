@@ -1191,6 +1191,69 @@ function ScanAbsenInner() {
               </button>
             ) : (
               <div ref={cameraContainerRef} className="space-y-2 animate-[zoomIn_0.3s_ease-out]">
+                {/* Header Bar QR — Seragam & Ramping seperti Pintasan */}
+                <div className="flex justify-between items-center bg-slate-900 border border-emerald-500/30 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl text-white shadow-sm">
+                  <span className="font-bold text-xs sm:text-sm flex items-center gap-1.5 min-w-0">
+                    <Camera size={15} className="text-emerald-400 animate-pulse shrink-0" />
+                    <span className="truncate">Arahkan ke Kartu Santri</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={switchCamera} disabled={isSwitchingCamera}
+                      type="button"
+                      title={facingMode === 'environment' ? 'Ganti ke Kamera Depan' : 'Ganti ke Kamera Belakang'}
+                      aria-label="Ganti Kamera"
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center justify-center transition cursor-pointer disabled:opacity-50 active:scale-95">
+                      <SwitchCamera size={16} className={isSwitchingCamera ? 'animate-spin' : ''} />
+                    </button>
+                    <button onClick={stopAll}
+                      type="button"
+                      title="Hentikan Kamera"
+                      aria-label="Tutup Kamera"
+                      className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition cursor-pointer active:scale-95">
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Layar Kamera QR — Seragam & Pas di Layar HP (h-[280px] sm:h-[300px]) */}
+                <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500 shadow-md bg-black h-[280px] sm:h-[300px] w-full flex items-center justify-center">
+                  {/* Kamera Label Mengambang — 1 Baris Ramping & Utuh */}
+                  <div className="absolute top-2.5 z-20 px-3 py-1 bg-slate-900/85 backdrop-blur-md rounded-full border border-emerald-500/40 flex items-center gap-1.5 shadow-md pointer-events-none whitespace-nowrap">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${facingMode === 'user' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                    <span className="text-[11px] font-semibold text-slate-200 whitespace-nowrap">{facingMode === 'user' ? '🤳 Kamera Depan' : '📷 Kamera Belakang'}</span>
+                  </div>
+
+                  {isSwitchingCamera && (
+                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/80 gap-3">
+                      <div className="w-10 h-10 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-white text-xs font-semibold">Mengganti kamera...</span>
+                    </div>
+                  )}
+
+                  <div id="reader" className="w-full h-full border-none !max-w-full overflow-hidden flex items-center justify-center [&_video]:!w-full [&_video]:!h-full [&_video]:!object-cover [&_video]:!max-w-full [&>div]:!w-full [&>div]:!h-full [&>div]:!max-w-full [&_canvas]:!hidden" />
+                </div>
+
+                <div className="flex items-center gap-2 justify-center">
+                  <Wifi size={14} className="text-gray-400" />
+                  <p className="text-xs text-gray-500 italic">Pastikan pencahayaan cukup &amp; QR Code tidak silau</p>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── FACE AI SCANNER ── */}
+        {scanMode === 'face' && (
+          <>
+            {!isScanning ? (
+              <button
+                ref={startScanBtnRef}
+                onClick={startScanner}
+                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold text-lg py-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3">
+                <Brain size={26} /> Mulai Scan Wajah AI
+              </button>
+            ) : (
+              <div ref={cameraContainerRef} className="space-y-2 animate-[zoomIn_0.3s_ease-out]">
                 {/* Header Bar Face AI — Seragam & Ramping seperti Pintasan */}
                 <div className="flex justify-between items-center bg-slate-900 border border-violet-500/30 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl text-white shadow-sm">
                   <div className="flex flex-col min-w-0 mr-2">
@@ -1277,6 +1340,7 @@ function ScanAbsenInner() {
                     {faceDbCount > 0 && (
                       <div className="flex items-center justify-center pt-0.5">
                         <button onClick={handleFaceNotFound}
+                          type="button"
                           className="text-xs text-indigo-400 hover:text-indigo-300 underline flex items-center justify-center gap-1.5 font-medium transition active:scale-95">
                           <UserPlus size={13} /> Daftarkan Wajah Baru
                         </button>
@@ -1305,10 +1369,12 @@ function ScanAbsenInner() {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <button onClick={rejectAndRescan}
+                          type="button"
                           className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-red-900/60 text-red-300 border border-red-700/50 hover:bg-red-900 text-base font-bold transition active:scale-95">
                           <XCircle size={18} /> Bukan
                         </button>
                         <button onClick={confirmFaceAbsen} disabled={confirmPending}
+                          type="button"
                           className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-base font-bold transition disabled:opacity-50 active:scale-95 shadow-lg shadow-emerald-900/50">
                           {confirmPending ? <><Loader2 size={18} className="animate-spin" /> Menyimpan...</> : <><CheckCircle size={18} /> Benar</>}
                         </button>
