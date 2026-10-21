@@ -399,7 +399,17 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ success: true, data: formatted }, { headers: noCacheHeaders });
+    // Deduplikasi: hapus baris ganda yang terjadi akibat input absensi berulang
+    // untuk jadwal + tanggal yang sama. Ambil record pertama (urutan terbaru karena ORDER BY DESC).
+    const dedupSet = new Set<string>();
+    const dedupedData = formatted.filter((row: any) => {
+      const key = `${row.tanggal}|${row.mata_pelajaran}|${row.jam_mulai}`;
+      if (dedupSet.has(key)) return false;
+      dedupSet.add(key);
+      return true;
+    });
+
+    return NextResponse.json({ success: true, data: dedupedData }, { headers: noCacheHeaders });
   } catch (error: any) {
     console.error("[rekapitulasi/detail] error:", error.message);
     return NextResponse.json({ error: "Server error: " + error.message }, { status: 500, headers: noCacheHeaders });

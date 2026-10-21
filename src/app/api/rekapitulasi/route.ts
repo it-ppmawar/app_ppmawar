@@ -109,10 +109,10 @@ export async function GET(request: Request) {
         LEFT JOIN (
           SELECT 
             a.murid_id,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN a.absensi_id END) as hadir,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_id END) as izin,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_id END) as sakit,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_id END) as alpha
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(COALESCE(a.jadwal_madin_id,0),'_',DATE(a.tanggal)) END) as hadir,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(COALESCE(a.jadwal_madin_id,0),'_',DATE(a.tanggal)) END) as izin,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(COALESCE(a.jadwal_madin_id,0),'_',DATE(a.tanggal)) END) as sakit,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(COALESCE(a.jadwal_madin_id,0),'_',DATE(a.tanggal)) END) as alpha
           FROM absensi a
           WHERE ${joinDateCond}
             ${sub_filter ? `AND a.jadwal_madin_id IN (SELECT jadwal_id FROM jadwal_madin WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
@@ -202,10 +202,10 @@ export async function GET(request: Request) {
         LEFT JOIN (
           SELECT 
             a.murid_id,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN a.absensi_quran_id END) as hadir,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_quran_id END) as izin,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_quran_id END) as sakit,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_quran_id END) as alpha
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(COALESCE(a.jadwal_quran_id,0),'_',DATE(a.tanggal)) END) as hadir,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(COALESCE(a.jadwal_quran_id,0),'_',DATE(a.tanggal)) END) as izin,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(COALESCE(a.jadwal_quran_id,0),'_',DATE(a.tanggal)) END) as sakit,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(COALESCE(a.jadwal_quran_id,0),'_',DATE(a.tanggal)) END) as alpha
           FROM absensi_quran a
           WHERE ${joinDateCond}
             ${sub_filter ? `AND a.jadwal_quran_id IN (SELECT id FROM jadwal_quran WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
@@ -307,10 +307,10 @@ export async function GET(request: Request) {
         LEFT JOIN (
           SELECT 
             a.murid_id,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN a.absensi_kegiatan_id END) as hadir,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_kegiatan_id END) as izin,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_kegiatan_id END) as sakit,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_kegiatan_id END) as alpha
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(COALESCE(a.kegiatan_id,0),'_',DATE(a.tanggal)) END) as hadir,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(COALESCE(a.kegiatan_id,0),'_',DATE(a.tanggal)) END) as izin,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(COALESCE(a.kegiatan_id,0),'_',DATE(a.tanggal)) END) as sakit,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(COALESCE(a.kegiatan_id,0),'_',DATE(a.tanggal)) END) as alpha
           FROM absensi_kegiatan a
           WHERE ${joinDateCond}
             ${sub_filter ? `AND a.kegiatan_id IN (SELECT kegiatan_id FROM jadwal_kegiatan WHERE nama_kegiatan = '${sub_filter.replace(/'/g, "''")}')` : ''}
