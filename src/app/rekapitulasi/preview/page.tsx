@@ -293,6 +293,20 @@ function RekapPreviewContent() {
               </span>
             </div>
           </div>
+
+          {/* Badge Keabsahan & Batas Waktu Token */}
+          {meta?.expires_at && (
+            <div className="mt-3 bg-purple-50/60 border border-purple-150/70 rounded-2xl p-2.5 px-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px] text-purple-900">
+              <span className="flex items-center gap-1.5 font-bold">
+                <ShieldCheck size={14} className="text-purple-600 shrink-0" />
+                <span>Dokumen Resmi Terautentikasi Pesantren</span>
+              </span>
+              <span className="flex items-center gap-1 text-slate-500 font-medium">
+                <Clock size={12} className="text-purple-500 shrink-0" />
+                <span>Tautan preview ini berlaku s/d: <strong className="text-purple-700">{new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(new Date(meta.expires_at))}</strong></span>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Ringkasan Statistik Presensi */}

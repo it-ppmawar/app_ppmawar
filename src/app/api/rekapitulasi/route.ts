@@ -512,6 +512,22 @@ export async function GET(request: Request) {
       };
     });
 
+    // Parameter masa berlaku token preview (minimal 1 hari, default 7 hari)
+    const rawExpiry = searchParams.get('expiry') || '7';
+    let days = parseInt(rawExpiry.replace(/[^0-9]/g, ''), 10);
+    if (isNaN(days) || days < 1) days = 7;
+    if (days > 365) days = 365;
+
+    const expiryDuration = `${days}d`;
+    const expiryDateObj = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    const expDateFormatted = new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta'
+    }).format(expiryDateObj);
+    const durationLabel = `${days} Hari`;
+
     const formattedRows = rows.map((r: any) => {
       let preview_token = '';
       try {
@@ -526,11 +542,14 @@ export async function GET(request: Request) {
           tanggal_sampai: isRentang ? tanggal_sampai : undefined,
           role: 'wali_murid',
           purpose: 'rekap_preview'
-        }, '60d');
+        }, expiryDuration);
       } catch (_) {}
       return {
         ...r,
-        preview_token
+        preview_token,
+        token_duration_label: durationLabel,
+        token_exp_date: expDateFormatted,
+        token_exp_timestamp: expiryDateObj.getTime()
       };
     });
 

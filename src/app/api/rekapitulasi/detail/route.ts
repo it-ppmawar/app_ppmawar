@@ -457,7 +457,8 @@ export async function GET(request: Request) {
         tanggal_dari,
         tanggal_sampai,
         isRentang,
-        sub_filter
+        sub_filter,
+        expires_at: payload.exp ? payload.exp * 1000 : null,
       }
     }, { headers: noCacheHeaders });
   } catch (error: any) {
