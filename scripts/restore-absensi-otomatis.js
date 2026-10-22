@@ -450,7 +450,7 @@ async function main() {
           FROM murid m
           WHERE (m.kelas_madin_id = ? OR m.kelas_madin_2_id = ?)
         `;
-        const [res] = await conn.execute(insertSql, [ins.jadwal_id, lap.tanggal, ins.kelas_id]);
+        const [res] = await conn.execute(insertSql, [ins.jadwal_id, lap.tanggal, ins.kelas_id, ins.kelas_id]);
         // console.log(`   + Kelas ${ins.kelas_id} (jadwal ${ins.jadwal_id}): ${res.affectedRows} santri`);
       }
 
