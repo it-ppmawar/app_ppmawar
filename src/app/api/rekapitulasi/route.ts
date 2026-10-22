@@ -109,13 +109,14 @@ export async function GET(request: Request) {
         LEFT JOIN (
           SELECT 
             a.murid_id,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(COALESCE(a.jadwal_madin_id,0),'_',DATE(a.tanggal)) END) as hadir,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(COALESCE(a.jadwal_madin_id,0),'_',DATE(a.tanggal)) END) as izin,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(COALESCE(a.jadwal_madin_id,0),'_',DATE(a.tanggal)) END) as sakit,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(COALESCE(a.jadwal_madin_id,0),'_',DATE(a.tanggal)) END) as alpha
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jm.jam_mulai, '00:00'), '_', COALESCE(jm.mata_pelajaran, '')) END) as hadir,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jm.jam_mulai, '00:00'), '_', COALESCE(jm.mata_pelajaran, '')) END) as izin,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jm.jam_mulai, '00:00'), '_', COALESCE(jm.mata_pelajaran, '')) END) as sakit,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jm.jam_mulai, '00:00'), '_', COALESCE(jm.mata_pelajaran, '')) END) as alpha
           FROM absensi a
+          LEFT JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
           WHERE ${joinDateCond}
-            ${sub_filter ? `AND a.jadwal_madin_id IN (SELECT jadwal_id FROM jadwal_madin WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
+            ${sub_filter ? `AND jm.mata_pelajaran = '${sub_filter.replace(/'/g, "''")}'` : ''}
           GROUP BY a.murid_id
         ) a_sum ON m.murid_id = a_sum.murid_id
         ${whereCond}
@@ -156,8 +157,9 @@ export async function GET(request: Request) {
         FROM absensi a
         JOIN murid m ON a.murid_id = m.murid_id
         LEFT JOIN kelas_madin km ON (m.kelas_madin_id = km.kelas_id OR m.kelas_madin_2_id = km.kelas_id)
+        LEFT JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
         WHERE ${trendDateCond} ${trendWhere}
-          ${sub_filter ? `AND a.jadwal_madin_id IN (SELECT jadwal_id FROM jadwal_madin WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
+          ${sub_filter ? `AND jm.mata_pelajaran = '${sub_filter.replace(/'/g, "''")}'` : ''}
         GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')
         ORDER BY tanggal ASC
       `;
@@ -202,13 +204,14 @@ export async function GET(request: Request) {
         LEFT JOIN (
           SELECT 
             a.murid_id,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(COALESCE(a.jadwal_quran_id,0),'_',DATE(a.tanggal)) END) as hadir,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(COALESCE(a.jadwal_quran_id,0),'_',DATE(a.tanggal)) END) as izin,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(COALESCE(a.jadwal_quran_id,0),'_',DATE(a.tanggal)) END) as sakit,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(COALESCE(a.jadwal_quran_id,0),'_',DATE(a.tanggal)) END) as alpha
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jq.jam_mulai, '00:00'), '_', COALESCE(jq.mata_pelajaran, '')) END) as hadir,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jq.jam_mulai, '00:00'), '_', COALESCE(jq.mata_pelajaran, '')) END) as izin,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jq.jam_mulai, '00:00'), '_', COALESCE(jq.mata_pelajaran, '')) END) as sakit,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jq.jam_mulai, '00:00'), '_', COALESCE(jq.mata_pelajaran, '')) END) as alpha
           FROM absensi_quran a
+          LEFT JOIN jadwal_quran jq ON a.jadwal_quran_id = jq.id
           WHERE ${joinDateCond}
-            ${sub_filter ? `AND a.jadwal_quran_id IN (SELECT id FROM jadwal_quran WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
+            ${sub_filter ? `AND jq.mata_pelajaran = '${sub_filter.replace(/'/g, "''")}'` : ''}
           GROUP BY a.murid_id
         ) a_sum ON m.murid_id = a_sum.murid_id
         ${whereCond}
@@ -249,8 +252,9 @@ export async function GET(request: Request) {
         FROM absensi_quran a
         JOIN murid m ON a.murid_id = m.murid_id
         LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+        LEFT JOIN jadwal_quran jq ON a.jadwal_quran_id = jq.id
         WHERE ${trendDateCond} ${trendWhere}
-          ${sub_filter ? `AND a.jadwal_quran_id IN (SELECT id FROM jadwal_quran WHERE mata_pelajaran = '${sub_filter.replace(/'/g, "''")}')` : ''}
+          ${sub_filter ? `AND jq.mata_pelajaran = '${sub_filter.replace(/'/g, "''")}'` : ''}
         GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')
         ORDER BY tanggal ASC
       `;
@@ -307,13 +311,14 @@ export async function GET(request: Request) {
         LEFT JOIN (
           SELECT 
             a.murid_id,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(COALESCE(a.kegiatan_id,0),'_',DATE(a.tanggal)) END) as hadir,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(COALESCE(a.kegiatan_id,0),'_',DATE(a.tanggal)) END) as izin,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(COALESCE(a.kegiatan_id,0),'_',DATE(a.tanggal)) END) as sakit,
-            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(COALESCE(a.kegiatan_id,0),'_',DATE(a.tanggal)) END) as alpha
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jk.jam_mulai, '00:00'), '_', COALESCE(jk.nama_kegiatan, '')) END) as hadir,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jk.jam_mulai, '00:00'), '_', COALESCE(jk.nama_kegiatan, '')) END) as izin,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jk.jam_mulai, '00:00'), '_', COALESCE(jk.nama_kegiatan, '')) END) as sakit,
+            COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jk.jam_mulai, '00:00'), '_', COALESCE(jk.nama_kegiatan, '')) END) as alpha
           FROM absensi_kegiatan a
+          LEFT JOIN jadwal_kegiatan jk ON a.kegiatan_id = jk.kegiatan_id
           WHERE ${joinDateCond}
-            ${sub_filter ? `AND a.kegiatan_id IN (SELECT kegiatan_id FROM jadwal_kegiatan WHERE nama_kegiatan = '${sub_filter.replace(/'/g, "''")}')` : ''}
+            ${sub_filter ? `AND jk.nama_kegiatan = '${sub_filter.replace(/'/g, "''")}'` : ''}
           GROUP BY a.murid_id
         ) a_sum ON m.murid_id = a_sum.murid_id
         ${whereCond}
@@ -350,8 +355,9 @@ export async function GET(request: Request) {
         FROM absensi_kegiatan a
         JOIN murid m ON a.murid_id = m.murid_id
         LEFT JOIN kamar km ON m.kamar_id = km.kamar_id
+        LEFT JOIN jadwal_kegiatan jk ON a.kegiatan_id = jk.kegiatan_id
         WHERE ${trendDateCond} ${trendWhere}
-          ${sub_filter ? `AND a.kegiatan_id IN (SELECT kegiatan_id FROM jadwal_kegiatan WHERE nama_kegiatan = '${sub_filter.replace(/'/g, "''")}')` : ''}
+          ${sub_filter ? `AND jk.nama_kegiatan = '${sub_filter.replace(/'/g, "''")}'` : ''}
         GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')
         ORDER BY tanggal ASC
       `;

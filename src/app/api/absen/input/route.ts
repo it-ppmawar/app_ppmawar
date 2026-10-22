@@ -234,20 +234,20 @@ export async function GET(request: Request) {
     try {
       if (tipe === 'madin') {
         const [sibRows]: any = await pool.execute(
-          `SELECT jadwal_id FROM jadwal_madin WHERE (kelas_madin_id = ? OR kelas_madin_id = ?) AND hari = (SELECT hari FROM jadwal_madin WHERE jadwal_id = ? LIMIT 1)`,
-          [kelas_id, kelas_id, jadwal_id]
+          `SELECT j2.jadwal_id FROM jadwal_madin j1 JOIN jadwal_madin j2 ON j1.kelas_madin_id = j2.kelas_madin_id AND j1.hari = j2.hari AND j1.jam_mulai = j2.jam_mulai WHERE j1.jadwal_id = ?`,
+          [jadwal_id]
         );
         siblingJadwalIds = Array.from(new Set([...siblingJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
       } else if (tipe === 'quran') {
         const [sibRows]: any = await pool.execute(
-          `SELECT id as jadwal_id FROM jadwal_quran WHERE kelas_quran_id = ? AND hari = (SELECT hari FROM jadwal_quran WHERE id = ? LIMIT 1)`,
-          [kelas_id, jadwal_id]
+          `SELECT j2.id as jadwal_id FROM jadwal_quran j1 JOIN jadwal_quran j2 ON j1.kelas_quran_id = j2.kelas_quran_id AND j1.hari = j2.hari AND j1.jam_mulai = j2.jam_mulai WHERE j1.id = ?`,
+          [jadwal_id]
         );
         siblingJadwalIds = Array.from(new Set([...siblingJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
       } else if (tipe === 'kegiatan') {
         const [sibRows]: any = await pool.execute(
-          `SELECT kegiatan_id as jadwal_id FROM jadwal_kegiatan WHERE kamar_id = ? AND hari = (SELECT hari FROM jadwal_kegiatan WHERE kegiatan_id = ? LIMIT 1)`,
-          [kelas_id, jadwal_id]
+          `SELECT j2.kegiatan_id as jadwal_id FROM jadwal_kegiatan j1 JOIN jadwal_kegiatan j2 ON j1.kamar_id = j2.kamar_id AND j1.hari = j2.hari AND j1.jam_mulai = j2.jam_mulai WHERE j1.kegiatan_id = ?`,
+          [jadwal_id]
         );
         siblingJadwalIds = Array.from(new Set([...siblingJadwalIds, ...sibRows.map((r: any) => r.jadwal_id)]));
       }
@@ -799,7 +799,7 @@ export async function POST(request: Request) {
         const [sibRows]: any = await connection.execute(
           `SELECT j2.jadwal_id 
            FROM jadwal_madin j1 
-           JOIN jadwal_madin j2 ON j1.kelas_madin_id = j2.kelas_madin_id AND j1.hari = j2.hari
+           JOIN jadwal_madin j2 ON j1.kelas_madin_id = j2.kelas_madin_id AND j1.hari = j2.hari AND j1.jam_mulai = j2.jam_mulai AND (j1.mata_pelajaran = j2.mata_pelajaran OR j1.mata_pelajaran IS NULL OR j2.mata_pelajaran IS NULL)
            WHERE j1.jadwal_id IN (${targetJadwalIds.map(() => '?').join(',')})`,
           targetJadwalIds
         );
@@ -808,7 +808,7 @@ export async function POST(request: Request) {
         const [sibRows]: any = await connection.execute(
           `SELECT j2.id as jadwal_id 
            FROM jadwal_quran j1 
-           JOIN jadwal_quran j2 ON j1.kelas_quran_id = j2.kelas_quran_id AND j1.hari = j2.hari
+           JOIN jadwal_quran j2 ON j1.kelas_quran_id = j2.kelas_quran_id AND j1.hari = j2.hari AND j1.jam_mulai = j2.jam_mulai
            WHERE j1.id IN (${targetJadwalIds.map(() => '?').join(',')})`,
           targetJadwalIds
         );
@@ -817,7 +817,7 @@ export async function POST(request: Request) {
         const [sibRows]: any = await connection.execute(
           `SELECT j2.kegiatan_id as jadwal_id 
            FROM jadwal_kegiatan j1 
-           JOIN jadwal_kegiatan j2 ON j1.kamar_id = j2.kamar_id AND j1.hari = j2.hari
+           JOIN jadwal_kegiatan j2 ON j1.kamar_id = j2.kamar_id AND j1.hari = j2.hari AND j1.jam_mulai = j2.jam_mulai
            WHERE j1.kegiatan_id IN (${targetJadwalIds.map(() => '?').join(',')})`,
           targetJadwalIds
         );
@@ -832,9 +832,64 @@ export async function POST(request: Request) {
       await connection.execute(deleteQuery, [sid, localISOTime]);
     }
 
+    // Map schedules to class to avoid cross-inserting in combined classes (e.g. 1 MAK PUTRA & 1 MAK PUTRI)
+    const schedClassMap: Record<number, number> = {};
+    if (targetJadwalIds.length > 1) {
+      try {
+        if (tipe === 'madin') {
+          const [sRows]: any = await connection.execute(
+            `SELECT jadwal_id, kelas_madin_id FROM jadwal_madin WHERE jadwal_id IN (${targetJadwalIds.map(() => '?').join(',')})`,
+            targetJadwalIds
+          );
+          sRows.forEach((r: any) => { schedClassMap[r.jadwal_id] = r.kelas_madin_id; });
+        } else if (tipe === 'quran') {
+          const [sRows]: any = await connection.execute(
+            `SELECT id as jadwal_id, kelas_quran_id FROM jadwal_quran WHERE id IN (${targetJadwalIds.map(() => '?').join(',')})`,
+            targetJadwalIds
+          );
+          sRows.forEach((r: any) => { schedClassMap[r.jadwal_id] = r.kelas_quran_id; });
+        } else if (tipe === 'kegiatan') {
+          const [sRows]: any = await connection.execute(
+            `SELECT kegiatan_id as jadwal_id, kamar_id FROM jadwal_kegiatan WHERE kegiatan_id IN (${targetJadwalIds.map(() => '?').join(',')})`,
+            targetJadwalIds
+          );
+          sRows.forEach((r: any) => { schedClassMap[r.jadwal_id] = r.kamar_id; });
+        }
+      } catch (_) {}
+    }
+
+    const studentClassMap: Record<number, { c1: number; c2: number }> = {};
+    if (targetJadwalIds.length > 1 && absensi.length > 0) {
+      try {
+        const mIds = absensi.map((a: any) => a.murid_id).filter(Boolean);
+        if (mIds.length > 0) {
+          const [mRows]: any = await connection.execute(
+            `SELECT murid_id, kelas_madin_id, kelas_madin_2_id, kelas_quran_id, kamar_id FROM murid WHERE murid_id IN (${mIds.map(() => '?').join(',')})`,
+            mIds
+          );
+          mRows.forEach((r: any) => {
+            if (tipe === 'madin') {
+              studentClassMap[r.murid_id] = { c1: r.kelas_madin_id, c2: r.kelas_madin_2_id };
+            } else if (tipe === 'quran') {
+              studentClassMap[r.murid_id] = { c1: r.kelas_quran_id, c2: r.kelas_quran_id };
+            } else {
+              studentClassMap[r.murid_id] = { c1: r.kamar_id, c2: r.kamar_id };
+            }
+          });
+        }
+      } catch (_) {}
+    }
+
     // 2. Insert new attendance & update nickname for target schedules
     for (const jId of targetJadwalIds) {
+      const targetClass = schedClassMap[jId];
       for (const item of absensi) {
+        if (targetClass && studentClassMap[item.murid_id]) {
+          const sc = studentClassMap[item.murid_id];
+          if (sc.c1 !== targetClass && sc.c2 !== targetClass) {
+            continue; // Murid bukan dari kelas jadwal ini, lewati agar tidak dobel
+          }
+        }
         let cleanStatus = 'Hadir';
         const stLower = (item.status || '').toString().trim().toLowerCase();
         if (stLower === 'izin') cleanStatus = 'Izin';

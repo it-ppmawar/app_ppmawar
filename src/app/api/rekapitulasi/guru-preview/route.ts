@@ -103,11 +103,12 @@ export async function GET(request: Request) {
            LEFT JOIN (
              SELECT 
                a.murid_id,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN a.absensi_id END) as hadir,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_id END) as izin,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_id END) as sakit,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_id END) as alpha
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jm.jam_mulai, '00:00'), '_', COALESCE(jm.mata_pelajaran, '')) END) as hadir,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jm.jam_mulai, '00:00'), '_', COALESCE(jm.mata_pelajaran, '')) END) as izin,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jm.jam_mulai, '00:00'), '_', COALESCE(jm.mata_pelajaran, '')) END) as sakit,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jm.jam_mulai, '00:00'), '_', COALESCE(jm.mata_pelajaran, '')) END) as alpha
              FROM absensi a
+             LEFT JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
              WHERE MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
              GROUP BY a.murid_id
            ) a_sum ON m.murid_id = a_sum.murid_id
@@ -161,11 +162,12 @@ export async function GET(request: Request) {
            LEFT JOIN (
              SELECT 
                a.murid_id,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN a.absensi_quran_id END) as hadir,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_quran_id END) as izin,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_quran_id END) as sakit,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_quran_id END) as alpha
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jq.jam_mulai, '00:00'), '_', COALESCE(jq.mata_pelajaran, '')) END) as hadir,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jq.jam_mulai, '00:00'), '_', COALESCE(jq.mata_pelajaran, '')) END) as izin,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jq.jam_mulai, '00:00'), '_', COALESCE(jq.mata_pelajaran, '')) END) as sakit,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jq.jam_mulai, '00:00'), '_', COALESCE(jq.mata_pelajaran, '')) END) as alpha
              FROM absensi_quran a
+             LEFT JOIN jadwal_quran jq ON a.jadwal_quran_id = jq.id
              WHERE MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
              GROUP BY a.murid_id
            ) a_sum ON m.murid_id = a_sum.murid_id
@@ -219,11 +221,12 @@ export async function GET(request: Request) {
            LEFT JOIN (
              SELECT 
                a.murid_id,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN a.absensi_kegiatan_id END) as hadir,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN a.absensi_kegiatan_id END) as izin,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN a.absensi_kegiatan_id END) as sakit,
-               COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN a.absensi_kegiatan_id END) as alpha
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'hadir' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jk.jam_mulai, '00:00'), '_', COALESCE(jk.nama_kegiatan, '')) END) as hadir,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'izin' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jk.jam_mulai, '00:00'), '_', COALESCE(jk.nama_kegiatan, '')) END) as izin,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) = 'sakit' THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jk.jam_mulai, '00:00'), '_', COALESCE(jk.nama_kegiatan, '')) END) as sakit,
+               COUNT(DISTINCT CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN CONCAT(DATE_FORMAT(a.tanggal, '%Y-%m-%d'), '_', COALESCE(jk.jam_mulai, '00:00'), '_', COALESCE(jk.nama_kegiatan, '')) END) as alpha
              FROM absensi_kegiatan a
+             LEFT JOIN jadwal_kegiatan jk ON a.kegiatan_id = jk.kegiatan_id
              WHERE MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?
              GROUP BY a.murid_id
            ) a_sum ON m.murid_id = a_sum.murid_id

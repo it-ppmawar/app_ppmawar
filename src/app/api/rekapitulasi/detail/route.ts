@@ -168,7 +168,7 @@ export async function GET(request: Request) {
         dateParams.push(sub_filter.trim());
       }
       const [result] = await pool.execute<RowDataPacket[]>(
-        `SELECT a.tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
+        `SELECT DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
           COALESCE(jm.hari, "") as hari,
           COALESCE(jm.jam_mulai, "") as jam_mulai,
           COALESCE(jm.jam_selesai, "") as jam_selesai,
@@ -196,7 +196,7 @@ export async function GET(request: Request) {
         dateParams.push(sub_filter.trim());
       }
       const [result] = await pool.execute<RowDataPacket[]>(
-        `SELECT a.tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
+        `SELECT DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
           COALESCE(jq.hari, "") as hari,
           COALESCE(jq.jam_mulai, "") as jam_mulai,
           COALESCE(jq.jam_selesai, "") as jam_selesai,
@@ -224,7 +224,7 @@ export async function GET(request: Request) {
         dateParams.push(sub_filter.trim());
       }
       const [result] = await pool.execute<RowDataPacket[]>(
-        `SELECT a.tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
+        `SELECT DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
           COALESCE(jk.hari, "") as hari,
           COALESCE(jk.jam_mulai, "") as jam_mulai,
           COALESCE(jk.jam_selesai, "") as jam_selesai,
@@ -260,7 +260,7 @@ export async function GET(request: Request) {
       const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const dateParams: any[] = isRentang ? [guru_id, tanggal_dari, tanggal_sampai] : [guru_id, bulan, tahun];
       const [result] = await pool.execute<RowDataPacket[]>(
-        `SELECT a.absensi_id, a.tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
+        `SELECT a.absensi_id, DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
           COALESCE(a.waktu_absensi, jm.jam_mulai, jq.jam_mulai, jk.jam_mulai, "") as jam_mulai,
           COALESCE(jm.jam_selesai, jq.jam_selesai, jk.jam_selesai, "") as jam_selesai,
           COALESCE(jm.hari, jq.hari, jk.hari, "") as hari,
@@ -310,7 +310,7 @@ export async function GET(request: Request) {
       const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const dateParams: any[] = isRentang ? [guru_id, tanggal_dari, tanggal_sampai] : [guru_id, bulan, tahun];
       const [result] = await pool.execute<RowDataPacket[]>(
-        `SELECT a.id as absensi_id, a.tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
+        `SELECT a.id as absensi_id, DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
           COALESCE(a.jam_absen, "") as jam_mulai,
           "" as jam_selesai,
           "" as hari,
@@ -333,11 +333,31 @@ export async function GET(request: Request) {
 
     const hariNames = ["Ahad", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
     const formatted = rows.map((r: any) => {
-      const tgl = r.tanggal ? new Date(r.tanggal) : null;
-      const tglStr = tgl ? tgl.toISOString().slice(0, 10) : "-";
-      const hariLabel = (r.hari && r.hari.trim() !== "")
-        ? r.hari
-        : (tgl ? hariNames[tgl.getDay()] : "-");
+      let tglStr = "-";
+      let hariLabel = (r.hari && r.hari.trim() !== "") ? r.hari : "";
+
+      if (r.tanggal) {
+        if (typeof r.tanggal === 'string' && r.tanggal.length >= 10) {
+          tglStr = r.tanggal.slice(0, 10);
+        } else {
+          try {
+            tglStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date(r.tanggal));
+          } catch (_) {
+            tglStr = String(r.tanggal).slice(0, 10);
+          }
+        }
+        if (!hariLabel || hariLabel === "-") {
+          try {
+            const parts = tglStr.split('-').map(Number);
+            if (parts.length === 3) {
+              const dObj = new Date(parts[0], parts[1] - 1, parts[2]);
+              hariLabel = hariNames[dObj.getDay()] || "-";
+            }
+          } catch (_) {
+            hariLabel = "-";
+          }
+        }
+      }
 
       const statusRaw = (r.status || "").toString();
       const sl = statusRaw.toLowerCase();
@@ -399,11 +419,11 @@ export async function GET(request: Request) {
       };
     });
 
-    // Deduplikasi: hapus baris ganda yang terjadi akibat input absensi berulang
-    // untuk jadwal + tanggal yang sama. Ambil record pertama (urutan terbaru karena ORDER BY DESC).
+    // Deduplikasi: hapus baris ganda yang terjadi akibat input absensi bersamaan/berulang
+    // Menggunakan key yang 100% konsisten dengan tabel rekapitulasi utama: tanggal + jam_mulai + mata_pelajaran
     const dedupSet = new Set<string>();
     const dedupedData = formatted.filter((row: any) => {
-      const key = `${row.tanggal}|${row.mata_pelajaran}|${row.jam_mulai}`;
+      const key = `${row.tanggal}_${row.jam_mulai || '00:00'}_${row.mata_pelajaran || ''}`;
       if (dedupSet.has(key)) return false;
       dedupSet.add(key);
       return true;

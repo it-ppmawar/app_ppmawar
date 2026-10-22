@@ -395,7 +395,7 @@ export async function POST(request: Request) {
         const [sibRows]: any = await pool.execute(
           `SELECT j2.jadwal_id 
            FROM jadwal_madin j1 
-           JOIN jadwal_madin j2 ON j1.kelas_madin_id = j2.kelas_madin_id AND j1.hari = j2.hari
+           JOIN jadwal_madin j2 ON j1.kelas_madin_id = j2.kelas_madin_id AND j1.hari = j2.hari AND j1.jam_mulai = j2.jam_mulai
            WHERE j1.jadwal_id IN (${jIds.map(() => '?').join(',')})`,
           jIds
         );
@@ -404,7 +404,7 @@ export async function POST(request: Request) {
         const [sibRows]: any = await pool.execute(
           `SELECT j2.id as jadwal_id 
            FROM jadwal_quran j1 
-           JOIN jadwal_quran j2 ON j1.kelas_quran_id = j2.kelas_quran_id AND j1.hari = j2.hari
+           JOIN jadwal_quran j2 ON j1.kelas_quran_id = j2.kelas_quran_id AND j1.hari = j2.hari AND j1.jam_mulai = j2.jam_mulai
            WHERE j1.id IN (${jIds.map(() => '?').join(',')})`,
           jIds
         );
@@ -413,7 +413,7 @@ export async function POST(request: Request) {
         const [sibRows]: any = await pool.execute(
           `SELECT j2.kegiatan_id as jadwal_id 
            FROM jadwal_kegiatan j1 
-           JOIN jadwal_kegiatan j2 ON j1.kamar_id = j2.kamar_id AND j1.hari = j2.hari
+           JOIN jadwal_kegiatan j2 ON j1.kamar_id = j2.kamar_id AND j1.hari = j2.hari AND j1.jam_mulai = j2.jam_mulai
            WHERE j1.kegiatan_id IN (${jIds.map(() => '?').join(',')})`,
           jIds
         );
