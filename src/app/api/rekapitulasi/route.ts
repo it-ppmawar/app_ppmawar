@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
-import { verifyToken } from '@/lib/auth/jwt';
+import { verifyToken, signToken } from '@/lib/auth/jwt';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -512,9 +512,31 @@ export async function GET(request: Request) {
       };
     });
 
+    const formattedRows = rows.map((r: any) => {
+      let preview_token = '';
+      try {
+        preview_token = signToken({
+          muridId: r.id,
+          tipe,
+          target_id: target_id || '',
+          sub_filter: sub_filter || '',
+          bulan: !isRentang ? bulan : undefined,
+          tahun: !isRentang ? tahun : undefined,
+          tanggal_dari: isRentang ? tanggal_dari : undefined,
+          tanggal_sampai: isRentang ? tanggal_sampai : undefined,
+          role: 'wali_murid',
+          purpose: 'rekap_preview'
+        }, '60d');
+      } catch (_) {}
+      return {
+        ...r,
+        preview_token
+      };
+    });
+
     return NextResponse.json({ 
       success: true, 
-      data: rows,
+      data: formattedRows,
       trend: formattedTrend
     }, { headers: noCacheHeaders });
 

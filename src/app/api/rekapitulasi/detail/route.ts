@@ -16,28 +16,28 @@ const noCacheHeaders = {
 export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const { searchParams } = new URL(request.url);
+    const token = cookieStore.get("token")?.value || searchParams.get("token") || searchParams.get("t");
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: noCacheHeaders });
 
     const payload = verifyToken(token) as any;
     if (!payload) return NextResponse.json({ error: "Token invalid" }, { status: 401, headers: noCacheHeaders });
 
-    const { searchParams } = new URL(request.url);
-    const tipe = searchParams.get("tipe") || "madin";
-    let murid_id = searchParams.get("murid_id");
+    const tipe = payload.tipe || searchParams.get("tipe") || "madin";
+    let murid_id = (payload.muridId ? String(payload.muridId) : null) || searchParams.get("murid_id");
     let guru_id = searchParams.get("guru_id");
     const now = new Date();
-    const bulan = searchParams.get("bulan") || String(now.getMonth() + 1);
-    const tahun = searchParams.get("tahun") || String(now.getFullYear());
-    const tanggal_dari = searchParams.get("tanggal_dari");
-    const tanggal_sampai = searchParams.get("tanggal_sampai");
-    const sub_filter = searchParams.get("sub_filter") || "";
+    const bulan = payload.bulan || searchParams.get("bulan") || String(now.getMonth() + 1);
+    const tahun = payload.tahun || searchParams.get("tahun") || String(now.getFullYear());
+    const tanggal_dari = payload.tanggal_dari || searchParams.get("tanggal_dari");
+    const tanggal_sampai = payload.tanggal_sampai || searchParams.get("tanggal_sampai");
+    const sub_filter = payload.sub_filter || searchParams.get("sub_filter") || "";
 
-    if (payload.role === 'wali_murid' || payload.role === 'wali_alumni') {
-      if (!payload.muridId) {
+    if (payload.role === 'wali_murid' || payload.role === 'wali_alumni' || payload.purpose === 'rekap_preview') {
+      if (!payload.muridId && !murid_id) {
         return NextResponse.json({ error: "Murid ID tidak valid" }, { status: 400, headers: noCacheHeaders });
       }
-      murid_id = String(payload.muridId);
+      if (payload.muridId) murid_id = String(payload.muridId);
       guru_id = null; // Wali murid tidak boleh mengakses detail presensi guru
     }
 
@@ -429,7 +429,37 @@ export async function GET(request: Request) {
       return true;
     });
 
-    return NextResponse.json({ success: true, data: dedupedData }, { headers: noCacheHeaders });
+    let muridInfo: any = null;
+    if (murid_id) {
+      try {
+        const [mRows]: any = await pool.execute(
+          `SELECT m.murid_id, m.nama, m.nis, m.nama_wali, m.no_hp_wali, m.foto, m.jenis_kelamin,
+                  km.nama_kelas as kelas_madin, kq.nama_kelas as kelas_quran, k.nama_kamar
+           FROM murid m
+           LEFT JOIN kelas_madin km ON (m.kelas_madin_id = km.kelas_id OR m.kelas_madin_2_id = km.kelas_id)
+           LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
+           LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
+           WHERE m.murid_id = ? LIMIT 1`,
+          [murid_id]
+        );
+        if (mRows.length > 0) muridInfo = mRows[0];
+      } catch (_) {}
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      data: dedupedData,
+      murid: muridInfo,
+      meta: {
+        tipe,
+        bulan,
+        tahun,
+        tanggal_dari,
+        tanggal_sampai,
+        isRentang,
+        sub_filter
+      }
+    }, { headers: noCacheHeaders });
   } catch (error: any) {
     console.error("[rekapitulasi/detail] error:", error.message);
     return NextResponse.json({ error: "Server error: " + error.message }, { status: 500, headers: noCacheHeaders });

@@ -3,7 +3,8 @@ import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { 
   Bell, AlertTriangle, CheckCircle2, MessageCircle, Phone, Search, 
   RefreshCw, Users, Check, Smartphone, Info, ChevronDown, ChevronUp, 
-  Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar, Trash2, Award, Power, QrCode 
+  Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar, Trash2, Award, Power, QrCode,
+  FileText, Download, ToggleLeft, ToggleRight, ExternalLink, X, AlertCircle
 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { formatHariTanggalPesantren, formatHariPesantren } from '@/lib/formatHariPesantren';
@@ -42,7 +43,7 @@ function NotifikasiContent() {
 
   // Tab aktif pada kartu terpadu Admin/Staff: 'auto' | 'manual' | 'rekap' | 'info_akun'
   const [guruCardTab, setGuruCardTab] = useState<'auto' | 'manual' | 'rekap' | 'info_akun'>('auto');
-  const [manualMode, setManualMode] = useState<'absensi' | 'info_akun' | 'pembayaran'>('absensi');
+  const [manualMode, setManualMode] = useState<'absensi' | 'rekapitulasi' | 'info_akun' | 'pembayaran'>('absensi');
 
   // State untuk Tab Tagihan & Pembayaran
   const [billingList, setBillingList] = useState<any[]>([]);
@@ -81,6 +82,37 @@ function NotifikasiContent() {
   const defaultKepalaMadinTemplate = `Assalamu'alaikum Warohmatullah,\n\nYth. *Kepala Madrasah Diniyah (Madin)*\nPondok Pesantren Matholi'ul Anwar\n\nBerikut kami sampaikan Laporan Rekapitulasi Kehadiran Dewan Guru Madin untuk periode {bulan_tahun}:\n\n📊 *Ringkasan Presensi Dewan Guru Madin:*\n• Total Dewan Guru: {total_guru} Guru\n• Rata-rata Kehadiran: {avg_kehadiran}%\n{ringkasan_kehadiran}\n\n🔗 *Link Preview Detail Evaluasi Dewan Guru:*\n{link_laporan}\n\nTautan di atas berisi daftar lengkap kehadiran masing-masing guru, rincian jadwal kelas yang diampu, serta fitur ekspor/cetak laporan resmi untuk evaluasi madrasah.\n\nWassalamu'alaikum Warohmatullah,\n_Pengurus PP. Matholi'ul Anwar_`;
 
   const [pesanKepalaMadinTemplate, setPesanKepalaMadinTemplate] = useState(defaultKepalaMadinTemplate);
+
+  const defaultRekapWaliTemplate = `Assalamu'alaikum Warohmatullah, Bapak/Ibu Wali dari Ananda *{nama_santri}*.\n\nBerikut kami sampaikan Laporan Rekapitulasi Presensi Santri:\n* Kegiatan: {tipe}\n* Kelas/Kamar: {kelas}\n* Periode: {periode}\n\n📊 *Ringkasan Kehadiran:*\n• Hadir: {hadir} sesi\n• Izin: {izin} sesi\n• Sakit: {sakit} sesi\n• Alpha: {alpha} sesi\n• Total Pertemuan: {total} sesi\n• Persentase Kehadiran: *{persentase}%*\n\n📄 Rincian lengkap dan Dokumen Rekapitulasi Resmi (PDF Siap Unduh) dapat dilihat melalui tautan resmi berikut:\n{link_rekap}\n\nDemikian informasi ini kami sampaikan. Atas perhatian dan kerjasamanya kami ucapkan terima kasih.\n\nWassalamu'alaikum Warohmatullah,\n_Pengurus Pondok Pesantren Mawar_`;
+
+  const [pesanRekapWaliTemplate, setPesanRekapWaliTemplate] = useState(defaultRekapWaliTemplate);
+
+  // State untuk Tab Rekapitulasi Presensi (Siaran WA Manual ke Wali)
+  const currentRekapMonth = new Date().getMonth() + 1;
+  const currentRekapYear = new Date().getFullYear();
+  const todayRekapStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
+  const firstDayRekapStr = `${currentRekapYear}-${String(currentRekapMonth).padStart(2, '0')}-01`;
+
+  const [rekapFilter, setRekapFilter] = useState({
+    tipe: 'madin',
+    target_id: '',
+    bulan: String(currentRekapMonth),
+    tahun: String(currentRekapYear),
+    tanggal_dari: firstDayRekapStr,
+    tanggal_sampai: todayRekapStr,
+  });
+  const [rekapModeRentang, setRekapModeRentang] = useState(false);
+  const [rekapOptions, setRekapOptions] = useState<any[]>([]);
+  const [loadingRekapOptions, setLoadingRekapOptions] = useState(false);
+  const [rekapSubFilter, setRekapSubFilter] = useState('');
+  const [rekapSubFilterOptions, setRekapSubFilterOptions] = useState<string[]>([]);
+  const [loadingRekapSubFilter, setLoadingRekapSubFilter] = useState(false);
+  const [rekapSearchNama, setRekapSearchNama] = useState('');
+  const [rekapData, setRekapData] = useState<any[]>([]);
+  const [loadingRekapData, setLoadingRekapData] = useState(false);
+  const [rekapErrorMsg, setRekapErrorMsg] = useState('');
+  const [sentRekapWaIds, setSentRekapWaIds] = useState<Record<string, boolean>>({});
+  const [hasFetchedRekap, setHasFetchedRekap] = useState(false);
 
   // Hitung default bulan rekapitulasi: bulan sebelum bulan berjalan (karena rekap dikirim awal bulan untuk bulan kemarin)
   const defaultPrevMonthDate = (() => {
@@ -311,6 +343,9 @@ function NotifikasiContent() {
       const storedWali = localStorage.getItem('wa_template_wali');
       if (storedWali) setPesanWaliTemplate(storedWali);
 
+      const storedRekapWali = localStorage.getItem('wa_template_wali_rekap');
+      if (storedRekapWali) setPesanRekapWaliTemplate(storedRekapWali);
+
       const storedWaliInfo = localStorage.getItem('wa_template_wali_info');
       if (storedWaliInfo) setPesanWaliInfoTemplate(storedWaliInfo);
 
@@ -353,6 +388,10 @@ function NotifikasiContent() {
           if (t.wa_template_wali) {
             setPesanWaliTemplate(t.wa_template_wali);
             if (typeof window !== 'undefined') localStorage.setItem('wa_template_wali', t.wa_template_wali);
+          }
+          if (t.wa_template_wali_rekap) {
+            setPesanRekapWaliTemplate(t.wa_template_wali_rekap);
+            if (typeof window !== 'undefined') localStorage.setItem('wa_template_wali_rekap', t.wa_template_wali_rekap);
           }
           if (t.wa_template_wali_info) {
             setPesanWaliInfoTemplate(t.wa_template_wali_info);
@@ -843,6 +882,143 @@ function NotifikasiContent() {
       .replace(/{kelas}/g, tempatLabel || '-')
       .replace(/{status}/g, statusAbsen)
       .replace(/{link_laporan}/g, 'https://app.ppmawar.or.id/dashboard/rekapitulasi');
+
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  };
+
+  // Helpers Rekapitulasi Presensi (Siaran WhatsApp Manual ke Wali)
+  const loadRekapOptions = async (tipe: string) => {
+    setLoadingRekapOptions(true);
+    try {
+      const res = await fetch(`/api/kelas?type=${tipe}&aggregate=true`);
+      const json = await res.json();
+      if (json.success && json.data.length > 0) {
+        let optData = json.data as any[];
+        if (tipe === 'kegiatan') {
+          const seen = new Map<string, boolean>();
+          optData = optData.filter((item: any) => {
+            const norm = (item.nama as string).replace(/[-\s]/g, '').toLowerCase();
+            if (seen.has(norm)) return false;
+            seen.set(norm, true);
+            return true;
+          });
+        }
+        setRekapOptions(optData);
+        const firstId = optData[0]?.id?.toString() || '';
+        setRekapFilter(prev => ({ ...prev, target_id: firstId }));
+        loadRekapSubFilter(tipe, firstId);
+      } else {
+        setRekapOptions([]);
+        setRekapFilter(prev => ({ ...prev, target_id: '' }));
+      }
+    } catch (_) {
+      setRekapOptions([]);
+    } finally {
+      setLoadingRekapOptions(false);
+    }
+  };
+
+  const loadRekapSubFilter = async (tipe: string, targetId: string) => {
+    if (!targetId || ['all', 'putra', 'putri', 'SEMUA'].includes(targetId) || targetId.startsWith('asrama_')) {
+      setRekapSubFilterOptions([]);
+      setRekapSubFilter('');
+      return;
+    }
+    setLoadingRekapSubFilter(true);
+    try {
+      const qs = new URLSearchParams({ tipe, target_id: targetId }).toString();
+      const res = await fetch(`/api/rekapitulasi/sub-filter?${qs}`);
+      const json = await res.json();
+      if (json.success && json.data.length > 0) {
+        setRekapSubFilterOptions(json.data.map((r: any) => r.nama));
+      } else {
+        setRekapSubFilterOptions([]);
+      }
+    } catch (_) {
+      setRekapSubFilterOptions([]);
+    } finally {
+      setLoadingRekapSubFilter(false);
+    }
+  };
+
+  const fetchRekapData = async () => {
+    if (!rekapFilter.target_id) {
+      setRekapErrorMsg('Silakan pilih kelas / kamar terlebih dahulu.');
+      return;
+    }
+    setLoadingRekapData(true);
+    setRekapErrorMsg('');
+    try {
+      const params = new URLSearchParams({
+        tipe: rekapFilter.tipe,
+        target_id: rekapFilter.target_id,
+        ...(rekapModeRentang ? {
+          tanggal_dari: rekapFilter.tanggal_dari,
+          tanggal_sampai: rekapFilter.tanggal_sampai,
+        } : {
+          bulan: rekapFilter.bulan,
+          tahun: rekapFilter.tahun,
+        }),
+      });
+      if (rekapSubFilter) params.set('sub_filter', rekapSubFilter);
+
+      const res = await fetch(`/api/rekapitulasi?${params.toString()}`);
+      const json = await res.json();
+      if (json.success) {
+        setRekapData(json.data || []);
+        setHasFetchedRekap(true);
+      } else {
+        setRekapErrorMsg(json.error || 'Gagal mengambil data rekap.');
+      }
+    } catch (err: any) {
+      setRekapErrorMsg('Terjadi kesalahan jaringan: ' + err.message);
+    } finally {
+      setLoadingRekapData(false);
+    }
+  };
+
+  const getWaWaliRekapLink = (item: any) => {
+    const rawPhone = item.no_hp_wali || item.no_hp || item.no_wali || '';
+    const phone = formatPhoneNumber(rawPhone);
+    if (!phone) return '#';
+
+    const hadir = Number(item.hadir || 0);
+    const izin = Number(item.izin || 0);
+    const sakit = Number(item.sakit || 0);
+    const alpha = Number(item.alpha || 0);
+    const total = Number(item.total || (hadir + izin + sakit + alpha));
+    const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
+
+    let tipeLabel = rekapFilter.tipe === 'madin' ? 'Madin' : rekapFilter.tipe === 'quran' ? "Al-Qur'an" : 'Kegiatan Asrama';
+    let tempatLabel = rekapOptions.find(o => o.id.toString() === rekapFilter.target_id)?.nama || 'Kelas';
+    
+    let periodeLabel = '';
+    if (rekapModeRentang) {
+      periodeLabel = `${rekapFilter.tanggal_dari} s/d ${rekapFilter.tanggal_sampai}`;
+    } else {
+      const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      periodeLabel = `${months[parseInt(rekapFilter.bulan) - 1]} ${rekapFilter.tahun}`;
+    }
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.ppmawar.or.id';
+    const previewUrl = item.preview_token
+      ? `${origin}/rekapitulasi/preview?t=${item.preview_token}`
+      : `${origin}/rekapitulasi/preview?murid_id=${item.id}&tipe=${rekapFilter.tipe}&target_id=${rekapFilter.target_id}&sub_filter=${encodeURIComponent(rekapSubFilter)}`;
+
+    const text = pesanRekapWaliTemplate
+      .replace(/{nama_santri}/g, item.nama || '-')
+      .replace(/{nis}/g, item.identifier || item.nis || '-')
+      .replace(/{tipe}/g, tipeLabel)
+      .replace(/{kelas}/g, tempatLabel)
+      .replace(/{sub_filter}/g, rekapSubFilter || 'Semua Mapel/Kegiatan')
+      .replace(/{periode}/g, periodeLabel)
+      .replace(/{hadir}/g, String(hadir))
+      .replace(/{izin}/g, String(izin))
+      .replace(/{sakit}/g, String(sakit))
+      .replace(/{alpha}/g, String(alpha))
+      .replace(/{total}/g, String(total))
+      .replace(/{persentase}/g, String(persentase))
+      .replace(/{link_rekap}/g, previewUrl);
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };
@@ -1397,7 +1573,22 @@ function NotifikasiContent() {
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
               }`}
             >
-              Laporan Absensi
+              Laporan Absensi (Harian)
+            </button>
+            <button
+              onClick={() => {
+                setManualMode('rekapitulasi');
+                if (rekapOptions.length === 0) {
+                  loadRekapOptions(rekapFilter.tipe);
+                }
+              }}
+              className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
+                manualMode === 'rekapitulasi'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
+              }`}
+            >
+              📊 Rekapitulasi Absen
             </button>
             <button
               onClick={() => setManualMode('info_akun')}
@@ -1650,8 +1841,984 @@ function NotifikasiContent() {
           </div>
         )}
 
+{/* ===== TAB REKAPITULASI ABSENSI SIARAN WA (MANUAL) ===== */}
+        {manualMode === 'rekapitulasi' && (
+          <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+            {/* Kartu 6 Filter Persis Halaman Rekapitulasi */}
+            <div className="bg-purple-50/40 dark:bg-purple-950/20 border border-purple-150/60 dark:border-purple-900/30 rounded-2xl p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-purple-100/70 dark:border-purple-900/40 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                    <FileText size={15} />
+                  </span>
+                  <div>
+                    <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 leading-tight">Filter Rekapitulasi Presensi</h4>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Pilih kriteria kelas, mapel/kegiatan, dan periode waktu yang ingin disiarkan ke wali murid</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Baris 1: Cari Nama, Pilih Tipe, Pilih Kelas/Kamar, Pilih Sub-filter */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                {/* 1. Cari Nama / NIS / Alamat */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Cari Nama / NIS</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+                    <input
+                      type="text"
+                      placeholder="Cari santri..."
+                      value={rekapSearchNama}
+                      onChange={(e) => setRekapSearchNama(e.target.value)}
+                      className="w-full pl-9 pr-8 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                    />
+                    {rekapSearchNama && (
+                      <button
+                        onClick={() => setRekapSearchNama('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Pilih Tipe */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Pilih Kategori</label>
+                  <select
+                    value={rekapFilter.tipe}
+                    onChange={(e) => {
+                      const newTipe = e.target.value;
+                      setRekapFilter(prev => ({ ...prev, tipe: newTipe }));
+                      loadRekapOptions(newTipe);
+                    }}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer"
+                  >
+                    <option value="madin">Absensi Madin</option>
+                    <option value="quran">Absensi Al-Qur&apos;an</option>
+                    <option value="kegiatan">Absensi Kegiatan Asrama</option>
+                  </select>
+                </div>
+
+                {/* 3. Pilih Kelas / Kamar */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Pilih Kelas / Kamar</label>
+                  <select
+                    value={rekapFilter.target_id}
+                    onChange={(e) => {
+                      const newTarget = e.target.value;
+                      setRekapFilter(prev => ({ ...prev, target_id: newTarget }));
+                      loadRekapSubFilter(rekapFilter.tipe, newTarget);
+                    }}
+                    disabled={loadingRekapOptions || rekapOptions.length === 0}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {loadingRekapOptions ? (
+                      <option>Memuat kelas...</option>
+                    ) : rekapOptions.length === 0 ? (
+                      <option>Tidak ada data kelas</option>
+                    ) : (
+                      rekapOptions.map(opt => (
+                        <option key={opt.id} value={opt.id}>{opt.nama}</option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                {/* 4. Sub-filter: Mapel / Majlis / Kegiatan */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">
+                    {rekapFilter.tipe === 'quran' ? 'Pilih Majlis' : rekapFilter.tipe === 'madin' ? 'Pilih Mapel' : 'Pilih Kegiatan'}
+                  </label>
+                  <select
+                    value={rekapSubFilter}
+                    onChange={(e) => setRekapSubFilter(e.target.value)}
+                    disabled={loadingRekapSubFilter}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <option value="">
+                      {loadingRekapSubFilter ? 'Memuat...' : rekapFilter.tipe === 'quran' ? 'Semua Majlis' : rekapFilter.tipe === 'madin' ? 'Semua Mapel' : 'Semua Kegiatan'}
+                    </option>
+                    {rekapSubFilterOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Baris 2: Waktu & Tombol Tampilkan */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end pt-1">
+                {/* 5. Toggle Mode Waktu */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Mode Waktu</label>
+                  <button
+                    type="button"
+                    onClick={() => setRekapModeRentang(v => !v)}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-purple-400 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 transition-all cursor-pointer select-none"
+                  >
+                    <span className="text-gray-500 dark:text-gray-400 font-medium">
+                      {rekapModeRentang ? 'Rentang Tanggal' : 'Mode Bulanan'}
+                    </span>
+                    <span className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg ${
+                      rekapModeRentang
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>
+                      {rekapModeRentang ? <ToggleRight size={14} className="text-purple-600" /> : <ToggleLeft size={14} />}
+                      {rekapModeRentang ? 'Rentang' : 'Bulan'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* 6. Input Waktu (Bulan & Tahun ATAU Dari & Sampai) */}
+                {rekapModeRentang ? (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Dari Tanggal</label>
+                      <input
+                        type="date"
+                        value={rekapFilter.tanggal_dari}
+                        max={rekapFilter.tanggal_sampai}
+                        onChange={(e) => setRekapFilter({ ...rekapFilter, tanggal_dari: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Sampai Tanggal</label>
+                      <input
+                        type="date"
+                        value={rekapFilter.tanggal_sampai}
+                        min={rekapFilter.tanggal_dari}
+                        onChange={(e) => setRekapFilter({ ...rekapFilter, tanggal_sampai: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Bulan</label>
+                      <select
+                        value={rekapFilter.bulan}
+                        onChange={(e) => setRekapFilter({ ...rekapFilter, bulan: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none cursor-pointer"
+                      >
+                        {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map((m, i) => (
+                          <option key={i} value={i + 1}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Tahun</label>
+                      <select
+                        value={rekapFilter.tahun}
+                        onChange={(e) => setRekapFilter({ ...rekapFilter, tahun: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none cursor-pointer"
+                      >
+                        {[currentRekapYear, currentRekapYear - 1, currentRekapYear - 2].map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* Tombol Tampilkan */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={fetchRekapData}
+                    disabled={loadingRekapData}
+                    className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-70 h-[38px]"
+                  >
+                    {loadingRekapData ? (
+                      <><RefreshCw size={14} className="animate-spin" /> Memuat Data...</>
+                    ) : (
+                      <><Search size={14} /> Tampilkan Data Rekap</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Templat Pesan WA Rekapitulasi */}
+            <div className="bg-purple-50/20 dark:bg-purple-950/10 border border-purple-200/40 dark:border-purple-900/20 rounded-2xl p-4">
+              <label className="block text-xs font-bold text-purple-900 dark:text-purple-300 mb-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span>✏️ Edit Templat Pesan Rekapitulasi untuk Wali Murid</span>
+                <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500">Placeholder: &#123;nama_santri&#125;, &#123;nis&#125;, &#123;tipe&#125;, &#123;kelas&#125;, &#123;sub_filter&#125;, &#123;periode&#125;, &#123;hadir&#125;, &#123;izin&#125;, &#123;sakit&#125;, &#123;alpha&#125;, &#123;persentase&#125;, &#123;link_rekap&#125;</span>
+              </label>
+              <textarea
+                value={pesanRekapWaliTemplate}
+                onChange={(e) => {
+                  setPesanRekapWaliTemplate(e.target.value);
+                  localStorage.setItem('wa_template_wali_rekap', e.target.value);
+                }}
+                onBlur={() => saveTemplate('wa_template_wali_rekap', pesanRekapWaliTemplate)}
+                rows={6}
+                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
+                placeholder="Tulis templat pesan rekapitulasi..."
+              />
+              <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2.5 border-t border-black/5 dark:border-white/5">
+                <button
+                  type="button"
+                  onClick={() => resetTemplate('wa_template_wali_rekap', defaultRekapWaliTemplate, setPesanRekapWaliTemplate)}
+                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  ⟳ Reset ke Templat Default
+                </button>
+                {saveStatus['wa_template_wali_rekap'] === 'saved' && (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => saveTemplate('wa_template_wali_rekap', pesanRekapWaliTemplate)}
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 min-w-[140px] cursor-pointer"
+                >
+                  Simpan Templat
+                </button>
+              </div>
+            </div>
+
+            {/* Pesan Kesalahan jika ada */}
+            {rekapErrorMsg && (
+              <div className="p-3 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-bold text-center">
+                <AlertCircle size={15} className="inline mr-1" /> {rekapErrorMsg}
+              </div>
+            )}
+
+            {/* Hasil / List Santri Rekapitulasi */}
+            {loadingRekapData ? (
+              <div className="flex flex-col items-center justify-center p-12 text-center bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-150">
+                <RefreshCw className="animate-spin text-purple-600 mb-2" size={24} />
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Menghitung dan memuat data rekapitulasi santri...</span>
+              </div>
+            ) : !hasFetchedRekap ? (
+              <div className="p-10 text-center bg-gray-50 dark:bg-gray-900/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-500">
+                <FileText size={28} className="mx-auto mb-2 text-purple-400 opacity-60" />
+                <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">Data Belum Ditampilkan</p>
+                <p>Pilih kelas/kamar dan periode di atas, lalu klik tombol <strong>&quot;Tampilkan Data Rekap&quot;</strong>.</p>
+              </div>
+            ) : (() => {
+              const filteredList = rekapData.filter(item => {
+                if (!rekapSearchNama.trim()) return true;
+                const q = rekapSearchNama.toLowerCase();
+                return (item.nama && item.nama.toLowerCase().includes(q)) ||
+                       (item.identifier && item.identifier.toLowerCase().includes(q)) ||
+                       (item.nis && item.nis.toLowerCase().includes(q)) ||
+                       (item.nama_wali && item.nama_wali.toLowerCase().includes(q));
+              });
+
+              if (filteredList.length === 0) {
+                return (
+                  <div className="p-8 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-900/30 rounded-2xl">
+                    Tidak ada santri yang cocok dengan filter pencarian &quot;{rekapSearchNama}&quot;.
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs text-gray-500 px-1">
+                    <span>
+                      Menampilkan <strong className="text-gray-800 dark:text-gray-200">{filteredList.length}</strong> santri untuk disiarkan
+                    </span>
+                    <span className="text-[11px] text-purple-600 font-semibold hidden sm:inline">
+                      💡 Tautan WA otomatis melampirkan preview PDF resmi siap unduh
+                    </span>
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-xs">
+                    <table className="w-full text-left text-xs whitespace-nowrap">
+                      <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-500 font-bold border-b border-gray-100 dark:border-gray-700 uppercase tracking-wider text-[10px]">
+                        <tr>
+                          <th className="px-4 py-3">Santri</th>
+                          <th className="px-4 py-3 text-center">Hadir</th>
+                          <th className="px-4 py-3 text-center">Izin</th>
+                          <th className="px-4 py-3 text-center">Sakit</th>
+                          <th className="px-4 py-3 text-center">Alpha</th>
+                          <th className="px-4 py-3 text-center">% Kehadiran</th>
+                          <th className="px-4 py-3">Wali Murid & No WA</th>
+                          <th className="px-4 py-3 text-right">Aksi Siaran WA</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60 font-medium">
+                        {filteredList.map((item, idx) => {
+                          const hadir = Number(item.hadir || 0);
+                          const izin = Number(item.izin || 0);
+                          const sakit = Number(item.sakit || 0);
+                          const alpha = Number(item.alpha || 0);
+                          const total = Number(item.total || (hadir + izin + sakit + alpha));
+                          const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
+                          const waLink = getWaWaliRekapLink(item);
+                          const hasWa = waLink !== '#';
+                          const isSent = !!sentRekapWaIds[item.id];
+                          const previewUrl = item.preview_token
+                            ? `/rekapitulasi/preview?t=${item.preview_token}`
+                            : `/rekapitulasi/preview?murid_id=${item.id}&tipe=${rekapFilter.tipe}&target_id=${rekapFilter.target_id}`;
+
+                          return (
+                            <tr key={item.id || idx} className="hover:bg-purple-50/30 dark:hover:bg-purple-950/10 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="font-bold text-gray-900 dark:text-gray-100">{item.nama}</div>
+                                <div className="text-[11px] text-gray-400 font-mono">NIS: {item.identifier || item.nis || '-'}</div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-block px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 font-bold">{hadir}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-block px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 font-bold">{izin}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-block px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 font-bold">{sakit}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-block px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 font-bold">{alpha}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="font-bold text-purple-600 dark:text-purple-400">{persentase}%</div>
+                                <div className="w-16 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 mx-auto mt-1 overflow-hidden">
+                                  <div className="bg-purple-600 h-full rounded-full" style={{ width: `${persentase}%` }} />
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="font-bold text-gray-700 dark:text-gray-200">{item.nama_wali || '-'}</div>
+                                <div className="text-[11px] text-gray-400 font-mono flex items-center gap-1 mt-0.5">
+                                  <Phone size={11} className="text-gray-400" />
+                                  {item.no_hp_wali || item.no_hp || item.no_wali || '-'}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <a
+                                    href={previewUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
+                                    title="Lihat Pratinjau Dokumen PDF"
+                                  >
+                                    <FileText size={13} className="text-purple-600" />
+                                    <span>Lihat PDF</span>
+                                  </a>
+
+                                  {hasWa ? (
+                                    <a
+                                      href={waLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={() => {
+                                        setSentRekapWaIds(prev => ({ ...prev, [item.id]: true }));
+                                      }}
+                                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                                        isSent
+                                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200'
+                                          : 'bg-green-600 hover:bg-green-700 text-white'
+                                      }`}
+                                    >
+                                      <MessageCircle size={13} />
+                                      <span>{isSent ? 'Terkirim ✓' : 'WA Wali'}</span>
+                                    </a>
+                                  ) : (
+                                    <span className="text-[11px] text-gray-400 italic px-2">No WA kosong</span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Cards View */}
+                  <div className="md:hidden space-y-3">
+                    {filteredList.map((item, idx) => {
+                      const hadir = Number(item.hadir || 0);
+                      const izin = Number(item.izin || 0);
+                      const sakit = Number(item.sakit || 0);
+                      const alpha = Number(item.alpha || 0);
+                      const total = Number(item.total || (hadir + izin + sakit + alpha));
+                      const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
+                      const waLink = getWaWaliRekapLink(item);
+                      const hasWa = waLink !== '#';
+                      const isSent = !!sentRekapWaIds[item.id];
+                      const previewUrl = item.preview_token
+                        ? `/rekapitulasi/preview?t=${item.preview_token}`
+                        : `/rekapitulasi/preview?murid_id=${item.id}&tipe=${rekapFilter.tipe}&target_id=${rekapFilter.target_id}`;
+
+                      return (
+                        <div key={item.id || idx} className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-xs space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h5 className="font-bold text-sm text-gray-900 dark:text-gray-100">{item.nama}</h5>
+                              <p className="text-[11px] text-gray-400 font-mono">NIS: {item.identifier || item.nis || '-'}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-black text-purple-600">{persentase}%</span>
+                              <span className="block text-[10px] text-gray-400">Kehadiran</span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-1.5 text-center text-xs">
+                            <div className="bg-emerald-50 dark:bg-emerald-950/30 p-1.5 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
+                              <span className="block text-[10px] text-emerald-600 font-bold">Hadir</span>
+                              <span className="font-bold text-emerald-800 dark:text-emerald-300">{hadir}</span>
+                            </div>
+                            <div className="bg-blue-50 dark:bg-blue-950/30 p-1.5 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                              <span className="block text-[10px] text-blue-600 font-bold">Izin</span>
+                              <span className="font-bold text-blue-800 dark:text-blue-300">{izin}</span>
+                            </div>
+                            <div className="bg-amber-50 dark:bg-amber-950/30 p-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                              <span className="block text-[10px] text-amber-600 font-bold">Sakit</span>
+                              <span className="font-bold text-amber-800 dark:text-amber-300">{sakit}</span>
+                            </div>
+                            <div className="bg-rose-50 dark:bg-rose-950/30 p-1.5 rounded-lg border border-rose-100 dark:border-rose-900/30">
+                              <span className="block text-[10px] text-rose-600 font-bold">Alpha</span>
+                              <span className="font-bold text-rose-800 dark:text-rose-300">{alpha}</span>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs">
+                            <div className="text-gray-500">
+                              <span className="text-[10px] text-gray-400 block">Wali Murid</span>
+                              <span className="font-bold text-gray-800 dark:text-gray-200">{item.nama_wali || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <a
+                                href={previewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+                                title="Lihat PDF"
+                              >
+                                <FileText size={13} className="text-purple-600" />
+                                <span>PDF</span>
+                              </a>
+                              {hasWa ? (
+                                <a
+                                  href={waLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => {
+                                    setSentRekapWaIds(prev => ({ ...prev, [item.id]: true }));
+                                  }}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-xs ${
+                                    isSent
+                                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-500'
+                                      : 'bg-green-600 text-white'
+                                  }`}
+                                >
+                                  <MessageCircle size={13} />
+                                  <span>{isSent ? 'Terkirim' : 'WA Wali'}</span>
+                                </a>
+                              ) : (
+                                <span className="text-[10px] text-gray-400 italic">No WA -</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+{/* ===== TAB REKAPITULASI ABSENSI SIARAN WA (MANUAL) ===== */}
+        {manualMode === 'rekapitulasi' && (
+          <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+            {/* Kartu 6 Filter Persis Halaman Rekapitulasi */}
+            <div className="bg-purple-50/40 dark:bg-purple-950/20 border border-purple-150/60 dark:border-purple-900/30 rounded-2xl p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-purple-100/70 dark:border-purple-900/40 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                    <FileText size={15} />
+                  </span>
+                  <div>
+                    <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 leading-tight">Filter Rekapitulasi Presensi</h4>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">Pilih kriteria kelas, mapel/kegiatan, dan periode waktu yang ingin disiarkan ke wali murid</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Baris 1: Cari Nama, Pilih Tipe, Pilih Kelas/Kamar, Pilih Sub-filter */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                {/* 1. Cari Nama / NIS / Alamat */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Cari Nama / NIS</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+                    <input
+                      type="text"
+                      placeholder="Cari santri..."
+                      value={rekapSearchNama}
+                      onChange={(e) => setRekapSearchNama(e.target.value)}
+                      className="w-full pl-9 pr-8 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                    />
+                    {rekapSearchNama && (
+                      <button
+                        onClick={() => setRekapSearchNama('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Pilih Tipe */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Pilih Kategori</label>
+                  <select
+                    value={rekapFilter.tipe}
+                    onChange={(e) => {
+                      const newTipe = e.target.value;
+                      setRekapFilter(prev => ({ ...prev, tipe: newTipe }));
+                      loadRekapOptions(newTipe);
+                    }}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer"
+                  >
+                    <option value="madin">Absensi Madin</option>
+                    <option value="quran">Absensi Al-Qur&apos;an</option>
+                    <option value="kegiatan">Absensi Kegiatan Asrama</option>
+                  </select>
+                </div>
+
+                {/* 3. Pilih Kelas / Kamar */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Pilih Kelas / Kamar</label>
+                  <select
+                    value={rekapFilter.target_id}
+                    onChange={(e) => {
+                      const newTarget = e.target.value;
+                      setRekapFilter(prev => ({ ...prev, target_id: newTarget }));
+                      loadRekapSubFilter(rekapFilter.tipe, newTarget);
+                    }}
+                    disabled={loadingRekapOptions || rekapOptions.length === 0}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {loadingRekapOptions ? (
+                      <option>Memuat kelas...</option>
+                    ) : rekapOptions.length === 0 ? (
+                      <option>Tidak ada data kelas</option>
+                    ) : (
+                      rekapOptions.map(opt => (
+                        <option key={opt.id} value={opt.id}>{opt.nama}</option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                {/* 4. Sub-filter: Mapel / Majlis / Kegiatan */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">
+                    {rekapFilter.tipe === 'quran' ? 'Pilih Majlis' : rekapFilter.tipe === 'madin' ? 'Pilih Mapel' : 'Pilih Kegiatan'}
+                  </label>
+                  <select
+                    value={rekapSubFilter}
+                    onChange={(e) => setRekapSubFilter(e.target.value)}
+                    disabled={loadingRekapSubFilter}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <option value="">
+                      {loadingRekapSubFilter ? 'Memuat...' : rekapFilter.tipe === 'quran' ? 'Semua Majlis' : rekapFilter.tipe === 'madin' ? 'Semua Mapel' : 'Semua Kegiatan'}
+                    </option>
+                    {rekapSubFilterOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Baris 2: Waktu & Tombol Tampilkan */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end pt-1">
+                {/* 5. Toggle Mode Waktu */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Mode Waktu</label>
+                  <button
+                    type="button"
+                    onClick={() => setRekapModeRentang(v => !v)}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-purple-400 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 transition-all cursor-pointer select-none"
+                  >
+                    <span className="text-gray-500 dark:text-gray-400 font-medium">
+                      {rekapModeRentang ? 'Rentang Tanggal' : 'Mode Bulanan'}
+                    </span>
+                    <span className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg ${
+                      rekapModeRentang
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>
+                      {rekapModeRentang ? <ToggleRight size={14} className="text-purple-600" /> : <ToggleLeft size={14} />}
+                      {rekapModeRentang ? 'Rentang' : 'Bulan'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* 6. Input Waktu (Bulan & Tahun ATAU Dari & Sampai) */}
+                {rekapModeRentang ? (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Dari Tanggal</label>
+                      <input
+                        type="date"
+                        value={rekapFilter.tanggal_dari}
+                        max={rekapFilter.tanggal_sampai}
+                        onChange={(e) => setRekapFilter({ ...rekapFilter, tanggal_dari: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Sampai Tanggal</label>
+                      <input
+                        type="date"
+                        value={rekapFilter.tanggal_sampai}
+                        min={rekapFilter.tanggal_dari}
+                        onChange={(e) => setRekapFilter({ ...rekapFilter, tanggal_sampai: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Bulan</label>
+                      <select
+                        value={rekapFilter.bulan}
+                        onChange={(e) => setRekapFilter({ ...rekapFilter, bulan: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none cursor-pointer"
+                      >
+                        {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map((m, i) => (
+                          <option key={i} value={i + 1}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Tahun</label>
+                      <select
+                        value={rekapFilter.tahun}
+                        onChange={(e) => setRekapFilter({ ...rekapFilter, tahun: e.target.value })}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none cursor-pointer"
+                      >
+                        {[currentRekapYear, currentRekapYear - 1, currentRekapYear - 2].map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* Tombol Tampilkan */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={fetchRekapData}
+                    disabled={loadingRekapData}
+                    className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-70 h-[38px]"
+                  >
+                    {loadingRekapData ? (
+                      <><RefreshCw size={14} className="animate-spin" /> Memuat Data...</>
+                    ) : (
+                      <><Search size={14} /> Tampilkan Data Rekap</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Templat Pesan WA Rekapitulasi */}
+            <div className="bg-purple-50/20 dark:bg-purple-950/10 border border-purple-200/40 dark:border-purple-900/20 rounded-2xl p-4">
+              <label className="block text-xs font-bold text-purple-900 dark:text-purple-300 mb-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span>✏️ Edit Templat Pesan Rekapitulasi untuk Wali Murid</span>
+                <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500">Placeholder: &#123;nama_santri&#125;, &#123;nis&#125;, &#123;tipe&#125;, &#123;kelas&#125;, &#123;sub_filter&#125;, &#123;periode&#125;, &#123;hadir&#125;, &#123;izin&#125;, &#123;sakit&#125;, &#123;alpha&#125;, &#123;persentase&#125;, &#123;link_rekap&#125;</span>
+              </label>
+              <textarea
+                value={pesanRekapWaliTemplate}
+                onChange={(e) => {
+                  setPesanRekapWaliTemplate(e.target.value);
+                  localStorage.setItem('wa_template_wali_rekap', e.target.value);
+                }}
+                onBlur={() => saveTemplate('wa_template_wali_rekap', pesanRekapWaliTemplate)}
+                rows={6}
+                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
+                placeholder="Tulis templat pesan rekapitulasi..."
+              />
+              <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2.5 border-t border-black/5 dark:border-white/5">
+                <button
+                  type="button"
+                  onClick={() => resetTemplate('wa_template_wali_rekap', defaultRekapWaliTemplate, setPesanRekapWaliTemplate)}
+                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  ⟳ Reset ke Templat Default
+                </button>
+                {saveStatus['wa_template_wali_rekap'] === 'saved' && (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Tersimpan di Database ✓
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => saveTemplate('wa_template_wali_rekap', pesanRekapWaliTemplate)}
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 min-w-[140px] cursor-pointer"
+                >
+                  Simpan Templat
+                </button>
+              </div>
+            </div>
+
+            {/* Pesan Kesalahan jika ada */}
+            {rekapErrorMsg && (
+              <div className="p-3 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-bold text-center">
+                <AlertCircle size={15} className="inline mr-1" /> {rekapErrorMsg}
+              </div>
+            )}
+
+            {/* Hasil / List Santri Rekapitulasi */}
+            {loadingRekapData ? (
+              <div className="flex flex-col items-center justify-center p-12 text-center bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-150">
+                <RefreshCw className="animate-spin text-purple-600 mb-2" size={24} />
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Menghitung dan memuat data rekapitulasi santri...</span>
+              </div>
+            ) : !hasFetchedRekap ? (
+              <div className="p-10 text-center bg-gray-50 dark:bg-gray-900/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-500">
+                <FileText size={28} className="mx-auto mb-2 text-purple-400 opacity-60" />
+                <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">Data Belum Ditampilkan</p>
+                <p>Pilih kelas/kamar dan periode di atas, lalu klik tombol <strong>&quot;Tampilkan Data Rekap&quot;</strong>.</p>
+              </div>
+            ) : (() => {
+              const filteredList = rekapData.filter(item => {
+                if (!rekapSearchNama.trim()) return true;
+                const q = rekapSearchNama.toLowerCase();
+                return (item.nama && item.nama.toLowerCase().includes(q)) ||
+                       (item.identifier && item.identifier.toLowerCase().includes(q)) ||
+                       (item.nis && item.nis.toLowerCase().includes(q)) ||
+                       (item.nama_wali && item.nama_wali.toLowerCase().includes(q));
+              });
+
+              if (filteredList.length === 0) {
+                return (
+                  <div className="p-8 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-900/30 rounded-2xl">
+                    Tidak ada santri yang cocok dengan filter pencarian &quot;{rekapSearchNama}&quot;.
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs text-gray-500 px-1">
+                    <span>
+                      Menampilkan <strong className="text-gray-800 dark:text-gray-200">{filteredList.length}</strong> santri untuk disiarkan
+                    </span>
+                    <span className="text-[11px] text-purple-600 font-semibold hidden sm:inline">
+                      💡 Tautan WA otomatis melampirkan preview PDF resmi siap unduh
+                    </span>
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-xs">
+                    <table className="w-full text-left text-xs whitespace-nowrap">
+                      <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-500 font-bold border-b border-gray-100 dark:border-gray-700 uppercase tracking-wider text-[10px]">
+                        <tr>
+                          <th className="px-4 py-3">Santri</th>
+                          <th className="px-4 py-3 text-center">Hadir</th>
+                          <th className="px-4 py-3 text-center">Izin</th>
+                          <th className="px-4 py-3 text-center">Sakit</th>
+                          <th className="px-4 py-3 text-center">Alpha</th>
+                          <th className="px-4 py-3 text-center">% Kehadiran</th>
+                          <th className="px-4 py-3">Wali Murid & No WA</th>
+                          <th className="px-4 py-3 text-right">Aksi Siaran WA</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60 font-medium">
+                        {filteredList.map((item, idx) => {
+                          const hadir = Number(item.hadir || 0);
+                          const izin = Number(item.izin || 0);
+                          const sakit = Number(item.sakit || 0);
+                          const alpha = Number(item.alpha || 0);
+                          const total = Number(item.total || (hadir + izin + sakit + alpha));
+                          const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
+                          const waLink = getWaWaliRekapLink(item);
+                          const hasWa = waLink !== '#';
+                          const isSent = !!sentRekapWaIds[item.id];
+                          const previewUrl = item.preview_token
+                            ? `/rekapitulasi/preview?t=${item.preview_token}`
+                            : `/rekapitulasi/preview?murid_id=${item.id}&tipe=${rekapFilter.tipe}&target_id=${rekapFilter.target_id}`;
+
+                          return (
+                            <tr key={item.id || idx} className="hover:bg-purple-50/30 dark:hover:bg-purple-950/10 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="font-bold text-gray-900 dark:text-gray-100">{item.nama}</div>
+                                <div className="text-[11px] text-gray-400 font-mono">NIS: {item.identifier || item.nis || '-'}</div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-block px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 font-bold">{hadir}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-block px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 font-bold">{izin}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-block px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 font-bold">{sakit}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-block px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 font-bold">{alpha}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="font-bold text-purple-600 dark:text-purple-400">{persentase}%</div>
+                                <div className="w-16 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 mx-auto mt-1 overflow-hidden">
+                                  <div className="bg-purple-600 h-full rounded-full" style={{ width: `${persentase}%` }} />
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="font-bold text-gray-700 dark:text-gray-200">{item.nama_wali || '-'}</div>
+                                <div className="text-[11px] text-gray-400 font-mono flex items-center gap-1 mt-0.5">
+                                  <Phone size={11} className="text-gray-400" />
+                                  {item.no_hp_wali || item.no_hp || item.no_wali || '-'}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <a
+                                    href={previewUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
+                                    title="Lihat Pratinjau Dokumen PDF"
+                                  >
+                                    <FileText size={13} className="text-purple-600" />
+                                    <span>Lihat PDF</span>
+                                  </a>
+
+                                  {hasWa ? (
+                                    <a
+                                      href={waLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={() => {
+                                        setSentRekapWaIds(prev => ({ ...prev, [item.id]: true }));
+                                      }}
+                                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                                        isSent
+                                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200'
+                                          : 'bg-green-600 hover:bg-green-700 text-white'
+                                      }`}
+                                    >
+                                      <MessageCircle size={13} />
+                                      <span>{isSent ? 'Terkirim ✓' : 'WA Wali'}</span>
+                                    </a>
+                                  ) : (
+                                    <span className="text-[11px] text-gray-400 italic px-2">No WA kosong</span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Cards View */}
+                  <div className="md:hidden space-y-3">
+                    {filteredList.map((item, idx) => {
+                      const hadir = Number(item.hadir || 0);
+                      const izin = Number(item.izin || 0);
+                      const sakit = Number(item.sakit || 0);
+                      const alpha = Number(item.alpha || 0);
+                      const total = Number(item.total || (hadir + izin + sakit + alpha));
+                      const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
+                      const waLink = getWaWaliRekapLink(item);
+                      const hasWa = waLink !== '#';
+                      const isSent = !!sentRekapWaIds[item.id];
+                      const previewUrl = item.preview_token
+                        ? `/rekapitulasi/preview?t=${item.preview_token}`
+                        : `/rekapitulasi/preview?murid_id=${item.id}&tipe=${rekapFilter.tipe}&target_id=${rekapFilter.target_id}`;
+
+                      return (
+                        <div key={item.id || idx} className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-xs space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h5 className="font-bold text-sm text-gray-900 dark:text-gray-100">{item.nama}</h5>
+                              <p className="text-[11px] text-gray-400 font-mono">NIS: {item.identifier || item.nis || '-'}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-black text-purple-600">{persentase}%</span>
+                              <span className="block text-[10px] text-gray-400">Kehadiran</span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-1.5 text-center text-xs">
+                            <div className="bg-emerald-50 dark:bg-emerald-950/30 p-1.5 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
+                              <span className="block text-[10px] text-emerald-600 font-bold">Hadir</span>
+                              <span className="font-bold text-emerald-800 dark:text-emerald-300">{hadir}</span>
+                            </div>
+                            <div className="bg-blue-50 dark:bg-blue-950/30 p-1.5 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                              <span className="block text-[10px] text-blue-600 font-bold">Izin</span>
+                              <span className="font-bold text-blue-800 dark:text-blue-300">{izin}</span>
+                            </div>
+                            <div className="bg-amber-50 dark:bg-amber-950/30 p-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                              <span className="block text-[10px] text-amber-600 font-bold">Sakit</span>
+                              <span className="font-bold text-amber-800 dark:text-amber-300">{sakit}</span>
+                            </div>
+                            <div className="bg-rose-50 dark:bg-rose-950/30 p-1.5 rounded-lg border border-rose-100 dark:border-rose-900/30">
+                              <span className="block text-[10px] text-rose-600 font-bold">Alpha</span>
+                              <span className="font-bold text-rose-800 dark:text-rose-300">{alpha}</span>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs">
+                            <div className="text-gray-500">
+                              <span className="text-[10px] text-gray-400 block">Wali Murid</span>
+                              <span className="font-bold text-gray-800 dark:text-gray-200">{item.nama_wali || '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <a
+                                href={previewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+                                title="Lihat PDF"
+                              >
+                                <FileText size={13} className="text-purple-600" />
+                                <span>PDF</span>
+                              </a>
+                              {hasWa ? (
+                                <a
+                                  href={waLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => {
+                                    setSentRekapWaIds(prev => ({ ...prev, [item.id]: true }));
+                                  }}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-xs ${
+                                    isSent
+                                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-500'
+                                      : 'bg-green-600 text-white'
+                                  }`}
+                                >
+                                  <MessageCircle size={13} />
+                                  <span>{isSent ? 'Terkirim' : 'WA Wali'}</span>
+                                </a>
+                              ) : (
+                                <span className="text-[10px] text-gray-400 italic">No WA -</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {/* Dropdown default pesan WA — hanya tampil untuk mode absensi & info_akun */}
-        <div className={`${manualMode === 'pembayaran' ? 'hidden' : ''} grid grid-cols-1 ${manualMode === 'info_akun' ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4 mb-6 bg-green-50/50 dark:bg-green-950/20 p-4 rounded-2xl border border-green-100 dark:border-green-900/30`}>
+        <div className={`${manualMode === 'pembayaran' || manualMode === 'rekapitulasi' ? 'hidden' : ''} grid grid-cols-1 ${manualMode === 'info_akun' ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4 mb-6 bg-green-50/50 dark:bg-green-950/20 p-4 rounded-2xl border border-green-100 dark:border-green-900/30`}>
           <div>
             <label className="block text-xs font-bold text-green-800 dark:text-green-400 mb-1.5">Kategori Kegiatan</label>
             <select
@@ -1710,7 +2877,7 @@ function NotifikasiContent() {
         </div>
 
         {/* Kolom Edit Templat Pesan Wali */}
-        {manualMode === 'info_akun' ? (
+        {manualMode !== 'rekapitulasi' && (manualMode === 'info_akun' ? (
           <div className="mb-6 bg-green-50/20 dark:bg-green-950/10 border border-green-200/40 dark:border-green-900/20 rounded-2xl p-4">
             <label className="block text-xs font-bold text-green-800 dark:text-green-400 mb-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
               <span>Edit Templat Pesan Info Akun Wali Murid</span>
@@ -1785,10 +2952,10 @@ function NotifikasiContent() {
               </button>
             </div>
           </div>
-        )}
+        ))}
 
         {/* Search bar — hanya tampil untuk mode absensi & info_akun */}
-        {manualMode !== 'pembayaran' && (
+        {manualMode !== 'pembayaran' && manualMode !== 'rekapitulasi' && (
           <div id="search-wali-container" className="relative mb-4">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
@@ -1802,9 +2969,9 @@ function NotifikasiContent() {
         )}
 
         {/* Hasil / List Murid — hanya tampil untuk mode absensi & info_akun */}
-        {manualMode !== 'pembayaran' && loading ? (
+        {manualMode !== 'pembayaran' && manualMode !== 'rekapitulasi' && loading ? (
           <div className="flex justify-center p-8"><RefreshCw className="animate-spin text-green-500" /></div>
-        ) : manualMode !== 'pembayaran' && (
+        ) : (manualMode !== 'pembayaran' && manualMode !== 'rekapitulasi') && (
           <>
             {/* Tampilan Desktop (Tabel) */}
             <div className="hidden md:block overflow-x-auto">
