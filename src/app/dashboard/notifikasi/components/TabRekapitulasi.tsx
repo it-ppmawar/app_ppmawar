@@ -559,15 +559,18 @@ export default function TabRekapitulasi({
                     </div>
 
                     <div className="pt-2.5 border-t border-gray-100 dark:border-gray-700/60 space-y-2.5">
-                      {/* Baris No. HP (Kiri) dan Nama Wali Murid (Rata Kanan) */}
+                      {/* Baris Nama Wali Murid (Rata Kiri Utuh) dan No. HP (Sebelah Kanan) */}
                       <div className="flex items-center justify-between gap-2 text-xs">
-                        <div className="flex items-center gap-1.5 font-mono text-xs text-gray-600 dark:text-gray-300 shrink-0">
-                          <Phone size={13} className="text-gray-400 dark:text-gray-500 shrink-0" />
-                          <span>{rawPhone || 'Nomor HP tidak ada'}</span>
+                        {/* Nama Wali Murid Rata Kiri */}
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1 text-left text-xs">
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium shrink-0">Wali:</span>
+                          <strong className="font-bold text-gray-800 dark:text-gray-200 truncate">{item.nama_wali || '-'}</strong>
                         </div>
-                        <div className="text-right min-w-0 truncate text-xs text-gray-800 dark:text-gray-200">
-                          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium mr-1">Wali:</span>
-                          <strong className="font-bold">{item.nama_wali || '-'}</strong>
+
+                        {/* No. HP Sebelah Kanan */}
+                        <div className="flex items-center justify-end gap-1 font-mono text-xs text-gray-500 dark:text-gray-400 shrink-0 text-right">
+                          <Phone size={12} className="text-gray-400 shrink-0" />
+                          <span className="truncate max-w-[125px]">{rawPhone || 'Nomor HP tidak ada'}</span>
                         </div>
                       </div>
 

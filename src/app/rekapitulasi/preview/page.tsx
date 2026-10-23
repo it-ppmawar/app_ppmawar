@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon } from 'lucide-react';
+import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon, X } from 'lucide-react';
 import { exportToPDF } from '@/lib/exportUtils';
 
 const AVATAR_COLORS = [
@@ -13,7 +13,9 @@ const AVATAR_COLORS = [
 const getInitials = (nama: string): string => {
   if (!nama) return '?';
   const parts = nama.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  if (parts.length >= 2) {
+    return parts.slice(0, 3).map(p => p[0]).join('').toUpperCase();
+  }
   return nama.substring(0, 2).toUpperCase();
 };
 
@@ -54,6 +56,8 @@ function RekapPreviewContent() {
   const [murid, setMurid] = useState<any>(null);
   const [meta, setMeta] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<string>('semua');
+  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
 
   // Dark/Light Theme State
   const [isDark, setIsDark] = useState(false);
@@ -156,6 +160,16 @@ function RekapPreviewContent() {
     return meta.tipe;
   }, [meta]);
 
+  // Label Badge Topbar (Ringkas agar topbar tidak tinggi/tebal)
+  const tipeShortBadge = useMemo(() => {
+    if (!meta?.tipe) return '';
+    const t = meta.tipe.toLowerCase();
+    if (t === 'madin') return '(Madin)';
+    if (t === 'quran') return "(Qur'an)";
+    if (t === 'kegiatan') return '(Kegiatan)';
+    return `(${meta.tipe})`;
+  }, [meta]);
+
   // Handler Unduh PDF
   const handleDownloadPdf = () => {
     if (!murid || data.length === 0) return;
@@ -228,13 +242,15 @@ function RekapPreviewContent() {
 
           {/* Teks Rata Tengah */}
           <div className="min-w-0 flex-1 flex flex-col items-center justify-center text-center">
-            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+            <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
               <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
                 Rekapitulasi Presensi
               </h1>
-              <span className="px-2 py-0.5 text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800/60 rounded-full uppercase tracking-wider shrink-0">
-                {tipeLabel}
-              </span>
+              {tipeShortBadge && (
+                <span className="px-1.5 py-0.5 text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800/60 rounded-md shrink-0">
+                  {tipeShortBadge}
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 text-center font-medium">
               Pondok Pesantren Matholi&apos;ul Anwar
@@ -266,18 +282,31 @@ function RekapPreviewContent() {
 
           {/* Header Identitas Lembaga */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 pb-6 border-b border-slate-100 dark:border-slate-800 text-center sm:text-left">
-            <div className="w-20 h-20 rounded-2xl bg-purple-50 dark:bg-purple-950/50 border-2 border-purple-100 dark:border-purple-800/60 flex items-center justify-center shrink-0 overflow-hidden shadow-xs">
-              {fotoSrc ? (
+            <div
+              onClick={() => {
+                if (fotoSrc && !imgError) {
+                  setZoomPhoto(fotoSrc);
+                }
+              }}
+              style={{ backgroundColor: !fotoSrc || imgError ? avatarBg : undefined }}
+              className={`w-20 h-20 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden shadow-xs border-2 border-purple-100 dark:border-purple-800/60 select-none ${
+                fotoSrc && !imgError
+                  ? 'cursor-pointer hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all'
+                  : 'bg-purple-50 dark:bg-purple-950/50'
+              }`}
+              title={fotoSrc && !imgError ? 'Klik untuk melihat foto layar penuh' : murid.nama}
+            >
+              {fotoSrc && !imgError ? (
                 <img
                   src={fotoSrc}
                   alt={murid.nama}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
+                  onError={() => setImgError(true)}
                 />
               ) : (
-                <span className="text-xl font-bold text-purple-700 dark:text-purple-300">{initials}</span>
+                <span className="text-2xl font-black text-white tracking-wider drop-shadow-xs">
+                  {initials}
+                </span>
               )}
             </div>
 
@@ -527,6 +556,32 @@ function RekapPreviewContent() {
         </div>
 
       </main>
+
+      {/* Modal Foto Layar Penuh (Zoom Photo) */}
+      {zoomPhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-[fadeIn_0.2s_ease-out] print:hidden cursor-pointer"
+          onClick={() => setZoomPhoto(null)}
+        >
+          <div className="relative max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setZoomPhoto(null)}
+              className="absolute -top-3 -right-3 z-10 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-full p-2 shadow-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+              title="Tutup"
+            >
+              <X size={18} />
+            </button>
+            <img
+              src={zoomPhoto}
+              alt={murid?.nama || 'Foto Santri'}
+              className="w-full rounded-2xl shadow-2xl object-cover max-h-[85vh] bg-black"
+            />
+            <p className="text-center text-xs text-white/90 font-bold mt-2.5">
+              {murid?.nama || 'Foto Santri'}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
