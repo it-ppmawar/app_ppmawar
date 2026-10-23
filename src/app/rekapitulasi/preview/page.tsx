@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon, X } from 'lucide-react';
+import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon, X, TrendingUp, CalendarDays } from 'lucide-react';
 import { exportToPDF } from '@/lib/exportUtils';
 
 const AVATAR_COLORS = [
@@ -46,6 +46,71 @@ const MONTH_NAMES = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
+/**
+ * Mengonversi elemen SVG menjadi URL data PNG resolusi tinggi (2x)
+ * dengan latar belakang putih agar tajam dan rapi saat disematkan ke PDF.
+ */
+const svgToDataUrl = (svgId: string): Promise<string | null> => {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  const el = document.getElementById(svgId) as SVGSVGElement | null;
+  if (!el) return Promise.resolve(null);
+
+  const cloned = el.cloneNode(true) as SVGSVGElement;
+
+  cloned.querySelectorAll('line').forEach(line => {
+    const stroke = line.getAttribute('stroke');
+    if (!stroke || stroke === 'currentColor') {
+      line.setAttribute('stroke', '#e2e8f0');
+    }
+  });
+
+  cloned.querySelectorAll('text').forEach(text => {
+    const fill = text.getAttribute('fill');
+    if (!fill || fill === 'currentColor') {
+      text.setAttribute('fill', '#64748b');
+    }
+  });
+
+  const vb = el.viewBox?.baseVal;
+  const width = vb?.width || 800;
+  const height = vb?.height || 210;
+
+  const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  bgRect.setAttribute('width', String(width));
+  bgRect.setAttribute('height', String(height));
+  bgRect.setAttribute('fill', '#ffffff');
+  cloned.insertBefore(bgRect, cloned.firstChild);
+
+  cloned.setAttribute('width', String(width));
+  cloned.setAttribute('height', String(height));
+
+  const serialized = new XMLSerializer().serializeToString(cloned);
+  const blob = new Blob([serialized], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width * 2;
+      canvas.height = height * 2;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      }
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+};
+
 function RekapPreviewContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('t') || searchParams.get('token') || '';
@@ -58,6 +123,25 @@ function RekapPreviewContent() {
   const [statusFilter, setStatusFilter] = useState<string>('semua');
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  // State Grafik Tren Kehadiran
+  const [hoveredTrend, setHoveredTrend] = useState<any | null>(null);
+  const [visibleTrendLines, setVisibleTrendLines] = useState<{
+    hadir: boolean;
+    izin: boolean;
+    sakit: boolean;
+    alpha: boolean;
+  }>({
+    hadir: true,
+    izin: true,
+    sakit: true,
+    alpha: true,
+  });
+
+  const toggleTrendLine = (key: 'hadir' | 'izin' | 'sakit' | 'alpha') => {
+    setVisibleTrendLines(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // Dark/Light Theme State
   const [isDark, setIsDark] = useState(false);
@@ -170,29 +254,103 @@ function RekapPreviewContent() {
     return `(${meta.tipe})`;
   }, [meta]);
 
+  // Data Tren Kehadiran per Tanggal Sesi Presensi
+  const trendData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+
+    const mapByDate = new Map<string, { hadir: number; izin: number; sakit: number; alpha: number; total: number }>();
+
+    data.forEach(item => {
+      const tgl = item.tanggal;
+      if (!tgl) return;
+      if (!mapByDate.has(tgl)) {
+        mapByDate.set(tgl, { hadir: 0, izin: 0, sakit: 0, alpha: 0, total: 0 });
+      }
+      const rec = mapByDate.get(tgl)!;
+      const s = (item.status || '').toLowerCase();
+      if (s === 'hadir') rec.hadir++;
+      else if (s === 'izin') rec.izin++;
+      else if (s === 'sakit') rec.sakit++;
+      else if (s === 'alpha' || s === 'alpa' || s === '') rec.alpha++;
+      rec.total++;
+    });
+
+    const sortedDates = Array.from(mapByDate.keys()).sort((a, b) => a.localeCompare(b));
+
+    return sortedDates.map(tanggal => {
+      const rec = mapByDate.get(tanggal)!;
+      const tot = rec.total || 1;
+      return {
+        tanggal,
+        hadir: rec.hadir,
+        izin: rec.izin,
+        sakit: rec.sakit,
+        alpha: rec.alpha,
+        total: rec.total,
+        pctHadir: Math.round((rec.hadir / tot) * 1000) / 10,
+        pctIzin: Math.round((rec.izin / tot) * 1000) / 10,
+        pctSakit: Math.round((rec.sakit / tot) * 1000) / 10,
+        pctAlpha: Math.round((rec.alpha / tot) * 1000) / 10,
+      };
+    });
+  }, [data]);
+
   // Handler Unduh PDF
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (!murid || data.length === 0) return;
 
-    const title = 'RINCIAN REKAPITULASI PRESENSI SANTRI';
-    const subtitle = `Nama: ${murid.nama || '-'}\nNIS: ${murid.nis || '-'}\nKelas / Kamar: ${murid.kelas_madin || murid.kelas_quran || murid.nama_kamar || '-'}\nKategori: ${tipeLabel}${meta?.sub_filter ? ` (${meta.sub_filter})` : ''}`;
-    const period = periodeLabel;
-    const safeNama = (murid.nama || 'Santri').replace(/[^a-zA-Z0-9]/g, '_');
-    const safePeriod = periodeLabel.replace(/[^a-zA-Z0-9]/g, '_');
-    const filename = `Rekap_Presensi_${safeNama}_${safePeriod}`;
+    setIsDownloadingPdf(true);
+    try {
+      // Tangkap gambar SVG grafik jika ada untuk disematkan dalam PDF
+      let chartImg: string | undefined;
+      if (trendData.length > 0) {
+        try {
+          const dataUrl = await svgToDataUrl('preview-trend-svg');
+          if (dataUrl) chartImg = dataUrl;
+        } catch (e) {
+          console.warn('Gagal merender grafik SVG untuk PDF:', e);
+        }
+      }
 
-    const columns = ['No', 'Hari, Tanggal', 'Waktu', 'Jadwal / Mapel / Kegiatan', 'Status', 'Keterangan', 'Diinput Oleh'];
-    const rows = filteredData.map((r, idx) => [
-      idx + 1,
-      `${r.hari || ''}, ${r.tanggal || ''}`,
-      r.jam_mulai ? `${r.jam_mulai}${r.jam_selesai ? ` - ${r.jam_selesai}` : ''}` : '-',
-      r.mata_pelajaran || '-',
-      r.status || '-',
-      r.keterangan || '-',
-      r.penginput || '-',
-    ]);
+      const title = 'RINCIAN REKAPITULASI PRESENSI SANTRI';
+      const subtitle = `Nama: ${murid.nama || '-'}\nNIS: ${murid.nis || '-'}\nKelas / Kamar: ${murid.kelas_madin || murid.kelas_quran || murid.nama_kamar || '-'}\nKategori: ${tipeLabel}${meta?.sub_filter ? ` (${meta.sub_filter})` : ''}`;
+      const period = periodeLabel;
+      const safeNama = (murid.nama || 'Santri').replace(/[^a-zA-Z0-9]/g, '_');
+      const safePeriod = periodeLabel.replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `Rekap_Presensi_${safeNama}_${safePeriod}`;
 
-    exportToPDF({ title, subtitle, period, columns, rows, filename, previewOnly: false });
+      const columns = ['No', 'Hari, Tanggal', 'Waktu', 'Jadwal / Mapel / Kegiatan', 'Status', 'Keterangan', 'Diinput Oleh'];
+      const rows = filteredData.map((r, idx) => [
+        idx + 1,
+        `${r.hari || ''}, ${r.tanggal || ''}`,
+        r.jam_mulai ? `${r.jam_mulai}${r.jam_selesai ? ` - ${r.jam_selesai}` : ''}` : '-',
+        r.mata_pelajaran || '-',
+        r.status || '-',
+        r.keterangan || '-',
+        r.penginput || '-',
+      ]);
+
+      exportToPDF({
+        title,
+        subtitle,
+        period,
+        columns,
+        rows,
+        filename,
+        previewOnly: false,
+        chartImg,
+        stats: {
+          hadir: stats.hadir,
+          izin: stats.izin,
+          sakit: stats.sakit,
+          alpha: stats.alpha,
+          total: stats.total,
+          persentase: stats.persentase,
+        }
+      });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   if (loading) {
@@ -341,9 +499,11 @@ function RekapPreviewContent() {
               </button>
               <button
                 onClick={handleDownloadPdf}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
+                disabled={isDownloadingPdf}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
               >
-                <Download size={15} /> Unduh PDF
+                {isDownloadingPdf ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}
+                <span>{isDownloadingPdf ? 'Menyiapkan...' : 'Unduh PDF'}</span>
               </button>
             </div>
 
@@ -351,9 +511,11 @@ function RekapPreviewContent() {
             <div className="sm:hidden w-full pt-3 print:hidden">
               <button
                 onClick={handleDownloadPdf}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-purple-600 text-white rounded-2xl text-xs font-bold shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all"
+                disabled={isDownloadingPdf}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white rounded-2xl text-xs font-bold shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all cursor-pointer"
               >
-                <Download size={16} /> Unduh Dokumen PDF
+                {isDownloadingPdf ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
+                <span>{isDownloadingPdf ? 'Menyiapkan Dokumen PDF...' : 'Unduh Dokumen PDF'}</span>
               </button>
             </div>
           </div>
@@ -472,6 +634,458 @@ function RekapPreviewContent() {
           </div>
         </div>
 
+        {/* Visualisasi Grafik Tren Kehadiran (%) */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-xs border border-slate-200/80 dark:border-slate-800 transition-colors">
+          {/* Header Card Tren */}
+          <div className="flex flex-col gap-2.5 mb-3">
+            {/* Baris 1: Ikon + Judul + Subjudul di kiri, Tombol PDF di kanan */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 shrink-0">
+                  <TrendingUp size={18} />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-xs sm:text-sm text-slate-800 dark:text-white truncate">
+                    Tren Kehadiran Sesi Presensi (%)
+                  </h4>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
+                    Fluktuasi tingkat kehadiran per tanggal sesi
+                  </p>
+                </div>
+              </div>
+
+              {/* Tombol PDF Sebaris di Kanan */}
+              <div className="flex items-center gap-1.5 shrink-0 print:hidden">
+                <button
+                  type="button"
+                  disabled={isDownloadingPdf}
+                  onClick={handleDownloadPdf}
+                  className="flex items-center gap-1 text-[11px] font-bold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-60 px-2.5 py-1.5 rounded-xl transition-all shadow-xs cursor-pointer"
+                  title="Unduh Dokumen PDF beserta Grafik"
+                >
+                  {isDownloadingPdf ? (
+                    <RefreshCw size={12} className="animate-spin" />
+                  ) : (
+                    <Download size={12} />
+                  )}
+                  <span>{isDownloadingPdf ? 'Memproses...' : 'PDF'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Baris 2: Toggle Pills Status + Badge Target 85% */}
+            <div className="flex flex-wrap justify-center items-center gap-1.5 w-full">
+              <button
+                type="button"
+                onClick={() => toggleTrendLine('hadir')}
+                className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                  visibleTrendLines.hadir
+                    ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 shadow-xs'
+                    : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-60 line-through'
+                }`}
+                title="Klik untuk tampilkan/sembunyikan tren Hadir"
+              >
+                <span className={`w-2 h-2 rounded-full ${visibleTrendLines.hadir ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                Hadir
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleTrendLine('izin')}
+                className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                  visibleTrendLines.izin
+                    ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 shadow-xs'
+                    : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-60 line-through'
+                }`}
+                title="Klik untuk tampilkan/sembunyikan tren Izin"
+              >
+                <span className={`w-2 h-2 rounded-full ${visibleTrendLines.izin ? 'bg-blue-500' : 'bg-slate-400'}`} />
+                Izin
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleTrendLine('sakit')}
+                className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                  visibleTrendLines.sakit
+                    ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 shadow-xs'
+                    : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-60 line-through'
+                }`}
+                title="Klik untuk tampilkan/sembunyikan tren Sakit"
+              >
+                <span className={`w-2 h-2 rounded-full ${visibleTrendLines.sakit ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                Sakit
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleTrendLine('alpha')}
+                className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                  visibleTrendLines.alpha
+                    ? 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700 shadow-xs'
+                    : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-60 line-through'
+                }`}
+                title="Klik untuk tampilkan/sembunyikan tren Alpha"
+              >
+                <span className={`w-2 h-2 rounded-full ${visibleTrendLines.alpha ? 'bg-rose-500' : 'bg-slate-400'}`} />
+                Alpha
+              </button>
+
+              <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-lg border border-amber-200/50 dark:border-amber-800/40">
+                <span className="w-3 h-0.5 bg-amber-500 rounded-full" />
+                Target 85%
+              </span>
+            </div>
+          </div>
+
+          {/* Interactive Hover Info Bar */}
+          <div className="min-h-[44px] mb-2 flex items-center justify-center text-xs px-3 py-1.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 transition-all">
+            {hoveredTrend ? (
+              <div className="flex flex-col items-center justify-center w-full gap-1 animate-in fade-in duration-200 text-center">
+                {/* Baris 1: Tanggal & Prosentase Hadir */}
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <span className="font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 shrink-0 text-xs">
+                    <Calendar size={13} className="text-purple-600 dark:text-purple-400" />
+                    {(() => {
+                      const parts = (hoveredTrend.tanggal || '').split('-');
+                      if (parts.length !== 3) return hoveredTrend.tanggal;
+                      const dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                      return dt.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                    })()}
+                  </span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 px-2 py-0.5 rounded-md text-[11px]">
+                    {(hoveredTrend.pctHadir ?? 0).toFixed(1)}% Hadir ({hoveredTrend.hadir} sesi)
+                  </span>
+                </div>
+
+                {/* Baris 2: Prosentase yang lain (Izin, Sakit, Alpha) */}
+                <div className="flex items-center justify-center gap-1.5 flex-wrap text-[10px] sm:text-[11px]">
+                  <span className="font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/40 px-1.5 py-0.5 rounded-md">
+                    {(hoveredTrend.pctIzin ?? 0).toFixed(1)}% Izin ({hoveredTrend.izin})
+                  </span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 px-1.5 py-0.5 rounded-md">
+                    {(hoveredTrend.pctSakit ?? 0).toFixed(1)}% Sakit ({hoveredTrend.sakit})
+                  </span>
+                  <span className="font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/40 px-1.5 py-0.5 rounded-md">
+                    {(hoveredTrend.pctAlpha ?? 0).toFixed(1)}% Alpha ({hoveredTrend.alpha})
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center text-center w-full text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium py-0.5">
+                <span>
+                  Arahkan kursor atau sentuh titik grafik untuk rincian status{' '}
+                  <span className="font-bold text-slate-700 dark:text-slate-300">
+                    ({trendData.length} Sesi Terdata)
+                  </span>
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* SVG Chart Area */}
+          {trendData.length === 0 ? (
+            <div className="py-10 text-center bg-slate-50/60 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+              <CalendarDays size={28} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Belum ada catatan aktivitas presensi pada rentang waktu ini.
+              </p>
+            </div>
+          ) : (
+            (() => {
+              const svgW = 800;
+              const svgH = 210;
+              const padL = 40;
+              const padR = 20;
+              const padT = 20;
+              const padB = 40;
+              const plotW = svgW - padL - padR;
+              const plotH = svgH - padT - padB;
+
+              const getY = (pct: number) => padT + plotH * (1 - Math.max(0, Math.min(100, pct)) / 100);
+              const getX = (idx: number) => {
+                if (trendData.length === 1) return padL + plotW / 2;
+                return padL + (idx / (trendData.length - 1)) * plotW;
+              };
+
+              const targetY = getY(85);
+
+              const buildSmoothPath = (pts: { x: number; y: number }[]) => {
+                if (pts.length === 0) return '';
+                if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+                return pts.reduce((acc, p, i, arr) => {
+                  if (i === 0) return `M ${p.x} ${p.y}`;
+                  const prev = arr[i - 1];
+                  const cp1x = prev.x + (p.x - prev.x) / 2;
+                  const cp1y = prev.y;
+                  const cp2x = prev.x + (p.x - prev.x) / 2;
+                  const cp2y = p.y;
+                  return `${acc} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p.x} ${p.y}`;
+                }, '');
+              };
+
+              const pointsHadir = trendData.map((d, i) => ({
+                x: getX(i),
+                y: getY(d.pctHadir ?? 0),
+                val: d.pctHadir ?? 0,
+                data: d,
+              }));
+
+              const pointsIzin = trendData.map((d, i) => ({
+                x: getX(i),
+                y: getY(d.pctIzin ?? 0),
+                val: d.pctIzin ?? 0,
+                data: d,
+              }));
+
+              const pointsSakit = trendData.map((d, i) => ({
+                x: getX(i),
+                y: getY(d.pctSakit ?? 0),
+                val: d.pctSakit ?? 0,
+                data: d,
+              }));
+
+              const pointsAlpha = trendData.map((d, i) => ({
+                x: getX(i),
+                y: getY(d.pctAlpha ?? 0),
+                val: d.pctAlpha ?? 0,
+                data: d,
+              }));
+
+              const pathHadir = pointsHadir.length > 1 ? buildSmoothPath(pointsHadir) : '';
+              const pathIzin = pointsIzin.length > 1 ? buildSmoothPath(pointsIzin) : '';
+              const pathSakit = pointsSakit.length > 1 ? buildSmoothPath(pointsSakit) : '';
+              const pathAlpha = pointsAlpha.length > 1 ? buildSmoothPath(pointsAlpha) : '';
+
+              const areaPathHadir = pointsHadir.length > 1 && pathHadir
+                ? `${pathHadir} L ${pointsHadir[pointsHadir.length - 1].x} ${padT + plotH} L ${pointsHadir[0].x} ${padT + plotH} Z`
+                : '';
+
+              const totalPoints = pointsHadir.length;
+              const labelInterval = totalPoints > 28 ? 3 : totalPoints > 14 ? 2 : 1;
+
+              return (
+                <div className="relative w-full overflow-hidden select-none">
+                  <svg
+                    id="preview-trend-svg"
+                    className="w-full h-auto"
+                    viewBox={`0 0 ${svgW} ${svgH}`}
+                    onMouseLeave={() => setHoveredTrend(null)}
+                  >
+                    <defs>
+                      <linearGradient id="previewTrendAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.28" />
+                        <stop offset="90%" stopColor="#10b981" stopOpacity="0.02" />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Grid Horizontal Y-Axis (0%, 25%, 50%, 75%, 100%) */}
+                    {[100, 75, 50, 25, 0].map(pct => {
+                      const y = getY(pct);
+                      return (
+                        <g key={pct}>
+                          <line
+                            x1={padL}
+                            y1={y}
+                            x2={padL + plotW}
+                            y2={y}
+                            stroke="currentColor"
+                            strokeWidth="1"
+                            strokeDasharray={pct === 0 ? 'none' : '3 3'}
+                            className="text-slate-100 dark:text-slate-800"
+                          />
+                          <text
+                            x={padL - 6}
+                            y={y + 3}
+                            textAnchor="end"
+                            className="text-[9px] font-bold fill-slate-400 dark:fill-slate-500"
+                          >
+                            {pct}%
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    {/* Garis Ambang Batas Target 85% */}
+                    <line
+                      x1={padL}
+                      y1={targetY}
+                      x2={padL + plotW}
+                      y2={targetY}
+                      stroke="#f59e0b"
+                      strokeWidth="1.2"
+                      strokeDasharray="4 4"
+                      className="opacity-75"
+                    />
+
+                    {/* Area Gradient di bawah Garis Tren Hadir (jika aktif) */}
+                    {visibleTrendLines.hadir && areaPathHadir && (
+                      <path d={areaPathHadir} fill="url(#previewTrendAreaGradient)" />
+                    )}
+
+                    {/* Garis Tren Izin (Biru) */}
+                    {visibleTrendLines.izin && pathIzin && (
+                      <path
+                        d={pathIzin}
+                        fill="none"
+                        stroke="#3b82f6"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+
+                    {/* Garis Tren Sakit (Orange) */}
+                    {visibleTrendLines.sakit && pathSakit && (
+                      <path
+                        d={pathSakit}
+                        fill="none"
+                        stroke="#f97316"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+
+                    {/* Garis Tren Alpha (Merah) */}
+                    {visibleTrendLines.alpha && pathAlpha && (
+                      <path
+                        d={pathAlpha}
+                        fill="none"
+                        stroke="#ef4444"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+
+                    {/* Garis Tren Hadir (Hijau Emerald) */}
+                    {visibleTrendLines.hadir && pathHadir && (
+                      <path
+                        d={pathHadir}
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="2.75"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+
+                    {/* Titik Dots & Tooltip Hitbox */}
+                    {pointsHadir.map((p, idx) => {
+                      const isHovered = hoveredTrend?.tanggal === p.data.tanggal;
+                      const showLabel = idx === 0 || idx === pointsHadir.length - 1 || idx % labelInterval === 0;
+                      const tglParts = (p.data.tanggal || '').split('-');
+                      const displayLabel = tglParts.length === 3 ? `${tglParts[2]}/${tglParts[1]}` : p.data.tanggal;
+
+                      return (
+                        <g
+                          key={idx}
+                          className="cursor-pointer"
+                          onMouseEnter={() => setHoveredTrend(p.data)}
+                          onTouchStart={() => setHoveredTrend(p.data)}
+                        >
+                          {/* Hitbox tinggi penuh */}
+                          <rect
+                            x={p.x - 14}
+                            y={padT}
+                            width="28"
+                            height={plotH}
+                            fill="transparent"
+                          />
+
+                          {/* Garis bantu vertikal saat di-hover */}
+                          {isHovered && (
+                            <line
+                              x1={p.x}
+                              y1={padT}
+                              x2={p.x}
+                              y2={padT + plotH}
+                              stroke="#64748b"
+                              strokeWidth="1"
+                              strokeDasharray="2 2"
+                              className="opacity-50"
+                            />
+                          )}
+
+                          {/* Dots untuk Izin */}
+                          {visibleTrendLines.izin && (
+                            <circle
+                              cx={p.x}
+                              cy={pointsIzin[idx].y}
+                              r={isHovered ? 5 : 2.5}
+                              fill={isHovered ? '#3b82f6' : '#ffffff'}
+                              stroke="#3b82f6"
+                              strokeWidth={isHovered ? 2 : 1.5}
+                              className="transition-all duration-150"
+                            />
+                          )}
+
+                          {/* Dots untuk Sakit */}
+                          {visibleTrendLines.sakit && (
+                            <circle
+                              cx={p.x}
+                              cy={pointsSakit[idx].y}
+                              r={isHovered ? 5 : 2.5}
+                              fill={isHovered ? '#f97316' : '#ffffff'}
+                              stroke="#f97316"
+                              strokeWidth={isHovered ? 2 : 1.5}
+                              className="transition-all duration-150"
+                            />
+                          )}
+
+                          {/* Dots untuk Alpha */}
+                          {visibleTrendLines.alpha && (
+                            <circle
+                              cx={p.x}
+                              cy={pointsAlpha[idx].y}
+                              r={isHovered ? 5 : 2.5}
+                              fill={isHovered ? '#ef4444' : '#ffffff'}
+                              stroke="#ef4444"
+                              strokeWidth={isHovered ? 2 : 1.5}
+                              className="transition-all duration-150"
+                            />
+                          )}
+
+                          {/* Dots untuk Hadir (Paling Depan) */}
+                          {visibleTrendLines.hadir && (
+                            <circle
+                              cx={p.x}
+                              cy={p.y}
+                              r={isHovered ? 6 : 3}
+                              fill={isHovered ? '#10b981' : '#ffffff'}
+                              stroke="#10b981"
+                              strokeWidth={isHovered ? 2.5 : 2}
+                              className="transition-all duration-150"
+                            />
+                          )}
+
+                          {/* Label Sumbu X (Tanggal) */}
+                          {showLabel && (
+                            <text
+                              x={p.x}
+                              y={padT + plotH + 18}
+                              textAnchor="middle"
+                              className={`text-[9px] font-semibold transition-colors ${
+                                isHovered
+                                  ? 'fill-emerald-600 dark:fill-emerald-400 font-bold'
+                                  : 'fill-slate-400 dark:fill-slate-500'
+                              }`}
+                            >
+                              {displayLabel}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+              );
+            })()
+          )}
+        </div>
+
         {/* Tabel Detail Riwayat Kehadiran (Foto 2) */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -548,9 +1162,11 @@ function RekapPreviewContent() {
             <span>Dokumen ini diterbitkan sah oleh Sistem Presensi Terpadu Pondok Pesantren Matholi&apos;ul Anwar.</span>
             <button
               onClick={handleDownloadPdf}
-              className="inline-flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-bold hover:underline cursor-pointer"
+              disabled={isDownloadingPdf}
+              className="inline-flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-bold hover:underline cursor-pointer disabled:opacity-60"
             >
-              <Download size={13} /> Unduh PDF Lengkap
+              {isDownloadingPdf ? <RefreshCw size={13} className="animate-spin" /> : <Download size={13} />}
+              <span>{isDownloadingPdf ? 'Menyiapkan...' : 'Unduh PDF Lengkap'}</span>
             </button>
           </div>
         </div>

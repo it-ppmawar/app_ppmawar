@@ -9,6 +9,15 @@ export interface ExportOptions {
   columns: string[];
   rows: any[][];
   filename: string;
+  chartImg?: string;
+  stats?: {
+    hadir: number;
+    izin: number;
+    sakit: number;
+    alpha: number;
+    total: number;
+    persentase: number;
+  };
 }
 
 /**
@@ -26,27 +35,27 @@ export function sanitizeTextForPDF(text: string): string {
 }
 
 export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }): string | void => {
-  const { title, subtitle, period, columns, rows, filename, previewOnly } = options;
+  const { title, subtitle, period, columns, rows, filename, previewOnly, chartImg, stats } = options;
 
   const doc = new jsPDF();
   
   // Header
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setFont('courier', 'bold');
-  doc.text(sanitizeTextForPDF(title), 105, 18, { align: 'center' });
+  doc.text(sanitizeTextForPDF(title), 105, 16, { align: 'center' });
   
-  doc.setFontSize(9.5);
+  doc.setFontSize(9);
   doc.setFont('courier', 'normal');
   
   // Info
-  let startY = 26;
+  let startY = 24;
   if (subtitle) {
     const cleanSubtitle = sanitizeTextForPDF(subtitle);
     const subLines = cleanSubtitle.split('\n');
     subLines.forEach(line => {
       if (line.trim()) {
         doc.text(line.trim(), 14, startY);
-        startY += 5;
+        startY += 4.5;
       }
     });
   }
@@ -56,9 +65,73 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
     periodLines.forEach(line => {
       if (line.trim()) {
         doc.text(`Periode: ${line.trim()}`, 14, startY);
-        startY += 5;
+        startY += 4.5;
       }
     });
+  }
+
+  // Ringkasan Statistik Presensi jika disediakan
+  if (stats) {
+    startY += 1;
+    doc.setFontSize(9);
+    doc.setFont('courier', 'bold');
+    doc.text('I. RINGKASAN KEHADIRAN:', 14, startY);
+    startY += 2.5;
+
+    const statsHead = [['Hadir', 'Izin', 'Sakit', 'Alpha', 'Total Sesi', 'Tingkat Kehadiran']];
+    const statsBody = [[
+      `${stats.hadir} sesi`,
+      `${stats.izin} sesi`,
+      `${stats.sakit} sesi`,
+      `${stats.alpha} sesi`,
+      `${stats.total} sesi`,
+      `${stats.persentase}% ${stats.persentase >= 85 ? '(Disiplin Baik)' : '(Perlu Ditingkatkan)'}`
+    ]];
+
+    autoTable(doc, {
+      head: statsHead,
+      body: statsBody,
+      startY: startY,
+      theme: 'grid',
+      styles: { font: 'courier', fontSize: 7.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1, halign: 'center' },
+      headStyles: { font: 'courier', fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0], halign: 'center' },
+      bodyStyles: { font: 'courier' }
+    });
+
+    startY = (doc as any).lastAutoTable.finalY + 5;
+  }
+
+  // Sisipkan Gambar Grafik Tren jika disediakan
+  if (chartImg) {
+    if (startY > 200) {
+      doc.addPage();
+      startY = 18;
+    }
+    doc.setFontSize(9);
+    doc.setFont('courier', 'bold');
+    doc.text(`${stats ? 'II' : 'I'}. GRAFIK TREN KEHADIRAN HARIAN (%):`, 14, startY);
+    startY += 3;
+
+    try {
+      doc.addImage(chartImg, 'PNG', 14, startY, 182, 58);
+      startY += 62;
+    } catch (e) {
+      console.warn('Gagal menyisipkan grafik ke dokumen PDF:', e);
+    }
+  }
+
+  // Jika posisi Y sudah terlalu dekat ke batas bawah halaman, buat halaman baru untuk tabel rincian
+  if (startY > 230) {
+    doc.addPage();
+    startY = 18;
+  }
+
+  if (stats || chartImg) {
+    doc.setFontSize(9);
+    doc.setFont('courier', 'bold');
+    const sectionNum = (stats && chartImg) ? 'III' : (stats || chartImg) ? 'II' : '';
+    doc.text(`${sectionNum}. CATATAN RINCIAN PRESENSI SESI:`, 14, startY);
+    startY += 3;
   }
 
   const cleanColumns = columns.map(c => typeof c === 'string' ? sanitizeTextForPDF(c) : c);
@@ -67,12 +140,22 @@ export const exportToPDF = (options: ExportOptions & { previewOnly?: boolean }):
   autoTable(doc, {
     head: [cleanColumns],
     body: cleanRows,
-    startY: startY + 2,
+    startY: startY + (stats || chartImg ? 0 : 2),
     theme: 'grid',
     styles: { font: 'courier', fontSize: 8, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1 },
-    headStyles: { font: 'courier', fillColor: [255, 255, 255], fontStyle: 'bold', textColor: [0, 0, 0] }, // Formal white design
+    headStyles: { font: 'courier', fillColor: [240, 240, 240], fontStyle: 'bold', textColor: [0, 0, 0] },
     bodyStyles: { font: 'courier' }
   });
+
+  // Footer Penomoran Halaman Dokumen
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7.5);
+    doc.setFont('courier', 'normal');
+    doc.text(`Halaman ${i} dari ${totalPages}`, 196, 287, { align: 'right' });
+    doc.text("Sistem Informasi Akademik & Presensi PP Matholi'ul Anwar", 14, 287);
+  }
 
   if (previewOnly) {
     const blobURL = doc.output('bloburl');
