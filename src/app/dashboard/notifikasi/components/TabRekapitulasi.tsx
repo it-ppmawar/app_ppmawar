@@ -84,6 +84,24 @@ export default function TabRekapitulasi({
   setSentRekapWaIds,
   getWaWaliRekapLink,
 }: TabRekapitulasiProps) {
+  const [waFilter, setWaFilter] = React.useState<'semua' | 'ada' | 'tidak_ada'>('semua');
+  const [autoScrollRekap, setAutoScrollRekap] = React.useState<boolean>(true);
+
+  const handleScrollToNextRekap = (nextIdx: number) => {
+    if (!autoScrollRekap) return;
+    setTimeout(() => {
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const targetId = isMobile ? `rekap-card-${nextIdx}` : `rekap-row-${nextIdx}`;
+      let el = document.getElementById(targetId);
+      if (!el || el.offsetParent === null) {
+        el = document.getElementById(isMobile ? `rekap-row-${nextIdx}` : `rekap-card-${nextIdx}`);
+      }
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 120);
+  };
+
   return (
     <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
       {/* Kartu 6 Filter Persis Halaman Rekapitulasi */}
@@ -394,7 +412,7 @@ export default function TabRekapitulasi({
           <p>Pilih kelas/kamar dan periode di atas, lalu klik tombol <strong>&quot;Tampilkan Data Rekap&quot;</strong>.</p>
         </div>
       ) : (() => {
-        const filteredList = rekapData.filter(item => {
+        const searchFiltered = rekapData.filter(item => {
           if (!rekapSearchNama.trim()) return true;
           const q = rekapSearchNama.toLowerCase();
           return (item.nama && item.nama.toLowerCase().includes(q)) ||
@@ -403,7 +421,99 @@ export default function TabRekapitulasi({
                  (item.nama_wali && item.nama_wali.toLowerCase().includes(q));
         });
 
-        if (filteredList.length === 0) {
+        const totalCount = searchFiltered.length;
+        const adaWaCount = searchFiltered.filter(item => {
+          const waLink = getWaWaliRekapLink(item);
+          return waLink !== '#';
+        }).length;
+        const tidakAdaWaCount = totalCount - adaWaCount;
+
+        const filteredList = searchFiltered.filter(item => {
+          if (waFilter === 'semua') return true;
+          const waLink = getWaWaliRekapLink(item);
+          const hasWa = waLink !== '#';
+          if (waFilter === 'ada') return hasWa;
+          if (waFilter === 'tidak_ada') return !hasWa;
+          return true;
+        });
+
+        const renderControls = () => (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-2xs">
+            {/* Tab Filter Nomor WA */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setWaFilter('semua')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  waFilter === 'semua'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                <span>Semua</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                  waFilter === 'semua' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                }`}>
+                  {totalCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setWaFilter('ada')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  waFilter === 'ada'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                <Phone size={12} className={waFilter === 'ada' ? 'text-white' : 'text-emerald-500'} />
+                <span>Ada No. WA</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                  waFilter === 'ada' ? 'bg-white/20 text-white' : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                }`}>
+                  {adaWaCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setWaFilter('tidak_ada')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  waFilter === 'tidak_ada'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                <span>Tanpa No. WA</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                  waFilter === 'tidak_ada' ? 'bg-white/20 text-white' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                }`}>
+                  {tidakAdaWaCount}
+                </span>
+              </button>
+            </div>
+
+            {/* Toggle Auto-scroll Rekap */}
+            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setAutoScrollRekap(prev => !prev)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  autoScrollRekap
+                    ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 shadow-2xs'
+                    : 'bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 text-gray-400'
+                }`}
+                title="Otomatis bergeser ke bawah pada data berikutnya saat tombol WA Wali diklik untuk memudahkan autoklik"
+              >
+                <span className={`w-2 h-2 rounded-full ${autoScrollRekap ? 'bg-purple-600 animate-pulse' : 'bg-gray-400'}`} />
+                <span>Auto-scroll {autoScrollRekap ? 'Aktif' : 'Mati'}</span>
+              </button>
+            </div>
+          </div>
+        );
+
+        if (totalCount === 0) {
           return (
             <div className="p-8 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-900/30 rounded-2xl">
               Tidak ada santri yang cocok dengan filter pencarian &quot;{rekapSearchNama}&quot;.
@@ -411,8 +521,20 @@ export default function TabRekapitulasi({
           );
         }
 
+        if (filteredList.length === 0) {
+          return (
+            <div className="space-y-3">
+              {renderControls()}
+              <div className="p-8 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-900/30 rounded-2xl">
+                Tidak ada data santri pada kategori filter {waFilter === 'ada' ? '"Ada No. WA"' : '"Tanpa No. WA"'}.
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="space-y-3">
+            {renderControls()}
             <div className="flex items-center justify-between text-xs text-gray-500 px-1">
               <span>
                 Menampilkan <strong className="text-gray-800 dark:text-gray-200">{filteredList.length}</strong> santri untuk disiarkan
@@ -449,7 +571,11 @@ export default function TabRekapitulasi({
                       : `/rekapitulasi/preview?murid_id=${item.id}&tipe=${rekapFilter.tipe}&target_id=${rekapFilter.target_id}`;
 
                     return (
-                      <tr key={item.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <tr
+                        key={item.id || idx}
+                        id={`rekap-row-${idx}`}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors scroll-mt-24"
+                      >
                         <td className="px-5 py-4 font-semibold text-gray-800 dark:text-gray-200">
                           <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">{item.nama}</div>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs">
@@ -465,8 +591,9 @@ export default function TabRekapitulasi({
                         </td>
                         <td className="px-5 py-4 text-gray-600 dark:text-gray-400">
                           <div className="font-medium text-gray-800 dark:text-gray-200">{item.nama_wali || '-'}</div>
-                          <div className="text-xs font-mono mt-0.5 text-gray-500">
-                            {rawPhone || 'Nomor HP tidak ada'}
+                          <div className="text-xs font-mono mt-0.5 text-gray-500 flex items-center gap-1">
+                            <Phone size={12} className="text-gray-400 shrink-0" />
+                            <span>{rawPhone || '-'}</span>
                           </div>
                         </td>
                         <td className="px-5 py-4 text-right space-x-2 whitespace-nowrap">
@@ -488,6 +615,7 @@ export default function TabRekapitulasi({
                               rel="noopener noreferrer"
                               onClick={() => {
                                 setSentRekapWaIds(prev => ({ ...prev, [item.id]: true }));
+                                handleScrollToNextRekap(idx + 1);
                               }}
                               className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
                                 isSent
@@ -527,7 +655,11 @@ export default function TabRekapitulasi({
                   : `/rekapitulasi/preview?murid_id=${item.id}&tipe=${rekapFilter.tipe}&target_id=${rekapFilter.target_id}`;
 
                 return (
-                  <div key={item.id || idx} className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-xs space-y-3">
+                  <div
+                    key={item.id || idx}
+                    id={`rekap-card-${idx}`}
+                    className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-xs space-y-3 scroll-mt-24"
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <h5 className="font-bold text-sm text-gray-900 dark:text-gray-100">{item.nama}</h5>
@@ -570,7 +702,7 @@ export default function TabRekapitulasi({
                         {/* No. HP Sebelah Kanan */}
                         <div className="flex items-center justify-end gap-1 font-mono text-xs text-gray-500 dark:text-gray-400 shrink-0 text-right">
                           <Phone size={12} className="text-gray-400 shrink-0" />
-                          <span className="truncate max-w-[125px]">{rawPhone || 'Nomor HP tidak ada'}</span>
+                          <span className="truncate max-w-[125px]">{rawPhone || '-'}</span>
                         </div>
                       </div>
 
@@ -594,6 +726,7 @@ export default function TabRekapitulasi({
                             rel="noopener noreferrer"
                             onClick={() => {
                               setSentRekapWaIds(prev => ({ ...prev, [item.id]: true }));
+                              handleScrollToNextRekap(idx + 1);
                             }}
                             className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs ${
                               isSent

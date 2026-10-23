@@ -2580,7 +2580,7 @@ export default function RekapitulasiPage() {
             </div>
 
             {/* Filter Tabs Status */}
-            <div className="px-4 sm:px-6 py-2.5 bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center gap-x-2 gap-y-2 w-full">
+            <div className="px-4 sm:px-6 py-2.5 bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-center gap-x-2 gap-y-2 w-full text-center">
               {[
                 { id: 'semua', label: 'Semua Status', count: detailModal.data.length },
                 { id: 'Hadir', label: 'Hadir', count: detailModal.data.filter((d: any) => d.status === 'Hadir').length },

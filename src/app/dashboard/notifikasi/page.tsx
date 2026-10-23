@@ -58,6 +58,22 @@ function NotifikasiContent() {
   const [loadingReminders, setLoadingReminders] = useState(false);
   const [sentReminderIds, setSentReminderIds] = useState<Record<string, boolean>>({});
   const [subTabAuto, setSubTabAuto] = useState<'semua' | 'quran' | 'madin' | 'kamar'>('semua');
+  const [autoScrollGuru, setAutoScrollGuru] = useState<boolean>(true);
+
+  const handleScrollToNextReminder = (nextIdx: number) => {
+    if (!autoScrollGuru) return;
+    setTimeout(() => {
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const targetId = isMobile ? `reminder-card-${nextIdx}` : `reminder-row-${nextIdx}`;
+      let el = document.getElementById(targetId);
+      if (!el || el.offsetParent === null) {
+        el = document.getElementById(isMobile ? `reminder-row-${nextIdx}` : `reminder-card-${nextIdx}`);
+      }
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 120);
+  };
 
   const [showAllWaliData, setShowAllWaliData] = useState(false);
   const [showAllInfoGuru, setShowAllInfoGuru] = useState(false);
@@ -1929,10 +1945,25 @@ function NotifikasiContent() {
                     </div>
                   )}
 
-                  <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold mb-3 flex items-center gap-1.5">
-                    <AlertTriangle size={13} className="animate-pulse" />
-                    {activeReminders.length} guru/pengurus belum mengisi absensi pada jadwal aktif saat ini.
-                  </p>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1.5">
+                      <AlertTriangle size={13} className="animate-pulse" />
+                      {activeReminders.length} guru/pengurus belum mengisi absensi pada jadwal aktif saat ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setAutoScrollGuru(prev => !prev)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                        autoScrollGuru
+                          ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 shadow-2xs'
+                          : 'bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 text-gray-400'
+                      }`}
+                      title="Otomatis bergeser ke bawah pada data berikutnya saat tombol kirim diklik untuk memudahkan autoklik"
+                    >
+                      <span className={`w-2 h-2 rounded-full ${autoScrollGuru ? 'bg-amber-500 animate-pulse' : 'bg-gray-400'}`} />
+                      <span>Auto-scroll {autoScrollGuru ? 'Aktif' : 'Mati'}</span>
+                    </button>
+                  </div>
                   {/* Sub-tab Switcher: Pilihan tab Semua, Kelas Qur'an, Kelas Madin, Kamar/Asrama */}
                   <div id="tab-pilihan-pengingat" className="flex flex-col gap-2 mb-4 scroll-mt-20">
                     {/* Semua — Baris tersendiri di atas, memanjang secara penuh */}
@@ -2018,15 +2049,19 @@ function NotifikasiContent() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                              {filteredActiveReminders.map(r => {
+                              {filteredActiveReminders.map((r, idx) => {
                                 const reminderKey = `${r.tipe}_${r.jadwal_id}_${new Date().toLocaleDateString()}`;
                                 const isSent = sentReminderIds[reminderKey];
                                 const isSendingSingle = sendingSingleKey === reminderKey;
                                 const tipeLabel = r.tipe === 'madin' ? 'Madin' : r.tipe === 'quran' ? "Al-Qur'an" : 'Asrama';
                                 return (
-                                  <tr key={reminderKey} className={`transition-colors ${
-                                    isSent ? 'bg-green-50/60 dark:bg-green-900/10' : 'hover:bg-amber-50/40 dark:hover:bg-amber-900/10'
-                                  }`}>
+                                  <tr
+                                    key={reminderKey}
+                                    id={`reminder-row-${idx}`}
+                                    className={`transition-colors scroll-mt-24 ${
+                                      isSent ? 'bg-green-50/60 dark:bg-green-900/10' : 'hover:bg-amber-50/40 dark:hover:bg-amber-900/10'
+                                    }`}
+                                  >
                                     <td className="px-4 py-3">
                                       <div className="font-semibold text-gray-800 dark:text-gray-200">{r.guru_nama}</div>
                                       <div className="text-[11px] text-gray-400 font-mono">{r.guru_whatsapp || 'No HP Kosong'}</div>
@@ -2053,7 +2088,10 @@ function NotifikasiContent() {
                                           {/* Tombol Auto WA Scheduler */}
                                           <button
                                             type="button"
-                                            onClick={() => handleSingleScheduleWA(r)}
+                                            onClick={() => {
+                                              handleSingleScheduleWA(r);
+                                              handleScrollToNextReminder(idx + 1);
+                                            }}
                                             disabled={isSendingSingle}
                                             title="Jadwalkan otomatis via WA Scheduler"
                                             className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 ${
@@ -2071,7 +2109,10 @@ function NotifikasiContent() {
                                             href={getWaGuruReminderLink(r)}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            onClick={() => markReminderAsSent(reminderKey)}
+                                            onClick={() => {
+                                              markReminderAsSent(reminderKey);
+                                              handleScrollToNextReminder(idx + 1);
+                                            }}
                                             title="Kirim manual via tautan wa.me"
                                             className="inline-flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
                                           >
@@ -2092,15 +2133,19 @@ function NotifikasiContent() {
 
                         {/* Tampilan Mobile (Kartu Bertumpuk) */}
                         <div className="block md:hidden space-y-4">
-                          {filteredActiveReminders.map(r => {
+                          {filteredActiveReminders.map((r, idx) => {
                             const reminderKey = `${r.tipe}_${r.jadwal_id}_${new Date().toLocaleDateString()}`;
                             const isSent = sentReminderIds[reminderKey];
                             const isSendingSingle = sendingSingleKey === reminderKey;
                             const tipeLabel = r.tipe === 'madin' ? 'Madin' : r.tipe === 'quran' ? "Al-Qur'an" : 'Asrama';
                             return (
-                              <div key={reminderKey} className={`bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border transition-colors ${
-                                isSent ? 'border-green-200 dark:border-green-800 bg-green-50/10 dark:bg-green-900/10' : 'border-gray-100 dark:border-gray-700'
-                              } space-y-3.5`}>
+                              <div
+                                key={reminderKey}
+                                id={`reminder-card-${idx}`}
+                                className={`bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border transition-colors scroll-mt-24 ${
+                                  isSent ? 'border-green-200 dark:border-green-800 bg-green-50/10 dark:bg-green-900/10' : 'border-gray-100 dark:border-gray-700'
+                                } space-y-3.5`}
+                              >
                                 <div className="flex justify-between items-start">
                                   <div>
                                     <div className="font-extrabold text-gray-900 dark:text-white text-base leading-tight">{r.guru_nama}</div>
@@ -2135,7 +2180,10 @@ function NotifikasiContent() {
                                     <>
                                       <button
                                         type="button"
-                                        onClick={() => handleSingleScheduleWA(r)}
+                                        onClick={() => {
+                                          handleSingleScheduleWA(r);
+                                          handleScrollToNextReminder(idx + 1);
+                                        }}
                                         disabled={isSendingSingle}
                                         className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 disabled:opacity-50 ${
                                           isSent
@@ -2150,7 +2198,10 @@ function NotifikasiContent() {
                                         href={getWaGuruReminderLink(r)}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        onClick={() => markReminderAsSent(reminderKey)}
+                                        onClick={() => {
+                                          markReminderAsSent(reminderKey);
+                                          handleScrollToNextReminder(idx + 1);
+                                        }}
                                         className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700/60 hover:bg-gray-200 transition-all active:scale-95"
                                       >
                                         <MessageCircle size={13} className="text-[#25D366]" />

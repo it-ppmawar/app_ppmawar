@@ -12,10 +12,8 @@ const AVATAR_COLORS = [
 
 const getInitials = (nama: string): string => {
   if (!nama) return '?';
-  const parts = nama.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return parts.slice(0, 3).map(p => p[0]).join('').toUpperCase();
-  }
+  const words = nama.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
   return nama.substring(0, 2).toUpperCase();
 };
 
