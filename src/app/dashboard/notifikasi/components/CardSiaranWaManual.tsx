@@ -181,10 +181,10 @@ export default function CardSiaranWaManual({
 
       {/* Mode Selector for Siaran WA Manual */}
       {(role === 'admin' || role === 'staff' || role === 'guru') && (
-        <div className="flex bg-gray-50 dark:bg-gray-900/50 p-1 rounded-xl border border-gray-150/50 dark:border-gray-700/50 mb-6 gap-1">
+        <div className="flex flex-wrap bg-gray-50 dark:bg-gray-900/50 p-1 rounded-xl border border-gray-150/50 dark:border-gray-700/50 mb-6 gap-1">
           <button
             onClick={() => setManualMode('absensi')}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
+            className={`flex-1 basis-[calc(50%-2px)] sm:basis-0 py-2.5 text-xs font-bold rounded-lg transition-all ${
               manualMode === 'absensi'
                 ? 'bg-green-600 text-white shadow-sm'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
@@ -199,7 +199,7 @@ export default function CardSiaranWaManual({
                 loadRekapOptions(rekapFilter.tipe);
               }
             }}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
+            className={`flex-1 basis-[calc(50%-2px)] sm:basis-0 py-2.5 text-xs font-bold rounded-lg transition-all ${
               manualMode === 'rekapitulasi'
                 ? 'bg-purple-600 text-white shadow-sm'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
@@ -210,7 +210,7 @@ export default function CardSiaranWaManual({
           {(role === 'admin' || role === 'staff') && (
             <button
               onClick={() => setManualMode('info_akun')}
-              className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
+              className={`flex-1 basis-[calc(50%-2px)] sm:basis-0 py-2.5 text-xs font-bold rounded-lg transition-all ${
                 manualMode === 'info_akun'
                   ? 'bg-green-600 text-white shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'
@@ -234,7 +234,7 @@ export default function CardSiaranWaManual({
                     .finally(() => setLoadingBilling(false));
                 }
               }}
-              className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${
+              className={`flex-1 basis-[calc(50%-2px)] sm:basis-0 py-2.5 text-xs font-bold rounded-lg transition-all ${
                 manualMode === 'pembayaran'
                   ? 'bg-orange-500 text-white shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/30'

@@ -176,7 +176,7 @@ function RekapPreviewContent() {
           <h3 className="text-lg font-bold text-gray-800">Informasi Tidak Dapat Ditampilkan</h3>
           <p className="text-xs text-gray-600 mt-2 leading-relaxed">{error || 'Data santri tidak ditemukan.'}</p>
           <div className="mt-6 pt-4 border-t border-gray-100 w-full text-center">
-            <p className="text-[11px] text-gray-400">Pondok Pesantren Ma&apos;hadul Qur&apos;an wal Lughah (PPMA)</p>
+            <p className="text-[11px] text-gray-400">Pondok Pesantren Matholi&apos;ul Anwar (PPMA)</p>
           </div>
         </div>
       </div>

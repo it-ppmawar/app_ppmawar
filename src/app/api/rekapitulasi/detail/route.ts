@@ -434,7 +434,7 @@ export async function GET(request: Request) {
     if (murid_id) {
       try {
         const [mRows]: any = await pool.execute(
-          `SELECT m.murid_id, m.nama, m.nis, m.nama_wali, m.no_hp_wali, m.foto, m.jenis_kelamin,
+          `SELECT m.murid_id, m.nama, m.nis, m.nama_wali, m.no_wali as no_hp_wali, m.foto, m.jenis_kelamin,
                   km.nama_kelas as kelas_madin, kq.nama_kelas as kelas_quran, k.nama_kamar
            FROM murid m
            LEFT JOIN kelas_madin km ON (m.kelas_madin_id = km.kelas_id OR m.kelas_madin_2_id = km.kelas_id)

@@ -87,14 +87,9 @@ export default function TabRekapitulasi({
       {/* Kartu 6 Filter Persis Halaman Rekapitulasi */}
       <div className="bg-purple-50/40 dark:bg-purple-950/20 border border-purple-150/60 dark:border-purple-900/30 rounded-2xl p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-purple-100/70 dark:border-purple-900/40 pb-3">
-          <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
-              <FileText size={15} />
-            </span>
-            <div>
-              <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 leading-tight">Filter Rekapitulasi Presensi</h4>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">Pilih kriteria kelas, mapel/kegiatan, dan periode waktu yang ingin disiarkan ke wali murid</p>
-            </div>
+          <div>
+            <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 leading-tight">Filter Rekapitulasi Presensi</h4>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">Pilih kriteria kelas, mapel/kegiatan, dan periode waktu yang ingin disiarkan ke wali murid</p>
           </div>
         </div>
 
@@ -333,9 +328,9 @@ export default function TabRekapitulasi({
 
       {/* Templat Pesan WA Rekapitulasi */}
       <div className="bg-purple-50/20 dark:bg-purple-950/10 border border-purple-200/40 dark:border-purple-900/20 rounded-2xl p-4">
-        <label className="block text-xs font-bold text-purple-900 dark:text-purple-300 mb-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+        <label className="block text-xs font-bold text-purple-900 dark:text-purple-300 mb-1.5 flex flex-col gap-1">
           <span>✏️ Edit Templat Pesan Rekapitulasi untuk Wali Murid</span>
-          <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500">Placeholder: &#123;nama_santri&#125;, &#123;nis&#125;, &#123;tipe&#125;, &#123;kelas&#125;, &#123;sub_filter&#125;, &#123;periode&#125;, &#123;hadir&#125;, &#123;izin&#125;, &#123;sakit&#125;, &#123;alpha&#125;, &#123;persentase&#125;, &#123;link_rekap&#125;, &#123;masa_berlaku&#125;, &#123;batas_waktu&#125;</span>
+          <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500 leading-relaxed">Placeholder: &#123;nama_santri&#125;, &#123;nis&#125;, &#123;tipe&#125;, &#123;kelas&#125;, &#123;sub_filter&#125;, &#123;periode&#125;, &#123;hadir&#125;, &#123;izin&#125;, &#123;sakit&#125;, &#123;alpha&#125;, &#123;persentase&#125;, &#123;link_rekap&#125;, &#123;masa_berlaku&#125;, &#123;batas_waktu&#125;</span>
         </label>
         <textarea
           value={pesanRekapWaliTemplate}
