@@ -363,41 +363,52 @@ function RekapPreviewContent() {
         </div>
 
         {/* Ringkasan Statistik Presensi */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
-            <div className="flex items-center justify-between text-emerald-600 mb-1">
-              <span className="text-xs font-bold">Hadir</span>
-              <CheckCircle2 size={16} />
+        <div className="space-y-3">
+          {/* Kartu Hadir - 1 Baris Tersendiri Memenuhi Ruang Kanan & Kiri */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs flex items-center justify-between transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={22} />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">Hadir</span>
+                <span className="text-[11px] text-slate-400 font-medium">Kehadiran Sesi Presensi</span>
+              </div>
             </div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">{stats.hadir}</div>
-            <span className="text-[10px] text-slate-400">Pertemuan</span>
+            <div className="text-right">
+              <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-none">{stats.hadir}</span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">Pertemuan</span>
+            </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
-            <div className="flex items-center justify-between text-blue-600 mb-1">
-              <span className="text-xs font-bold">Izin</span>
-              <FileText size={16} />
+          {/* Kartu Izin, Sakit, Alpha - 1 Baris Berdampingan (3 Kolom) */}
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4 shadow-xs transition-colors">
+              <div className="flex items-center justify-between text-blue-600 dark:text-blue-400 mb-1">
+                <span className="text-xs font-bold">Izin</span>
+                <FileText size={16} />
+              </div>
+              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{stats.izin}</div>
+              <span className="text-[10px] text-slate-400">Pertemuan</span>
             </div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">{stats.izin}</div>
-            <span className="text-[10px] text-slate-400">Pertemuan</span>
-          </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
-            <div className="flex items-center justify-between text-amber-600 mb-1">
-              <span className="text-xs font-bold">Sakit</span>
-              <AlertCircle size={16} />
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4 shadow-xs transition-colors">
+              <div className="flex items-center justify-between text-amber-600 dark:text-amber-400 mb-1">
+                <span className="text-xs font-bold">Sakit</span>
+                <AlertCircle size={16} />
+              </div>
+              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{stats.sakit}</div>
+              <span className="text-[10px] text-slate-400">Pertemuan</span>
             </div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">{stats.sakit}</div>
-            <span className="text-[10px] text-slate-400">Pertemuan</span>
-          </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
-            <div className="flex items-center justify-between text-rose-600 mb-1">
-              <span className="text-xs font-bold">Alpha</span>
-              <XCircle size={16} />
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4 shadow-xs transition-colors">
+              <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 mb-1">
+                <span className="text-xs font-bold">Alpha</span>
+                <XCircle size={16} />
+              </div>
+              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{stats.alpha}</div>
+              <span className="text-[10px] text-slate-400">Pertemuan</span>
             </div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white">{stats.alpha}</div>
-            <span className="text-[10px] text-slate-400">Pertemuan</span>
           </div>
         </div>
 

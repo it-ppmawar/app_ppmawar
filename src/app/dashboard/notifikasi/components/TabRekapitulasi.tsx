@@ -558,25 +558,32 @@ export default function TabRekapitulasi({
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs">
-                      <div className="text-gray-500">
-                        <span className="text-[10px] text-gray-400 block">Wali Murid</span>
-                        <span className="font-bold text-gray-800 dark:text-gray-200">{item.nama_wali || '-'}</span>
-                        <div className="text-[11px] text-gray-400 font-mono mt-0.5">
-                          {rawPhone || 'Nomor HP tidak ada'}
+                    <div className="pt-2.5 border-t border-gray-100 dark:border-gray-700/60 space-y-2.5">
+                      {/* Baris No. HP (Kiri) dan Nama Wali Murid (Rata Kanan) */}
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-1.5 font-mono text-xs text-gray-600 dark:text-gray-300 shrink-0">
+                          <Phone size={13} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                          <span>{rawPhone || 'Nomor HP tidak ada'}</span>
+                        </div>
+                        <div className="text-right min-w-0 truncate text-xs text-gray-800 dark:text-gray-200">
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium mr-1">Wali:</span>
+                          <strong className="font-bold">{item.nama_wali || '-'}</strong>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
+
+                      {/* Baris Tombol PDF dan WA Wali - Dibawah Baris No. HP Sama Rata Secara Presisi (50% - 50%) */}
+                      <div className="grid grid-cols-2 gap-2 w-full pt-0.5">
                         <a
                           href={previewUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+                          className="w-full py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200/80 dark:border-slate-600 shadow-2xs"
                           title="Lihat PDF"
                         >
-                          <FileText size={13} className="text-purple-600" />
-                          <span>PDF</span>
+                          <FileText size={14} className="text-purple-600 dark:text-purple-400" />
+                          <span>Lihat PDF</span>
                         </a>
+
                         {hasWa ? (
                           <a
                             href={waLink}
@@ -585,17 +592,19 @@ export default function TabRekapitulasi({
                             onClick={() => {
                               setSentRekapWaIds(prev => ({ ...prev, [item.id]: true }));
                             }}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-xs ${
+                            className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs ${
                               isSent
                                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-500'
-                                : 'bg-green-600 text-white'
+                                : 'bg-green-600 hover:bg-green-700 text-white'
                             }`}
                           >
-                            <MessageCircle size={13} />
-                            <span>{isSent ? 'Terkirim' : 'WA Wali'}</span>
+                            <MessageCircle size={14} />
+                            <span>{isSent ? 'Terkirim ✓' : 'WA Wali'}</span>
                           </a>
                         ) : (
-                          <span className="text-[10px] text-gray-400 italic">No WA -</span>
+                          <div className="w-full py-2 rounded-xl text-xs font-bold text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 border border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center gap-1 italic">
+                            <span>No WA Kosong</span>
+                          </div>
                         )}
                       </div>
                     </div>
