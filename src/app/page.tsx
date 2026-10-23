@@ -171,7 +171,7 @@ export default function LoginPage() {
           {/* Sistem Aplikasi Layanan Akademik — medium (badan piramid) */}
           <h2
             className="text-white font-bold animate-[fadeIn_1.2s_ease-out] mb-1 sm:mb-1.5 text-center"
-            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.65rem, 2.95vw, 0.88rem)', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}
+            style={{ fontFamily: '"Courier New", Courier, monospace', fontSize: 'clamp(0.65rem, 2.95vw, 0.88rem)', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}
           >
             Sistem Aplikasi Layanan Akademik
           </h2>
