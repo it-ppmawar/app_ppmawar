@@ -438,30 +438,31 @@ export default function TabRekapitulasi({
         });
 
         const renderControls = () => (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-2xs">
-            {/* Tab Filter Nomor WA */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setWaFilter('semua')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                  waFilter === 'semua'
-                    ? 'bg-purple-600 text-white shadow-sm'
-                    : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
-              >
-                <span>Semua</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
-                  waFilter === 'semua' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-                }`}>
-                  {totalCount}
-                </span>
-              </button>
+          <div className="flex flex-col gap-2 p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-2xs">
+            {/* Baris 1: Semua — melebar penuh */}
+            <button
+              type="button"
+              onClick={() => setWaFilter('semua')}
+              className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                waFilter === 'semua'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              <span>Semua</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                waFilter === 'semua' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+              }`}>
+                {totalCount}
+              </span>
+            </button>
 
+            {/* Baris 2: Ada No. WA & Tanpa No. WA — sama rata 50/50 */}
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setWaFilter('ada')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   waFilter === 'ada'
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -469,7 +470,7 @@ export default function TabRekapitulasi({
               >
                 <Phone size={12} className={waFilter === 'ada' ? 'text-white' : 'text-emerald-500'} />
                 <span>Ada No. WA</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
                   waFilter === 'ada' ? 'bg-white/20 text-white' : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
                 }`}>
                   {adaWaCount}
@@ -479,14 +480,14 @@ export default function TabRekapitulasi({
               <button
                 type="button"
                 onClick={() => setWaFilter('tidak_ada')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   waFilter === 'tidak_ada'
                     ? 'bg-amber-600 text-white shadow-sm'
                     : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
                 <span>Tanpa No. WA</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
                   waFilter === 'tidak_ada' ? 'bg-white/20 text-white' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
                 }`}>
                   {tidakAdaWaCount}
@@ -494,12 +495,12 @@ export default function TabRekapitulasi({
               </button>
             </div>
 
-            {/* Toggle Auto-scroll Rekap */}
-            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+            {/* Baris 3: Auto-scroll — rata tengah */}
+            <div className="flex items-center justify-center">
               <button
                 type="button"
                 onClick={() => setAutoScrollRekap(prev => !prev)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                   autoScrollRekap
                     ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 shadow-2xs'
                     : 'bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 text-gray-400'

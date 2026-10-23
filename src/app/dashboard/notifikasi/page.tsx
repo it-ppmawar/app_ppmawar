@@ -1945,24 +1945,26 @@ function NotifikasiContent() {
                     </div>
                   )}
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <div className="flex flex-col gap-2 mb-3">
                     <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1.5">
                       <AlertTriangle size={13} className="animate-pulse" />
                       {activeReminders.length} guru/pengurus belum mengisi absensi pada jadwal aktif saat ini.
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => setAutoScrollGuru(prev => !prev)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                        autoScrollGuru
-                          ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 shadow-2xs'
-                          : 'bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 text-gray-400'
-                      }`}
-                      title="Otomatis bergeser ke bawah pada data berikutnya saat tombol kirim diklik untuk memudahkan autoklik"
-                    >
-                      <span className={`w-2 h-2 rounded-full ${autoScrollGuru ? 'bg-amber-500 animate-pulse' : 'bg-gray-400'}`} />
-                      <span>Auto-scroll {autoScrollGuru ? 'Aktif' : 'Mati'}</span>
-                    </button>
+                    <div className="flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setAutoScrollGuru(prev => !prev)}
+                        className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                          autoScrollGuru
+                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 shadow-2xs'
+                            : 'bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 text-gray-400'
+                        }`}
+                        title="Otomatis bergeser ke bawah pada data berikutnya saat tombol kirim diklik untuk memudahkan autoklik"
+                      >
+                        <span className={`w-2 h-2 rounded-full ${autoScrollGuru ? 'bg-amber-500 animate-pulse' : 'bg-gray-400'}`} />
+                        <span>Auto-scroll {autoScrollGuru ? 'Aktif' : 'Mati'}</span>
+                      </button>
+                    </div>
                   </div>
                   {/* Sub-tab Switcher: Pilihan tab Semua, Kelas Qur'an, Kelas Madin, Kamar/Asrama */}
                   <div id="tab-pilihan-pengingat" className="flex flex-col gap-2 mb-4 scroll-mt-20">
