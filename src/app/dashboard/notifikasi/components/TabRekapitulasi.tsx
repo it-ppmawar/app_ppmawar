@@ -16,6 +16,7 @@ export interface RekapFilterState {
 }
 
 export interface TabRekapitulasiProps {
+  availableRekapTipes?: string[];
   rekapSearchNama: string;
   setRekapSearchNama: React.Dispatch<React.SetStateAction<string>>;
   rekapFilter: RekapFilterState;
@@ -50,6 +51,7 @@ export interface TabRekapitulasiProps {
 }
 
 export default function TabRekapitulasi({
+  availableRekapTipes = ['madin', 'quran', 'kegiatan'],
   rekapSearchNama,
   setRekapSearchNama,
   rekapFilter,
@@ -130,9 +132,15 @@ export default function TabRekapitulasi({
               }}
               className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer"
             >
-              <option value="madin">Absensi Madin</option>
-              <option value="quran">Absensi Al-Qur&apos;an</option>
-              <option value="kegiatan">Absensi Kegiatan Asrama</option>
+              {availableRekapTipes.includes('madin') && (
+                <option value="madin">Absensi Madin</option>
+              )}
+              {availableRekapTipes.includes('quran') && (
+                <option value="quran">Absensi Al-Qur&apos;an</option>
+              )}
+              {availableRekapTipes.includes('kegiatan') && (
+                <option value="kegiatan">Absensi Kegiatan Asrama</option>
+              )}
             </select>
           </div>
 

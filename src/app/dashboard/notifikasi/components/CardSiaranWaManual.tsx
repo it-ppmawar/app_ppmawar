@@ -10,6 +10,7 @@ export interface CardSiaranWaManualProps {
   manualMode: 'absensi' | 'rekapitulasi' | 'info_akun' | 'pembayaran';
   setManualMode: React.Dispatch<React.SetStateAction<'absensi' | 'rekapitulasi' | 'info_akun' | 'pembayaran'>>;
   userScheduleTypes: Set<string>;
+  availableRekapTipes?: string[];
 
   // Tab Rekapitulasi props
   rekapSearchNama: string;
@@ -93,6 +94,7 @@ export default function CardSiaranWaManual({
   manualMode,
   setManualMode,
   userScheduleTypes,
+  availableRekapTipes = ['madin', 'quran', 'kegiatan'],
 
   // Rekapitulasi
   rekapSearchNama,
@@ -248,6 +250,7 @@ export default function CardSiaranWaManual({
 
       {manualMode === 'rekapitulasi' ? (
         <TabRekapitulasi
+          availableRekapTipes={availableRekapTipes}
           rekapSearchNama={rekapSearchNama}
           setRekapSearchNama={setRekapSearchNama}
           rekapFilter={rekapFilter}

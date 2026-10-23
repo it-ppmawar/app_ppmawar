@@ -35,6 +35,7 @@ function NotifikasiContent() {
   const [loadingKategori, setLoadingKategori] = useState(false);
   // Tipe jadwal yang dimiliki user yang login (untuk filter kategori siaran WA)
   const [userScheduleTypes, setUserScheduleTypes] = useState<Set<string>>(new Set(['quran', 'madin', 'kamar']));
+  const [availableRekapTipes, setAvailableRekapTipes] = useState<string[]>(['madin', 'quran', 'kegiatan']);
 
   // State untuk Siaran WA ke Guru (Admin/Staff)
   const [guruList, setGuruList] = useState<any[]>([]);
@@ -461,6 +462,28 @@ function NotifikasiContent() {
                     setUserScheduleTypes(types);
                     // Jika tipePesan saat ini tidak ada di jadwal user, ganti ke yang pertama
                     setTipePesan(prev => types.has(prev) ? prev : (Array.from(types)[0] as any));
+                  }
+                }
+              })
+              .catch(() => {});
+
+            // Filter available rekap tipes berdasarkan jadwal guru (sama persis dengan halaman rekapitulasi)
+            fetch('/api/jadwal')
+              .then(r => r.json())
+              .then(jadwalData => {
+                if (jadwalData.success && Array.isArray(jadwalData.data)) {
+                  const activeTipes = (['madin', 'quran', 'kegiatan'] as const).filter(t =>
+                    jadwalData.data.some((j: any) => j.tipe === t)
+                  );
+                  if (activeTipes.length > 0) {
+                    setAvailableRekapTipes(activeTipes);
+                    setRekapFilter(prev => {
+                      const nextTipe = activeTipes.includes(prev.tipe as any) ? prev.tipe : activeTipes[0];
+                      if (nextTipe !== prev.tipe) {
+                        loadRekapOptions(nextTipe);
+                      }
+                      return { ...prev, tipe: nextTipe };
+                    });
                   }
                 }
               })
@@ -1566,6 +1589,7 @@ function NotifikasiContent() {
         manualMode={manualMode}
         setManualMode={setManualMode}
         userScheduleTypes={userScheduleTypes}
+        availableRekapTipes={availableRekapTipes}
         rekapSearchNama={rekapSearchNama}
         setRekapSearchNama={setRekapSearchNama}
         rekapFilter={rekapFilter}

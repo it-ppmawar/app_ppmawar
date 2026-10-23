@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck } from 'lucide-react';
+import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon } from 'lucide-react';
 import { exportToPDF } from '@/lib/exportUtils';
 
 const AVATAR_COLORS = [
@@ -54,6 +54,33 @@ function RekapPreviewContent() {
   const [murid, setMurid] = useState<any>(null);
   const [meta, setMeta] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<string>('semua');
+
+  // Dark/Light Theme State
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        setIsDark(true);
+        document.documentElement.classList.add('dark');
+      } else {
+        setIsDark(false);
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDark) {
+      document.documentElement.classList.remove('dark');
+      localStorage.theme = 'light';
+      setIsDark(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.theme = 'dark';
+      setIsDark(true);
+    }
+  };
 
   useEffect(() => {
     if (!token) {
@@ -188,33 +215,42 @@ function RekapPreviewContent() {
   const fotoSrc = getFotoUrl(murid.foto, murid.nis);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 antialiased pb-16">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-16">
       {/* Top Floating App Bar (Print hidden) */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 shadow-xs print:hidden">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-              <FileText size={18} />
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-slate-900 leading-tight">Rekapitulasi Presensi</h1>
-              <p className="text-[11px] text-slate-500">Pondok Pesantren Mawar</p>
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 shadow-xs rounded-b-2xl print:hidden transition-colors">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
+          {/* Pojok Kiri: Logo Pesantren */}
+          <div className="flex items-center justify-start shrink-0">
+            <div className="bg-white rounded-xl flex items-center justify-center shadow-xs h-9 px-1.5 py-0.5 border border-slate-200 dark:border-slate-700/60">
+              <img src="/logo.png" alt="Logo Lembaga" className="h-full w-auto object-contain" />
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Teks Rata Tengah */}
+          <div className="min-w-0 flex-1 flex flex-col items-center justify-center text-center">
+            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+              <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                Rekapitulasi Presensi
+              </h1>
+              <span className="px-2 py-0.5 text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800/60 rounded-full uppercase tracking-wider shrink-0">
+                {tipeLabel}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 text-center font-medium">
+              Pondok Pesantren Matholi&apos;ul Anwar
+            </p>
+          </div>
+
+          {/* Pojok Kanan: Fitur Mode Gelap / Terang */}
+          <div className="w-8 flex items-center justify-end shrink-0">
             <button
-              onClick={() => window.print()}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
-              title="Cetak Dokumen"
+              type="button"
+              onClick={toggleTheme}
+              className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-300 dark:hover:text-white transition-colors border border-slate-200 dark:border-slate-700/60 shadow-xs cursor-pointer"
+              aria-label="Toggle Mode Gelap/Terang"
+              title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
             >
-              <Printer size={15} /> Cetak
-            </button>
-            <button
-              onClick={handleDownloadPdf}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
-            >
-              <Download size={15} /> Unduh PDF
+              {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-600" />}
             </button>
           </div>
         </div>
@@ -224,13 +260,13 @@ function RekapPreviewContent() {
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         
         {/* Surat / Lembar Identitas Dokumen */}
-        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 sm:p-7 relative overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-5 sm:p-7 relative overflow-hidden transition-colors">
           {/* Aksen Latar Belakang */}
-          <div className="absolute top-0 right-0 w-48 h-48 bg-purple-50 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-48 h-48 bg-purple-50 dark:bg-purple-950/30 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
 
           {/* Header Identitas Lembaga */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 pb-6 border-b border-slate-100 text-center sm:text-left">
-            <div className="w-20 h-20 rounded-2xl bg-purple-50 border-2 border-purple-100 flex items-center justify-center shrink-0 overflow-hidden shadow-xs">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 pb-6 border-b border-slate-100 dark:border-slate-800 text-center sm:text-left">
+            <div className="w-20 h-20 rounded-2xl bg-purple-50 dark:bg-purple-950/50 border-2 border-purple-100 dark:border-purple-800/60 flex items-center justify-center shrink-0 overflow-hidden shadow-xs">
               {fotoSrc ? (
                 <img
                   src={fotoSrc}
@@ -241,32 +277,49 @@ function RekapPreviewContent() {
                   }}
                 />
               ) : (
-                <span className="text-xl font-bold text-purple-700">{initials}</span>
+                <span className="text-xl font-bold text-purple-700 dark:text-purple-300">{initials}</span>
               )}
             </div>
 
             <div className="flex-1 min-w-0">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase tracking-wider mb-1.5">
                 <ShieldCheck size={12} /> Dokumen Resmi Presensi
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
                 {murid.nama}
               </h2>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 mt-2 text-xs text-slate-600">
-                <span className="font-mono">NIS: <strong className="text-slate-800">{murid.nis || '-'}</strong></span>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 mt-2 text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-mono">NIS: <strong className="text-slate-800 dark:text-slate-200">{murid.nis || '-'}</strong></span>
                 <span>•</span>
-                <span>Kelas: <strong className="text-slate-800">{murid.kelas_madin || murid.kelas_quran || murid.nama_kamar || '-'}</strong></span>
+                <span>Kelas: <strong className="text-slate-800 dark:text-slate-200">{murid.kelas_madin || murid.kelas_quran || murid.nama_kamar || '-'}</strong></span>
                 {murid.nama_wali && (
                   <>
                     <span>•</span>
-                    <span>Wali: <strong className="text-slate-800">{murid.nama_wali}</strong></span>
+                    <span>Wali: <strong className="text-slate-800 dark:text-slate-200">{murid.nama_wali}</strong></span>
                   </>
                 )}
               </div>
             </div>
 
+            {/* Action Buttons for Desktop */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0 pt-1 print:hidden">
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer border border-slate-200/80 dark:border-slate-700"
+                title="Cetak Dokumen"
+              >
+                <Printer size={15} /> Cetak
+              </button>
+              <button
+                onClick={handleDownloadPdf}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow transition-all cursor-pointer"
+              >
+                <Download size={15} /> Unduh PDF
+              </button>
+            </div>
+
             {/* Quick Action Button for Mobile */}
-            <div className="sm:hidden w-full pt-3">
+            <div className="sm:hidden w-full pt-3 print:hidden">
               <button
                 onClick={handleDownloadPdf}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-purple-600 text-white rounded-2xl text-xs font-bold shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all"
@@ -278,16 +331,16 @@ function RekapPreviewContent() {
 
           {/* Metadata Kegiatan & Periode */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-5 text-xs">
-            <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-100">
+            <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800">
               <span className="text-[11px] text-slate-400 block mb-0.5 font-medium">Kategori & Jadwal</span>
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
+              <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                 <BookOpen size={14} className="text-purple-600 shrink-0" />
                 {tipeLabel} {meta?.sub_filter ? `(${meta.sub_filter})` : ''}
               </span>
             </div>
-            <div className="bg-slate-50/80 rounded-2xl p-3 border border-slate-100">
+            <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800">
               <span className="text-[11px] text-slate-400 block mb-0.5 font-medium">Periode Rekapitulasi</span>
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
+              <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                 <Calendar size={14} className="text-purple-600 shrink-0" />
                 {periodeLabel}
               </span>
@@ -296,14 +349,14 @@ function RekapPreviewContent() {
 
           {/* Badge Keabsahan & Batas Waktu Token */}
           {meta?.expires_at && (
-            <div className="mt-3 bg-purple-50/60 border border-purple-150/70 rounded-2xl p-2.5 px-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px] text-purple-900">
+            <div className="mt-3 bg-purple-50/60 dark:bg-purple-950/40 border border-purple-150/70 dark:border-purple-800/50 rounded-2xl p-2.5 px-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px] text-purple-900 dark:text-purple-300">
               <span className="flex items-center gap-1.5 font-bold">
                 <ShieldCheck size={14} className="text-purple-600 shrink-0" />
                 <span>Dokumen Resmi Terautentikasi Pesantren</span>
               </span>
-              <span className="flex items-center gap-1 text-slate-500 font-medium">
+              <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-medium">
                 <Clock size={12} className="text-purple-500 shrink-0" />
-                <span>Tautan preview ini berlaku s/d: <strong className="text-purple-700">{new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(new Date(meta.expires_at))}</strong></span>
+                <span>Tautan preview ini berlaku s/d: <strong className="text-purple-700 dark:text-purple-300">{new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(new Date(meta.expires_at))}</strong></span>
               </span>
             </div>
           )}
@@ -311,66 +364,66 @@ function RekapPreviewContent() {
 
         {/* Ringkasan Statistik Presensi */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
             <div className="flex items-center justify-between text-emerald-600 mb-1">
               <span className="text-xs font-bold">Hadir</span>
               <CheckCircle2 size={16} />
             </div>
-            <div className="text-2xl font-black text-slate-900">{stats.hadir}</div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white">{stats.hadir}</div>
             <span className="text-[10px] text-slate-400">Pertemuan</span>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
             <div className="flex items-center justify-between text-blue-600 mb-1">
               <span className="text-xs font-bold">Izin</span>
               <FileText size={16} />
             </div>
-            <div className="text-2xl font-black text-slate-900">{stats.izin}</div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white">{stats.izin}</div>
             <span className="text-[10px] text-slate-400">Pertemuan</span>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
             <div className="flex items-center justify-between text-amber-600 mb-1">
               <span className="text-xs font-bold">Sakit</span>
               <AlertCircle size={16} />
             </div>
-            <div className="text-2xl font-black text-slate-900">{stats.sakit}</div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white">{stats.sakit}</div>
             <span className="text-[10px] text-slate-400">Pertemuan</span>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
             <div className="flex items-center justify-between text-rose-600 mb-1">
               <span className="text-xs font-bold">Alpha</span>
               <XCircle size={16} />
             </div>
-            <div className="text-2xl font-black text-slate-900">{stats.alpha}</div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white">{stats.alpha}</div>
             <span className="text-[10px] text-slate-400">Pertemuan</span>
           </div>
         </div>
 
         {/* Persentase Kehadiran Bar */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="w-full sm:w-auto">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-700">Tingkat Kehadiran:</span>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Tingkat Kehadiran:</span>
               <span className="text-base font-black text-purple-600">{stats.persentase}%</span>
               <span className="text-xs text-slate-400 font-medium">({stats.hadir} dari {stats.total} sesi)</span>
             </div>
-            <div className="w-full sm:w-64 bg-slate-100 rounded-full h-2 mt-2 overflow-hidden flex">
+            <div className="w-full sm:w-64 bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-2 overflow-hidden flex">
               <div className="bg-purple-600 h-full rounded-full transition-all" style={{ width: `${stats.persentase}%` }} />
             </div>
           </div>
 
           {/* Filter Status Selector */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl gap-1 text-[11px] font-bold w-full sm:w-auto overflow-x-auto">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1 text-[11px] font-bold w-full sm:w-auto overflow-x-auto">
             {['semua', 'hadir', 'izin', 'sakit', 'alpha'].map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
                 className={`flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg capitalize transition-all cursor-pointer whitespace-nowrap ${
                   statusFilter === st
-                    ? 'bg-white text-purple-700 shadow-xs font-black'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs font-black'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
                 {st}
@@ -380,9 +433,9 @@ function RekapPreviewContent() {
         </div>
 
         {/* Tabel Detail Riwayat Kehadiran (Foto 2) */}
-        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
               <Calendar size={16} className="text-purple-600" />
               Catatan Rincian Presensi Sesi
             </h3>
@@ -397,7 +450,7 @@ function RekapPreviewContent() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-100 uppercase tracking-wider text-[10px]">
+                  <tr className="bg-slate-50/80 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800 uppercase tracking-wider text-[10px]">
                     <th className="py-3 px-4 w-12 text-center">No</th>
                     <th className="py-3 px-4">Hari, Tanggal</th>
                     <th className="py-3 px-4">Waktu</th>
@@ -406,30 +459,30 @@ function RekapPreviewContent() {
                     <th className="py-3 px-4">Diinput Oleh</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
                   {filteredData.map((row, idx) => {
                     const st = (row.status || '').toLowerCase();
                     const badgeClass =
                       st === 'hadir'
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
                         : st === 'izin'
-                        ? 'bg-blue-100 text-blue-800 border-blue-200'
+                        ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800'
                         : st === 'sakit'
-                        ? 'bg-amber-100 text-amber-800 border-amber-200'
-                        : 'bg-rose-100 text-rose-800 border-rose-200';
+                        ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                        : 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800';
 
                     return (
-                      <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                      <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="py-3 px-4 text-center text-slate-400 font-mono text-[11px]">{idx + 1}</td>
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <div className="font-bold text-slate-900">{row.hari || '-'}</div>
+                          <div className="font-bold text-slate-900 dark:text-white">{row.hari || '-'}</div>
                           <div className="text-[11px] text-slate-400 font-mono">{row.tanggal || '-'}</div>
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-slate-600">
+                        <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-slate-600 dark:text-slate-400">
                           {row.jam_mulai ? `${row.jam_mulai}${row.jam_selesai ? ` - ${row.jam_selesai}` : ''}` : '-'}
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-bold text-slate-800">{row.mata_pelajaran || '-'}</div>
+                          <div className="font-bold text-slate-800 dark:text-slate-200">{row.mata_pelajaran || '-'}</div>
                           {row.keterangan && (
                             <div className="text-[11px] text-slate-400 italic mt-0.5">Ket: {row.keterangan}</div>
                           )}
@@ -439,7 +492,7 @@ function RekapPreviewContent() {
                             {row.status || 'Alpha'}
                           </span>
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap text-slate-600 text-[11px]">
+                        <td className="py-3 px-4 whitespace-nowrap text-slate-600 dark:text-slate-400 text-[11px]">
                           {row.penginput || 'Pengajar'}
                         </td>
                       </tr>
@@ -451,11 +504,11 @@ function RekapPreviewContent() {
           )}
 
           {/* Footer Dokumen */}
-          <div className="p-5 bg-slate-50/60 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-3 text-center sm:text-left">
-            <span>Dokumen ini diterbitkan sah oleh Sistem Presensi Terpadu Pondok Pesantren Mawar.</span>
+          <div className="p-5 bg-slate-50/60 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 gap-3 text-center sm:text-left">
+            <span>Dokumen ini diterbitkan sah oleh Sistem Presensi Terpadu Pondok Pesantren Matholi&apos;ul Anwar.</span>
             <button
               onClick={handleDownloadPdf}
-              className="inline-flex items-center gap-1.5 text-purple-600 font-bold hover:underline cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-bold hover:underline cursor-pointer"
             >
               <Download size={13} /> Unduh PDF Lengkap
             </button>
