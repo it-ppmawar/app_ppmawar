@@ -421,20 +421,15 @@ export default function TabRekapitulasi({
 
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-xs">
-              <table className="w-full text-left text-xs whitespace-nowrap">
-                <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-500 font-bold border-b border-gray-100 dark:border-gray-700 uppercase tracking-wider text-[10px]">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
                   <tr>
-                    <th className="px-4 py-3">Santri</th>
-                    <th className="px-4 py-3 text-center">Hadir</th>
-                    <th className="px-4 py-3 text-center">Izin</th>
-                    <th className="px-4 py-3 text-center">Sakit</th>
-                    <th className="px-4 py-3 text-center">Alpha</th>
-                    <th className="px-4 py-3 text-center">% Kehadiran</th>
-                    <th className="px-4 py-3">Wali Murid & No WA</th>
-                    <th className="px-4 py-3 text-right">Aksi Siaran WA</th>
+                    <th className="px-5 py-4 rounded-l-xl">Nama Santri</th>
+                    <th className="px-5 py-4">Wali Murid</th>
+                    <th className="px-5 py-4 text-right rounded-r-xl">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60 font-medium">
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
                   {filteredList.map((item, idx) => {
                     const hadir = Number(item.hadir || 0);
                     const izin = Number(item.izin || 0);
@@ -443,6 +438,7 @@ export default function TabRekapitulasi({
                     const total = Number(item.total || (hadir + izin + sakit + alpha));
                     const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
                     const waLink = getWaWaliRekapLink(item);
+                    const rawPhone = item.no_wali || item.no_hp_wali || item.no_hp || '';
                     const hasWa = waLink !== '#';
                     const isSent = !!sentRekapWaIds[item.id];
                     const previewUrl = item.preview_token
@@ -450,70 +446,58 @@ export default function TabRekapitulasi({
                       : `/rekapitulasi/preview?murid_id=${item.id}&tipe=${rekapFilter.tipe}&target_id=${rekapFilter.target_id}`;
 
                     return (
-                      <tr key={item.id || idx} className="hover:bg-purple-50/30 dark:hover:bg-purple-950/10 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="font-bold text-gray-900 dark:text-gray-100">{item.nama}</div>
-                          <div className="text-[11px] text-gray-400 font-mono">NIS: {item.identifier || item.nis || '-'}</div>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="inline-block px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 font-bold">{hadir}</span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="inline-block px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 font-bold">{izin}</span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="inline-block px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 font-bold">{sakit}</span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="inline-block px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 font-bold">{alpha}</span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="font-bold text-purple-600 dark:text-purple-400">{persentase}%</div>
-                          <div className="w-16 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 mx-auto mt-1 overflow-hidden">
-                            <div className="bg-purple-600 h-full rounded-full" style={{ width: `${persentase}%` }} />
+                      <tr key={item.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                        <td className="px-5 py-4 font-semibold text-gray-800 dark:text-gray-200">
+                          <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">{item.nama}</div>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs">
+                            <span className="font-mono text-gray-400 text-[11px]">NIS: {item.identifier || item.nis || '-'}</span>
+                            <span className="text-gray-300 dark:text-gray-700">•</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                              {persentase}% Hadir
+                            </span>
+                            <span className="text-[11px] text-gray-500 font-medium">
+                              ({hadir}H · {izin}I · {sakit}S · {alpha}A)
+                            </span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="font-bold text-gray-700 dark:text-gray-200">{item.nama_wali || '-'}</div>
-                          <div className="text-[11px] text-gray-400 font-mono flex items-center gap-1 mt-0.5">
-                            <Phone size={11} className="text-gray-400" />
-                            {item.no_hp_wali || item.no_hp || item.no_wali || '-'}
+                        <td className="px-5 py-4 text-gray-600 dark:text-gray-400">
+                          <div className="font-medium text-gray-800 dark:text-gray-200">{item.nama_wali || '-'}</div>
+                          <div className="text-xs font-mono mt-0.5 text-gray-500">
+                            {rawPhone || 'Nomor HP tidak ada'}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="px-5 py-4 text-right space-x-2 whitespace-nowrap">
+                          <a
+                            href={previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors"
+                            title="Lihat Pratinjau Dokumen PDF"
+                          >
+                            <FileText size={13} className="text-purple-600 shrink-0" />
+                            <span>Lihat PDF</span>
+                          </a>
+
+                          {hasWa ? (
                             <a
-                              href={previewUrl}
+                              href={waLink}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
-                              title="Lihat Pratinjau Dokumen PDF"
+                              onClick={() => {
+                                setSentRekapWaIds(prev => ({ ...prev, [item.id]: true }));
+                              }}
+                              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                                isSent
+                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200'
+                                  : 'bg-green-600 hover:bg-green-700 text-white active:scale-95'
+                              }`}
                             >
-                              <FileText size={13} className="text-purple-600" />
-                              <span>Lihat PDF</span>
+                              <MessageCircle size={14} />
+                              <span>{isSent ? 'Terkirim ✓' : 'WA Wali'}</span>
                             </a>
-
-                            {hasWa ? (
-                              <a
-                                href={waLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={() => {
-                                  setSentRekapWaIds(prev => ({ ...prev, [item.id]: true }));
-                                }}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                                  isSent
-                                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200'
-                                    : 'bg-green-600 hover:bg-green-700 text-white'
-                                }`}
-                              >
-                                <MessageCircle size={13} />
-                                <span>{isSent ? 'Terkirim ✓' : 'WA Wali'}</span>
-                              </a>
-                            ) : (
-                              <span className="text-[11px] text-gray-400 italic px-2">No WA kosong</span>
-                            )}
-                          </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">No WA Kosong</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -532,6 +516,7 @@ export default function TabRekapitulasi({
                 const total = Number(item.total || (hadir + izin + sakit + alpha));
                 const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
                 const waLink = getWaWaliRekapLink(item);
+                const rawPhone = item.no_wali || item.no_hp_wali || item.no_hp || '';
                 const hasWa = waLink !== '#';
                 const isSent = !!sentRekapWaIds[item.id];
                 const previewUrl = item.preview_token
@@ -574,6 +559,9 @@ export default function TabRekapitulasi({
                       <div className="text-gray-500">
                         <span className="text-[10px] text-gray-400 block">Wali Murid</span>
                         <span className="font-bold text-gray-800 dark:text-gray-200">{item.nama_wali || '-'}</span>
+                        <div className="text-[11px] text-gray-400 font-mono mt-0.5">
+                          {rawPhone || 'Nomor HP tidak ada'}
+                        </div>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <a

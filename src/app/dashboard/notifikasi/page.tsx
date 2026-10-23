@@ -982,7 +982,7 @@ function NotifikasiContent() {
   };
 
   const getWaWaliRekapLink = (item: any) => {
-    const rawPhone = item.no_hp_wali || item.no_hp || item.no_wali || '';
+    const rawPhone = item.no_wali || item.no_hp_wali || item.no_hp || '';
     const phone = formatPhoneNumber(rawPhone);
     if (!phone) return '#';
 

@@ -17,14 +17,15 @@ export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
     const { searchParams } = new URL(request.url);
-    const token = cookieStore.get("token")?.value || searchParams.get("token") || searchParams.get("t");
+    const queryToken = searchParams.get("token") || searchParams.get("t");
+    const token = queryToken || cookieStore.get("token")?.value;
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: noCacheHeaders });
 
     const payload = verifyToken(token) as any;
-    if (!payload) return NextResponse.json({ error: "Token invalid" }, { status: 401, headers: noCacheHeaders });
+    if (!payload) return NextResponse.json({ error: "Token invalid atau telah kedaluwarsa" }, { status: 401, headers: noCacheHeaders });
 
     const tipe = payload.tipe || searchParams.get("tipe") || "madin";
-    let murid_id = (payload.muridId ? String(payload.muridId) : null) || searchParams.get("murid_id");
+    let murid_id = (payload.muridId ? String(payload.muridId) : null) || (payload.murid_id ? String(payload.murid_id) : null) || searchParams.get("murid_id");
     let guru_id = searchParams.get("guru_id");
     const now = new Date();
     const bulan = payload.bulan || searchParams.get("bulan") || String(now.getMonth() + 1);

@@ -99,7 +99,7 @@ export async function GET(request: Request) {
 
       params = [...joinDateParams, ...whereParams];
       query = `
-        SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
+        SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali, m.no_wali, m.no_wali as no_hp_wali,
           COALESCE(MAX(a_sum.hadir), 0) as hadir,
           COALESCE(MAX(a_sum.izin), 0) as izin,
           COALESCE(MAX(a_sum.sakit), 0) as sakit,
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
           GROUP BY a.murid_id
         ) a_sum ON m.murid_id = a_sum.murid_id
         ${whereCond}
-        GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
+        GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali, m.no_wali
         ORDER BY m.nama ASC
       `;
 
@@ -194,7 +194,7 @@ export async function GET(request: Request) {
 
       params = [...joinDateParams, ...whereParams];
       query = `
-        SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
+        SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali, m.no_wali, m.no_wali as no_hp_wali,
           COALESCE(MAX(a_sum.hadir), 0) as hadir,
           COALESCE(MAX(a_sum.izin), 0) as izin,
           COALESCE(MAX(a_sum.sakit), 0) as sakit,
@@ -215,7 +215,7 @@ export async function GET(request: Request) {
           GROUP BY a.murid_id
         ) a_sum ON m.murid_id = a_sum.murid_id
         ${whereCond}
-        GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
+        GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali, m.no_wali
         ORDER BY m.nama ASC
       `;
 
@@ -301,7 +301,7 @@ export async function GET(request: Request) {
 
       params = [...joinDateParams, ...whereParams];
       query = `
-        SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali,
+        SELECT m.murid_id as id, m.nis as identifier, m.nama, m.foto, m.alamat, m.nama_wali, m.no_wali, m.no_wali as no_hp_wali,
           COALESCE(MAX(a_sum.hadir), 0) as hadir,
           COALESCE(MAX(a_sum.izin), 0) as izin,
           COALESCE(MAX(a_sum.sakit), 0) as sakit,
@@ -322,7 +322,7 @@ export async function GET(request: Request) {
           GROUP BY a.murid_id
         ) a_sum ON m.murid_id = a_sum.murid_id
         ${whereCond}
-        GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali
+        GROUP BY m.murid_id, m.nis, m.nama, m.foto, m.alamat, m.nama_wali, m.no_wali
         ORDER BY m.nama ASC
       `;
 
