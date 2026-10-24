@@ -87,6 +87,16 @@ export default function TabRekapitulasi({
   const [waFilter, setWaFilter] = React.useState<'semua' | 'ada' | 'tidak_ada'>('semua');
   const [autoScrollRekap, setAutoScrollRekap] = React.useState<boolean>(true);
 
+  // Auto-scroll ke hasil setelah tombol "Tampilkan Data Rekap" diklik dan data berhasil dimuat
+  React.useEffect(() => {
+    if (hasFetchedRekap && !loadingRekapData) {
+      setTimeout(() => {
+        const el = document.getElementById('rekap-hasil-anchor');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    }
+  }, [hasFetchedRekap, loadingRekapData]);
+
   const handleScrollToNextRekap = (nextIdx: number) => {
     if (!autoScrollRekap) return;
     setTimeout(() => {
@@ -398,6 +408,9 @@ export default function TabRekapitulasi({
           <AlertCircle size={15} className="inline mr-1" /> {rekapErrorMsg}
         </div>
       )}
+
+      {/* Anchor auto-scroll ke hasil rekapitulasi */}
+      <div id="rekap-hasil-anchor" className="scroll-mt-20" />
 
       {/* Hasil / List Santri Rekapitulasi */}
       {loadingRekapData ? (
