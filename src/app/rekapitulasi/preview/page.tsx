@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon, X, TrendingUp, CalendarDays } from 'lucide-react';
+import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon, X, TrendingUp, CalendarDays, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { exportToPDF } from '@/lib/exportUtils';
 
 const AVATAR_COLORS = [
@@ -214,11 +214,49 @@ function RekapPreviewContent() {
     return { hadir, izin, sakit, alpha, total, persentase };
   }, [data]);
 
-  // Filter Baris Data
+  // State Pengurutan Tabel Detail
+  type SortField = 'tanggal' | 'waktu' | 'mata_pelajaran' | 'status' | 'penginput';
+  type SortOrder = 'asc' | 'desc';
+  const [sortField, setSortField] = useState<SortField>('tanggal');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder(field === 'tanggal' ? 'desc' : 'asc');
+    }
+  };
+
+  // Filter & Urutkan Baris Data
   const filteredData = useMemo(() => {
-    if (statusFilter === 'semua') return data;
-    return data.filter(item => (item.status || '').toLowerCase() === statusFilter.toLowerCase());
-  }, [data, statusFilter]);
+    const base = statusFilter === 'semua'
+      ? data
+      : data.filter(item => (item.status || '').toLowerCase() === statusFilter.toLowerCase());
+
+    return [...base].sort((a: any, b: any) => {
+      let valA = '';
+      let valB = '';
+      if (sortField === 'tanggal') {
+        valA = `${a.tanggal || ''} ${a.jam_mulai || ''}`;
+        valB = `${b.tanggal || ''} ${b.jam_mulai || ''}`;
+      } else if (sortField === 'waktu') {
+        valA = a.jam_mulai || '';
+        valB = b.jam_mulai || '';
+      } else if (sortField === 'mata_pelajaran') {
+        valA = (a.mata_pelajaran || '').toLowerCase();
+        valB = (b.mata_pelajaran || '').toLowerCase();
+      } else if (sortField === 'status') {
+        valA = (a.status || '').toLowerCase();
+        valB = (b.status || '').toLowerCase();
+      } else if (sortField === 'penginput') {
+        valA = (a.penginput || '').toLowerCase();
+        valB = (b.penginput || '').toLowerCase();
+      }
+      return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    });
+  }, [data, statusFilter, sortField, sortOrder]);
 
   // Periode Label
   const periodeLabel = useMemo(() => {
@@ -1103,12 +1141,77 @@ function RekapPreviewContent() {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="bg-slate-50/80 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800 uppercase tracking-wider text-[10px]">
-                    <th className="py-3 px-4 w-12 text-center">No</th>
-                    <th className="py-3 px-4">Hari, Tanggal</th>
-                    <th className="py-3 px-4">Waktu</th>
-                    <th className="py-3 px-4">Jadwal / Mapel / Kegiatan</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4">Diinput Oleh</th>
+                    <th className="py-3 px-4 w-12 text-center select-none">No</th>
+                    <th 
+                      onClick={() => handleSort('tanggal')}
+                      className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                      title="Klik untuk mengurutkan berdasarkan tanggal"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Hari, Tanggal</span>
+                        {sortField === 'tanggal' ? (
+                          sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                        ) : (
+                          <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('waktu')}
+                      className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                      title="Klik untuk mengurutkan berdasarkan waktu"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Waktu</span>
+                        {sortField === 'waktu' ? (
+                          sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                        ) : (
+                          <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('mata_pelajaran')}
+                      className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                      title="Klik untuk mengurutkan berdasarkan jadwal/mapel/kegiatan"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Jadwal / Mapel / Kegiatan</span>
+                        {sortField === 'mata_pelajaran' ? (
+                          sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                        ) : (
+                          <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('status')}
+                      className="py-3 px-4 text-center cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                      title="Klik untuk mengurutkan berdasarkan status"
+                    >
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span>Status</span>
+                        {sortField === 'status' ? (
+                          sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                        ) : (
+                          <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('penginput')}
+                      className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                      title="Klik untuk mengurutkan berdasarkan penginput"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Diinput Oleh</span>
+                        {sortField === 'penginput' ? (
+                          sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                        ) : (
+                          <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                        )}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
