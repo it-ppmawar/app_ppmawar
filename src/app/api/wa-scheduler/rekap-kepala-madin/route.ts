@@ -65,10 +65,10 @@ export async function POST(request: Request) {
     const kepalaNama = body.kepala_nama || (targetWilayah === 'putri' ? 'Kepala Madin Putri' : targetWilayah === 'putra' ? 'Kepala Madin Putra' : 'Kepala Madrasah Diniyah');
     const rawPhone = body.phone_number;
     const customTemplate = body.template || DEFAULT_KEPALA_MADIN_TEMPLATE;
-    const mode: 'send_now' | 'schedule_monthly' = body.mode || 'send_now';
+    const mode: 'send_now' | 'schedule_monthly' | 'get_link' = body.mode || 'send_now';
 
-    const phone = formatToWaPhone(rawPhone);
-    if (!phone) {
+    const phone = rawPhone ? formatToWaPhone(rawPhone) : '';
+    if (!phone && mode !== 'get_link') {
       return NextResponse.json({ error: 'Nomor WhatsApp Kepala Madin tidak valid atau belum diisi' }, { status: 400 });
     }
 
@@ -151,6 +151,23 @@ export async function POST(request: Request) {
       .replace(/{link_laporan}/g, reportUrl);
 
     msg = sanitizeTextForWaScheduler(msg);
+
+    if (mode === 'get_link') {
+      return NextResponse.json({
+        success: true,
+        reportUrl,
+        msg,
+        phone,
+        totalGuru,
+        avgPct,
+        totalSesi,
+        totalHadir,
+        totalIzin,
+        totalSakit,
+        totalAlpha,
+        waLink: phone ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}` : '#'
+      });
+    }
 
     // 5. Tentukan waktu pengiriman
     let scheduledTimeStr: string;
