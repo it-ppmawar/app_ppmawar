@@ -277,6 +277,8 @@ function RekapPreviewContent() {
     if (meta.tipe === 'madin') return 'Madrasah Diniyah (Madin)';
     if (meta.tipe === 'quran') return "Al-Qur'an (Tahfidz/Tartil)";
     if (meta.tipe === 'kegiatan') return 'Kegiatan Asrama / Pesantren';
+    if (meta.tipe === 'guru') return 'Absensi Pengajar / Guru';
+    if (meta.tipe === 'dewan_guru') return 'Presensi Dewan Guru YPMA';
     return meta.tipe;
   }, [meta]);
 
@@ -287,6 +289,8 @@ function RekapPreviewContent() {
     if (t === 'madin') return '(Madin)';
     if (t === 'quran') return "(Qur'an)";
     if (t === 'kegiatan') return '(Kegiatan)';
+    if (t === 'guru') return '(Guru)';
+    if (t === 'dewan_guru') return '(Dewan Guru)';
     return `(${meta.tipe})`;
   }, [meta]);
 
@@ -348,10 +352,13 @@ function RekapPreviewContent() {
         }
       }
 
-      const title = 'RINCIAN REKAPITULASI PRESENSI SANTRI';
-      const subtitle = `Nama: ${murid.nama || '-'}\nNIS: ${murid.nis || '-'}\nKelas / Kamar: ${murid.kelas_madin || murid.kelas_quran || murid.nama_kamar || '-'}\nKategori: ${tipeLabel}${meta?.sub_filter ? ` (${meta.sub_filter})` : ''}`;
+      const isGuru = meta?.tipe === 'guru' || meta?.tipe === 'dewan_guru' || murid.jenis_kelamin === 'Guru' || murid.jenis_kelamin === 'Dewan Guru';
+      const title = isGuru ? 'RINCIAN REKAPITULASI PRESENSI PENGAJAR & DEWAN GURU' : 'RINCIAN REKAPITULASI PRESENSI SANTRI';
+      const subtitle = isGuru
+        ? `Nama: ${murid.nama || '-'}\nNIP: ${murid.nis || '-'}\nUnit / Alamat: ${murid.kelas_madin || '-'}\nKategori: ${tipeLabel}${meta?.sub_filter ? ` (${meta.sub_filter})` : ''}`
+        : `Nama: ${murid.nama || '-'}\nNIS: ${murid.nis || '-'}\nKelas / Kamar: ${murid.kelas_madin || murid.kelas_quran || murid.nama_kamar || '-'}\nKategori: ${tipeLabel}${meta?.sub_filter ? ` (${meta.sub_filter})` : ''}`;
       const period = periodeLabel;
-      const safeNama = (murid.nama || 'Santri').replace(/[^a-zA-Z0-9]/g, '_');
+      const safeNama = (murid.nama || (isGuru ? 'Guru' : 'Santri')).replace(/[^a-zA-Z0-9]/g, '_');
       const safePeriod = periodeLabel.replace(/[^a-zA-Z0-9]/g, '_');
       const filename = `Rekap_Presensi_${safeNama}_${safePeriod}`;
 
@@ -512,13 +519,29 @@ function RekapPreviewContent() {
                 {murid.nama}
               </h2>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 mt-2 text-xs text-slate-600 dark:text-slate-400">
-                <span className="font-mono">NIS: <strong className="text-slate-800 dark:text-slate-200">{murid.nis || '-'}</strong></span>
-                <span>•</span>
-                <span>Kelas: <strong className="text-slate-800 dark:text-slate-200">{murid.kelas_madin || murid.kelas_quran || murid.nama_kamar || '-'}</strong></span>
-                {murid.nama_wali && (
+                {meta?.tipe === 'guru' || meta?.tipe === 'dewan_guru' || murid.jenis_kelamin === 'Guru' || murid.jenis_kelamin === 'Dewan Guru' ? (
                   <>
+                    <span className="font-mono">NIP: <strong className="text-slate-800 dark:text-slate-200">{murid.nis || '-'}</strong></span>
                     <span>•</span>
-                    <span>Wali: <strong className="text-slate-800 dark:text-slate-200">{murid.nama_wali}</strong></span>
+                    <span>Unit / Alamat: <strong className="text-slate-800 dark:text-slate-200">{murid.kelas_madin || '-'}</strong></span>
+                    {murid.no_hp_wali && (
+                      <>
+                        <span>•</span>
+                        <span className="font-mono">No. HP: <strong className="text-slate-800 dark:text-slate-200">{murid.no_hp_wali}</strong></span>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span className="font-mono">NIS: <strong className="text-slate-800 dark:text-slate-200">{murid.nis || '-'}</strong></span>
+                    <span>•</span>
+                    <span>Kelas: <strong className="text-slate-800 dark:text-slate-200">{murid.kelas_madin || murid.kelas_quran || murid.nama_kamar || '-'}</strong></span>
+                    {murid.nama_wali && (
+                      <>
+                        <span>•</span>
+                        <span>Wali: <strong className="text-slate-800 dark:text-slate-200">{murid.nama_wali}</strong></span>
+                      </>
+                    )}
                   </>
                 )}
               </div>

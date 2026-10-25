@@ -25,8 +25,13 @@ export async function GET(request: Request) {
     if (!payload) return NextResponse.json({ error: "Token invalid atau telah kedaluwarsa" }, { status: 401, headers: noCacheHeaders });
 
     const tipe = payload.tipe || searchParams.get("tipe") || "madin";
-    let murid_id = (payload.muridId ? String(payload.muridId) : null) || (payload.murid_id ? String(payload.murid_id) : null) || searchParams.get("murid_id");
-    let guru_id = searchParams.get("guru_id");
+    const isGuruTipe = tipe === "guru" || tipe === "dewan_guru";
+    let murid_id = !isGuruTipe
+      ? ((payload.muridId ? String(payload.muridId) : null) || (payload.murid_id ? String(payload.murid_id) : null) || searchParams.get("murid_id"))
+      : null;
+    let guru_id = isGuruTipe
+      ? ((payload.guru_id ? String(payload.guru_id) : null) || (payload.guruId ? String(payload.guruId) : null) || (payload.muridId ? String(payload.muridId) : null) || searchParams.get("guru_id"))
+      : searchParams.get("guru_id");
     const now = new Date();
     const bulan = payload.bulan || searchParams.get("bulan") || String(now.getMonth() + 1);
     const tahun = payload.tahun || searchParams.get("tahun") || String(now.getFullYear());
@@ -34,7 +39,7 @@ export async function GET(request: Request) {
     const tanggal_sampai = payload.tanggal_sampai || searchParams.get("tanggal_sampai");
     const sub_filter = payload.sub_filter || searchParams.get("sub_filter") || "";
 
-    if (payload.role === 'wali_murid' || payload.role === 'wali_alumni' || payload.purpose === 'rekap_preview') {
+    if ((payload.role === 'wali_murid' || payload.role === 'wali_alumni') && !isGuruTipe) {
       if (!payload.muridId && !murid_id) {
         return NextResponse.json({ error: "Murid ID tidak valid" }, { status: 400, headers: noCacheHeaders });
       }
@@ -444,6 +449,22 @@ export async function GET(request: Request) {
           [murid_id]
         );
         if (mRows.length > 0) muridInfo = mRows[0];
+      } catch (_) {}
+    } else if (guru_id && isGuruTipe) {
+      try {
+        if (tipe === 'guru') {
+          const [gRows]: any = await pool.execute(
+            `SELECT guru_id as murid_id, nama, COALESCE(nip, '-') as nis, no_hp as no_hp_wali, foto, COALESCE(alamat, 'Guru Pengajar') as kelas_madin, 'Guru' as jenis_kelamin FROM guru WHERE guru_id = ? LIMIT 1`,
+            [guru_id]
+          );
+          if (gRows.length > 0) muridInfo = gRows[0];
+        } else if (tipe === 'dewan_guru') {
+          const [dgRows]: any = await pool.execute(
+            `SELECT id as murid_id, nama, COALESCE(nip, '-') as nis, no_hp as no_hp_wali, foto, COALESCE(homebase, 'Dewan Guru YPMA') as kelas_madin, 'Dewan Guru' as jenis_kelamin FROM dewan_guru WHERE id = ? LIMIT 1`,
+            [guru_id]
+          );
+          if (dgRows.length > 0) muridInfo = dgRows[0];
+        }
       } catch (_) {}
     }
 

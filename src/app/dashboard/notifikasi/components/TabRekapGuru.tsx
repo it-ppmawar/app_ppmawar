@@ -1,0 +1,1248 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import {
+  FileText, Search, X, ToggleRight, ToggleLeft, RefreshCw,
+  Clock, CheckCircle2, AlertCircle, AlertTriangle, Phone, MessageCircle,
+  Calendar, Award, Send, ChevronDown, ChevronUp, Loader2, Sparkles, User
+} from 'lucide-react';
+
+export const DEFAULT_REKAP_GURU_TEMPLATE = `Assalamu'alaikum Warohmatullah Wabarokatuh,
+
+Yth. Ustadz/Ustadzah *{nama_guru}*
+Pondok Pesantren Matholi'ul Anwar
+
+Semoga Ustadz/Ustadzah senantiasa dalam limpahan taufiq, kesehatan, dan keberkahan dari Allah SWT. Kami haturkan terima kasih yang sebesar-besarnya atas segala keikhlasan dan dedikasi Ustadz/Ustadzah dalam mendidik para santri.
+
+Berikut kami sampaikan rekapitulasi catatan kehadiran mengajar/tugas untuk periode *{periode}*:
+• Kategori: {tipe}
+• Unit/Homebase: {target_label}
+
+📊 *Ringkasan Catatan Presensi Aplikasi:*
+• Hadir: {hadir} sesi
+• Izin: {izin} sesi
+• Sakit: {sakit} sesi
+• Belum Terdata di Aplikasi: {alpha} sesi
+• Persentase Presensi Sistem: *{persentase}%*
+
+🔗 *Rincian Lengkap & Klarifikasi Rekap:*
+{link_rekap}
+
+📌 _Catatan: Rekapitulasi di atas dihimpun otomatis dari catatan presensi pada aplikasi. Apabila Ustadz/Ustadzah telah hadir mengajar atau bertugas secara mandiri di kelas namun belum terdata di sistem aplikasi, mohon periksa tautan di atas atau berkenan mengonfirmasi kepada pengurus/bagian kurikulum untuk pemutakhiran data._
+
+Tautan resmi ini berlaku selama {masa_berlaku} (sampai {batas_waktu}).
+
+Atas perhatian, bimbingan, dan kerjasama Ustadz/Ustadzah, kami sampaikan jazakumullah khairan katsiran.
+
+Wassalamu'alaikum Warohmatullah Wabarokatuh,
+_Pengurus Pondok Pesantren Matholi'ul Anwar_`;
+
+const HOMEBASES = [
+  { id: 'SEMUA', nama: 'SEMUA UNIT / HOMEBASE' },
+  { id: 'TKM NU MAWAR', nama: 'TKM NU MAWAR' },
+  { id: 'MI BANIN', nama: 'MI BANIN' },
+  { id: 'MI BANAT', nama: 'MI BANAT' },
+  { id: 'SMP NU', nama: 'SMP NU' },
+  { id: 'MTS PUTRA-PUTRI', nama: 'MTS PUTRA-PUTRI' },
+  { id: 'MA MAWAR', nama: 'MA MAWAR' },
+  { id: 'SMK NU', nama: 'SMK NU' },
+  { id: 'MADIN', nama: 'MADIN' },
+  { id: 'MQ', nama: 'MQ' },
+  { id: 'KOPMA', nama: 'KOPMA' },
+  { id: 'KLINIK', nama: 'KLINIK' },
+  { id: 'KBIHU MAWAR', nama: 'KBIHU MAWAR' },
+];
+
+export interface TabRekapGuruProps {
+  guruList: any[];
+  pesanRekapGuruTemplate: string;
+  setPesanRekapGuruTemplate: React.Dispatch<React.SetStateAction<string>>;
+  saveTemplate: (key: string, value: string) => Promise<void>;
+  resetTemplate: (key: string, defaultValue: string, setter: (val: string) => void) => Promise<void>;
+  saveStatus: Record<string, string>;
+
+  // Looping & Kepala Madin (fitur massal)
+  rekapBulan: number;
+  setRekapBulan: React.Dispatch<React.SetStateAction<number>>;
+  rekapTahun: number;
+  setRekapTahun: React.Dispatch<React.SetStateAction<number>>;
+  rekapCategories: string[];
+  toggleRekapCategory: (key: string) => void;
+  isRekapSending: boolean;
+  isRekapScheduling: boolean;
+  rekapStatusMsg: { type: 'success' | 'error' | 'info'; text: string; details?: any[] } | null;
+  handleSendRekapWA: (mode: 'send_now' | 'schedule_monthly') => Promise<void>;
+
+  kepalaMadinTarget: 'putra' | 'putri' | 'all';
+  handleTargetKepalaMadinChange: (target: 'putra' | 'putri' | 'all') => void;
+  selectedKepalaMadinId: string;
+  handleSelectKepalaMadin: (gid: string) => void;
+  kepalaMadinPhone: string;
+  setKepalaMadinPhone: React.Dispatch<React.SetStateAction<string>>;
+  pesanKepalaMadinTemplate: string;
+  setPesanKepalaMadinTemplate: React.Dispatch<React.SetStateAction<string>>;
+  isKepalaMadinSending: boolean;
+  isKepalaMadinScheduling: boolean;
+  kepalaMadinStatusMsg: { type: 'success' | 'error' | 'info'; text: string } | null;
+  handleSendKepalaMadinWA: (mode: 'send_now' | 'schedule_monthly') => Promise<void>;
+}
+
+export default function TabRekapGuru({
+  guruList,
+  pesanRekapGuruTemplate,
+  setPesanRekapGuruTemplate,
+  saveTemplate,
+  resetTemplate,
+  saveStatus,
+
+  rekapBulan,
+  setRekapBulan,
+  rekapTahun,
+  setRekapTahun,
+  rekapCategories,
+  toggleRekapCategory,
+  isRekapSending,
+  isRekapScheduling,
+  rekapStatusMsg,
+  handleSendRekapWA,
+
+  kepalaMadinTarget,
+  handleTargetKepalaMadinChange,
+  selectedKepalaMadinId,
+  handleSelectKepalaMadin,
+  kepalaMadinPhone,
+  setKepalaMadinPhone,
+  pesanKepalaMadinTemplate,
+  setPesanKepalaMadinTemplate,
+  isKepalaMadinSending,
+  isKepalaMadinScheduling,
+  kepalaMadinStatusMsg,
+  handleSendKepalaMadinWA,
+}: TabRekapGuruProps) {
+  // State Filter Presensi Guru
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+  const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
+  const firstDayStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+
+  const [tipe, setTipe] = useState<'guru' | 'dewan_guru'>('guru');
+  const [targetId, setTargetId] = useState<string>('all');
+  const [bulan, setBulan] = useState<string>(String(currentMonth));
+  const [tahun, setTahun] = useState<string>(String(currentYear));
+  const [tanggalDari, setTanggalDari] = useState<string>(firstDayStr);
+  const [tanggalSampai, setTanggalSampai] = useState<string>(todayStr);
+  const [modeRentang, setModeRentang] = useState<boolean>(false);
+  const [expiryDays, setExpiryDays] = useState<number>(7);
+  const [searchNama, setSearchNama] = useState<string>('');
+
+  // State Data Rekapitulasi
+  const [rekapData, setRekapData] = useState<any[]>([]);
+  const [loadingData, setLoadingData] = useState<boolean>(false);
+  const [hasFetched, setHasFetched] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string>('');
+  const [waFilter, setWaFilter] = useState<'semua' | 'ada' | 'tidak_ada'>('semua');
+  const [autoScroll, setAutoScroll] = useState<boolean>(true);
+  const [sentWaIds, setSentWaIds] = useState<Record<string, boolean>>({});
+
+  // Accordion Fitur Tambahan (Looping Bulanan & Kepala Madin)
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
+
+  // Ambil daftar guru options dari guruList atau API kelas
+  const [optionsGuru, setOptionsGuru] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (guruList && guruList.length > 0) {
+      const sorted = [...guruList].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+      setOptionsGuru(sorted);
+    } else {
+      fetch('/api/kelas?type=guru&aggregate=true')
+        .then(res => res.json())
+        .then(res => {
+          if (res.success && Array.isArray(res.data)) {
+            setOptionsGuru(res.data);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [guruList]);
+
+  // Saat tipe berganti, sesuaikan target default
+  const handleTipeChange = (newTipe: 'guru' | 'dewan_guru') => {
+    setTipe(newTipe);
+    setTargetId(newTipe === 'guru' ? 'all' : 'SEMUA');
+  };
+
+  // Fetch data rekap presensi guru
+  const fetchRekapData = async () => {
+    setLoadingData(true);
+    setErrorMsg('');
+    try {
+      const expiryParam = expiryDays && expiryDays >= 1 ? expiryDays : 7;
+      const params = new URLSearchParams({
+        tipe,
+        target_id: targetId || (tipe === 'guru' ? 'all' : 'SEMUA'),
+        expiry: String(expiryParam),
+        ...(modeRentang ? {
+          tanggal_dari: tanggalDari,
+          tanggal_sampai: tanggalSampai,
+        } : {
+          bulan,
+          tahun,
+        }),
+      });
+
+      const res = await fetch(`/api/rekapitulasi?${params.toString()}`);
+      const json = await res.json();
+      if (json.success) {
+        setRekapData(json.data || []);
+        setHasFetched(true);
+      } else {
+        setErrorMsg(json.error || 'Gagal memuat data rekapitulasi guru.');
+      }
+    } catch (err: any) {
+      setErrorMsg('Kendala jaringan: ' + err.message);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  // Auto-scroll ke hasil saat data selesai dimuat
+  useEffect(() => {
+    if (hasFetched && !loadingData) {
+      setTimeout(() => {
+        const el = document.getElementById('rekap-guru-hasil-anchor');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    }
+  }, [hasFetched, loadingData]);
+
+  // Format nomor WA
+  const formatPhoneNumber = (phone: string) => {
+    if (!phone) return '';
+    let p = phone.replace(/\D/g, '');
+    if (p.startsWith('0')) p = '62' + p.substring(1);
+    return p;
+  };
+
+  // Generate WA Link untuk Guru
+  const getWaGuruLink = (item: any) => {
+    const rawPhone = item.no_hp || item.nama_wali || '';
+    const phone = formatPhoneNumber(rawPhone);
+    if (!phone) return '#';
+
+    const hadir = Number(item.hadir || 0);
+    const izin = Number(item.izin || 0);
+    const sakit = Number(item.sakit || 0);
+    const alpha = Number(item.alpha || 0);
+    const total = Number(item.total || (hadir + izin + sakit + alpha));
+    const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
+
+    const tipeLabel = tipe === 'guru' ? 'Absensi Pengajar / Guru' : 'Presensi Dewan Guru YPMA';
+
+    let targetLabel = 'Semua Guru';
+    if (tipe === 'guru') {
+      if (targetId && targetId !== 'all') {
+        const found = optionsGuru.find(g => String(g.id || g.guru_id) === String(targetId));
+        targetLabel = found ? found.nama : 'Guru';
+      }
+    } else {
+      targetLabel = targetId || 'SEMUA UNIT / HOMEBASE';
+    }
+
+    let periodeLabel = '';
+    if (modeRentang) {
+      periodeLabel = `${tanggalDari} s/d ${tanggalSampai}`;
+    } else {
+      const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      periodeLabel = `${months[parseInt(bulan) - 1]} ${tahun}`;
+    }
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.ppmawar.or.id';
+    const previewUrl = item.preview_token
+      ? `${origin}/rekapitulasi/preview?t=${item.preview_token}`
+      : `${origin}/rekapitulasi/preview?guru_id=${item.id}&tipe=${tipe}`;
+
+    const masaBerlaku = item.token_duration_label || `${expiryDays} Hari`;
+    const batasWaktu = item.token_exp_date || '-';
+
+    const templateToUse = pesanRekapGuruTemplate || DEFAULT_REKAP_GURU_TEMPLATE;
+    const text = templateToUse
+      .replace(/{nama_guru}/g, item.nama || '-')
+      .replace(/{nip}/g, item.identifier || '-')
+      .replace(/{tipe}/g, tipeLabel)
+      .replace(/{target_label}/g, targetLabel)
+      .replace(/{periode}/g, periodeLabel)
+      .replace(/{bulan_tahun}/g, periodeLabel)
+      .replace(/{hadir}/g, String(hadir))
+      .replace(/{izin}/g, String(izin))
+      .replace(/{sakit}/g, String(sakit))
+      .replace(/{alpha}/g, String(alpha))
+      .replace(/{total}/g, String(total))
+      .replace(/{persentase}/g, String(persentase))
+      .replace(/{link_rekap}/g, previewUrl)
+      .replace(/{masa_berlaku}/g, masaBerlaku)
+      .replace(/{batas_waktu}/g, batasWaktu);
+
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  };
+
+  const handleScrollToNextGuru = (nextIdx: number) => {
+    if (!autoScroll) return;
+    setTimeout(() => {
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const targetDomId = isMobile ? `guru-rekap-card-${nextIdx}` : `guru-rekap-row-${nextIdx}`;
+      let el = document.getElementById(targetDomId);
+      if (!el || el.offsetParent === null) {
+        el = document.getElementById(isMobile ? `guru-rekap-row-${nextIdx}` : `guru-rekap-card-${nextIdx}`);
+      }
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 120);
+  };
+
+  return (
+    <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+      {/* 1. KARTU FILTER PERSIS HALAMAN REKAPITULASI (KHUSUS GURU) */}
+      <div className="bg-purple-50/40 dark:bg-purple-950/20 border border-purple-150/60 dark:border-purple-900/30 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-purple-100/70 dark:border-purple-900/40 pb-3">
+          <div>
+            <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 leading-tight">
+              Filter Rekapitulasi Presensi Guru & Staff
+            </h4>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Pilih kategori presensi guru, target guru/unit, dan periode waktu yang ingin disiarkan ke WhatsApp guru
+            </p>
+          </div>
+        </div>
+
+        {/* Baris 1: Cari Nama/NIP, Pilih Kategori, Pilih Guru/Unit */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
+          {/* Kolom 1: Cari Nama / NIP */}
+          <div>
+            <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">
+              Cari Nama / NIP
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+              <input
+                type="text"
+                placeholder={tipe === 'dewan_guru' ? 'Cari Nama / NIP / Unit...' : 'Ketik nama / NIP guru...'}
+                value={searchNama}
+                onChange={(e) => setSearchNama(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+              />
+              {searchNama && (
+                <button
+                  onClick={() => setSearchNama('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Kolom 2: Pilih Kategori (HANYA GURU: Absensi Pengajar / Guru & Presensi Dewan Guru YPMA) */}
+          <div>
+            <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">
+              Pilih Kategori
+            </label>
+            <select
+              value={tipe}
+              onChange={(e) => handleTipeChange(e.target.value as 'guru' | 'dewan_guru')}
+              className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer"
+            >
+              <option value="guru">Absensi Pengajar / Guru</option>
+              <option value="dewan_guru">Presensi Dewan Guru YPMA</option>
+            </select>
+          </div>
+
+          {/* Kolom 3: Target (Semua Guru / Pilih Guru ATAU Pilih Unit Homebase) */}
+          <div>
+            <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">
+              {tipe === 'guru' ? 'Pilih Guru' : 'Pilih Unit / Homebase'}
+            </label>
+            <select
+              value={targetId}
+              onChange={(e) => setTargetId(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer"
+            >
+              {tipe === 'guru' ? (
+                <>
+                  <option value="all">Semua Guru</option>
+                  {optionsGuru.map((g) => (
+                    <option key={g.id || g.guru_id} value={g.id || g.guru_id}>
+                      {g.nama} {g.nip ? `(${g.nip})` : ''}
+                    </option>
+                  ))}
+                </>
+              ) : (
+                HOMEBASES.map((hb) => (
+                  <option key={hb.id} value={hb.id}>
+                    {hb.nama}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+        </div>
+
+        {/* Baris 2: Mode Waktu, Bulan & Tahun / Rentang, dan Tombol Tampilkan */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end pt-1">
+          {/* Toggle Mode Waktu */}
+          <div>
+            <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Mode Waktu</label>
+            <button
+              type="button"
+              onClick={() => setModeRentang(v => !v)}
+              className="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-purple-400 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 transition-all cursor-pointer select-none"
+            >
+              <span className="text-gray-500 dark:text-gray-400 font-medium">
+                {modeRentang ? 'Rentang Tanggal' : 'Mode Bulanan'}
+              </span>
+              <span className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg ${
+                modeRentang
+                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+              }`}>
+                {modeRentang ? <ToggleRight size={14} className="text-purple-600" /> : <ToggleLeft size={14} />}
+                {modeRentang ? 'Rentang' : 'Bulan'}
+              </span>
+            </button>
+          </div>
+
+          {/* Input Waktu */}
+          {modeRentang ? (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Dari Tanggal</label>
+                <input
+                  type="date"
+                  value={tanggalDari}
+                  max={tanggalSampai}
+                  onChange={(e) => setTanggalDari(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Sampai Tanggal</label>
+                <input
+                  type="date"
+                  value={tanggalSampai}
+                  min={tanggalDari}
+                  onChange={(e) => setTanggalSampai(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Bulan</label>
+                <select
+                  value={bulan}
+                  onChange={(e) => setBulan(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none cursor-pointer"
+                >
+                  {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map((m, i) => (
+                    <option key={i} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Tahun</label>
+                <select
+                  value={tahun}
+                  onChange={(e) => setTahun(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none cursor-pointer"
+                >
+                  {[currentYear, currentYear - 1, currentYear - 2].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* Tombol Tampilkan */}
+          <div>
+            <button
+              type="button"
+              onClick={fetchRekapData}
+              disabled={loadingData}
+              className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-70 h-[38px]"
+            >
+              {loadingData ? (
+                <><RefreshCw size={14} className="animate-spin" /> Memuat Data...</>
+              ) : (
+                <><Search size={14} /> Tampilkan Data Rekap</>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Baris 3: Masa Berlaku Tautan & Pilihan Cepat */}
+        <div className="pt-3 border-t border-purple-100/70 dark:border-purple-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 font-bold text-gray-750 dark:text-gray-200">
+              <Clock size={14} className="text-purple-600 shrink-0" />
+              <span>Masa Berlaku Tautan:</span>
+            </div>
+            <div className="flex items-center gap-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-1 focus-within:ring-2 focus-within:ring-purple-500">
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={expiryDays}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setExpiryDays(isNaN(val) ? ('' as any) : val);
+                }}
+                onBlur={() => {
+                  if (!expiryDays || expiryDays < 1) setExpiryDays(1);
+                }}
+                className="w-12 bg-transparent text-center font-bold text-gray-800 dark:text-gray-100 outline-none text-xs"
+              />
+              <span className="font-semibold text-gray-500 text-xs">Hari</span>
+            </div>
+            <span className="text-[11px] text-gray-400 italic">(Minimal 1 hari)</span>
+          </div>
+
+          {/* Preset Cepat */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+            <span className="text-[11px] text-gray-400 mr-1 hidden lg:inline">Pilihan Cepat:</span>
+            {[1, 3, 7, 14, 30].map(d => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setExpiryDays(d)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  expiryDays === d
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-purple-400'
+                }`}
+              >
+                {d} Hari{d === 7 ? ' (Standar)' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 2. TEMPLAT PESAN WA REKAPITULASI DENGAN BAHASA SANTUN & BIJAK */}
+      <div className="bg-purple-50/20 dark:bg-purple-950/10 border border-purple-200/40 dark:border-purple-900/20 rounded-2xl p-4">
+        <label className="block text-xs font-bold text-purple-900 dark:text-purple-300 mb-1.5 flex flex-col gap-1">
+          <span>✏️ Edit Templat Pesan Rekapitulasi untuk Guru & Staff</span>
+          <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500 leading-relaxed">
+            Placeholder: &#123;nama_guru&#125;, &#123;nip&#125;, &#123;tipe&#125;, &#123;target_label&#125;, &#123;periode&#125;, &#123;hadir&#125;, &#123;izin&#125;, &#123;sakit&#125;, &#123;alpha&#125;, &#123;total&#125;, &#123;persentase&#125;, &#123;link_rekap&#125;, &#123;masa_berlaku&#125;, &#123;batas_waktu&#125;
+          </span>
+        </label>
+        <textarea
+          value={pesanRekapGuruTemplate}
+          onChange={(e) => {
+            setPesanRekapGuruTemplate(e.target.value);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('wa_template_guru_rekap', e.target.value);
+            }
+          }}
+          onBlur={() => saveTemplate('wa_template_guru_rekap', pesanRekapGuruTemplate)}
+          rows={7}
+          className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 outline-none resize-none font-mono text-gray-750 dark:text-gray-300 leading-relaxed"
+          placeholder="Tulis templat pesan rekapitulasi guru..."
+        />
+        <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2.5 border-t border-black/5 dark:border-white/5">
+          <button
+            type="button"
+            onClick={() => resetTemplate('wa_template_guru_rekap', DEFAULT_REKAP_GURU_TEMPLATE, setPesanRekapGuruTemplate)}
+            className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            ⟳ Reset ke Templat Default
+          </button>
+          {saveStatus['wa_template_guru_rekap'] === 'saved' && (
+            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+              <CheckCircle2 size={13} /> Tersimpan di Database ✓
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => saveTemplate('wa_template_guru_rekap', pesanRekapGuruTemplate)}
+            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 min-w-[140px] cursor-pointer"
+          >
+            Simpan Templat
+          </button>
+        </div>
+      </div>
+
+      {/* Pesan Kesalahan jika ada */}
+      {errorMsg && (
+        <div className="p-3 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-bold text-center">
+          <AlertCircle size={15} className="inline mr-1" /> {errorMsg}
+        </div>
+      )}
+
+      {/* Anchor auto-scroll */}
+      <div id="rekap-guru-hasil-anchor" className="scroll-mt-20" />
+
+      {/* 3. HASIL / LIST DATA REKAPITULASI GURU */}
+      {loadingData ? (
+        <div className="flex flex-col items-center justify-center p-12 text-center bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-150">
+          <RefreshCw className="animate-spin text-purple-600 mb-2" size={24} />
+          <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+            Menghitung dan memuat data rekapitulasi presensi guru...
+          </span>
+        </div>
+      ) : !hasFetched ? (
+        <div className="p-10 text-center bg-gray-50 dark:bg-gray-900/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-500">
+          <FileText size={28} className="mx-auto mb-2 text-purple-400 opacity-60" />
+          <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">Data Belum Ditampilkan</p>
+          <p>Pilih kategori presensi guru dan periode di atas, lalu klik tombol <strong>&quot;Tampilkan Data Rekap&quot;</strong>.</p>
+        </div>
+      ) : (() => {
+        const searchFiltered = rekapData.filter(item => {
+          if (!searchNama.trim()) return true;
+          const q = searchNama.toLowerCase();
+          return (item.nama && item.nama.toLowerCase().includes(q)) ||
+                 (item.identifier && item.identifier.toLowerCase().includes(q)) ||
+                 (item.alamat && item.alamat.toLowerCase().includes(q)) ||
+                 (item.homebase && item.homebase.toLowerCase().includes(q)) ||
+                 (item.no_hp && item.no_hp.includes(q));
+        });
+
+        const totalCount = searchFiltered.length;
+        const adaWaCount = searchFiltered.filter(item => {
+          const rawPhone = item.no_hp || item.nama_wali || '';
+          return Boolean(formatPhoneNumber(rawPhone));
+        }).length;
+        const tidakAdaWaCount = totalCount - adaWaCount;
+
+        const filteredList = searchFiltered.filter(item => {
+          if (waFilter === 'semua') return true;
+          const rawPhone = item.no_hp || item.nama_wali || '';
+          const hasWa = Boolean(formatPhoneNumber(rawPhone));
+          if (waFilter === 'ada') return hasWa;
+          if (waFilter === 'tidak_ada') return !hasWa;
+          return true;
+        });
+
+        const renderControls = () => (
+          <div className="flex flex-col gap-2 p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-2xs">
+            {/* Baris 1: Semua */}
+            <button
+              type="button"
+              onClick={() => setWaFilter('semua')}
+              className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                waFilter === 'semua'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              <span>Semua</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                waFilter === 'semua' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+              }`}>
+                {totalCount}
+              </span>
+            </button>
+
+            {/* Baris 2: Ada No. WA & Tanpa No. WA (50% - 50%) */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setWaFilter('ada')}
+                className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  waFilter === 'ada'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                <Phone size={12} className={waFilter === 'ada' ? 'text-white' : 'text-emerald-500'} />
+                <span>Ada No. WA</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                  waFilter === 'ada' ? 'bg-white/20 text-white' : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                }`}>
+                  {adaWaCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setWaFilter('tidak_ada')}
+                className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  waFilter === 'tidak_ada'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                <span>Tanpa No. WA</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                  waFilter === 'tidak_ada' ? 'bg-white/20 text-white' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                }`}>
+                  {tidakAdaWaCount}
+                </span>
+              </button>
+            </div>
+
+            {/* Baris 3: Auto-scroll */}
+            <div className="flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => setAutoScroll(prev => !prev)}
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  autoScroll
+                    ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 shadow-2xs'
+                    : 'bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 text-gray-400'
+                }`}
+                title="Otomatis bergeser ke bawah pada data berikutnya saat tombol WA Guru diklik"
+              >
+                <span className={`w-2 h-2 rounded-full ${autoScroll ? 'bg-purple-600 animate-pulse' : 'bg-gray-400'}`} />
+                <span>Auto-scroll {autoScroll ? 'Aktif' : 'Mati'}</span>
+              </button>
+            </div>
+          </div>
+        );
+
+        if (totalCount === 0) {
+          return (
+            <div className="p-8 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-900/30 rounded-2xl">
+              Tidak ada guru/staff yang cocok dengan filter pencarian &quot;{searchNama}&quot;.
+            </div>
+          );
+        }
+
+        if (filteredList.length === 0) {
+          return (
+            <div className="space-y-3">
+              {renderControls()}
+              <div className="p-8 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-900/30 rounded-2xl">
+                Tidak ada data guru pada kategori filter {waFilter === 'ada' ? '"Ada No. WA"' : '"Tanpa No. WA"'}.
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="space-y-3">
+            {renderControls()}
+            <div className="flex items-center justify-between text-xs text-gray-500 px-1">
+              <span>
+                Menampilkan <strong className="text-gray-800 dark:text-gray-200">{filteredList.length}</strong> guru/staff untuk disiarkan
+              </span>
+              <span className="text-[11px] text-purple-600 font-semibold hidden sm:inline">
+                💡 Tautan WA otomatis melampirkan preview dokumen PDF resmi siap unduh & klarifikasi kehadiran
+              </span>
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-xs">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
+                  <tr>
+                    <th className="px-5 py-4 rounded-l-xl">Nama Guru / Tenaga Pengajar</th>
+                    <th className="px-5 py-4">Kontak WhatsApp</th>
+                    <th className="px-5 py-4 text-right rounded-r-xl">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                  {filteredList.map((item, idx) => {
+                    const hadir = Number(item.hadir || 0);
+                    const izin = Number(item.izin || 0);
+                    const sakit = Number(item.sakit || 0);
+                    const alpha = Number(item.alpha || 0);
+                    const total = Number(item.total || (hadir + izin + sakit + alpha));
+                    const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
+                    const waLink = getWaGuruLink(item);
+                    const rawPhone = item.no_hp || item.nama_wali || '';
+                    const hasWa = Boolean(formatPhoneNumber(rawPhone));
+                    const isSent = !!sentWaIds[item.id];
+                    const previewUrl = item.preview_token
+                      ? `/rekapitulasi/preview?t=${item.preview_token}`
+                      : `/rekapitulasi/preview?guru_id=${item.id}&tipe=${tipe}`;
+
+                    return (
+                      <tr
+                        key={item.id || idx}
+                        id={`guru-rekap-row-${idx}`}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors scroll-mt-24"
+                      >
+                        <td className="px-5 py-4 font-semibold text-gray-800 dark:text-gray-200">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-xs shrink-0">
+                              {item.nama ? item.nama.charAt(0).toUpperCase() : 'G'}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">{item.nama}</div>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs">
+                                <span className="font-mono text-gray-400 text-[11px]">
+                                  NIP: {item.identifier || '-'}
+                                </span>
+                                {(item.homebase || item.alamat) && (
+                                  <>
+                                    <span className="text-gray-300 dark:text-gray-700">•</span>
+                                    <span className="text-gray-500 text-[11px]">{item.homebase || item.alamat}</span>
+                                  </>
+                                )}
+                                <span className="text-gray-300 dark:text-gray-700">•</span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                                  {persentase}% Hadir
+                                </span>
+                                <span className="text-[11px] text-gray-500 font-medium">
+                                  ({hadir}H · {izin}I · {sakit}S · {alpha} Belum Terdata)
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-gray-600 dark:text-gray-400">
+                          <div className="text-xs font-mono text-gray-700 dark:text-gray-300 flex items-center gap-1.5 font-bold">
+                            <Phone size={13} className="text-emerald-500 shrink-0" />
+                            <span>{rawPhone || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-right space-x-2 whitespace-nowrap">
+                          <a
+                            href={previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors"
+                            title="Lihat Pratinjau Dokumen PDF Resmi"
+                          >
+                            <FileText size={13} className="text-purple-600 shrink-0" />
+                            <span>Lihat PDF</span>
+                          </a>
+
+                          {hasWa ? (
+                            <a
+                              href={waLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => {
+                                setSentWaIds(prev => ({ ...prev, [item.id]: true }));
+                                handleScrollToNextGuru(idx + 1);
+                              }}
+                              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                                isSent
+                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200'
+                                  : 'bg-green-600 hover:bg-green-700 text-white active:scale-95'
+                              }`}
+                            >
+                              <MessageCircle size={14} />
+                              <span>{isSent ? 'Terkirim ✓' : 'WA Guru'}</span>
+                            </a>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">No WA Kosong</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="md:hidden space-y-3">
+              {filteredList.map((item, idx) => {
+                const hadir = Number(item.hadir || 0);
+                const izin = Number(item.izin || 0);
+                const sakit = Number(item.sakit || 0);
+                const alpha = Number(item.alpha || 0);
+                const total = Number(item.total || (hadir + izin + sakit + alpha));
+                const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
+                const waLink = getWaGuruLink(item);
+                const rawPhone = item.no_hp || item.nama_wali || '';
+                const hasWa = Boolean(formatPhoneNumber(rawPhone));
+                const isSent = !!sentWaIds[item.id];
+                const previewUrl = item.preview_token
+                  ? `/rekapitulasi/preview?t=${item.preview_token}`
+                  : `/rekapitulasi/preview?guru_id=${item.id}&tipe=${tipe}`;
+
+                return (
+                  <div
+                    key={item.id || idx}
+                    id={`guru-rekap-card-${idx}`}
+                    className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-xs space-y-3 scroll-mt-24"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h5 className="font-bold text-sm text-gray-900 dark:text-gray-100 truncate">{item.nama}</h5>
+                        <p className="text-[11px] text-gray-400 font-mono mt-0.5">
+                          NIP: {item.identifier || '-'} {item.homebase ? `• ${item.homebase}` : item.alamat ? `• ${item.alamat}` : ''}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-black text-purple-600">{persentase}%</span>
+                        <span className="block text-[10px] text-gray-400">Kehadiran</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1.5 text-center text-xs">
+                      <div className="bg-emerald-50 dark:bg-emerald-950/30 p-1.5 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
+                        <span className="block text-[10px] text-emerald-600 font-bold">Hadir</span>
+                        <span className="font-bold text-emerald-800 dark:text-emerald-300">{hadir}</span>
+                      </div>
+                      <div className="bg-blue-50 dark:bg-blue-950/30 p-1.5 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                        <span className="block text-[10px] text-blue-600 font-bold">Izin</span>
+                        <span className="font-bold text-blue-800 dark:text-blue-300">{izin}</span>
+                      </div>
+                      <div className="bg-amber-50 dark:bg-amber-950/30 p-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                        <span className="block text-[10px] text-amber-600 font-bold">Sakit</span>
+                        <span className="font-bold text-amber-800 dark:text-amber-300">{sakit}</span>
+                      </div>
+                      <div className="bg-rose-50 dark:bg-rose-950/30 p-1.5 rounded-lg border border-rose-100 dark:border-rose-900/30" title="Belum Terdata di Aplikasi">
+                        <span className="block text-[10px] text-rose-600 font-bold truncate">Belum Data</span>
+                        <span className="font-bold text-rose-800 dark:text-rose-300">{alpha}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2.5 border-t border-gray-100 dark:border-gray-700/60 space-y-2.5">
+                      {/* Baris WhatsApp */}
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">WhatsApp Guru:</span>
+                        <div className="flex items-center gap-1 font-mono text-xs text-gray-700 dark:text-gray-300 font-bold">
+                          <Phone size={12} className="text-emerald-500 shrink-0" />
+                          <span>{rawPhone || '-'}</span>
+                        </div>
+                      </div>
+
+                      {/* Baris Tombol PDF dan WA Guru (50% - 50%) */}
+                      <div className="grid grid-cols-2 gap-2 w-full pt-0.5">
+                        <a
+                          href={previewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200/80 dark:border-slate-600 shadow-2xs"
+                          title="Lihat PDF"
+                        >
+                          <FileText size={14} className="text-purple-600 dark:text-purple-400" />
+                          <span>Lihat PDF</span>
+                        </a>
+
+                        {hasWa ? (
+                          <a
+                            href={waLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => {
+                              setSentWaIds(prev => ({ ...prev, [item.id]: true }));
+                              handleScrollToNextGuru(idx + 1);
+                            }}
+                            className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs ${
+                              isSent
+                                ? 'bg-gray-100 dark:bg-gray-700 text-gray-500'
+                                : 'bg-green-600 hover:bg-green-700 text-white'
+                            }`}
+                          >
+                            <MessageCircle size={14} />
+                            <span>{isSent ? 'Terkirim ✓' : 'WA Guru'}</span>
+                          </a>
+                        ) : (
+                          <div className="w-full py-2 rounded-xl text-xs font-bold text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 border border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center gap-1 italic">
+                            <span>No WA Kosong</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 4. EXPANDABLE SECTION: FITUR TAMBAHAN (LOOPING MASSAL & LAPORAN KEPALA MADIN) */}
+      <div className="mt-8 border border-purple-200/70 dark:border-purple-800/50 rounded-2xl overflow-hidden bg-white dark:bg-gray-850 shadow-2xs">
+        <button
+          type="button"
+          onClick={() => setShowAdvancedOptions(prev => !prev)}
+          className="w-full p-4 flex items-center justify-between bg-purple-50/50 dark:bg-purple-950/30 hover:bg-purple-100/50 dark:hover:bg-purple-900/40 transition-colors text-left"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-purple-600 text-white rounded-lg">
+              <Calendar size={16} />
+            </div>
+            <div>
+              <h5 className="font-extrabold text-xs text-purple-950 dark:text-purple-200 leading-tight">
+                ⚙️ Opsi Pengiriman Massal Otomatis & Laporan Khusus Kepala Madin
+              </h5>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                Klik untuk membuka scheduler looping bulanan otomatis (tiap tgl 1) dan siaran evaluasi ke Kepala Madin
+              </p>
+            </div>
+          </div>
+          <div className="text-purple-600 dark:text-purple-400 shrink-0">
+            {showAdvancedOptions ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </div>
+        </button>
+
+        {showAdvancedOptions && (
+          <div className="p-5 space-y-6 border-t border-purple-100 dark:border-purple-800/40 animate-[fadeIn_0.3s_ease-out]">
+            {/* Form Konfigurasi Periode & Kategori untuk Looping Massal */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 1. Pilih Periode */}
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  1. Periode Rekapitulasi Massal
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] text-gray-500 dark:text-gray-400 mb-1 font-medium">Bulan</label>
+                    <select
+                      value={rekapBulan}
+                      onChange={(e) => setRekapBulan(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                    >
+                      {[
+                        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+                      ].map((m, idx) => (
+                        <option key={idx + 1} value={idx + 1}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-gray-500 dark:text-gray-400 mb-1 font-medium">Tahun</label>
+                    <select
+                      value={rekapTahun}
+                      onChange={(e) => setRekapTahun(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                    >
+                      {[2025, 2026, 2027, 2028].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <p className="text-[11px] text-gray-400">
+                  Rekapitulasi akan menghitung kehadiran guru & santri pada bulan terpilih.
+                </p>
+              </div>
+
+              {/* 2. Pilih Kategori Jadwal (Checkbox) */}
+              <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  2. Kategori Jadwal Mengajar
+                </label>
+                <div className="space-y-2">
+                  {[
+                    { key: 'madin', label: '📚 Madrasah Diniyah', desc: 'Jadwal & pelajaran diniyah (Aktif)' },
+                    { key: 'quran', label: "🕌 Kelas Qur'an", desc: 'Majlis Al-Qur\'an & Tahfidz' },
+                    { key: 'kamar', label: '🏠 Asrama / Kamar', desc: 'Kegiatan & piket asrama' },
+                  ].map(({ key, label, desc }) => {
+                    const checked = rekapCategories.includes(key);
+                    return (
+                      <label
+                        key={key}
+                        className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all select-none ${
+                          checked
+                            ? 'bg-purple-50/70 dark:bg-purple-950/30 border-purple-300 dark:border-purple-700 text-purple-950 dark:text-purple-200'
+                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-60'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleRekapCategory(key)}
+                          className="mt-0.5 accent-purple-600 w-3.5 h-3.5 shrink-0"
+                        />
+                        <div>
+                          <span className="block text-xs font-bold">{label}</span>
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500">{desc}</span>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Status Alert Rekapitulasi Massal */}
+            {rekapStatusMsg && (
+              <div className={`p-4 rounded-2xl border ${
+                rekapStatusMsg.type === 'success'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                  : 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200'
+              }`}>
+                <div className="flex items-center gap-2 font-bold mb-1 text-xs">
+                  {rekapStatusMsg.type === 'success' ? <CheckCircle2 size={16} className="text-emerald-600" /> : <AlertTriangle size={16} className="text-red-600" />}
+                  <span>{rekapStatusMsg.text}</span>
+                </div>
+                {rekapStatusMsg.details && Array.isArray(rekapStatusMsg.details) && (
+                  <div className="mt-2.5 max-h-36 overflow-y-auto space-y-1 text-[11px] pr-1">
+                    {rekapStatusMsg.details.map((det: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center py-1 border-b border-black/5 dark:border-white/5">
+                        <span className="font-medium">{det.guru_nama} ({det.phone})</span>
+                        <span className={det.success ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'}>
+                          {det.success ? '✓ Terjadwal' : `✗ ${det.error || 'Gagal'}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tombol Aksi Kirim / Jadwalkan Rekap Massal */}
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isRekapScheduling || isRekapSending}
+                onClick={() => handleSendRekapWA('schedule_monthly')}
+                className="w-full sm:w-auto px-5 py-3 text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 border border-purple-200 dark:border-purple-800 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                title="Jadwalkan pengiriman otomatis setiap tanggal 1 jam 08:00 WIB"
+              >
+                {isRekapScheduling ? <Loader2 size={15} className="animate-spin" /> : <Clock size={15} />}
+                <span>{isRekapScheduling ? 'Menjadwalkan...' : 'Jadwalkan Tiap Tgl 1 (Looping Bulanan)'}</span>
+              </button>
+              <button
+                type="button"
+                disabled={isRekapSending || isRekapScheduling}
+                onClick={() => handleSendRekapWA('send_now')}
+                className="w-full sm:w-auto px-6 py-3 text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
+              >
+                {isRekapSending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                <span>{isRekapSending ? 'Sedang Mengirim...' : 'Kirim Rekap Massal Sekarang'}</span>
+              </button>
+            </div>
+
+            {/* Bagian Khusus: Laporan ke Kepala Madin */}
+            <div className="mt-8 pt-6 border-t-2 border-dashed border-purple-200 dark:border-purple-800/60 space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-amber-500 text-white rounded-xl shadow-sm shrink-0">
+                    <Award size={18} />
+                  </div>
+                  <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100 leading-tight">
+                    Laporan Evaluasi Khusus Kepala Madrasah Diniyah (Madin)
+                  </h4>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Kirim rekapitulasi kehadiran seluruh dewan guru Madin bulan terpilih langsung ke WhatsApp Kepala Madin.
+                </p>
+              </div>
+
+              {/* Sasaran Kepala Madin: Putra vs Putri vs Semua */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Sasaran Kepala Madin
+                </label>
+                <div className="grid grid-cols-3 gap-1.5 bg-gray-100 dark:bg-gray-900/60 p-1 rounded-2xl border border-gray-200/50 dark:border-gray-700/60">
+                  {[
+                    { key: 'putra', label: 'Madin Putra' },
+                    { key: 'putri', label: 'Madin Putri' },
+                    { key: 'all', label: 'Semua Madin' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => handleTargetKepalaMadinChange(tab.key as any)}
+                      className={`py-2 px-1 text-xs font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1 ${
+                        kepalaMadinTarget === tab.key
+                          ? 'bg-amber-500 text-white shadow-sm'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-purple-50/40 dark:bg-purple-950/20 p-4 rounded-2xl border border-purple-200/50 dark:border-purple-800/30">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    Pilih Akun Guru ({kepalaMadinTarget === 'putra' ? 'Kepala Madin Putra' : kepalaMadinTarget === 'putri' ? 'Kepala Madin Putri' : 'Kepala Madin'})
+                  </label>
+                  <select
+                    value={selectedKepalaMadinId}
+                    onChange={(e) => handleSelectKepalaMadin(e.target.value)}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                  >
+                    <option value="">-- Pilih dari Daftar Dewan Guru / Pengurus --</option>
+                    {guruList.map(g => (
+                      <option key={g.guru_id} value={g.guru_id}>
+                        {g.nama} {g.jabatan ? `(${g.jabatan})` : ''} - {g.whatsapp || 'No WA (-) '}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    Nomor WhatsApp Tujuan ({kepalaMadinTarget === 'putra' ? 'Madin Putra' : kepalaMadinTarget === 'putri' ? 'Madin Putri' : 'Kepala Madin'})
+                  </label>
+                  <input
+                    type="text"
+                    value={kepalaMadinPhone}
+                    onChange={(e) => {
+                      setKepalaMadinPhone(e.target.value);
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem(`kepala_madin_${kepalaMadinTarget}_phone`, e.target.value);
+                      }
+                    }}
+                    placeholder="Contoh: 081234567890"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Templat Pesan Kepala Madin */}
+              <div className="bg-amber-50/30 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-200/50 dark:border-amber-800/40 space-y-2">
+                <label className="block text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center justify-between">
+                  <span>Edit Templat Pesan untuk Kepala Madin</span>
+                  <span className="text-[10px] text-gray-400 font-normal">
+                    Placeholder: &#123;total_guru&#125;, &#123;avg_kehadiran&#125;, &#123;ringkasan_kehadiran&#125;, &#123;link_laporan&#125;
+                  </span>
+                </label>
+                <textarea
+                  value={pesanKepalaMadinTemplate}
+                  onChange={(e) => {
+                    setPesanKepalaMadinTemplate(e.target.value);
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('wa_template_kepala_madin', e.target.value);
+                    }
+                  }}
+                  onBlur={() => saveTemplate('wa_template_kepala_madin', pesanKepalaMadinTemplate)}
+                  rows={4}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none resize-none"
+                />
+              </div>
+
+              {kepalaMadinStatusMsg && (
+                <div className={`p-4 rounded-2xl border text-xs font-bold ${
+                  kepalaMadinStatusMsg.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-900'
+                    : 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900'
+                }`}>
+                  {kepalaMadinStatusMsg.text}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isKepalaMadinScheduling || isKepalaMadinSending}
+                  onClick={() => handleSendKepalaMadinWA('schedule_monthly')}
+                  className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isKepalaMadinScheduling ? <Loader2 size={14} className="animate-spin" /> : <Clock size={14} />}
+                  <span>{isKepalaMadinScheduling ? 'Menjadwalkan...' : 'Jadwalkan Laporan Kepala Madin Tiap Tgl 1'}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={isKepalaMadinSending || isKepalaMadinScheduling}
+                  onClick={() => handleSendKepalaMadinWA('send_now')}
+                  className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isKepalaMadinSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  <span>{isKepalaMadinSending ? 'Mengirim...' : 'Kirim ke Kepala Madin Sekarang'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

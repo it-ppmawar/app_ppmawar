@@ -370,7 +370,7 @@ export async function GET(request: Request) {
 
       if (target_id && target_id !== 'all') {
         query = `
-          SELECT g.guru_id as id, g.nip as identifier, g.nama, g.foto, g.alamat, g.no_hp as nama_wali,
+          SELECT g.guru_id as id, g.nip as identifier, g.nama, g.foto, g.alamat, g.no_hp, g.no_hp as nama_wali,
             SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
             SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
             SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
@@ -384,7 +384,7 @@ export async function GET(request: Request) {
         params = [...joinDateParams, target_id];
       } else {
         query = `
-          SELECT g.guru_id as id, g.nip as identifier, g.nama, g.foto, g.alamat, g.no_hp as nama_wali,
+          SELECT g.guru_id as id, g.nip as identifier, g.nama, g.foto, g.alamat, g.no_hp, g.no_hp as nama_wali,
             SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
             SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
             SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
@@ -531,8 +531,11 @@ export async function GET(request: Request) {
     const formattedRows = rows.map((r: any) => {
       let preview_token = '';
       try {
+        const isGuruType = tipe === 'guru' || tipe === 'dewan_guru';
         preview_token = signToken({
-          muridId: r.id,
+          muridId: isGuruType ? undefined : r.id,
+          guruId: isGuruType ? r.id : undefined,
+          guru_id: isGuruType ? r.id : undefined,
           tipe,
           target_id: target_id || '',
           sub_filter: sub_filter || '',
@@ -540,12 +543,13 @@ export async function GET(request: Request) {
           tahun: !isRentang ? tahun : undefined,
           tanggal_dari: isRentang ? tanggal_dari : undefined,
           tanggal_sampai: isRentang ? tanggal_sampai : undefined,
-          role: 'wali_murid',
+          role: isGuruType ? 'guru' : 'wali_murid',
           purpose: 'rekap_preview'
         }, expiryDuration);
       } catch (_) {}
       return {
         ...r,
+        no_hp: r.no_hp || r.nama_wali || '',
         preview_token,
         token_duration_label: durationLabel,
         token_exp_date: expDateFormatted,
