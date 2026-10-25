@@ -59,6 +59,10 @@ export async function POST(request: Request) {
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
 
+    const tanggalDari: string | undefined = body.tanggal_dari;
+    const tanggalSampai: string | undefined = body.tanggal_sampai;
+    const modeRentang = !!(tanggalDari && tanggalSampai);
+
     const bulan = Number(body.bulan || currentMonth);
     const tahun = Number(body.tahun || currentYear);
     const targetWilayah: 'putra' | 'putri' | 'all' = body.target_wilayah || 'putra';
@@ -67,12 +71,18 @@ export async function POST(request: Request) {
     const customTemplate = body.template || DEFAULT_KEPALA_MADIN_TEMPLATE;
     const mode: 'send_now' | 'schedule_monthly' | 'get_link' = body.mode || 'send_now';
 
+    if (mode === 'schedule_monthly' && modeRentang) {
+      return NextResponse.json({ error: 'Penjadwalan otomatis bulanan tidak didukung untuk mode rentang tanggal. Gunakan Mode Bulanan.' }, { status: 400 });
+    }
+
     const phone = rawPhone ? formatToWaPhone(rawPhone) : '';
     if (!phone && mode !== 'get_link') {
       return NextResponse.json({ error: 'Nomor WhatsApp Kepala Madin tidak valid atau belum diisi' }, { status: 400 });
     }
 
-    const bulanTahunStr = `${NAMA_BULAN[bulan] || `Bulan ${bulan}`} ${tahun}`;
+    const bulanTahunStr = modeRentang
+      ? `${tanggalDari} s/d ${tanggalSampai}`
+      : `${NAMA_BULAN[bulan] || `Bulan ${bulan}`} ${tahun}`;
 
     let targetWhere = '';
     let wilayahSub = '';
@@ -103,17 +113,32 @@ export async function POST(request: Request) {
 
     if (guruIds.length > 0) {
       const placeholders = guruIds.map(() => '?').join(',');
-      const [attRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT 
-          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
-          COUNT(*) as total_sesi
-         FROM absensi_guru
-         WHERE guru_id IN (${placeholders}) AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?`,
-        [...guruIds, bulan, tahun]
-      );
+      let attRows: RowDataPacket[];
+      if (modeRentang) {
+        [attRows] = await pool.execute<RowDataPacket[]>(
+          `SELECT 
+            SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+            SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+            SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+            SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+            COUNT(*) as total_sesi
+           FROM absensi_guru
+           WHERE guru_id IN (${placeholders}) AND tanggal BETWEEN ? AND ?`,
+          [...guruIds, tanggalDari, tanggalSampai]
+        );
+      } else {
+        [attRows] = await pool.execute<RowDataPacket[]>(
+          `SELECT 
+            SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+            SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+            SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+            SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+            COUNT(*) as total_sesi
+           FROM absensi_guru
+           WHERE guru_id IN (${placeholders}) AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?`,
+          [...guruIds, bulan, tahun]
+        );
+      }
 
       const r = attRows[0] || {};
       totalHadir = Number(r.hadir || 0);
@@ -137,6 +162,7 @@ export async function POST(request: Request) {
       bulan,
       tahun,
       target_wilayah: targetWilayah,
+      ...(modeRentang ? { tanggal_dari: tanggalDari, tanggal_sampai: tanggalSampai } : {}),
     }, '30d');
 
     const reportUrl = `https://app.ppmawar.or.id/rekap/kepala-madin?token=${reportToken}`;

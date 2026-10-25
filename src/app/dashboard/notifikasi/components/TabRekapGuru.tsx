@@ -94,6 +94,13 @@ export interface TabRekapGuruProps {
   rekapStatusMsg: { type: 'success' | 'error' | 'info'; text: string; details?: any[] } | null;
   handleSendRekapWA: (mode: 'send_now' | 'schedule_monthly') => Promise<void>;
 
+  rekapModeRentang: boolean;
+  setRekapModeRentang: React.Dispatch<React.SetStateAction<boolean>>;
+  rekapTanggalDari: string;
+  setRekapTanggalDari: React.Dispatch<React.SetStateAction<string>>;
+  rekapTanggalSampai: string;
+  setRekapTanggalSampai: React.Dispatch<React.SetStateAction<string>>;
+
   kepalaMadinTarget: 'putra' | 'putri' | 'all';
   handleTargetKepalaMadinChange: (target: 'putra' | 'putri' | 'all') => void;
   selectedKepalaMadinId: string;
@@ -126,6 +133,13 @@ export default function TabRekapGuru({
   isRekapScheduling,
   rekapStatusMsg,
   handleSendRekapWA,
+
+  rekapModeRentang,
+  setRekapModeRentang,
+  rekapTanggalDari,
+  setRekapTanggalDari,
+  rekapTanggalSampai,
+  setRekapTanggalSampai,
 
   kepalaMadinTarget,
   handleTargetKepalaMadinChange,
@@ -202,8 +216,9 @@ export default function TabRekapGuru({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: 'get_link',
-          bulan: rekapBulan,
-          tahun: rekapTahun,
+          ...(rekapModeRentang
+            ? { tanggal_dari: rekapTanggalDari, tanggal_sampai: rekapTanggalSampai }
+            : { bulan: rekapBulan, tahun: rekapTahun }),
           target_wilayah: kepalaMadinTarget,
           kepala_nama: kepalaNama,
           phone_number: kepalaMadinPhone,
@@ -219,7 +234,7 @@ export default function TabRekapGuru({
     } finally {
       setLoadingKepalaMadinData(false);
     }
-  }, [guruList, selectedKepalaMadinId, kepalaMadinTarget, rekapBulan, rekapTahun, kepalaMadinPhone, pesanKepalaMadinTemplate]);
+  }, [guruList, selectedKepalaMadinId, kepalaMadinTarget, rekapBulan, rekapTahun, kepalaMadinPhone, pesanKepalaMadinTemplate, rekapModeRentang, rekapTanggalDari, rekapTanggalSampai]);
 
   useEffect(() => {
     if (showAdvancedOptions) {
@@ -1068,37 +1083,86 @@ export default function TabRekapGuru({
                 <label className="block text-xs font-extrabold text-gray-800 dark:text-gray-100 uppercase tracking-wider">
                   1. Periode Rekapitulasi Massal
                 </label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] text-gray-500 dark:text-gray-300 mb-1 font-semibold">Bulan</label>
-                    <select
-                      value={rekapBulan}
-                      onChange={(e) => setRekapBulan(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
-                    >
-                      {[
-                        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-                        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-                      ].map((m, idx) => (
-                        <option key={idx + 1} value={idx + 1}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-gray-500 dark:text-gray-300 mb-1 font-semibold">Tahun</label>
-                    <select
-                      value={rekapTahun}
-                      onChange={(e) => setRekapTahun(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
-                    >
-                      {[2025, 2026, 2027, 2028].map(y => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </select>
-                  </div>
+
+                {/* Mode Waktu Toggle */}
+                <div>
+                  <label className="block text-[11px] text-gray-500 dark:text-gray-300 mb-1 font-semibold">Mode Waktu</label>
+                  <button
+                    type="button"
+                    onClick={() => setRekapModeRentang(v => !v)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                      rekapModeRentang
+                        ? 'bg-purple-50 dark:bg-purple-950/50 border-purple-300 dark:border-purple-600 text-purple-800 dark:text-purple-200'
+                        : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200'
+                    }`}
+                  >
+                    <span>{rekapModeRentang ? '📅 Rentang Tanggal' : '🗓️ Mode Bulanan'}</span>
+                    <span className={`flex items-center gap-1 text-[11px] font-semibold ${rekapModeRentang ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                      {rekapModeRentang ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                    </span>
+                  </button>
                 </div>
+
+                {/* Conditional Inputs */}
+                {rekapModeRentang ? (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] text-gray-500 dark:text-gray-300 mb-1 font-semibold">Dari Tanggal</label>
+                      <input
+                        type="date"
+                        value={rekapTanggalDari}
+                        onChange={(e) => setRekapTanggalDari(e.target.value)}
+                        max={rekapTanggalSampai}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-gray-500 dark:text-gray-300 mb-1 font-semibold">Sampai Tanggal</label>
+                      <input
+                        type="date"
+                        value={rekapTanggalSampai}
+                        onChange={(e) => setRekapTanggalSampai(e.target.value)}
+                        min={rekapTanggalDari}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] text-gray-500 dark:text-gray-300 mb-1 font-semibold">Bulan</label>
+                      <select
+                        value={rekapBulan}
+                        onChange={(e) => setRekapBulan(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                      >
+                        {[
+                          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+                        ].map((m, idx) => (
+                          <option key={idx + 1} value={idx + 1}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-gray-500 dark:text-gray-300 mb-1 font-semibold">Tahun</label>
+                      <select
+                        value={rekapTahun}
+                        onChange={(e) => setRekapTahun(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-xl text-xs font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+                      >
+                        {[2025, 2026, 2027, 2028].map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                  Rekapitulasi akan menghitung kehadiran guru & santri pada bulan terpilih.
+                  {rekapModeRentang
+                    ? 'Rekapitulasi akan menghitung kehadiran guru pada rentang tanggal yang dipilih.'
+                    : 'Rekapitulasi akan menghitung kehadiran guru & santri pada bulan terpilih.'}
                 </p>
               </div>
 
@@ -1170,10 +1234,10 @@ export default function TabRekapGuru({
             <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
               <button
                 type="button"
-                disabled={isRekapScheduling || isRekapSending}
+                disabled={isRekapScheduling || isRekapSending || rekapModeRentang}
                 onClick={() => handleSendRekapWA('schedule_monthly')}
                 className="w-full sm:w-auto px-5 py-3 text-xs font-bold text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-700 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50"
-                title="Jadwalkan pengiriman otomatis setiap tanggal 1 jam 08:00 WIB"
+                title={rekapModeRentang ? 'Penjadwalan otomatis hanya tersedia di Mode Bulanan' : 'Jadwalkan pengiriman otomatis setiap tanggal 1 jam 08:00 WIB'}
               >
                 {isRekapScheduling ? <Loader2 size={15} className="animate-spin" /> : <Clock size={15} />}
                 <span>{isRekapScheduling ? 'Menjadwalkan...' : 'Jadwalkan Tiap Tgl 1 (Looping Bulanan)'}</span>
@@ -1544,9 +1608,10 @@ export default function TabRekapGuru({
                 <div className="flex flex-col sm:flex-row items-center justify-end gap-3">
                   <button
                     type="button"
-                    disabled={isKepalaMadinScheduling || isKepalaMadinSending}
+                    disabled={isKepalaMadinScheduling || isKepalaMadinSending || rekapModeRentang}
                     onClick={() => handleSendKepalaMadinWA('schedule_monthly')}
                     className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                    title={rekapModeRentang ? 'Penjadwalan otomatis hanya tersedia di Mode Bulanan' : 'Jadwalkan laporan ke Kepala Madin tiap tanggal 1'}
                   >
                     {isKepalaMadinScheduling ? <Loader2 size={14} className="animate-spin" /> : <Clock size={14} />}
                     <span>{isKepalaMadinScheduling ? 'Menjadwalkan...' : 'Jadwalkan Laporan Kepala Madin Tiap Tgl 1'}</span>

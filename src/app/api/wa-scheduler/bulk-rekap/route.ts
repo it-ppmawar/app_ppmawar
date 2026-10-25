@@ -57,6 +57,10 @@ export async function POST(request: Request) {
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
 
+    const tanggalDari: string | undefined = body.tanggal_dari;
+    const tanggalSampai: string | undefined = body.tanggal_sampai;
+    const modeRentang = !!(tanggalDari && tanggalSampai);
+
     const bulan = Number(body.bulan || currentMonth);
     const tahun = Number(body.tahun || currentYear);
     const categories: string[] = Array.isArray(body.categories) && body.categories.length > 0
@@ -64,10 +68,17 @@ export async function POST(request: Request) {
       : ['madin'];
     const customTemplate = body.template || DEFAULT_REKAP_TEMPLATE;
     const mode: 'send_now' | 'schedule_monthly' = body.mode || 'send_now';
+
+    if (mode === 'schedule_monthly' && modeRentang) {
+      return NextResponse.json({ error: 'Penjadwalan otomatis bulanan tidak didukung untuk mode rentang tanggal. Gunakan Mode Bulanan.' }, { status: 400 });
+    }
+
     const isLoop = mode === 'schedule_monthly' ? 1 : 0;
     const loopInterval = mode === 'schedule_monthly' ? 'monthly' : undefined;
 
-    const bulanTahunStr = `${NAMA_BULAN[bulan] || `Bulan ${bulan}`} ${tahun}`;
+    const bulanTahunStr = modeRentang
+      ? `${tanggalDari} s/d ${tanggalSampai}`
+      : `${NAMA_BULAN[bulan] || `Bulan ${bulan}`} ${tahun}`;
 
     // 1. Ambil daftar seluruh guru yang memiliki jadwal di kategori terpilih
     interface GuruScheduleItem {
@@ -178,18 +189,34 @@ export async function POST(request: Request) {
     // 2. Ambil ringkasan kehadiran mengajar untuk semua guru ini di bulan/tahun terpilih
     const guruIds = guruList.map(g => g.guru_id);
     const placeholders = guruIds.map(() => '?').join(',');
-    const [attendanceRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT guru_id,
-        SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-        SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-        SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-        SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
-        COUNT(*) as total_sesi
-       FROM absensi_guru
-       WHERE guru_id IN (${placeholders}) AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
-       GROUP BY guru_id`,
-      [...guruIds, bulan, tahun]
-    );
+    let attendanceRows: RowDataPacket[];
+    if (modeRentang) {
+      [attendanceRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT guru_id,
+          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total_sesi
+         FROM absensi_guru
+         WHERE guru_id IN (${placeholders}) AND tanggal BETWEEN ? AND ?
+         GROUP BY guru_id`,
+        [...guruIds, tanggalDari, tanggalSampai]
+      );
+    } else {
+      [attendanceRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT guru_id,
+          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total_sesi
+         FROM absensi_guru
+         WHERE guru_id IN (${placeholders}) AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+         GROUP BY guru_id`,
+        [...guruIds, bulan, tahun]
+      );
+    }
 
     const attendanceMap = new Map<number, any>();
     for (const r of attendanceRows) {
@@ -245,8 +272,9 @@ export async function POST(request: Request) {
         const rekapToken = signToken({
           type: 'rekap_guru',
           guru_id: g.guru_id,
-          bulan,
-          tahun,
+          ...(modeRentang
+            ? { tanggal_dari: tanggalDari, tanggal_sampai: tanggalSampai }
+            : { bulan, tahun }),
           categories,
         }, '30d');
 

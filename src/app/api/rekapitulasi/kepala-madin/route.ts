@@ -27,6 +27,9 @@ export async function GET(request: Request) {
     const bulan = Number(payload.bulan || new Date().getMonth() + 1);
     const tahun = Number(payload.tahun || new Date().getFullYear());
     const targetWilayah: 'putra' | 'putri' | 'all' = payload.target_wilayah || 'all';
+    const tanggalDari = payload.tanggal_dari as string | undefined;
+    const tanggalSampai = payload.tanggal_sampai as string | undefined;
+    const modeRentang = !!(tanggalDari && tanggalSampai);
 
     let targetWhere = '';
     if (targetWilayah === 'putra') {
@@ -91,21 +94,37 @@ export async function GET(request: Request) {
       });
     }
 
-    // 2. Ambil absensi seluruh guru Madin ini di bulan & tahun terpilih
+    // 2. Ambil absensi seluruh guru Madin ini di bulan & tahun terpilih atau rentang tanggal
     const guruIds = teacherList.map(t => t.guru_id);
     const placeholders = guruIds.map(() => '?').join(',');
-    const [attRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT guru_id,
-        SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-        SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-        SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-        SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
-        COUNT(*) as total_sesi
-       FROM absensi_guru
-       WHERE guru_id IN (${placeholders}) AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
-       GROUP BY guru_id`,
-      [...guruIds, bulan, tahun]
-    );
+    let attRows: RowDataPacket[];
+    if (modeRentang) {
+      [attRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT guru_id,
+          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total_sesi
+         FROM absensi_guru
+         WHERE guru_id IN (${placeholders}) AND tanggal BETWEEN ? AND ?
+         GROUP BY guru_id`,
+        [...guruIds, tanggalDari, tanggalSampai]
+      );
+    } else {
+      [attRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT guru_id,
+          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total_sesi
+         FROM absensi_guru
+         WHERE guru_id IN (${placeholders}) AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+         GROUP BY guru_id`,
+        [...guruIds, bulan, tahun]
+      );
+    }
 
     const attMap = new Map<number, any>();
     for (const r of attRows) {
@@ -148,21 +167,39 @@ export async function GET(request: Request) {
 
     const avgPct = grandSesi > 0 ? Math.round((grandHadir / grandSesi) * 100) : 0;
 
-    // 3. Ambil tren kehadiran dewan guru per tanggal pada bulan & tahun tersebut
-    const [trendRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT 
-        DATE_FORMAT(tanggal, '%Y-%m-%d') as tanggal,
-        SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
-        SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
-        SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
-        SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
-        COUNT(*) as total
-       FROM absensi_guru
-       WHERE guru_id IN (${placeholders}) AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
-       GROUP BY tanggal
-       ORDER BY tanggal ASC`,
-      [...guruIds, bulan, tahun]
-    );
+    // 3. Ambil tren kehadiran dewan guru per tanggal pada bulan & tahun tersebut atau rentang tanggal
+    let trendRows: RowDataPacket[];
+    if (modeRentang) {
+      [trendRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT 
+          DATE_FORMAT(tanggal, '%Y-%m-%d') as tanggal,
+          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total
+         FROM absensi_guru
+         WHERE guru_id IN (${placeholders}) AND tanggal BETWEEN ? AND ?
+         GROUP BY tanggal
+         ORDER BY tanggal ASC`,
+        [...guruIds, tanggalDari, tanggalSampai]
+      );
+    } else {
+      [trendRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT 
+          DATE_FORMAT(tanggal, '%Y-%m-%d') as tanggal,
+          SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total
+         FROM absensi_guru
+         WHERE guru_id IN (${placeholders}) AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+         GROUP BY tanggal
+         ORDER BY tanggal ASC`,
+        [...guruIds, bulan, tahun]
+      );
+    }
 
     const dailyTrends = (trendRows as RowDataPacket[]).map(r => {
       const h = Number(r.hadir || 0);
@@ -192,8 +229,11 @@ export async function GET(request: Request) {
         periode: {
           bulan,
           tahun,
-          bulan_nama: NAMA_BULAN[bulan] || `Bulan ${bulan}`,
+          bulan_nama: modeRentang ? `${tanggalDari} s/d ${tanggalSampai}` : (NAMA_BULAN[bulan] || `Bulan ${bulan}`),
           wilayah: targetWilayah,
+          is_rentang: modeRentang,
+          tanggal_dari: tanggalDari,
+          tanggal_sampai: tanggalSampai,
         },
         meta: {
           expires_at: expiresAt,

@@ -148,6 +148,17 @@ function NotifikasiContent() {
   const [isRekapScheduling, setIsRekapScheduling] = useState(false);
   const [rekapStatusMsg, setRekapStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string; details?: any[] } | null>(null);
 
+  const [rekapMassalModeRentang, setRekapMassalModeRentang] = useState(false);
+  const [rekapMassalTanggalDari, setRekapMassalTanggalDari] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - 1);
+    return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(d);
+  });
+  const [rekapMassalTanggalSampai, setRekapMassalTanggalSampai] = useState(() => {
+    return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
+  });
+
   // State Siaran Khusus Kepala Madin (Putra vs Putri vs Gabungan)
   const [kepalaMadinTarget, setKepalaMadinTarget] = useState<'putra' | 'putri' | 'all'>('putra');
   const [selectedKepalaMadinId, setSelectedKepalaMadinId] = useState('');
@@ -240,8 +251,9 @@ function NotifikasiContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          bulan: rekapBulan,
-          tahun: rekapTahun,
+          ...(rekapMassalModeRentang
+            ? { tanggal_dari: rekapMassalTanggalDari, tanggal_sampai: rekapMassalTanggalSampai }
+            : { bulan: rekapBulan, tahun: rekapTahun }),
           categories: rekapCategories,
           template: pesanRekapGuruTemplate,
           mode,
@@ -285,8 +297,9 @@ function NotifikasiContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          bulan: rekapBulan,
-          tahun: rekapTahun,
+          ...(rekapMassalModeRentang
+            ? { tanggal_dari: rekapMassalTanggalDari, tanggal_sampai: rekapMassalTanggalSampai }
+            : { bulan: rekapBulan, tahun: rekapTahun }),
           target_wilayah: kepalaMadinTarget,
           kepala_nama: kepalaMadinNama,
           phone_number: kepalaMadinPhone,
@@ -2366,6 +2379,12 @@ function NotifikasiContent() {
                 isRekapScheduling={isRekapScheduling}
                 rekapStatusMsg={rekapStatusMsg}
                 handleSendRekapWA={handleSendRekapWA}
+                rekapModeRentang={rekapMassalModeRentang}
+                setRekapModeRentang={setRekapMassalModeRentang}
+                rekapTanggalDari={rekapMassalTanggalDari}
+                setRekapTanggalDari={setRekapMassalTanggalDari}
+                rekapTanggalSampai={rekapMassalTanggalSampai}
+                setRekapTanggalSampai={setRekapMassalTanggalSampai}
                 kepalaMadinTarget={kepalaMadinTarget}
                 handleTargetKepalaMadinChange={handleTargetKepalaMadinChange}
                 selectedKepalaMadinId={selectedKepalaMadinId}

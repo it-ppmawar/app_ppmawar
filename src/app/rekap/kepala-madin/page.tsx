@@ -262,9 +262,12 @@ function RekapKepalaMadinContent() {
           : 'Semua Madin';
 
       const title = 'LAPORAN EVALUASI KEHADIRAN DEWAN GURU MADIN';
-      const subtitle = `Sasaran: Kepala Madrasah Diniyah (${wilayahStr})\nLembaga: Pondok Pesantren Matholi'ul Anwar Simo Sungelebak Lamongan\nPeriode Rekapitulasi: ${data.periode.bulan_nama} ${data.periode.tahun}\nTotal Guru Terdata: ${data.summary.total_guru} Guru | Rata-Rata Kehadiran: ${data.summary.avg_attendance_pct}%`;
-      const period = `${data.periode.bulan_nama} ${data.periode.tahun}`;
-      const filename = `Laporan_Evaluasi_Madin_${data.periode.wilayah || 'all'}_${data.periode.bulan}_${data.periode.tahun}`;
+      const periodeDisplay = data.periode.is_rentang
+        ? data.periode.bulan_nama
+        : `${data.periode.bulan_nama} ${data.periode.tahun}`;
+      const subtitle = `Sasaran: Kepala Madrasah Diniyah (${wilayahStr})\nLembaga: Pondok Pesantren Matholi'ul Anwar Simo Sungelebak Lamongan\nPeriode Rekapitulasi: ${periodeDisplay}\nTotal Guru Terdata: ${data.summary.total_guru} Guru | Rata-Rata Kehadiran: ${data.summary.avg_attendance_pct}%`;
+      const period = periodeDisplay;
+      const filename = `Laporan_Evaluasi_Madin_${data.periode.wilayah || 'all'}_${data.periode.is_rentang ? `${data.periode.tanggal_dari}_${data.periode.tanggal_sampai}` : `${data.periode.bulan}_${data.periode.tahun}`}`;
 
       const columns = ['No', 'Nama Dewan Guru', 'NIP / Kontak', 'Kelas & Mapel yang Diampu', 'Total Sesi', 'Hadir', 'Izin', 'Sakit', 'Alpha', 'Kehadiran (%)'];
       const rows = filteredTeachers.map((t: any, idx: number) => {
@@ -465,7 +468,7 @@ function RekapKepalaMadinContent() {
               <span className="text-[11px] text-slate-400 block mb-0.5 font-medium">Periode Rekapitulasi</span>
               <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                 <Calendar size={14} className="text-purple-600 shrink-0" />
-                {periode.bulan_nama} {periode.tahun}
+                {periode.is_rentang ? periode.bulan_nama : `${periode.bulan_nama} ${periode.tahun}`}
               </span>
             </div>
           </div>
