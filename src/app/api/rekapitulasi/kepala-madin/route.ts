@@ -148,6 +148,44 @@ export async function GET(request: Request) {
 
     const avgPct = grandSesi > 0 ? Math.round((grandHadir / grandSesi) * 100) : 0;
 
+    // 3. Ambil tren kehadiran dewan guru per tanggal pada bulan & tahun tersebut
+    const [trendRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT 
+        DATE_FORMAT(tanggal, '%Y-%m-%d') as tanggal,
+        SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) as hadir,
+        SUM(CASE WHEN status = 'Izin' THEN 1 ELSE 0 END) as izin,
+        SUM(CASE WHEN status = 'Sakit' THEN 1 ELSE 0 END) as sakit,
+        SUM(CASE WHEN status = 'Alpha' THEN 1 ELSE 0 END) as alpha,
+        COUNT(*) as total
+       FROM absensi_guru
+       WHERE guru_id IN (${placeholders}) AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?
+       GROUP BY tanggal
+       ORDER BY tanggal ASC`,
+      [...guruIds, bulan, tahun]
+    );
+
+    const dailyTrends = (trendRows as RowDataPacket[]).map(r => {
+      const h = Number(r.hadir || 0);
+      const i = Number(r.izin || 0);
+      const s = Number(r.sakit || 0);
+      const a = Number(r.alpha || 0);
+      const tot = Number(r.total || (h + i + s + a)) || 1;
+      return {
+        tanggal: r.tanggal,
+        hadir: h,
+        izin: i,
+        sakit: s,
+        alpha: a,
+        total: Number(r.total || tot),
+        pctHadir: Math.round((h / tot) * 1000) / 10,
+        pctIzin: Math.round((i / tot) * 1000) / 10,
+        pctSakit: Math.round((s / tot) * 1000) / 10,
+        pctAlpha: Math.round((a / tot) * 1000) / 10,
+      };
+    });
+
+    const expiresAt = payload.exp ? new Date(payload.exp * 1000).toISOString() : null;
+
     return NextResponse.json({
       success: true,
       data: {
@@ -156,6 +194,9 @@ export async function GET(request: Request) {
           tahun,
           bulan_nama: NAMA_BULAN[bulan] || `Bulan ${bulan}`,
           wilayah: targetWilayah,
+        },
+        meta: {
+          expires_at: expiresAt,
         },
         summary: {
           total_guru: teachersWithAtt.length,
@@ -166,6 +207,7 @@ export async function GET(request: Request) {
           total_alpha: grandAlpha,
           avg_attendance_pct: avgPct,
         },
+        daily_trends: dailyTrends,
         teachers: teachersWithAtt,
       }
     });
