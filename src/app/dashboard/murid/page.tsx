@@ -166,7 +166,10 @@ export default function DataMuridPage() {
       const res = await fetch('/api/murid', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(addForm)
+        body: JSON.stringify({
+          ...addForm,
+          no_wali: addForm.no_hp_wali
+        })
       });
       const data = await res.json();
       if (data.success) {

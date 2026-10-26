@@ -283,8 +283,8 @@ export async function POST(request: Request) {
     const payload = verifyToken(token) as any;
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
-    // Hanya admin & sekretariat yang boleh tambah santri baru
-    const allowedRoles = ['admin', 'superadmin', 'sekretariat'];
+    // Hanya admin, superadmin, sekretariat & staff yang boleh tambah santri baru
+    const allowedRoles = ['admin', 'superadmin', 'sekretariat', 'staff'];
     if (!allowedRoles.includes(payload.role)) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
@@ -298,8 +298,13 @@ export async function POST(request: Request) {
       kelas_quran_id,
       kamar_id,
       no_hp_wali,
+      no_wali,
       nama_wali,
       alamat,
+      nik,
+      nama_panggilan,
+      barcode_id,
+      no_hp,
     } = body;
 
     // Validasi field wajib
@@ -318,8 +323,29 @@ export async function POST(request: Request) {
         'SELECT nis FROM murid WHERE nis LIKE ? ORDER BY nis DESC LIMIT 1',
         [`${prefix}%`]
       );
-      const lastNum = lastRows.length > 0 ? parseInt(lastRows[0].nis.slice(6)) + 1 : 1;
+      let lastNum = 1;
+      if (lastRows.length > 0 && lastRows[0].nis) {
+        const parsed = parseInt(lastRows[0].nis.slice(6), 10);
+        if (!isNaN(parsed)) {
+          lastNum = parsed + 1;
+        }
+      }
       finalNis = `${prefix}${String(lastNum).padStart(4, '0')}`;
+
+      // Pastikan finalNis benar-benar unik jika ada duplikat
+      let isUnique = false;
+      while (!isUnique) {
+        const [existing]: any = await pool.execute(
+          'SELECT murid_id FROM murid WHERE nis = ?',
+          [finalNis]
+        );
+        if (existing.length === 0) {
+          isUnique = true;
+        } else {
+          lastNum++;
+          finalNis = `${prefix}${String(lastNum).padStart(4, '0')}`;
+        }
+      }
     } else {
       // Cek duplikat NIS
       const [existing]: any = await pool.execute(
@@ -331,20 +357,102 @@ export async function POST(request: Request) {
       }
     }
 
+    // Deteksi dinamis kolom-kolom tabel murid untuk kompatibilitas schema database
+    const [colRows]: any = await pool.execute('SHOW COLUMNS FROM murid');
+    const existingCols = new Set<string>(colRows.map((c: any) => c.Field.toLowerCase()));
+
+    const insertFields: string[] = ['nama', 'jenis_kelamin'];
+    const insertPlaceholders: string[] = ['?', '?'];
+    const insertValues: any[] = [nama.trim(), jenis_kelamin];
+
+    if (finalNis && existingCols.has('nis')) {
+      insertFields.push('nis');
+      insertPlaceholders.push('?');
+      insertValues.push(finalNis);
+    }
+
+    if (existingCols.has('kelas_madin_id')) {
+      insertFields.push('kelas_madin_id');
+      insertPlaceholders.push('?');
+      insertValues.push(kelas_madin_id || null);
+    }
+
+    if (existingCols.has('kelas_quran_id')) {
+      insertFields.push('kelas_quran_id');
+      insertPlaceholders.push('?');
+      insertValues.push(kelas_quran_id || null);
+    }
+
+    if (existingCols.has('kamar_id')) {
+      insertFields.push('kamar_id');
+      insertPlaceholders.push('?');
+      insertValues.push(kamar_id || null);
+    }
+
+    if (existingCols.has('nama_wali')) {
+      insertFields.push('nama_wali');
+      insertPlaceholders.push('?');
+      insertValues.push(nama_wali?.trim() || null);
+    }
+
+    // Di tabel murid kolom telepon wali adalah 'no_wali' (dukung juga 'no_hp_wali' jika ada)
+    const phoneWaliVal = (no_wali || no_hp_wali || '').trim() || null;
+    if (phoneWaliVal) {
+      if (existingCols.has('no_wali')) {
+        insertFields.push('no_wali');
+        insertPlaceholders.push('?');
+        insertValues.push(phoneWaliVal);
+      }
+      if (existingCols.has('no_hp_wali')) {
+        insertFields.push('no_hp_wali');
+        insertPlaceholders.push('?');
+        insertValues.push(phoneWaliVal);
+      }
+    }
+
+    if (existingCols.has('alamat')) {
+      insertFields.push('alamat');
+      insertPlaceholders.push('?');
+      insertValues.push(alamat?.trim() || null);
+    }
+
+    if (nik && existingCols.has('nik')) {
+      insertFields.push('nik');
+      insertPlaceholders.push('?');
+      insertValues.push(nik.trim());
+    }
+
+    if (nama_panggilan && existingCols.has('nama_panggilan')) {
+      insertFields.push('nama_panggilan');
+      insertPlaceholders.push('?');
+      insertValues.push(nama_panggilan.trim());
+    }
+
+    if (barcode_id && existingCols.has('barcode_id')) {
+      insertFields.push('barcode_id');
+      insertPlaceholders.push('?');
+      insertValues.push(barcode_id.trim());
+    }
+
+    if (no_hp && existingCols.has('no_hp')) {
+      insertFields.push('no_hp');
+      insertPlaceholders.push('?');
+      insertValues.push(no_hp.trim());
+    }
+
+    if (existingCols.has('created_at')) {
+      insertFields.push('created_at');
+      insertPlaceholders.push('NOW()');
+    }
+
+    if (existingCols.has('updated_at')) {
+      insertFields.push('updated_at');
+      insertPlaceholders.push('NOW()');
+    }
+
     const [result]: any = await pool.execute(
-      `INSERT INTO murid (nama, nis, jenis_kelamin, kelas_madin_id, kelas_quran_id, kamar_id, no_hp_wali, nama_wali, alamat, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [
-        nama.trim(),
-        finalNis,
-        jenis_kelamin,
-        kelas_madin_id || null,
-        kelas_quran_id || null,
-        kamar_id || null,
-        no_hp_wali || null,
-        nama_wali || null,
-        alamat || null,
-      ]
+      `INSERT INTO murid (${insertFields.join(', ')}) VALUES (${insertPlaceholders.join(', ')})`,
+      insertValues
     );
 
     return NextResponse.json({
