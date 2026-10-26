@@ -493,14 +493,14 @@ export async function GET(request: Request) {
             CONCAT('madin_', jm.jadwal_id) as id,
             jm.jadwal_id,
             jm.mata_pelajaran as nama,
-            km.nama_kelas as kelas_nama,
+            COALESCE(km.nama_kelas, '-') as kelas_nama,
             km.kelas_id as kelas_id,
             'madin' as kategori,
             'Madrasah Diniyah' as kategori_label,
             g.guru_id,
-            g.nama as guru_nama,
-            g.nip as guru_nip,
-            g.nip as identifier,
+            COALESCE(g.nama, 'Belum Ditentukan') as guru_nama,
+            COALESCE(g.nip, '-') as guru_nip,
+            COALESCE(g.nip, '-') as identifier,
             COALESCE(g.no_hp, '') as no_hp,
             COALESCE(g.no_hp, '') as nama_wali,
             COALESCE(a_sum.hadir, 0) as hadir,
@@ -510,12 +510,12 @@ export async function GET(request: Request) {
             COALESCE(a_sum.total, 0) as total,
             COALESCE(a_sum.total_sesi, 0) as total_sesi
           FROM jadwal_madin jm
-          JOIN kelas_madin km ON jm.kelas_madin_id = km.kelas_id
-          JOIN guru g ON jm.guru_id = g.guru_id
+          LEFT JOIN kelas_madin km ON jm.kelas_madin_id = km.kelas_id
+          LEFT JOIN guru g ON jm.guru_id = g.guru_id
           LEFT JOIN (
             SELECT 
               a.jadwal_madin_id,
-              COUNT(a.id) as total,
+              COUNT(*) as total,
               COUNT(DISTINCT a.tanggal) as total_sesi,
               SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
               SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
@@ -538,14 +538,14 @@ export async function GET(request: Request) {
             CONCAT('quran_', jq.id) as id,
             jq.id as jadwal_id,
             COALESCE(jq.mata_pelajaran, "Majlis Al-Qur'an") as nama,
-            kq.nama_kelas as kelas_nama,
+            COALESCE(kq.nama_kelas, '-') as kelas_nama,
             kq.id as kelas_id,
             'quran' as kategori,
             "Al-Qur'an" as kategori_label,
             g.guru_id,
-            g.nama as guru_nama,
-            g.nip as guru_nip,
-            g.nip as identifier,
+            COALESCE(g.nama, 'Belum Ditentukan') as guru_nama,
+            COALESCE(g.nip, '-') as guru_nip,
+            COALESCE(g.nip, '-') as identifier,
             COALESCE(g.no_hp, '') as no_hp,
             COALESCE(g.no_hp, '') as nama_wali,
             COALESCE(a_sum.hadir, 0) as hadir,
@@ -555,12 +555,12 @@ export async function GET(request: Request) {
             COALESCE(a_sum.total, 0) as total,
             COALESCE(a_sum.total_sesi, 0) as total_sesi
           FROM jadwal_quran jq
-          JOIN kelas_quran kq ON jq.kelas_quran_id = kq.id
-          JOIN guru g ON jq.guru_id = g.guru_id
+          LEFT JOIN kelas_quran kq ON jq.kelas_quran_id = kq.id
+          LEFT JOIN guru g ON jq.guru_id = g.guru_id
           LEFT JOIN (
             SELECT 
               a.jadwal_quran_id,
-              COUNT(a.id) as total,
+              COUNT(*) as total,
               COUNT(DISTINCT a.tanggal) as total_sesi,
               SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
               SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
@@ -583,14 +583,14 @@ export async function GET(request: Request) {
             CONCAT('kegiatan_', jk.kegiatan_id) as id,
             jk.kegiatan_id as jadwal_id,
             jk.nama_kegiatan as nama,
-            k.nama_kamar as kelas_nama,
+            COALESCE(k.nama_kamar, '-') as kelas_nama,
             k.kamar_id as kelas_id,
             'kegiatan' as kategori,
             'Asrama' as kategori_label,
             g.guru_id,
-            g.nama as guru_nama,
-            g.nip as guru_nip,
-            g.nip as identifier,
+            COALESCE(g.nama, 'Belum Ditentukan') as guru_nama,
+            COALESCE(g.nip, '-') as guru_nip,
+            COALESCE(g.nip, '-') as identifier,
             COALESCE(g.no_hp, '') as no_hp,
             COALESCE(g.no_hp, '') as nama_wali,
             COALESCE(a_sum.hadir, 0) as hadir,
@@ -600,12 +600,12 @@ export async function GET(request: Request) {
             COALESCE(a_sum.total, 0) as total,
             COALESCE(a_sum.total_sesi, 0) as total_sesi
           FROM jadwal_kegiatan jk
-          JOIN kamar k ON jk.kamar_id = k.kamar_id
-          JOIN guru g ON jk.guru_id = g.guru_id
+          LEFT JOIN kamar k ON jk.kamar_id = k.kamar_id
+          LEFT JOIN guru g ON jk.guru_id = g.guru_id
           LEFT JOIN (
             SELECT 
               a.kegiatan_id,
-              COUNT(a.id) as total,
+              COUNT(*) as total,
               COUNT(DISTINCT a.tanggal) as total_sesi,
               SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
               SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
