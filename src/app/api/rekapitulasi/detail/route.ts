@@ -32,6 +32,19 @@ export async function GET(request: Request) {
     let guru_id = isGuruTipe
       ? ((payload.guru_id ? String(payload.guru_id) : null) || (payload.guruId ? String(payload.guruId) : null) || (payload.muridId ? String(payload.muridId) : null) || searchParams.get("guru_id"))
       : searchParams.get("guru_id");
+
+    // Handle token "guru_mapel" (purpose: rekap_preview, tipe: madin/quran/kegiatan, ada guru_id):
+    // Token ini dihasilkan saat admin membuka "Lihat PDF" dari rekap mapel guru.
+    // Tampilkan absensi guru (absensi_guru) dengan menimpa tipe menjadi 'guru'.
+    if (!murid_id && !guru_id && payload.guru_id) {
+      guru_id = String(payload.guru_id);
+    }
+    // Jika guru_id ada tapi tipe bukan guru/dewan_guru, override tipe agar memakai query absensi_guru
+    let effectiveTipe = tipe;
+    if (guru_id && !murid_id && !isGuruTipe) {
+      effectiveTipe = 'guru';
+    }
+
     const now = new Date();
     const bulan = payload.bulan || searchParams.get("bulan") || String(now.getMonth() + 1);
     const tahun = payload.tahun || searchParams.get("tahun") || String(now.getFullYear());
@@ -165,7 +178,7 @@ export async function GET(request: Request) {
       }
     }
 
-    if (tipe === "madin" && murid_id) {
+    if (effectiveTipe === "madin" && murid_id) {
       const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const dateParams: any[] = isRentang ? [murid_id, tanggal_dari, tanggal_sampai] : [murid_id, bulan, tahun];
       let subFilterWhere = "";
@@ -193,7 +206,7 @@ export async function GET(request: Request) {
         dateParams
       );
       rows = result;
-    } else if (tipe === "quran" && murid_id) {
+    } else if (effectiveTipe === "quran" && murid_id) {
       const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const dateParams: any[] = isRentang ? [murid_id, tanggal_dari, tanggal_sampai] : [murid_id, bulan, tahun];
       let subFilterWhere = "";
@@ -221,7 +234,7 @@ export async function GET(request: Request) {
         dateParams
       );
       rows = result;
-    } else if (tipe === "kegiatan" && murid_id) {
+    } else if (effectiveTipe === "kegiatan" && murid_id) {
       const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const dateParams: any[] = isRentang ? [murid_id, tanggal_dari, tanggal_sampai] : [murid_id, bulan, tahun];
       let subFilterWhere = "";
@@ -249,7 +262,7 @@ export async function GET(request: Request) {
         dateParams
       );
       rows = result;
-    } else if (tipe === "guru" && guru_id) {
+    } else if (effectiveTipe === "guru" && guru_id) {
       // Ambil daftar jadwal tetap guru untuk mapping jika data foreign key di absensi_guru null
       const [jadwalGuru] = await pool.execute<RowDataPacket[]>(
         `SELECT 'Madin' as tipe, j.hari, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, km.nama_kelas
@@ -312,7 +325,7 @@ export async function GET(request: Request) {
         }
         return r;
       });
-    } else if (tipe === "dewan_guru" && guru_id) {
+    } else if (effectiveTipe === "dewan_guru" && guru_id) {
       const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const dateParams: any[] = isRentang ? [guru_id, tanggal_dari, tanggal_sampai] : [guru_id, bulan, tahun];
       const [result] = await pool.execute<RowDataPacket[]>(
@@ -383,7 +396,7 @@ export async function GET(request: Request) {
       let penginput = r.guru_nama || "Pengajar Kelas";
       if (r.is_otomatis === 1) {
         penginput = "Sistem Otomatis";
-      } else if (tipe === "guru") {
+      } else if (effectiveTipe === "guru") {
         if (r.status === "Izin" || r.status === "Sakit" || statusNorm === "Izin" || statusNorm === "Sakit") {
           penginput = "Pengajuan Izin";
         } else if ((r.keterangan || "").toLowerCase().includes("scan")) {
@@ -393,7 +406,7 @@ export async function GET(request: Request) {
         } else {
           penginput = r.guru_nama || "Guru";
         }
-      } else if (tipe === "dewan_guru") {
+      } else if (effectiveTipe === "dewan_guru") {
         if (r.dicatat_oleh && r.dicatat_oleh.trim() !== '') {
           penginput = `${r.metode === 'QR_Scan' ? 'Scan QR' : (r.metode || 'Presensi')} (${r.dicatat_oleh})`;
         } else {
@@ -450,15 +463,15 @@ export async function GET(request: Request) {
         );
         if (mRows.length > 0) muridInfo = mRows[0];
       } catch (_) {}
-    } else if (guru_id && isGuruTipe) {
+    } else if (guru_id && (isGuruTipe || effectiveTipe === 'guru')) {
       try {
-        if (tipe === 'guru') {
+        if (effectiveTipe === 'guru') {
           const [gRows]: any = await pool.execute(
             `SELECT guru_id as murid_id, nama, COALESCE(nip, '-') as nis, no_hp as no_hp_wali, foto, COALESCE(alamat, 'Guru Pengajar') as kelas_madin, 'Guru' as jenis_kelamin FROM guru WHERE guru_id = ? LIMIT 1`,
             [guru_id]
           );
           if (gRows.length > 0) muridInfo = gRows[0];
-        } else if (tipe === 'dewan_guru') {
+        } else if (effectiveTipe === 'dewan_guru') {
           const [dgRows]: any = await pool.execute(
             `SELECT id as murid_id, nama, COALESCE(nip, '-') as nis, no_hp as no_hp_wali, foto, COALESCE(homebase, 'Dewan Guru YPMA') as kelas_madin, 'Dewan Guru' as jenis_kelamin FROM dewan_guru WHERE id = ? LIMIT 1`,
             [guru_id]
@@ -473,7 +486,7 @@ export async function GET(request: Request) {
       data: dedupedData,
       murid: muridInfo,
       meta: {
-        tipe,
+        tipe: effectiveTipe,
         bulan,
         tahun,
         tanggal_dari,
