@@ -625,7 +625,29 @@ export async function GET(request: Request) {
         query = 'SELECT NULL LIMIT 0';
         params = [];
       } else {
-        query = `SELECT * FROM (${subQueries.join(' UNION ALL ')}) as all_mapel ORDER BY kelas_nama ASC, nama ASC`;
+        query = `
+          SELECT 
+            CONCAT('guru_', all_mapel.guru_id) as id,
+            all_mapel.guru_id,
+            all_mapel.guru_nama as nama,
+            all_mapel.guru_nama,
+            all_mapel.guru_nip,
+            all_mapel.identifier,
+            all_mapel.no_hp,
+            all_mapel.nama_wali,
+            GROUP_CONCAT(DISTINCT CONCAT(all_mapel.kelas_nama, ' (', all_mapel.nama, ')') SEPARATOR ', ') as daftar_mapel,
+            COUNT(DISTINCT CONCAT(all_mapel.kategori, '_', all_mapel.kelas_id, '_', all_mapel.nama)) as total_mapel,
+            SUM(all_mapel.hadir) as hadir,
+            SUM(all_mapel.izin) as izin,
+            SUM(all_mapel.sakit) as sakit,
+            SUM(all_mapel.alpha) as alpha,
+            SUM(all_mapel.total) as total,
+            SUM(all_mapel.total_sesi) as total_sesi
+          FROM (${subQueries.join(' UNION ALL ')}) as all_mapel
+          WHERE all_mapel.guru_id IS NOT NULL AND all_mapel.guru_id != ''
+          GROUP BY all_mapel.guru_id, all_mapel.guru_nama, all_mapel.guru_nip, all_mapel.identifier, all_mapel.no_hp, all_mapel.nama_wali
+          ORDER BY all_mapel.guru_nama ASC
+        `;
         params = subParams;
       }
     } else {
@@ -691,10 +713,6 @@ export async function GET(request: Request) {
         if (tipe === 'guru_mapel') {
           preview_token = signToken({
             tipe: 'guru_mapel',
-            kategori: r.kategori,
-            jadwal_id: r.jadwal_id,
-            target_id: r.kelas_id || '',
-            sub_filter: r.nama,
             guru_id: r.guru_id,
             bulan: !isRentang ? bulan : undefined,
             tahun: !isRentang ? tahun : undefined,

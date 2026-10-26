@@ -474,8 +474,8 @@ export default function TabRekapGuru({
               onClick={() => setModeRentang(v => !v)}
               className="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-purple-400 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 transition-all cursor-pointer select-none"
             >
-              <span className="text-gray-500 dark:text-gray-400 font-medium">
-                {modeRentang ? 'Rentang Tanggal' : 'Mode Bulanan'}
+              <span className="text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                {modeRentang ? 'Mode Rentang' : 'Mode Bulanan'}
               </span>
               <span className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg ${
                 modeRentang
@@ -802,20 +802,19 @@ export default function TabRekapGuru({
             {renderControls()}
             <div className="flex items-center justify-between text-xs text-gray-500 px-1">
               <span>
-                Menampilkan <strong className="text-gray-800 dark:text-gray-200">{filteredList.length}</strong> mapel/jadwal untuk disiarkan
+                Menampilkan <strong className="text-gray-800 dark:text-gray-200">{filteredList.length}</strong> guru / pengajar untuk disiarkan
               </span>
               <span className="text-[11px] text-purple-600 font-semibold hidden sm:inline">
                 💡 Tautan WA otomatis melampirkan preview dokumen PDF resmi siap unduh
               </span>
             </div>
 
-            {/* Desktop Table View */}
+            {/* Desktop Table View (2 Kolom: Guru Pengajar & Aksi) */}
             <div className="hidden md:block overflow-x-auto bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-xs">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
                   <tr>
-                    <th className="px-5 py-4 rounded-l-xl">Mata Pelajaran & Kelas</th>
-                    <th className="px-5 py-4">Guru Pengajar & Kontak</th>
+                    <th className="px-5 py-4 rounded-l-xl">Guru Pengajar</th>
                     <th className="px-5 py-4 text-right rounded-r-xl">Aksi</th>
                   </tr>
                 </thead>
@@ -833,7 +832,7 @@ export default function TabRekapGuru({
                     const isSent = !!sentWaIds[item.id];
                     const previewUrl = item.preview_token
                       ? `/rekapitulasi/preview?t=${item.preview_token}`
-                      : `/rekapitulasi/preview?tipe=${item.kategori || 'madin'}&target_id=${item.kelas_id || ''}&sub_filter=${encodeURIComponent(item.nama || '')}`;
+                      : `/rekapitulasi/preview?tipe=guru_mapel&guru_id=${item.guru_id || ''}`;
 
                     return (
                       <tr
@@ -842,41 +841,45 @@ export default function TabRekapGuru({
                         className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors scroll-mt-24"
                       >
                         <td className="px-5 py-4 font-semibold text-gray-800 dark:text-gray-200">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-xs shrink-0">
-                              <BookOpen size={17} />
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center font-black text-sm shrink-0 border border-purple-200/50 dark:border-purple-800/40 mt-0.5">
+                              <User size={18} />
                             </div>
-                            <div>
-                              <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">{item.nama || 'Mata Pelajaran'}</div>
-                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                                  {item.kelas_nama || '-'}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+                                  {item.guru_nama || item.nama || 'Guru Pengajar'}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/40">
+                                  {item.total_mapel ? `${item.total_mapel} Mapel / Kelas` : 'Guru Mapel'}
+                                </span>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs">
+                                <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
+                                  NIP: <strong className="text-gray-700 dark:text-gray-300">{item.identifier || item.guru_nip || '-'}</strong>
                                 </span>
                                 <span className="text-gray-300 dark:text-gray-700">•</span>
-                                <span className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold">
-                                  {item.kategori_label || item.kategori}
+                                <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                  <Phone size={11} className="shrink-0" />
+                                  <span>{rawPhone || '-'}</span>
                                 </span>
                                 <span className="text-gray-300 dark:text-gray-700">•</span>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
                                   {persentase}% Hadir
                                 </span>
                                 <span className="text-[11px] text-gray-500 font-medium">
                                   ({hadir}H · {izin}I · {sakit}S · {alpha}A)
                                 </span>
                               </div>
+
+                              {item.daftar_mapel && (
+                                <div className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400 line-clamp-1 truncate max-w-2xl font-normal">
+                                  <span className="font-semibold text-gray-600 dark:text-gray-300">Mapel: </span>
+                                  {item.daftar_mapel}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-gray-600 dark:text-gray-400">
-                          <div className="font-bold text-gray-900 dark:text-gray-100 text-xs">
-                            {item.guru_nama || '-'}
-                          </div>
-                          <div className="text-[11px] font-mono text-gray-500 dark:text-gray-400 mt-0.5">
-                            NIP: {item.identifier || item.guru_nip || '-'}
-                          </div>
-                          <div className="text-xs font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-bold mt-1">
-                            <Phone size={12} className="shrink-0" />
-                            <span>{rawPhone || '-'}</span>
                           </div>
                         </td>
                         <td className="px-5 py-4 text-right space-x-2 whitespace-nowrap">
@@ -884,7 +887,7 @@ export default function TabRekapGuru({
                             href={previewUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors shadow-2xs"
                             title="Lihat Pratinjau Dokumen PDF Resmi"
                           >
                             <FileText size={13} className="text-purple-600 shrink-0" />
@@ -920,7 +923,7 @@ export default function TabRekapGuru({
               </table>
             </div>
 
-            {/* Mobile Cards View */}
+            {/* Mobile Cards View (1 Kartu per Guru) */}
             <div className="md:hidden space-y-3">
               {filteredList.map((item, idx) => {
                 const hadir = Number(item.hadir || 0);
@@ -935,7 +938,7 @@ export default function TabRekapGuru({
                 const isSent = !!sentWaIds[item.id];
                 const previewUrl = item.preview_token
                   ? `/rekapitulasi/preview?t=${item.preview_token}`
-                  : `/rekapitulasi/preview?tipe=${item.kategori || 'madin'}&target_id=${item.kelas_id || ''}&sub_filter=${encodeURIComponent(item.nama || '')}`;
+                  : `/rekapitulasi/preview?tipe=guru_mapel&guru_id=${item.guru_id || ''}`;
 
                 return (
                   <div
@@ -946,15 +949,14 @@ export default function TabRekapGuru({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 font-bold mb-0.5">
-                          <BookOpen size={13} className="shrink-0" />
-                          <span>{item.kategori_label || item.kategori}</span>
-                          <span className="text-gray-300 dark:text-gray-600">•</span>
-                          <span>{item.kelas_nama || '-'}</span>
+                          <User size={13} className="shrink-0" />
+                          <span>{item.total_mapel ? `${item.total_mapel} Mapel / Kelas Diampu` : 'Guru Pengajar'}</span>
                         </div>
-                        <h5 className="font-extrabold text-sm text-gray-900 dark:text-gray-100 truncate">{item.nama || 'Mata Pelajaran'}</h5>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                          Pengajar: <strong className="text-gray-800 dark:text-gray-200">{item.guru_nama || '-'}</strong>
-                          {item.identifier ? ` (${item.identifier})` : ''}
+                        <h5 className="font-extrabold text-sm text-gray-900 dark:text-gray-100 truncate">
+                          {item.guru_nama || item.nama || 'Guru Pengajar'}
+                        </h5>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 font-mono">
+                          NIP: <strong className="text-gray-800 dark:text-gray-200">{item.identifier || item.guru_nip || '-'}</strong>
                         </p>
                       </div>
                       <div className="text-right shrink-0">
@@ -962,6 +964,13 @@ export default function TabRekapGuru({
                         <span className="block text-[10px] text-gray-400">Kehadiran</span>
                       </div>
                     </div>
+
+                    {item.daftar_mapel && (
+                      <div className="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/60 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800/80 leading-relaxed">
+                        <span className="font-bold text-gray-700 dark:text-gray-200">Mapel: </span>
+                        <span>{item.daftar_mapel}</span>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-4 gap-1.5 text-center text-xs">
                       <div className="bg-emerald-50 dark:bg-emerald-950/30 p-1.5 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
@@ -1017,7 +1026,7 @@ export default function TabRekapGuru({
                             className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs ${
                               isSent
                                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-500'
-                                : 'bg-green-600 hover:bg-green-700 text-white'
+                                : 'bg-green-600 hover:bg-green-700 text-white active:scale-95'
                             }`}
                           >
                             <MessageCircle size={14} />
@@ -1085,7 +1094,7 @@ export default function TabRekapGuru({
                         : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200'
                     }`}
                   >
-                    <span>{rekapModeRentang ? '📅 Rentang Tanggal' : '🗓️ Mode Bulanan'}</span>
+                    <span className="whitespace-nowrap">{rekapModeRentang ? '📅 Mode Rentang' : '🗓️ Mode Bulanan'}</span>
                     <span className={`flex items-center gap-1 text-[11px] font-semibold ${rekapModeRentang ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400 dark:text-gray-500'}`}>
                       {rekapModeRentang ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
                     </span>

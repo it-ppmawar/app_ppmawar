@@ -372,6 +372,9 @@ export async function GET(request: Request) {
         total: grandTotalAtt,
       };
 
+      const daftarMapelList = Array.from(sectionsMap.values()).map(s => `${s.kelas_nama} (${s.mata_pelajaran})`);
+      const daftarMapelTeks = daftarMapelList.join(', ');
+
       return NextResponse.json({
         success: true,
         data: allStudentsRows,
@@ -388,6 +391,8 @@ export async function GET(request: Request) {
           sub_filter,
           total_mapel: sectionsMap.size,
           total_santri: totalSemuaSantri,
+          daftar_mapel_list: daftarMapelList,
+          daftar_mapel_teks: daftarMapelTeks,
           expires_at: payload.exp ? payload.exp * 1000 : null,
         }
       }, { headers: noCacheHeaders });

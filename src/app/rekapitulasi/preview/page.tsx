@@ -332,6 +332,24 @@ function RekapPreviewContent() {
     return `(${meta.tipe})`;
   }, [meta]);
 
+  // Daftar Mapel & Kelas Terkait untuk Guru Mapel
+  const mapelKelasSummary = useMemo(() => {
+    if (!meta?.is_guru_mapel) {
+      return meta?.sub_filter ? `(${meta.sub_filter})` : '';
+    }
+    if (meta?.daftar_mapel_teks) return meta.daftar_mapel_teks;
+    if (meta?.daftar_mapel_list && meta.daftar_mapel_list.length > 0) return meta.daftar_mapel_list.join(', ');
+
+    // Fallback: ekstrak dari data sections
+    const secSet = new Set<string>();
+    data.forEach(item => {
+      if (item.kelas_nama && item.mata_pelajaran) {
+        secSet.add(`${item.kelas_nama} (${item.mata_pelajaran})`);
+      }
+    });
+    return Array.from(secSet).join(', ');
+  }, [meta, data]);
+
   // Data Tren Kehadiran per Tanggal Sesi Presensi
   const trendData = useMemo(() => {
     if (backendTrend && backendTrend.length > 0) return backendTrend;
@@ -668,37 +686,56 @@ function RekapPreviewContent() {
             </div>
           </div>
 
-          {/* Metadata Kegiatan & Periode */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-5 text-xs">
-            <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800">
-              <span className="text-[11px] text-slate-400 block mb-0.5 font-medium">Kategori & Jadwal</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <BookOpen size={14} className="text-purple-600 shrink-0" />
-                {tipeLabel} {meta?.sub_filter ? `(${meta.sub_filter})` : ''}
+          {/* Metadata Kegiatan, Periode & Keabsahan (3 Kartu Terpadu Sesuai Permintaan Foto 3) */}
+          <div className="space-y-3 pt-5 text-xs">
+            {/* 1. Baris Atas: Kategori & Jadwal (1 Baris Melebar Memenuhi Ruang Kanan-Kiri Rata Tengah) */}
+            <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 border border-slate-100 dark:border-slate-800 text-center flex flex-col items-center justify-center">
+              <span className="text-[11px] text-slate-400 block mb-1 font-medium text-center">
+                Kategori & Jadwal
               </span>
+              <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-center flex-wrap gap-2 text-center">
+                <BookOpen size={15} className="text-purple-600 shrink-0" />
+                <span className="text-slate-900 dark:text-white font-extrabold">{tipeLabel}</span>
+                {mapelKelasSummary && (
+                  <span className="text-purple-700 dark:text-purple-300 font-semibold bg-purple-50 dark:bg-purple-950/60 px-2.5 py-0.5 rounded-lg border border-purple-200/60 dark:border-purple-800/50 text-[11px] sm:text-xs">
+                    {mapelKelasSummary}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3 border border-slate-100 dark:border-slate-800">
-              <span className="text-[11px] text-slate-400 block mb-0.5 font-medium">Periode Rekapitulasi</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <Calendar size={14} className="text-purple-600 shrink-0" />
-                {periodeLabel}
-              </span>
+
+            {/* 2. Baris Bawah: Periode Rekapitulasi Berdampingan Sama Rata dengan Dokumen Resmi Terautentikasi Pesantren */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Kolom Kiri: Periode Rekapitulasi */}
+              <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 border border-slate-100 dark:border-slate-800 text-center flex flex-col items-center justify-center">
+                <span className="text-[11px] text-slate-400 block mb-1 font-medium text-center">
+                  Periode Rekapitulasi
+                </span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-center gap-1.5 text-center">
+                  <Calendar size={14} className="text-purple-600 shrink-0" />
+                  <span>{periodeLabel}</span>
+                </span>
+              </div>
+
+              {/* Kolom Kanan: Dokumen Resmi Terautentikasi Pesantren */}
+              <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-3.5 border border-slate-100 dark:border-slate-800 text-center flex flex-col items-center justify-center">
+                <span className="text-[11px] text-slate-400 block mb-1 font-medium text-center flex items-center justify-center gap-1 text-purple-700 dark:text-purple-300 font-bold">
+                  <ShieldCheck size={13} className="text-purple-600 shrink-0" />
+                  <span>Dokumen Resmi Terautentikasi Pesantren</span>
+                </span>
+                <span className="font-semibold text-slate-600 dark:text-slate-300 flex items-center justify-center gap-1.5 text-center text-[11px] sm:text-xs">
+                  <Clock size={12} className="text-purple-500 shrink-0" />
+                  <span>
+                    {meta?.expires_at ? (
+                      <>Tautan berlaku s/d: <strong className="text-purple-700 dark:text-purple-300 font-bold">{new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(new Date(meta.expires_at))}</strong></>
+                    ) : (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">Terverifikasi Sah Sistem Presensi PPMA</span>
+                    )}
+                  </span>
+                </span>
+              </div>
             </div>
           </div>
-
-          {/* Badge Keabsahan & Batas Waktu Token */}
-          {meta?.expires_at && (
-            <div className="mt-3 bg-purple-50/60 dark:bg-purple-950/40 border border-purple-150/70 dark:border-purple-800/50 rounded-2xl p-2.5 px-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px] text-purple-900 dark:text-purple-300">
-              <span className="flex items-center gap-1.5 font-bold">
-                <ShieldCheck size={14} className="text-purple-600 shrink-0" />
-                <span>Dokumen Resmi Terautentikasi Pesantren</span>
-              </span>
-              <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-medium">
-                <Clock size={12} className="text-purple-500 shrink-0" />
-                <span>Tautan preview ini berlaku s/d: <strong className="text-purple-700 dark:text-purple-300">{new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(new Date(meta.expires_at))}</strong></span>
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Ringkasan Statistik Presensi */}
