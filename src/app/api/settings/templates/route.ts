@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     await ensureUtf8mb4Table();
 
     const [rows] = await pool.execute<RowDataPacket[]>(
-      "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan LIKE 'wa_template_%'"
+      "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan LIKE 'wa_template_%' OR nama_pengaturan LIKE 'kepala_madin_%'"
     );
 
     const templates: Record<string, string> = {};
@@ -83,32 +83,32 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { key, value, templates, action } = body;
 
-    if (action === 'reset' && key && key.startsWith('wa_template_')) {
+    if (action === 'reset' && key && (key.startsWith('wa_template_') || key.startsWith('kepala_madin_'))) {
       await pool.execute(
         'DELETE FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = ?',
         [key]
       );
-      return NextResponse.json({ success: true, message: `Templat ${key} telah di-reset ke default` });
+      return NextResponse.json({ success: true, message: `Pengaturan ${key} telah di-reset ke default` });
     }
 
     if (templates && typeof templates === 'object') {
       for (const [k, v] of Object.entries(templates)) {
-        if (k.startsWith('wa_template_')) {
+        if (k.startsWith('wa_template_') || k.startsWith('kepala_madin_')) {
           await pool.execute(
             'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
             [k, String(v), String(v)]
           );
         }
       }
-      return NextResponse.json({ success: true, message: 'Semua templat berhasil disimpan' });
+      return NextResponse.json({ success: true, message: 'Semua pengaturan berhasil disimpan' });
     }
 
-    if (key && key.startsWith('wa_template_') && value !== undefined) {
+    if (key && (key.startsWith('wa_template_') || key.startsWith('kepala_madin_')) && value !== undefined) {
       await pool.execute(
         'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
         [key, String(value), String(value)]
       );
-      return NextResponse.json({ success: true, message: `Templat ${key} berhasil disimpan` });
+      return NextResponse.json({ success: true, message: `Pengaturan ${key} berhasil disimpan` });
     }
 
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });

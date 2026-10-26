@@ -472,6 +472,162 @@ export async function GET(request: Request) {
         GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')
         ORDER BY tanggal ASC
       `;
+    } else if (tipe === 'guru_mapel') {
+      if (payload.role !== 'admin' && payload.role !== 'staff') {
+        return NextResponse.json({ error: 'Akses ditolak. Rekapitulasi per mapel guru hanya khusus Admin dan Staf.' }, { status: 403, headers: noCacheHeaders });
+      }
+
+      const kategori = searchParams.get('kategori') || 'all'; // 'madin', 'quran', 'kegiatan', 'all'
+      const { cond: joinDateCond, params: joinDateParams } = makeDateCond('a.tanggal');
+
+      // target_id disini mewakili filter guru_id jika user memilih guru tertentu, atau 'all'
+      const guruFilterId = target_id && target_id !== 'all' ? target_id : null;
+
+      const subQueries: string[] = [];
+      const subParams: any[] = [];
+
+      // 1. Madin
+      if (kategori === 'all' || kategori === 'madin') {
+        subQueries.push(`
+          SELECT 
+            CONCAT('madin_', jm.jadwal_id) as id,
+            jm.jadwal_id,
+            jm.mata_pelajaran as nama,
+            km.nama_kelas as kelas_nama,
+            km.kelas_id as kelas_id,
+            'madin' as kategori,
+            'Madrasah Diniyah' as kategori_label,
+            g.guru_id,
+            g.nama as guru_nama,
+            g.nip as guru_nip,
+            g.nip as identifier,
+            COALESCE(g.no_hp, '') as no_hp,
+            COALESCE(g.no_hp, '') as nama_wali,
+            COALESCE(a_sum.hadir, 0) as hadir,
+            COALESCE(a_sum.izin, 0) as izin,
+            COALESCE(a_sum.sakit, 0) as sakit,
+            COALESCE(a_sum.alpha, 0) as alpha,
+            COALESCE(a_sum.total, 0) as total,
+            COALESCE(a_sum.total_sesi, 0) as total_sesi
+          FROM jadwal_madin jm
+          JOIN kelas_madin km ON jm.kelas_madin_id = km.kelas_id
+          JOIN guru g ON jm.guru_id = g.guru_id
+          LEFT JOIN (
+            SELECT 
+              a.jadwal_madin_id,
+              COUNT(a.id) as total,
+              COUNT(DISTINCT a.tanggal) as total_sesi,
+              SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+              SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+              SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+              SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
+            FROM absensi a
+            WHERE ${joinDateCond}
+            GROUP BY a.jadwal_madin_id
+          ) a_sum ON jm.jadwal_id = a_sum.jadwal_madin_id
+          WHERE 1=1 ${guruFilterId ? 'AND jm.guru_id = ?' : ''}
+        `);
+        subParams.push(...joinDateParams);
+        if (guruFilterId) subParams.push(guruFilterId);
+      }
+
+      // 2. Quran
+      if (kategori === 'all' || kategori === 'quran') {
+        subQueries.push(`
+          SELECT 
+            CONCAT('quran_', jq.id) as id,
+            jq.id as jadwal_id,
+            COALESCE(jq.mata_pelajaran, "Majlis Al-Qur'an") as nama,
+            kq.nama_kelas as kelas_nama,
+            kq.id as kelas_id,
+            'quran' as kategori,
+            "Al-Qur'an" as kategori_label,
+            g.guru_id,
+            g.nama as guru_nama,
+            g.nip as guru_nip,
+            g.nip as identifier,
+            COALESCE(g.no_hp, '') as no_hp,
+            COALESCE(g.no_hp, '') as nama_wali,
+            COALESCE(a_sum.hadir, 0) as hadir,
+            COALESCE(a_sum.izin, 0) as izin,
+            COALESCE(a_sum.sakit, 0) as sakit,
+            COALESCE(a_sum.alpha, 0) as alpha,
+            COALESCE(a_sum.total, 0) as total,
+            COALESCE(a_sum.total_sesi, 0) as total_sesi
+          FROM jadwal_quran jq
+          JOIN kelas_quran kq ON jq.kelas_quran_id = kq.id
+          JOIN guru g ON jq.guru_id = g.guru_id
+          LEFT JOIN (
+            SELECT 
+              a.jadwal_quran_id,
+              COUNT(a.id) as total,
+              COUNT(DISTINCT a.tanggal) as total_sesi,
+              SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+              SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+              SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+              SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
+            FROM absensi_quran a
+            WHERE ${joinDateCond}
+            GROUP BY a.jadwal_quran_id
+          ) a_sum ON jq.id = a_sum.jadwal_quran_id
+          WHERE 1=1 ${guruFilterId ? 'AND jq.guru_id = ?' : ''}
+        `);
+        subParams.push(...joinDateParams);
+        if (guruFilterId) subParams.push(guruFilterId);
+      }
+
+      // 3. Kegiatan Asrama
+      if (kategori === 'all' || kategori === 'kegiatan') {
+        subQueries.push(`
+          SELECT 
+            CONCAT('kegiatan_', jk.kegiatan_id) as id,
+            jk.kegiatan_id as jadwal_id,
+            jk.nama_kegiatan as nama,
+            k.nama_kamar as kelas_nama,
+            k.kamar_id as kelas_id,
+            'kegiatan' as kategori,
+            'Asrama' as kategori_label,
+            g.guru_id,
+            g.nama as guru_nama,
+            g.nip as guru_nip,
+            g.nip as identifier,
+            COALESCE(g.no_hp, '') as no_hp,
+            COALESCE(g.no_hp, '') as nama_wali,
+            COALESCE(a_sum.hadir, 0) as hadir,
+            COALESCE(a_sum.izin, 0) as izin,
+            COALESCE(a_sum.sakit, 0) as sakit,
+            COALESCE(a_sum.alpha, 0) as alpha,
+            COALESCE(a_sum.total, 0) as total,
+            COALESCE(a_sum.total_sesi, 0) as total_sesi
+          FROM jadwal_kegiatan jk
+          JOIN kamar k ON jk.kamar_id = k.kamar_id
+          JOIN guru g ON jk.guru_id = g.guru_id
+          LEFT JOIN (
+            SELECT 
+              a.kegiatan_id,
+              COUNT(a.id) as total,
+              COUNT(DISTINCT a.tanggal) as total_sesi,
+              SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+              SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+              SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+              SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
+            FROM absensi_kegiatan a
+            WHERE ${joinDateCond}
+            GROUP BY a.kegiatan_id
+          ) a_sum ON jk.kegiatan_id = a_sum.kegiatan_id
+          WHERE 1=1 ${guruFilterId ? 'AND jk.guru_id = ?' : ''}
+        `);
+        subParams.push(...joinDateParams);
+        if (guruFilterId) subParams.push(guruFilterId);
+      }
+
+      if (subQueries.length === 0) {
+        query = 'SELECT NULL LIMIT 0';
+        params = [];
+      } else {
+        query = `SELECT * FROM (${subQueries.join(' UNION ALL ')}) as all_mapel ORDER BY kelas_nama ASC, nama ASC`;
+        params = subParams;
+      }
     } else {
       return NextResponse.json({ error: 'Tipe rekap tidak valid' }, { status: 400, headers: noCacheHeaders });
     }
@@ -531,21 +687,37 @@ export async function GET(request: Request) {
     const formattedRows = rows.map((r: any) => {
       let preview_token = '';
       try {
-        const isGuruType = tipe === 'guru' || tipe === 'dewan_guru';
-        preview_token = signToken({
-          muridId: isGuruType ? undefined : r.id,
-          guruId: isGuruType ? r.id : undefined,
-          guru_id: isGuruType ? r.id : undefined,
-          tipe,
-          target_id: target_id || '',
-          sub_filter: sub_filter || '',
-          bulan: !isRentang ? bulan : undefined,
-          tahun: !isRentang ? tahun : undefined,
-          tanggal_dari: isRentang ? tanggal_dari : undefined,
-          tanggal_sampai: isRentang ? tanggal_sampai : undefined,
-          role: isGuruType ? 'guru' : 'wali_murid',
-          purpose: 'rekap_preview'
-        }, expiryDuration);
+        const isGuruType = tipe === 'guru' || tipe === 'dewan_guru' || tipe === 'guru_mapel';
+        if (tipe === 'guru_mapel') {
+          preview_token = signToken({
+            jadwal_id: r.jadwal_id,
+            tipe: r.kategori,
+            target_id: r.kelas_id || '',
+            sub_filter: r.nama,
+            guru_id: r.guru_id,
+            bulan: !isRentang ? bulan : undefined,
+            tahun: !isRentang ? tahun : undefined,
+            tanggal_dari: isRentang ? tanggal_dari : undefined,
+            tanggal_sampai: isRentang ? tanggal_sampai : undefined,
+            role: 'guru',
+            purpose: 'rekap_preview'
+          }, expiryDuration);
+        } else {
+          preview_token = signToken({
+            muridId: isGuruType ? undefined : r.id,
+            guruId: isGuruType ? r.id : undefined,
+            guru_id: isGuruType ? r.id : undefined,
+            tipe,
+            target_id: target_id || '',
+            sub_filter: sub_filter || '',
+            bulan: !isRentang ? bulan : undefined,
+            tahun: !isRentang ? tahun : undefined,
+            tanggal_dari: isRentang ? tanggal_dari : undefined,
+            tanggal_sampai: isRentang ? tanggal_sampai : undefined,
+            role: isGuruType ? 'guru' : 'wali_murid',
+            purpose: 'rekap_preview'
+          }, expiryDuration);
+        }
       } catch (_) {}
       return {
         ...r,

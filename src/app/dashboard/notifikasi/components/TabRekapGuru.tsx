@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   FileText, Search, X, ToggleRight, ToggleLeft, RefreshCw,
   Clock, CheckCircle2, AlertCircle, AlertTriangle, Phone, MessageCircle,
-  Calendar, Award, Send, ChevronDown, ChevronUp, Loader2, Sparkles, User
+  Calendar, Award, Send, ChevronDown, ChevronUp, Loader2, Sparkles, User, BookOpen
 } from 'lucide-react';
 
 export const DEFAULT_KEPALA_MADIN_TEMPLATE = 
@@ -33,27 +33,26 @@ export const DEFAULT_REKAP_GURU_TEMPLATE = `Assalamu'alaikum Warohmatullah Wabar
 Yth. Ustadz/Ustadzah *{nama_guru}*
 Pondok Pesantren Matholi'ul Anwar
 
-Semoga Ustadz/Ustadzah senantiasa dalam limpahan taufiq, kesehatan, dan keberkahan dari Allah SWT. Kami haturkan terima kasih yang sebesar-besarnya atas segala keikhlasan dan dedikasi Ustadz/Ustadzah dalam mendidik para santri.
+Berikut kami sampaikan pemberitahuan rekapitulasi catatan presensi santri untuk mata pelajaran yang Ustadz/Ustadzah ampu pada periode *{periode}*:
 
-Berikut kami sampaikan rekapitulasi catatan kehadiran mengajar/tugas untuk periode *{periode}*:
-• Kategori: {tipe}
-• Unit/Homebase: {target_label}
+📚 *Rincian Mata Pelajaran & Kelas:*
+• Mata Pelajaran: *{nama_mapel}*
+• Kelas / Ruang: {kelas}
+• Kategori: {kategori}
 
-📊 *Ringkasan Catatan Presensi Aplikasi:*
-• Hadir: {hadir} sesi
-• Izin: {izin} sesi
-• Sakit: {sakit} sesi
-• Belum Terdata di Aplikasi: {alpha} sesi
-• Persentase Presensi Sistem: *{persentase}%*
+📊 *Ringkasan Presensi Santri:*
+• Hadir: {hadir} presensi
+• Izin: {izin} presensi
+• Sakit: {sakit} presensi
+• Tanpa Keterangan: {alpha} presensi
+• Persentase Kehadiran: *{persentase}%*
 
-🔗 *Rincian Lengkap & Klarifikasi Rekap:*
+🔗 *Tautan Rekapitulasi Lengkap:*
 {link_rekap}
 
-📌 _Catatan: Rekapitulasi di atas dihimpun otomatis dari catatan presensi pada aplikasi. Apabila Ustadz/Ustadzah telah hadir mengajar atau bertugas secara mandiri di kelas namun belum terdata di sistem aplikasi, mohon periksa tautan di atas atau berkenan mengonfirmasi kepada pengurus/bagian kurikulum untuk pemutakhiran data._
+Tautan resmi di atas berlaku selama {masa_berlaku} (sampai {batas_waktu}).
 
-Tautan resmi ini berlaku selama {masa_berlaku} (sampai {batas_waktu}).
-
-Atas perhatian, bimbingan, dan kerjasama Ustadz/Ustadzah, kami sampaikan jazakumullah khairan katsiran.
+Demikian pemberitahuan ini kami sampaikan. Atas keikhlasan, dedikasi, dan bimbingan Ustadz/Ustadzah dalam mengajar para santri, kami haturkan jazakumullah khairan katsiran.
 
 Wassalamu'alaikum Warohmatullah Wabarokatuh,
 _Pengurus Pondok Pesantren Matholi'ul Anwar_`;
@@ -160,8 +159,8 @@ export default function TabRekapGuru({
   const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
   const firstDayStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
 
-  const [tipe, setTipe] = useState<'guru' | 'dewan_guru'>('guru');
-  const [targetId, setTargetId] = useState<string>('all');
+  const [kategoriMapel, setKategoriMapel] = useState<'all' | 'madin' | 'quran' | 'kegiatan'>('all');
+  const [targetGuruId, setTargetGuruId] = useState<string>('all');
   const [bulan, setBulan] = useState<string>(String(currentMonth));
   const [tahun, setTahun] = useState<string>(String(currentYear));
   const [tanggalDari, setTanggalDari] = useState<string>(firstDayStr);
@@ -264,21 +263,16 @@ export default function TabRekapGuru({
     }
   }, [guruList]);
 
-  // Saat tipe berganti, sesuaikan target default
-  const handleTipeChange = (newTipe: 'guru' | 'dewan_guru') => {
-    setTipe(newTipe);
-    setTargetId(newTipe === 'guru' ? 'all' : 'SEMUA');
-  };
-
-  // Fetch data rekap presensi guru
+  // Fetch data rekap presensi per mata pelajaran guru
   const fetchRekapData = async () => {
     setLoadingData(true);
     setErrorMsg('');
     try {
       const expiryParam = expiryDays && expiryDays >= 1 ? expiryDays : 7;
       const params = new URLSearchParams({
-        tipe,
-        target_id: targetId || (tipe === 'guru' ? 'all' : 'SEMUA'),
+        tipe: 'guru_mapel',
+        kategori: kategoriMapel,
+        target_id: targetGuruId || 'all',
         expiry: String(expiryParam),
         ...(modeRentang ? {
           tanggal_dari: tanggalDari,
@@ -335,18 +329,6 @@ export default function TabRekapGuru({
     const total = Number(item.total || (hadir + izin + sakit + alpha));
     const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
 
-    const tipeLabel = tipe === 'guru' ? 'Absensi Pengajar / Guru' : 'Presensi Dewan Guru YPMA';
-
-    let targetLabel = 'Semua Guru';
-    if (tipe === 'guru') {
-      if (targetId && targetId !== 'all') {
-        const found = optionsGuru.find(g => String(g.id || g.guru_id) === String(targetId));
-        targetLabel = found ? found.nama : 'Guru';
-      }
-    } else {
-      targetLabel = targetId || 'SEMUA UNIT / HOMEBASE';
-    }
-
     let periodeLabel = '';
     if (modeRentang) {
       periodeLabel = `${tanggalDari} s/d ${tanggalSampai}`;
@@ -358,17 +340,21 @@ export default function TabRekapGuru({
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.ppmawar.or.id';
     const previewUrl = item.preview_token
       ? `${origin}/rekapitulasi/preview?t=${item.preview_token}`
-      : `${origin}/rekapitulasi/preview?guru_id=${item.id}&tipe=${tipe}`;
+      : `${origin}/rekapitulasi/preview?tipe=${item.kategori || 'madin'}&target_id=${item.kelas_id || ''}&sub_filter=${encodeURIComponent(item.nama || '')}`;
 
     const masaBerlaku = item.token_duration_label || `${expiryDays} Hari`;
     const batasWaktu = item.token_exp_date || '-';
 
     const templateToUse = pesanRekapGuruTemplate || DEFAULT_REKAP_GURU_TEMPLATE;
     const text = templateToUse
-      .replace(/{nama_guru}/g, item.nama || '-')
-      .replace(/{nip}/g, item.identifier || '-')
-      .replace(/{tipe}/g, tipeLabel)
-      .replace(/{target_label}/g, targetLabel)
+      .replace(/{nama_guru}/g, item.guru_nama || item.nama || '-')
+      .replace(/{nama_mapel}/g, item.nama || '-')
+      .replace(/{mapel}/g, item.nama || '-')
+      .replace(/{kelas}/g, item.kelas_nama || '-')
+      .replace(/{kategori}/g, item.kategori_label || item.kategori || '-')
+      .replace(/{tipe}/g, item.kategori_label || item.kategori || '-')
+      .replace(/{target_label}/g, item.kelas_nama || '-')
+      .replace(/{nip}/g, item.identifier || item.guru_nip || '-')
       .replace(/{periode}/g, periodeLabel)
       .replace(/{bulan_tahun}/g, periodeLabel)
       .replace(/{hadir}/g, String(hadir))
@@ -416,16 +402,16 @@ export default function TabRekapGuru({
 
         {/* Baris 1: Cari Nama/NIP, Pilih Kategori, Pilih Guru/Unit */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
-          {/* Kolom 1: Cari Nama / NIP */}
+          {/* Kolom 1: Cari Nama / Mapel / Pengajar */}
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">
-              Cari Nama / NIP
+              Cari Mapel / Guru
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
               <input
                 type="text"
-                placeholder={tipe === 'dewan_guru' ? 'Cari Nama / NIP / Unit...' : 'Ketik nama / NIP guru...'}
+                placeholder="Cari mapel, kelas, atau nama guru..."
                 value={searchNama}
                 onChange={(e) => setSearchNama(e.target.value)}
                 className="w-full pl-9 pr-8 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium focus:ring-2 focus:ring-purple-500 outline-none transition-all"
@@ -441,47 +427,39 @@ export default function TabRekapGuru({
             </div>
           </div>
 
-          {/* Kolom 2: Pilih Kategori (HANYA GURU: Absensi Pengajar / Guru & Presensi Dewan Guru YPMA) */}
+          {/* Kolom 2: Pilih Kategori Mapel */}
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">
               Pilih Kategori
             </label>
             <select
-              value={tipe}
-              onChange={(e) => handleTipeChange(e.target.value as 'guru' | 'dewan_guru')}
+              value={kategoriMapel}
+              onChange={(e) => setKategoriMapel(e.target.value as any)}
               className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer"
             >
-              <option value="guru">Absensi Pengajar / Guru</option>
-              <option value="dewan_guru">Presensi Dewan Guru YPMA</option>
+              <option value="all">Semua Kategori (Madin, Qur&apos;an, Asrama)</option>
+              <option value="madin">📚 Madrasah Diniyah (Madin)</option>
+              <option value="quran">🕌 Majlis Al-Qur&apos;an</option>
+              <option value="kegiatan">🏠 Kegiatan Asrama</option>
             </select>
           </div>
 
-          {/* Kolom 3: Target (Semua Guru / Pilih Guru ATAU Pilih Unit Homebase) */}
+          {/* Kolom 3: Target Guru / Pengajar */}
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">
-              {tipe === 'guru' ? 'Pilih Guru' : 'Pilih Unit / Homebase'}
+              Pilih Guru / Pengajar
             </label>
             <select
-              value={targetId}
-              onChange={(e) => setTargetId(e.target.value)}
+              value={targetGuruId}
+              onChange={(e) => setTargetGuruId(e.target.value)}
               className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer"
             >
-              {tipe === 'guru' ? (
-                <>
-                  <option value="all">Semua Guru</option>
-                  {optionsGuru.map((g) => (
-                    <option key={g.id || g.guru_id} value={g.id || g.guru_id}>
-                      {g.nama} {g.nip ? `(${g.nip})` : ''}
-                    </option>
-                  ))}
-                </>
-              ) : (
-                HOMEBASES.map((hb) => (
-                  <option key={hb.id} value={hb.id}>
-                    {hb.nama}
-                  </option>
-                ))
-              )}
+              <option value="all">Semua Guru / Pengajar</option>
+              {optionsGuru.map((g) => (
+                <option key={g.id || g.guru_id} value={g.id || g.guru_id}>
+                  {g.nama} {g.nip ? `(${g.nip})` : ''}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -633,7 +611,7 @@ export default function TabRekapGuru({
         <label className="block text-xs font-bold text-purple-900 dark:text-purple-300 mb-1.5 flex flex-col gap-1">
           <span>✏️ Edit Templat Pesan Rekapitulasi untuk Guru & Staff</span>
           <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500 leading-relaxed">
-            Placeholder: &#123;nama_guru&#125;, &#123;nip&#125;, &#123;tipe&#125;, &#123;target_label&#125;, &#123;periode&#125;, &#123;hadir&#125;, &#123;izin&#125;, &#123;sakit&#125;, &#123;alpha&#125;, &#123;total&#125;, &#123;persentase&#125;, &#123;link_rekap&#125;, &#123;masa_berlaku&#125;, &#123;batas_waktu&#125;
+            Placeholder: &#123;nama_guru&#125;, &#123;nama_mapel&#125;, &#123;kelas&#125;, &#123;kategori&#125;, &#123;nip&#125;, &#123;periode&#125;, &#123;hadir&#125;, &#123;izin&#125;, &#123;sakit&#125;, &#123;alpha&#125;, &#123;total&#125;, &#123;persentase&#125;, &#123;link_rekap&#125;, &#123;masa_berlaku&#125;, &#123;batas_waktu&#125;
           </span>
         </label>
         <textarea
@@ -824,10 +802,10 @@ export default function TabRekapGuru({
             {renderControls()}
             <div className="flex items-center justify-between text-xs text-gray-500 px-1">
               <span>
-                Menampilkan <strong className="text-gray-800 dark:text-gray-200">{filteredList.length}</strong> guru/staff untuk disiarkan
+                Menampilkan <strong className="text-gray-800 dark:text-gray-200">{filteredList.length}</strong> mapel/jadwal untuk disiarkan
               </span>
               <span className="text-[11px] text-purple-600 font-semibold hidden sm:inline">
-                💡 Tautan WA otomatis melampirkan preview dokumen PDF resmi siap unduh & klarifikasi kehadiran
+                💡 Tautan WA otomatis melampirkan preview dokumen PDF resmi siap unduh
               </span>
             </div>
 
@@ -836,8 +814,8 @@ export default function TabRekapGuru({
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700">
                   <tr>
-                    <th className="px-5 py-4 rounded-l-xl">Nama Guru / Tenaga Pengajar</th>
-                    <th className="px-5 py-4">Kontak WhatsApp</th>
+                    <th className="px-5 py-4 rounded-l-xl">Mata Pelajaran & Kelas</th>
+                    <th className="px-5 py-4">Guru Pengajar & Kontak</th>
                     <th className="px-5 py-4 text-right rounded-r-xl">Aksi</th>
                   </tr>
                 </thead>
@@ -855,7 +833,7 @@ export default function TabRekapGuru({
                     const isSent = !!sentWaIds[item.id];
                     const previewUrl = item.preview_token
                       ? `/rekapitulasi/preview?t=${item.preview_token}`
-                      : `/rekapitulasi/preview?guru_id=${item.id}&tipe=${tipe}`;
+                      : `/rekapitulasi/preview?tipe=${item.kategori || 'madin'}&target_id=${item.kelas_id || ''}&sub_filter=${encodeURIComponent(item.nama || '')}`;
 
                     return (
                       <tr
@@ -866,34 +844,38 @@ export default function TabRekapGuru({
                         <td className="px-5 py-4 font-semibold text-gray-800 dark:text-gray-200">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-xs shrink-0">
-                              {item.nama ? item.nama.charAt(0).toUpperCase() : 'G'}
+                              <BookOpen size={17} />
                             </div>
                             <div>
-                              <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">{item.nama}</div>
+                              <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">{item.nama || 'Mata Pelajaran'}</div>
                               <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-xs">
-                                <span className="font-mono text-gray-400 text-[11px]">
-                                  NIP: {item.identifier || '-'}
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                  {item.kelas_nama || '-'}
                                 </span>
-                                {(item.homebase || item.alamat) && (
-                                  <>
-                                    <span className="text-gray-300 dark:text-gray-700">•</span>
-                                    <span className="text-gray-500 text-[11px]">{item.homebase || item.alamat}</span>
-                                  </>
-                                )}
+                                <span className="text-gray-300 dark:text-gray-700">•</span>
+                                <span className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold">
+                                  {item.kategori_label || item.kategori}
+                                </span>
                                 <span className="text-gray-300 dark:text-gray-700">•</span>
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
                                   {persentase}% Hadir
                                 </span>
                                 <span className="text-[11px] text-gray-500 font-medium">
-                                  ({hadir}H · {izin}I · {sakit}S · {alpha} Belum Terdata)
+                                  ({hadir}H · {izin}I · {sakit}S · {alpha}A)
                                 </span>
                               </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-5 py-4 text-gray-600 dark:text-gray-400">
-                          <div className="text-xs font-mono text-gray-700 dark:text-gray-300 flex items-center gap-1.5 font-bold">
-                            <Phone size={13} className="text-emerald-500 shrink-0" />
+                          <div className="font-bold text-gray-900 dark:text-gray-100 text-xs">
+                            {item.guru_nama || '-'}
+                          </div>
+                          <div className="text-[11px] font-mono text-gray-500 dark:text-gray-400 mt-0.5">
+                            NIP: {item.identifier || item.guru_nip || '-'}
+                          </div>
+                          <div className="text-xs font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-bold mt-1">
+                            <Phone size={12} className="shrink-0" />
                             <span>{rawPhone || '-'}</span>
                           </div>
                         </td>
@@ -953,7 +935,7 @@ export default function TabRekapGuru({
                 const isSent = !!sentWaIds[item.id];
                 const previewUrl = item.preview_token
                   ? `/rekapitulasi/preview?t=${item.preview_token}`
-                  : `/rekapitulasi/preview?guru_id=${item.id}&tipe=${tipe}`;
+                  : `/rekapitulasi/preview?tipe=${item.kategori || 'madin'}&target_id=${item.kelas_id || ''}&sub_filter=${encodeURIComponent(item.nama || '')}`;
 
                 return (
                   <div
@@ -963,9 +945,16 @@ export default function TabRekapGuru({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <h5 className="font-bold text-sm text-gray-900 dark:text-gray-100 truncate">{item.nama}</h5>
-                        <p className="text-[11px] text-gray-400 font-mono mt-0.5">
-                          NIP: {item.identifier || '-'} {item.homebase ? `• ${item.homebase}` : item.alamat ? `• ${item.alamat}` : ''}
+                        <div className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 font-bold mb-0.5">
+                          <BookOpen size={13} className="shrink-0" />
+                          <span>{item.kategori_label || item.kategori}</span>
+                          <span className="text-gray-300 dark:text-gray-600">•</span>
+                          <span>{item.kelas_nama || '-'}</span>
+                        </div>
+                        <h5 className="font-extrabold text-sm text-gray-900 dark:text-gray-100 truncate">{item.nama || 'Mata Pelajaran'}</h5>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          Pengajar: <strong className="text-gray-800 dark:text-gray-200">{item.guru_nama || '-'}</strong>
+                          {item.identifier ? ` (${item.identifier})` : ''}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
@@ -987,8 +976,8 @@ export default function TabRekapGuru({
                         <span className="block text-[10px] text-amber-600 font-bold">Sakit</span>
                         <span className="font-bold text-amber-800 dark:text-amber-300">{sakit}</span>
                       </div>
-                      <div className="bg-rose-50 dark:bg-rose-950/30 p-1.5 rounded-lg border border-rose-100 dark:border-rose-900/30" title="Belum Terdata di Aplikasi">
-                        <span className="block text-[10px] text-rose-600 font-bold truncate">Belum Data</span>
+                      <div className="bg-rose-50 dark:bg-rose-950/30 p-1.5 rounded-lg border border-rose-100 dark:border-rose-900/30" title="Alpha / Tanpa Keterangan">
+                        <span className="block text-[10px] text-rose-600 font-bold truncate">Alpha</span>
                         <span className="font-bold text-rose-800 dark:text-rose-300">{alpha}</span>
                       </div>
                     </div>
@@ -996,7 +985,7 @@ export default function TabRekapGuru({
                     <div className="pt-2.5 border-t border-gray-100 dark:border-gray-700/60 space-y-2.5">
                       {/* Baris WhatsApp */}
                       <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">WhatsApp Guru:</span>
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">WhatsApp Pengajar:</span>
                         <div className="flex items-center gap-1 font-mono text-xs text-gray-700 dark:text-gray-300 font-bold">
                           <Phone size={12} className="text-emerald-500 shrink-0" />
                           <span>{rawPhone || '-'}</span>
@@ -1260,15 +1249,13 @@ export default function TabRekapGuru({
                   <div className="p-2 bg-amber-500 text-white rounded-xl shadow-xs shrink-0">
                     <Award size={18} />
                   </div>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100 leading-tight">
-                      Laporan Evaluasi Khusus Kepala Madrasah Diniyah (Madin)
-                    </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Kirim rekapitulasi kehadiran dewan guru Madin bulan terpilih secara manual per individu maupun otomatis terjadwal ke WhatsApp Kepala Madin.
-                    </p>
-                  </div>
+                  <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100 leading-tight">
+                    Laporan Evaluasi Khusus Kepala Madrasah Diniyah (Madin)
+                  </h4>
                 </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Kirim rekapitulasi kehadiran dewan guru Madin bulan terpilih secara manual per individu maupun otomatis terjadwal ke WhatsApp Kepala Madin.
+                </p>
               </div>
 
               {/* Sasaran Kepala Madin: Putra vs Putri vs Semua */}
@@ -1330,15 +1317,25 @@ export default function TabRekapGuru({
                         localStorage.setItem(`kepala_madin_${kepalaMadinTarget}_phone`, e.target.value);
                       }
                     }}
+                    onBlur={() => {
+                      if (kepalaMadinPhone) {
+                        saveTemplate(`kepala_madin_${kepalaMadinTarget}_phone`, kepalaMadinPhone);
+                      }
+                    }}
                     placeholder="Contoh: 081234567890"
                     className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-purple-500 outline-none"
                   />
+                  {saveStatus[`kepala_madin_${kepalaMadinTarget}_phone`] === 'saved' && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 mt-1">
+                      <CheckCircle2 size={12} /> Nomor WA tersimpan di Database ✓
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* Templat Pesan Kepala Madin */}
               <div className="bg-amber-50/50 dark:bg-gray-800/80 p-4.5 rounded-2xl border border-amber-200/80 dark:border-amber-800/60 space-y-2">
-                <label className="block text-xs font-bold text-amber-950 dark:text-amber-200 flex items-center justify-between">
+                <label className="block text-xs font-bold text-amber-950 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <span>Edit Templat Pesan untuk Kepala Madin</span>
                   <span className="text-[10px] text-gray-500 dark:text-gray-400 font-normal">
                     Placeholder: &#123;total_guru&#125;, &#123;avg_kehadiran&#125;, &#123;ringkasan_kehadiran&#125;, &#123;link_laporan&#125;
@@ -1356,15 +1353,15 @@ export default function TabRekapGuru({
                   rows={4}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-xl text-xs font-mono focus:ring-2 focus:ring-amber-500 outline-none resize-none"
                 />
-                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-amber-200/50 dark:border-gray-700/60">
+                <div className="mt-2.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2 border-t border-amber-200/50 dark:border-gray-700/60">
                   <button
                     type="button"
                     onClick={() => resetTemplate('wa_template_kepala_madin', DEFAULT_KEPALA_MADIN_TEMPLATE, setPesanKepalaMadinTemplate)}
-                    className="text-xs text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-amber-700 dark:text-amber-400 hover:underline flex items-center justify-center gap-1 cursor-pointer text-center w-full sm:w-auto"
                   >
                     ⟳ Reset ke Templat Default
                   </button>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2 w-full sm:w-auto">
                     {saveStatus['wa_template_kepala_madin'] === 'saved' && (
                       <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                         <CheckCircle2 size={13} /> Tersimpan di Database ✓
@@ -1373,7 +1370,7 @@ export default function TabRekapGuru({
                     <button
                       type="button"
                       onClick={() => saveTemplate('wa_template_kepala_madin', pesanKepalaMadinTemplate)}
-                      className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer"
+                      className="w-full sm:w-auto px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1 cursor-pointer"
                     >
                       Simpan Templat
                     </button>

@@ -216,14 +216,18 @@ function NotifikasiContent() {
   const handleSelectKepalaMadin = (gid: string) => {
     setSelectedKepalaMadinId(gid);
     const selected = guruList.find(g => String(g.guru_id) === gid);
-    if (selected) {
-      const name = selected.nama || (kepalaMadinTarget === 'putri' ? 'Kepala Madin Putri' : kepalaMadinTarget === 'putra' ? 'Kepala Madin Putra' : 'Kepala Madin');
-      setKepalaMadinNama(name);
-      setKepalaMadinPhone(selected.whatsapp || '');
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`kepala_madin_${kepalaMadinTarget}_id`, gid);
-        localStorage.setItem(`kepala_madin_${kepalaMadinTarget}_phone`, selected.whatsapp || '');
-      }
+    const name = selected?.nama || (kepalaMadinTarget === 'putri' ? 'Kepala Madin Putri' : kepalaMadinTarget === 'putra' ? 'Kepala Madin Putra' : 'Kepala Madin');
+    const phone = selected?.whatsapp || '';
+    setKepalaMadinNama(name);
+    setKepalaMadinPhone(phone);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`kepala_madin_${kepalaMadinTarget}_id`, gid);
+      localStorage.setItem(`kepala_madin_${kepalaMadinTarget}_phone`, phone);
+    }
+    // Simpan ke database agar permanen
+    saveTemplate(`kepala_madin_${kepalaMadinTarget}_id`, gid);
+    if (phone) {
+      saveTemplate(`kepala_madin_${kepalaMadinTarget}_phone`, phone);
     }
   };
 
@@ -446,7 +450,12 @@ function NotifikasiContent() {
             if (typeof window !== 'undefined') localStorage.setItem('wa_template_guru_info', t.wa_template_guru_info);
           }
           if (t.wa_template_guru_rekap) {
-            if (t.wa_template_guru_rekap.includes('*Daftar Kelas & Mapel yang Diampu:*') || t.wa_template_guru_rekap.includes('{daftar_kelas}')) {
+            if (
+              t.wa_template_guru_rekap.includes('*Daftar Kelas & Mapel yang Diampu:*') ||
+              t.wa_template_guru_rekap.includes('{daftar_kelas}') ||
+              t.wa_template_guru_rekap.includes('Klarifikasi Rekap') ||
+              t.wa_template_guru_rekap.includes('hadir mengajar atau bertugas secara mandiri')
+            ) {
               setPesanRekapGuruTemplate(DEFAULT_REKAP_GURU_TEMPLATE);
               if (typeof window !== 'undefined') localStorage.setItem('wa_template_guru_rekap', DEFAULT_REKAP_GURU_TEMPLATE);
             } else {
@@ -462,6 +471,19 @@ function NotifikasiContent() {
             setPesanBillingTemplate(t.wa_template_billing);
             if (typeof window !== 'undefined') localStorage.setItem('wa_template_billing', t.wa_template_billing);
           }
+
+          // Sinkronkan akun & nomor Kepala Madin dari database
+          if (t.kepala_madin_putra_id && typeof window !== 'undefined') localStorage.setItem('kepala_madin_putra_id', t.kepala_madin_putra_id);
+          if (t.kepala_madin_putra_phone && typeof window !== 'undefined') localStorage.setItem('kepala_madin_putra_phone', t.kepala_madin_putra_phone);
+          if (t.kepala_madin_putri_id && typeof window !== 'undefined') localStorage.setItem('kepala_madin_putri_id', t.kepala_madin_putri_id);
+          if (t.kepala_madin_putri_phone && typeof window !== 'undefined') localStorage.setItem('kepala_madin_putri_phone', t.kepala_madin_putri_phone);
+          if (t.kepala_madin_all_id && typeof window !== 'undefined') localStorage.setItem('kepala_madin_all_id', t.kepala_madin_all_id);
+          if (t.kepala_madin_all_phone && typeof window !== 'undefined') localStorage.setItem('kepala_madin_all_phone', t.kepala_madin_all_phone);
+
+          const curGid = t[`kepala_madin_${kepalaMadinTarget}_id`];
+          const curPhone = t[`kepala_madin_${kepalaMadinTarget}_phone`];
+          if (curGid) setSelectedKepalaMadinId(curGid);
+          if (curPhone) setKepalaMadinPhone(curPhone);
         }
       })
       .catch(() => {});
