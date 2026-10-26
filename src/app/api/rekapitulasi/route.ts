@@ -690,8 +690,9 @@ export async function GET(request: Request) {
         const isGuruType = tipe === 'guru' || tipe === 'dewan_guru' || tipe === 'guru_mapel';
         if (tipe === 'guru_mapel') {
           preview_token = signToken({
+            tipe: 'guru_mapel',
+            kategori: r.kategori,
             jadwal_id: r.jadwal_id,
-            tipe: r.kategori,
             target_id: r.kelas_id || '',
             sub_filter: r.nama,
             guru_id: r.guru_id,

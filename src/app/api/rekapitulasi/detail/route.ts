@@ -26,22 +26,17 @@ export async function GET(request: Request) {
 
     const tipe = payload.tipe || searchParams.get("tipe") || "madin";
     const isGuruTipe = tipe === "guru" || tipe === "dewan_guru";
-    let murid_id = !isGuruTipe
+    let murid_id = !isGuruTipe && tipe !== 'guru_mapel'
       ? ((payload.muridId ? String(payload.muridId) : null) || (payload.murid_id ? String(payload.murid_id) : null) || searchParams.get("murid_id"))
       : null;
-    let guru_id = isGuruTipe
+    let guru_id = (isGuruTipe || tipe === 'guru_mapel' || payload.guru_id)
       ? ((payload.guru_id ? String(payload.guru_id) : null) || (payload.guruId ? String(payload.guruId) : null) || (payload.muridId ? String(payload.muridId) : null) || searchParams.get("guru_id"))
       : searchParams.get("guru_id");
 
-    // Handle token "guru_mapel" (purpose: rekap_preview, tipe: madin/quran/kegiatan, ada guru_id):
-    // Token ini dihasilkan saat admin membuka "Lihat PDF" dari rekap mapel guru.
-    // Tampilkan absensi guru (absensi_guru) dengan menimpa tipe menjadi 'guru'.
-    if (!murid_id && !guru_id && payload.guru_id) {
-      guru_id = String(payload.guru_id);
-    }
-    // Jika guru_id ada tapi tipe bukan guru/dewan_guru, override tipe agar memakai query absensi_guru
+    const isGuruMapel = tipe === 'guru_mapel' || payload.tipe === 'guru_mapel' || (!murid_id && !!guru_id && (payload.purpose === 'rekap_preview' || payload.role === 'guru'));
+
     let effectiveTipe = tipe;
-    if (guru_id && !murid_id && !isGuruTipe) {
+    if (guru_id && !murid_id && !isGuruTipe && !isGuruMapel) {
       effectiveTipe = 'guru';
     }
 
@@ -52,7 +47,7 @@ export async function GET(request: Request) {
     const tanggal_sampai = payload.tanggal_sampai || searchParams.get("tanggal_sampai");
     const sub_filter = payload.sub_filter || searchParams.get("sub_filter") || "";
 
-    if ((payload.role === 'wali_murid' || payload.role === 'wali_alumni') && !isGuruTipe) {
+    if ((payload.role === 'wali_murid' || payload.role === 'wali_alumni') && !isGuruTipe && !isGuruMapel) {
       if (!payload.muridId && !murid_id) {
         return NextResponse.json({ error: "Murid ID tidak valid" }, { status: 400, headers: noCacheHeaders });
       }
@@ -65,6 +60,338 @@ export async function GET(request: Request) {
     }
 
     const isRentang = !!(tanggal_dari && tanggal_sampai);
+
+    // =========================================================================
+    // KHUSUS GURU MAPEL: Tampilkan daftar santri per mapel & kelas yang diampu guru
+    // Jika guru mengajar >1 mapel/kelas, seluruhnya digabung dalam 1 halaman dengan pemisah
+    // =========================================================================
+    if (isGuruMapel && guru_id) {
+      const [gRows]: any = await pool.execute(
+        `SELECT guru_id, nama, nip, no_hp, foto, alamat FROM guru WHERE guru_id = ? LIMIT 1`,
+        [guru_id]
+      );
+      const guruData = gRows && gRows[0] ? gRows[0] : { guru_id, nama: 'Guru Pengajar', nip: '-', no_hp: '', foto: '' };
+
+      const dateCond = isRentang ? 'a.tanggal BETWEEN ? AND ?' : 'MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?';
+      const dateParams = isRentang ? [tanggal_dari, tanggal_sampai] : [bulan, tahun];
+
+      const schedulesList: any[] = [];
+
+      // A. Madin
+      const [madinSchedules]: any = await pool.execute(
+        `SELECT jm.jadwal_id, jm.mata_pelajaran, jm.kelas_madin_id as kelas_id, km.nama_kelas, 'madin' as kategori, 'Madrasah Diniyah' as kategori_label
+         FROM jadwal_madin jm
+         JOIN kelas_madin km ON jm.kelas_madin_id = km.kelas_id
+         WHERE jm.guru_id = ?
+         ORDER BY km.nama_kelas ASC, jm.mata_pelajaran ASC`,
+        [guru_id]
+      );
+      schedulesList.push(...(madinSchedules || []));
+
+      // B. Quran
+      const [quranSchedules]: any = await pool.execute(
+        `SELECT jq.id as jadwal_id, COALESCE(jq.mata_pelajaran, "Majlis Al-Qur'an") as mata_pelajaran, jq.kelas_quran_id as kelas_id, kq.nama_kelas, 'quran' as kategori, "Al-Qur'an" as kategori_label
+         FROM jadwal_quran jq
+         JOIN kelas_quran kq ON jq.kelas_quran_id = kq.id
+         WHERE jq.guru_id = ?
+         ORDER BY kq.nama_kelas ASC, jq.mata_pelajaran ASC`,
+        [guru_id]
+      );
+      schedulesList.push(...(quranSchedules || []));
+
+      // C. Kegiatan
+      const [kegiatanSchedules]: any = await pool.execute(
+        `SELECT jk.kegiatan_id as jadwal_id, jk.nama_kegiatan as mata_pelajaran, jk.kamar_id as kelas_id, k.nama_kamar as nama_kelas, 'kegiatan' as kategori, 'Asrama' as kategori_label
+         FROM jadwal_kegiatan jk
+         JOIN kamar k ON jk.kamar_id = k.kamar_id
+         WHERE jk.guru_id = ?
+         ORDER BY k.nama_kamar ASC, jk.nama_kegiatan ASC`,
+        [guru_id]
+      );
+      schedulesList.push(...(kegiatanSchedules || []));
+
+      interface MapelSection {
+        section_key: string;
+        section_title: string;
+        kategori: string;
+        kategori_label: string;
+        kelas_id: any;
+        kelas_nama: string;
+        mata_pelajaran: string;
+        jadwal_ids: any[];
+      }
+      const sectionsMap = new Map<string, MapelSection>();
+
+      for (const s of schedulesList) {
+        const secKey = `${s.kategori}_${s.kelas_id}_${String(s.mata_pelajaran || '').trim().toLowerCase()}`;
+        if (!sectionsMap.has(secKey)) {
+          sectionsMap.set(secKey, {
+            section_key: secKey,
+            section_title: `--- KELAS ${String(s.nama_kelas || '').toUpperCase()} • MAPEL: ${String(s.mata_pelajaran || '').toUpperCase()} ---`,
+            kategori: s.kategori,
+            kategori_label: s.kategori_label,
+            kelas_id: s.kelas_id,
+            kelas_nama: s.nama_kelas,
+            mata_pelajaran: s.mata_pelajaran,
+            jadwal_ids: [s.jadwal_id],
+          });
+        } else {
+          sectionsMap.get(secKey)!.jadwal_ids.push(s.jadwal_id);
+        }
+      }
+
+      const allStudentsRows: any[] = [];
+      let totalSemuaSantri = 0;
+      let grandHadir = 0;
+      let grandIzin = 0;
+      let grandSakit = 0;
+      let grandAlpha = 0;
+
+      for (const sec of Array.from(sectionsMap.values())) {
+        let studentsInClass: any[] = [];
+        if (sec.kategori === 'madin') {
+          const [mList]: any = await pool.execute(
+            `SELECT murid_id, nis, nama, foto, jenis_kelamin FROM murid WHERE (kelas_madin_id = ? OR kelas_madin_2_id = ?) ORDER BY nama ASC`,
+            [sec.kelas_id, sec.kelas_id]
+          );
+          studentsInClass = mList || [];
+        } else if (sec.kategori === 'quran') {
+          const [mList]: any = await pool.execute(
+            `SELECT murid_id, nis, nama, foto, jenis_kelamin FROM murid WHERE kelas_quran_id = ? ORDER BY nama ASC`,
+            [sec.kelas_id]
+          );
+          studentsInClass = mList || [];
+        } else if (sec.kategori === 'kegiatan') {
+          const [mList]: any = await pool.execute(
+            `SELECT murid_id, nis, nama, foto, jenis_kelamin FROM murid WHERE kamar_id = ? ORDER BY nama ASC`,
+            [sec.kelas_id]
+          );
+          studentsInClass = mList || [];
+        }
+
+        const placeholders = sec.jadwal_ids.map(() => '?').join(',');
+        const attMap: Record<string, any> = {};
+
+        if (placeholders) {
+          let attQuery = '';
+          if (sec.kategori === 'madin') {
+            attQuery = `SELECT a.murid_id,
+              SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+              SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+              SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+              SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
+              COUNT(*) as total
+            FROM absensi a
+            WHERE a.jadwal_madin_id IN (${placeholders}) AND ${dateCond}
+            GROUP BY a.murid_id`;
+          } else if (sec.kategori === 'quran') {
+            attQuery = `SELECT a.murid_id,
+              SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+              SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+              SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+              SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
+              COUNT(*) as total
+            FROM absensi_quran a
+            WHERE a.jadwal_quran_id IN (${placeholders}) AND ${dateCond}
+            GROUP BY a.murid_id`;
+          } else if (sec.kategori === 'kegiatan') {
+            attQuery = `SELECT a.murid_id,
+              SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+              SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+              SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+              SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
+              COUNT(*) as total
+            FROM absensi_kegiatan a
+            WHERE a.kegiatan_id IN (${placeholders}) AND ${dateCond}
+            GROUP BY a.murid_id`;
+          }
+
+          if (attQuery) {
+            const [attRows]: any = await pool.execute(attQuery, [...sec.jadwal_ids, ...dateParams]);
+            for (const r of (attRows || [])) {
+              attMap[String(r.murid_id)] = r;
+            }
+          }
+        }
+
+        totalSemuaSantri += studentsInClass.length;
+
+        studentsInClass.forEach((st: any, idxSantri: number) => {
+          const att = attMap[String(st.murid_id)] || { hadir: 0, izin: 0, sakit: 0, alpha: 0, total: 0 };
+          const h = Number(att.hadir || 0);
+          const i = Number(att.izin || 0);
+          const s = Number(att.sakit || 0);
+          const a = Number(att.alpha || 0);
+          const tot = Number(att.total || (h + i + s + a));
+          const persentase = tot > 0 ? Math.round((h / tot) * 100) : 0;
+
+          grandHadir += h;
+          grandIzin += i;
+          grandSakit += s;
+          grandAlpha += a;
+
+          allStudentsRows.push({
+            no_urut: idxSantri + 1,
+            section_key: sec.section_key,
+            section_title: sec.section_title,
+            section_total_santri: studentsInClass.length,
+            kategori: sec.kategori,
+            kategori_label: sec.kategori_label,
+            kelas_id: sec.kelas_id,
+            kelas_nama: sec.kelas_nama,
+            mata_pelajaran: sec.mata_pelajaran,
+            guru_nama: guruData.nama,
+            murid_id: st.murid_id,
+            nis: st.nis || '-',
+            nama: st.nama,
+            foto: st.foto,
+            hadir: h,
+            izin: i,
+            sakit: s,
+            alpha: a,
+            total: tot,
+            persentase,
+            status: tot > 0 ? (persentase >= 75 ? 'Hadir' : persentase >= 50 ? 'Izin' : 'Alpha') : 'Belum Ada Sesi',
+          });
+        });
+      }
+
+      // Kumpulkan trend per tanggal sesi
+      const allJadwalIdsMadin = Array.from(sectionsMap.values()).filter(s => s.kategori === 'madin').flatMap(s => s.jadwal_ids);
+      const allJadwalIdsQuran = Array.from(sectionsMap.values()).filter(s => s.kategori === 'quran').flatMap(s => s.jadwal_ids);
+      const allJadwalIdsKegiatan = Array.from(sectionsMap.values()).filter(s => s.kategori === 'kegiatan').flatMap(s => s.jadwal_ids);
+
+      const trendMap = new Map<string, { hadir: number; izin: number; sakit: number; alpha: number; total: number }>();
+
+      const addTrendRows = (tRows: any[]) => {
+        for (const tr of tRows) {
+          const tgl = tr.tanggal;
+          if (!tgl) continue;
+          if (!trendMap.has(tgl)) {
+            trendMap.set(tgl, { hadir: 0, izin: 0, sakit: 0, alpha: 0, total: 0 });
+          }
+          const rec = trendMap.get(tgl)!;
+          rec.hadir += Number(tr.hadir || 0);
+          rec.izin += Number(tr.izin || 0);
+          rec.sakit += Number(tr.sakit || 0);
+          rec.alpha += Number(tr.alpha || 0);
+          rec.total += Number(tr.total || 0);
+        }
+      };
+
+      try {
+        if (allJadwalIdsMadin.length > 0) {
+          const ph = allJadwalIdsMadin.map(() => '?').join(',');
+          const [tr]: any = await pool.execute(
+            `SELECT DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal,
+              SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+              SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+              SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+              SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
+              COUNT(*) as total
+            FROM absensi a
+            WHERE a.jadwal_madin_id IN (${ph}) AND ${dateCond}
+            GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')`,
+            [...allJadwalIdsMadin, ...dateParams]
+          );
+          addTrendRows(tr || []);
+        }
+        if (allJadwalIdsQuran.length > 0) {
+          const ph = allJadwalIdsQuran.map(() => '?').join(',');
+          const [tr]: any = await pool.execute(
+            `SELECT DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal,
+              SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+              SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+              SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+              SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
+              COUNT(*) as total
+            FROM absensi_quran a
+            WHERE a.jadwal_quran_id IN (${ph}) AND ${dateCond}
+            GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')`,
+            [...allJadwalIdsQuran, ...dateParams]
+          );
+          addTrendRows(tr || []);
+        }
+        if (allJadwalIdsKegiatan.length > 0) {
+          const ph = allJadwalIdsKegiatan.map(() => '?').join(',');
+          const [tr]: any = await pool.execute(
+            `SELECT DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal,
+              SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+              SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
+              SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+              SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha,
+              COUNT(*) as total
+            FROM absensi_kegiatan a
+            WHERE a.kegiatan_id IN (${ph}) AND ${dateCond}
+            GROUP BY DATE_FORMAT(a.tanggal, '%Y-%m-%d')`,
+            [...allJadwalIdsKegiatan, ...dateParams]
+          );
+          addTrendRows(tr || []);
+        }
+      } catch (err) {
+        console.warn('Trend map build error:', err);
+      }
+
+      const trendDataList = Array.from(trendMap.keys()).sort().map(tgl => {
+        const rec = trendMap.get(tgl)!;
+        const tot = rec.total || 1;
+        return {
+          tanggal: tgl,
+          hadir: rec.hadir,
+          izin: rec.izin,
+          sakit: rec.sakit,
+          alpha: rec.alpha,
+          total: rec.total,
+          pctHadir: Math.round((rec.hadir / tot) * 1000) / 10,
+          pctIzin: Math.round((rec.izin / tot) * 1000) / 10,
+          pctSakit: Math.round((rec.sakit / tot) * 1000) / 10,
+          pctAlpha: Math.round((rec.alpha / tot) * 1000) / 10,
+        };
+      });
+
+      const grandTotalAtt = grandHadir + grandIzin + grandSakit + grandAlpha;
+      const grandAvgPersen = grandTotalAtt > 0 ? Math.round((grandHadir / grandTotalAtt) * 100) : 0;
+
+      const muridInfo = {
+        murid_id: guruData.guru_id,
+        nama: guruData.nama,
+        nis: guruData.nip || '-',
+        kelas_madin: `Pengajar ${sectionsMap.size} Mapel / Kelas`,
+        kelas_quran: `${totalSemuaSantri} Santri Terbina`,
+        no_hp_wali: guruData.no_hp || '',
+        foto: guruData.foto || '',
+        jenis_kelamin: 'Guru Mapel',
+        is_guru_mapel: true,
+        total_mapel: sectionsMap.size,
+        total_santri: totalSemuaSantri,
+        avg_persentase: grandAvgPersen,
+        hadir: grandHadir,
+        izin: grandIzin,
+        sakit: grandSakit,
+        alpha: grandAlpha,
+        total: grandTotalAtt,
+      };
+
+      return NextResponse.json({
+        success: true,
+        data: allStudentsRows,
+        trend: trendDataList,
+        murid: muridInfo,
+        meta: {
+          tipe: 'guru_mapel',
+          is_guru_mapel: true,
+          bulan,
+          tahun,
+          tanggal_dari,
+          tanggal_sampai,
+          isRentang,
+          sub_filter,
+          total_mapel: sectionsMap.size,
+          total_santri: totalSemuaSantri,
+          expires_at: payload.exp ? payload.exp * 1000 : null,
+        }
+      }, { headers: noCacheHeaders });
+    }
     let rows: RowDataPacket[] = [];
 
     // Mapping nama asli guru dan user

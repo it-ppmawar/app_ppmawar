@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, Suspense } from 'react';
+import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon, X, TrendingUp, CalendarDays, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { exportToPDF } from '@/lib/exportUtils';
@@ -118,6 +118,7 @@ function RekapPreviewContent() {
   const [data, setData] = useState<any[]>([]);
   const [murid, setMurid] = useState<any>(null);
   const [meta, setMeta] = useState<any>(null);
+  const [backendTrend, setBackendTrend] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('semua');
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
@@ -183,6 +184,9 @@ function RekapPreviewContent() {
           setData(res.data || []);
           setMurid(res.murid || null);
           setMeta(res.meta || null);
+          if (res.trend && Array.isArray(res.trend)) {
+            setBackendTrend(res.trend);
+          }
         } else {
           setError(res.error || 'Gagal memuat detail rekapitulasi.');
         }
@@ -200,6 +204,18 @@ function RekapPreviewContent() {
     let sakit = 0;
     let alpha = 0;
 
+    if (meta?.is_guru_mapel) {
+      data.forEach(item => {
+        hadir += Number(item.hadir || 0);
+        izin += Number(item.izin || 0);
+        sakit += Number(item.sakit || 0);
+        alpha += Number(item.alpha || 0);
+      });
+      const total = hadir + izin + sakit + alpha;
+      const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
+      return { hadir, izin, sakit, alpha, total, persentase };
+    }
+
     data.forEach(item => {
       const s = (item.status || '').toLowerCase();
       if (s === 'hadir') hadir++;
@@ -212,7 +228,7 @@ function RekapPreviewContent() {
     const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
 
     return { hadir, izin, sakit, alpha, total, persentase };
-  }, [data]);
+  }, [data, meta]);
 
   // State Pengurutan Tabel Detail
   type SortField = 'tanggal' | 'waktu' | 'mata_pelajaran' | 'status' | 'penginput';
@@ -231,6 +247,26 @@ function RekapPreviewContent() {
 
   // Filter & Urutkan Baris Data
   const filteredData = useMemo(() => {
+    if (meta?.is_guru_mapel) {
+      let base = data;
+      if (statusFilter === 'hadir') {
+        base = data.filter(item => (item.hadir ?? 0) > 0);
+      } else if (statusFilter === 'izin') {
+        base = data.filter(item => (item.izin ?? 0) > 0);
+      } else if (statusFilter === 'sakit') {
+        base = data.filter(item => (item.sakit ?? 0) > 0);
+      } else if (statusFilter === 'alpha') {
+        base = data.filter(item => (item.alpha ?? 0) > 0);
+      }
+
+      return [...base].sort((a: any, b: any) => {
+        if (a.section_key !== b.section_key) {
+          return String(a.section_key || '').localeCompare(String(b.section_key || ''));
+        }
+        return (a.no_urut || 0) - (b.no_urut || 0);
+      });
+    }
+
     const base = statusFilter === 'semua'
       ? data
       : data.filter(item => (item.status || '').toLowerCase() === statusFilter.toLowerCase());
@@ -256,7 +292,7 @@ function RekapPreviewContent() {
       }
       return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
     });
-  }, [data, statusFilter, sortField, sortOrder]);
+  }, [data, statusFilter, sortField, sortOrder, meta]);
 
   // Periode Label
   const periodeLabel = useMemo(() => {
@@ -274,6 +310,7 @@ function RekapPreviewContent() {
   // Kategori Label
   const tipeLabel = useMemo(() => {
     if (!meta) return 'Presensi';
+    if (meta.tipe === 'guru_mapel' || meta.is_guru_mapel) return 'Rekapitulasi Santri per Mapel Guru';
     if (meta.tipe === 'madin') return 'Madrasah Diniyah (Madin)';
     if (meta.tipe === 'quran') return "Al-Qur'an (Tahfidz/Tartil)";
     if (meta.tipe === 'kegiatan') return 'Kegiatan Asrama / Pesantren';
@@ -286,6 +323,7 @@ function RekapPreviewContent() {
   const tipeShortBadge = useMemo(() => {
     if (!meta?.tipe) return '';
     const t = meta.tipe.toLowerCase();
+    if (t === 'guru_mapel') return '(Guru Mapel)';
     if (t === 'madin') return '(Madin)';
     if (t === 'quran') return "(Qur'an)";
     if (t === 'kegiatan') return '(Kegiatan)';
@@ -296,6 +334,7 @@ function RekapPreviewContent() {
 
   // Data Tren Kehadiran per Tanggal Sesi Presensi
   const trendData = useMemo(() => {
+    if (backendTrend && backendTrend.length > 0) return backendTrend;
     if (!data || data.length === 0) return [];
 
     const mapByDate = new Map<string, { hadir: number; izin: number; sakit: number; alpha: number; total: number }>();
@@ -352,26 +391,62 @@ function RekapPreviewContent() {
         }
       }
 
-      const isGuru = meta?.tipe === 'guru' || meta?.tipe === 'dewan_guru' || murid.jenis_kelamin === 'Guru' || murid.jenis_kelamin === 'Dewan Guru';
-      const title = isGuru ? 'RINCIAN REKAPITULASI PRESENSI PENGAJAR & DEWAN GURU' : 'RINCIAN REKAPITULASI PRESENSI SANTRI';
-      const subtitle = isGuru
-        ? `Nama: ${murid.nama || '-'}\nNIP: ${murid.nis || '-'}\nUnit / Alamat: ${murid.kelas_madin || '-'}\nKategori: ${tipeLabel}${meta?.sub_filter ? ` (${meta.sub_filter})` : ''}`
-        : `Nama: ${murid.nama || '-'}\nNIS: ${murid.nis || '-'}\nKelas / Kamar: ${murid.kelas_madin || murid.kelas_quran || murid.nama_kamar || '-'}\nKategori: ${tipeLabel}${meta?.sub_filter ? ` (${meta.sub_filter})` : ''}`;
+      const isGuruMapel = meta?.is_guru_mapel || meta?.tipe === 'guru_mapel';
+      const isGuru = isGuruMapel || meta?.tipe === 'guru' || meta?.tipe === 'dewan_guru' || murid.jenis_kelamin === 'Guru' || murid.jenis_kelamin === 'Dewan Guru';
+
+      let title = 'RINCIAN REKAPITULASI PRESENSI SANTRI';
+      let subtitle = '';
+      let columns: string[] = [];
+      let rows: any[] = [];
+
+      if (isGuruMapel) {
+        title = 'REKAPITULASI PRESENSI SANTRI PER MATA PELAJARAN';
+        subtitle = `Guru Pengampu: ${murid.nama || '-'}\nNIP: ${murid.nis || '-'}\nTugas: ${murid.kelas_madin || '-'}\nTotal Santri Terbina: ${murid.kelas_quran || '-'}\nPeriode: ${periodeLabel}`;
+        columns = ['No', 'Kelas & Mapel', 'NIS', 'Nama Santri', 'H', 'I', 'S', 'A', 'Total', 'Kehadiran (%)'];
+        rows = filteredData.map((r, idx) => [
+          idx + 1,
+          `${r.kelas_nama || '-'} (${r.mata_pelajaran || '-'})`,
+          r.nis || '-',
+          r.nama || '-',
+          r.hadir ?? 0,
+          r.izin ?? 0,
+          r.sakit ?? 0,
+          r.alpha ?? 0,
+          r.total ?? 0,
+          `${r.persentase ?? 0}%`,
+        ]);
+      } else if (isGuru) {
+        title = 'RINCIAN REKAPITULASI PRESENSI PENGAJAR & DEWAN GURU';
+        subtitle = `Nama: ${murid.nama || '-'}\nNIP: ${murid.nis || '-'}\nUnit / Alamat: ${murid.kelas_madin || '-'}\nKategori: ${tipeLabel}${meta?.sub_filter ? ` (${meta.sub_filter})` : ''}`;
+        columns = ['No', 'Hari, Tanggal', 'Waktu', 'Jadwal / Mapel / Kegiatan', 'Status', 'Keterangan', 'Diinput Oleh'];
+        rows = filteredData.map((r, idx) => [
+          idx + 1,
+          `${r.hari || ''}, ${r.tanggal || ''}`,
+          r.jam_mulai ? `${r.jam_mulai}${r.jam_selesai ? ` - ${r.jam_selesai}` : ''}` : '-',
+          r.mata_pelajaran || '-',
+          r.status || '-',
+          r.keterangan || '-',
+          r.penginput || '-',
+        ]);
+      } else {
+        title = 'RINCIAN REKAPITULASI PRESENSI SANTRI';
+        subtitle = `Nama: ${murid.nama || '-'}\nNIS: ${murid.nis || '-'}\nKelas / Kamar: ${murid.kelas_madin || murid.kelas_quran || murid.nama_kamar || '-'}\nKategori: ${tipeLabel}${meta?.sub_filter ? ` (${meta.sub_filter})` : ''}`;
+        columns = ['No', 'Hari, Tanggal', 'Waktu', 'Jadwal / Mapel / Kegiatan', 'Status', 'Keterangan', 'Diinput Oleh'];
+        rows = filteredData.map((r, idx) => [
+          idx + 1,
+          `${r.hari || ''}, ${r.tanggal || ''}`,
+          r.jam_mulai ? `${r.jam_mulai}${r.jam_selesai ? ` - ${r.jam_selesai}` : ''}` : '-',
+          r.mata_pelajaran || '-',
+          r.status || '-',
+          r.keterangan || '-',
+          r.penginput || '-',
+        ]);
+      }
+
       const period = periodeLabel;
       const safeNama = (murid.nama || (isGuru ? 'Guru' : 'Santri')).replace(/[^a-zA-Z0-9]/g, '_');
       const safePeriod = periodeLabel.replace(/[^a-zA-Z0-9]/g, '_');
       const filename = `Rekap_Presensi_${safeNama}_${safePeriod}`;
-
-      const columns = ['No', 'Hari, Tanggal', 'Waktu', 'Jadwal / Mapel / Kegiatan', 'Status', 'Keterangan', 'Diinput Oleh'];
-      const rows = filteredData.map((r, idx) => [
-        idx + 1,
-        `${r.hari || ''}, ${r.tanggal || ''}`,
-        r.jam_mulai ? `${r.jam_mulai}${r.jam_selesai ? ` - ${r.jam_selesai}` : ''}` : '-',
-        r.mata_pelajaran || '-',
-        r.status || '-',
-        r.keterangan || '-',
-        r.penginput || '-',
-      ]);
 
       exportToPDF({
         title,
@@ -519,7 +594,21 @@ function RekapPreviewContent() {
                 {murid.nama}
               </h2>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1 mt-2 text-xs text-slate-600 dark:text-slate-400">
-                {meta?.tipe === 'guru' || meta?.tipe === 'dewan_guru' || murid.jenis_kelamin === 'Guru' || murid.jenis_kelamin === 'Dewan Guru' ? (
+                {meta?.is_guru_mapel ? (
+                  <>
+                    <span className="font-mono">NIP: <strong className="text-slate-800 dark:text-slate-200">{murid.nis || '-'}</strong></span>
+                    <span>•</span>
+                    <span>Tugas: <strong className="text-slate-800 dark:text-slate-200">{murid.kelas_madin || '-'}</strong></span>
+                    <span>•</span>
+                    <span>Santri: <strong className="text-slate-800 dark:text-slate-200">{murid.kelas_quran || '-'}</strong></span>
+                    {murid.no_hp_wali && (
+                      <>
+                        <span>•</span>
+                        <span className="font-mono">No. WA: <strong className="text-slate-800 dark:text-slate-200">{murid.no_hp_wali}</strong></span>
+                      </>
+                    )}
+                  </>
+                ) : meta?.tipe === 'guru' || meta?.tipe === 'dewan_guru' || murid.jenis_kelamin === 'Guru' || murid.jenis_kelamin === 'Dewan Guru' ? (
                   <>
                     <span className="font-mono">NIP: <strong className="text-slate-800 dark:text-slate-200">{murid.nis || '-'}</strong></span>
                     <span>•</span>
@@ -622,12 +711,16 @@ function RekapPreviewContent() {
               </div>
               <div>
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">Hadir</span>
-                <span className="text-[11px] text-slate-400 font-medium">Kehadiran Sesi Presensi</span>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {meta?.is_guru_mapel ? 'Total Kehadiran Seluruh Santri' : 'Kehadiran Sesi Presensi'}
+                </span>
               </div>
             </div>
             <div className="text-right">
               <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-none">{stats.hadir}</span>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Pertemuan</span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">
+                {meta?.is_guru_mapel ? 'Presensi Santri' : 'Pertemuan'}
+              </span>
             </div>
           </div>
 
@@ -639,7 +732,7 @@ function RekapPreviewContent() {
                 <FileText size={16} />
               </div>
               <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{stats.izin}</div>
-              <span className="text-[10px] text-slate-400">Pertemuan</span>
+              <span className="text-[10px] text-slate-400">{meta?.is_guru_mapel ? 'Santri' : 'Pertemuan'}</span>
             </div>
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4 shadow-xs transition-colors">
@@ -648,7 +741,7 @@ function RekapPreviewContent() {
                 <AlertCircle size={16} />
               </div>
               <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{stats.sakit}</div>
-              <span className="text-[10px] text-slate-400">Pertemuan</span>
+              <span className="text-[10px] text-slate-400">{meta?.is_guru_mapel ? 'Santri' : 'Pertemuan'}</span>
             </div>
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4 shadow-xs transition-colors">
@@ -657,7 +750,7 @@ function RekapPreviewContent() {
                 <XCircle size={16} />
               </div>
               <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">{stats.alpha}</div>
-              <span className="text-[10px] text-slate-400">Pertemuan</span>
+              <span className="text-[10px] text-slate-400">{meta?.is_guru_mapel ? 'Santri' : 'Pertemuan'}</span>
             </div>
           </div>
         </div>
@@ -668,7 +761,7 @@ function RekapPreviewContent() {
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Tingkat Kehadiran:</span>
               <span className="text-base font-black text-purple-600">{stats.persentase}%</span>
-              <span className="text-xs text-slate-400 font-medium">({stats.hadir} dari {stats.total} sesi)</span>
+              <span className="text-xs text-slate-400 font-medium">({stats.hadir} dari {stats.total} total presensi{meta?.is_guru_mapel ? ' santri' : ' sesi'})</span>
             </div>
             <div className="w-full sm:w-64 bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-2 overflow-hidden flex">
               <div className="bg-purple-600 h-full rounded-full transition-all" style={{ width: `${stats.persentase}%` }} />
@@ -1149,135 +1242,247 @@ function RekapPreviewContent() {
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <Calendar size={16} className="text-purple-600" />
-              Catatan Rincian Presensi Sesi
+              <BookOpen size={16} className="text-purple-600" />
+              {meta?.is_guru_mapel ? 'Catatan Rincian Presensi Santri per Mapel & Kelas' : 'Catatan Rincian Presensi Sesi'}
             </h3>
-            <span className="text-xs text-slate-400 font-medium">{filteredData.length} Catatan</span>
+            <span className="text-xs text-slate-400 font-medium">
+              {meta?.is_guru_mapel ? `${filteredData.length} Santri` : `${filteredData.length} Catatan`}
+            </span>
           </div>
 
           {filteredData.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-400">
-              Tidak ada catatan presensi untuk kriteria yang dipilih.
+              {meta?.is_guru_mapel ? 'Tidak ada data santri untuk kriteria yang dipilih.' : 'Tidak ada catatan presensi untuk kriteria yang dipilih.'}
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-slate-50/80 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800 uppercase tracking-wider text-[10px]">
-                    <th className="py-3 px-4 w-12 text-center select-none">No</th>
-                    <th 
-                      onClick={() => handleSort('tanggal')}
-                      className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
-                      title="Klik untuk mengurutkan berdasarkan tanggal"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Hari, Tanggal</span>
-                        {sortField === 'tanggal' ? (
-                          sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                        ) : (
-                          <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      onClick={() => handleSort('waktu')}
-                      className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
-                      title="Klik untuk mengurutkan berdasarkan waktu"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Waktu</span>
-                        {sortField === 'waktu' ? (
-                          sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                        ) : (
-                          <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      onClick={() => handleSort('mata_pelajaran')}
-                      className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
-                      title="Klik untuk mengurutkan berdasarkan jadwal/mapel/kegiatan"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Jadwal / Mapel / Kegiatan</span>
-                        {sortField === 'mata_pelajaran' ? (
-                          sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                        ) : (
-                          <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      onClick={() => handleSort('status')}
-                      className="py-3 px-4 text-center cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
-                      title="Klik untuk mengurutkan berdasarkan status"
-                    >
-                      <div className="flex items-center justify-center gap-1.5">
-                        <span>Status</span>
-                        {sortField === 'status' ? (
-                          sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                        ) : (
-                          <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      onClick={() => handleSort('penginput')}
-                      className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
-                      title="Klik untuk mengurutkan berdasarkan penginput"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Diinput Oleh</span>
-                        {sortField === 'penginput' ? (
-                          sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                        ) : (
-                          <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
-                        )}
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
-                  {filteredData.map((row, idx) => {
-                    const st = (row.status || '').toLowerCase();
-                    const badgeClass =
-                      st === 'hadir'
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
-                        : st === 'izin'
-                        ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800'
-                        : st === 'sakit'
-                        ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
-                        : 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800';
+              {meta?.is_guru_mapel ? (
+                /* TABEL KHUSUS GURU MAPEL (DAFTAR SANTRI DENGAN PEMISAH KELAS & MAPEL) */
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-50/80 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800 uppercase tracking-wider text-[10px]">
+                      <th className="py-3 px-3 w-10 text-center select-none">No</th>
+                      <th className="py-3 px-4 select-none">Nama Santri</th>
+                      <th className="py-3 px-2 text-center select-none text-emerald-600 dark:text-emerald-400">H</th>
+                      <th className="py-3 px-2 text-center select-none text-blue-600 dark:text-blue-400">I</th>
+                      <th className="py-3 px-2 text-center select-none text-amber-600 dark:text-amber-400">S</th>
+                      <th className="py-3 px-2 text-center select-none text-rose-600 dark:text-rose-400">A</th>
+                      <th className="py-3 px-3 text-center select-none whitespace-nowrap">Total</th>
+                      <th className="py-3 px-4 text-center select-none whitespace-nowrap">Kehadiran</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
+                    {(() => {
+                      const sections: { key: string; items: any[] }[] = [];
+                      const mapSec = new Map<string, any[]>();
+                      filteredData.forEach(item => {
+                        const k = item.section_key || 'default';
+                        if (!mapSec.has(k)) {
+                          const arr: any[] = [];
+                          mapSec.set(k, arr);
+                          sections.push({ key: k, items: arr });
+                        }
+                        mapSec.get(k)!.push(item);
+                      });
 
-                    return (
-                      <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                        <td className="py-3 px-4 text-center text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          <div className="font-bold text-slate-900 dark:text-white">{row.hari || '-'}</div>
-                          <div className="text-[11px] text-slate-400 font-mono">{row.tanggal || '-'}</div>
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-slate-600 dark:text-slate-400">
-                          {row.jam_mulai ? `${row.jam_mulai}${row.jam_selesai ? ` - ${row.jam_selesai}` : ''}` : '-'}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-slate-800 dark:text-slate-200">{row.mata_pelajaran || '-'}</div>
-                          {row.keterangan && (
-                            <div className="text-[11px] text-slate-400 italic mt-0.5">Ket: {row.keterangan}</div>
+                      return sections.map(({ key, items }) => {
+                        const first = items[0];
+                        const kategoriLabel = first?.kategori_label || 'Madin';
+
+                        return (
+                          <React.Fragment key={key}>
+                            {/* Pemisah Kelas / Mapel Gabungan */}
+                            <tr className="bg-emerald-50/80 dark:bg-emerald-950/40 border-y border-emerald-200 dark:border-emerald-800/60">
+                              <td colSpan={8} className="py-2.5 px-4 font-bold text-xs text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
+                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <BookOpen size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                    <span>--- KELAS {String(first?.kelas_nama || '').toUpperCase()} • MAPEL: {String(first?.mata_pelajaran || '').toUpperCase()} ({items.length} Santri) ---</span>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-white/80 dark:bg-emerald-900/60 px-2.5 py-0.5 rounded-full border border-emerald-300/60 dark:border-emerald-700/60">
+                                    {kategoriLabel}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+
+                            {/* Daftar Santri */}
+                            {items.map((row, idx) => {
+                              const persentase = row.persentase ?? 0;
+                              const badgeClass =
+                                persentase >= 85
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                                  : persentase >= 70
+                                  ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800'
+                                  : persentase >= 50
+                                  ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                                  : 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800';
+
+                              const sFoto = getFotoUrl(row.foto, row.nis);
+
+                              return (
+                                <tr key={`${row.murid_id}_${idx}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                                  <td className="py-3 px-3 text-center text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-2.5">
+                                      <div
+                                        onClick={() => sFoto && setZoomPhoto(sFoto)}
+                                        style={{ backgroundColor: getAvatarColor(row.nama) }}
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-extrabold shrink-0 overflow-hidden select-none ${
+                                          sFoto ? 'cursor-pointer hover:opacity-90' : ''
+                                        }`}
+                                      >
+                                        {sFoto ? (
+                                          <img src={sFoto} alt={row.nama} className="w-full h-full object-cover" onError={(e: any) => { e.currentTarget.style.display = 'none'; }} />
+                                        ) : (
+                                          getInitials(row.nama)
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="font-bold text-slate-900 dark:text-white truncate">{row.nama}</div>
+                                        <div className="text-[10px] text-slate-400 font-mono">NIS: {row.nis || '-'}</div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-2 text-center font-bold text-emerald-600 dark:text-emerald-400 font-mono text-xs">{row.hadir ?? 0}</td>
+                                  <td className="py-3 px-2 text-center font-bold text-blue-600 dark:text-blue-400 font-mono text-xs">{row.izin ?? 0}</td>
+                                  <td className="py-3 px-2 text-center font-bold text-amber-600 dark:text-amber-400 font-mono text-xs">{row.sakit ?? 0}</td>
+                                  <td className="py-3 px-2 text-center font-bold text-rose-600 dark:text-rose-400 font-mono text-xs">{row.alpha ?? 0}</td>
+                                  <td className="py-3 px-3 text-center text-slate-500 dark:text-slate-400 font-mono text-xs">{row.total ?? 0}</td>
+                                  <td className="py-3 px-4 text-center whitespace-nowrap">
+                                    <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-extrabold border ${badgeClass}`}>
+                                      {persentase}%
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </React.Fragment>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              ) : (
+                /* TABEL UMUM RIWAYAT SESI PRESENSI */
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-50/80 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800 uppercase tracking-wider text-[10px]">
+                      <th className="py-3 px-4 w-12 text-center select-none">No</th>
+                      <th 
+                        onClick={() => handleSort('tanggal')}
+                        className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                        title="Klik untuk mengurutkan berdasarkan tanggal"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>Hari, Tanggal</span>
+                          {sortField === 'tanggal' ? (
+                            sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
                           )}
-                        </td>
-                        <td className="py-3 px-4 text-center whitespace-nowrap">
-                          <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeClass}`}>
-                            {row.status || 'Alpha'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap text-slate-600 dark:text-slate-400 text-[11px]">
-                          {row.penginput || 'Pengajar'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('waktu')}
+                        className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                        title="Klik untuk mengurutkan berdasarkan waktu"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>Waktu</span>
+                          {sortField === 'waktu' ? (
+                            sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('mata_pelajaran')}
+                        className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                        title="Klik untuk mengurutkan berdasarkan jadwal/mapel/kegiatan"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>Jadwal / Mapel / Kegiatan</span>
+                          {sortField === 'mata_pelajaran' ? (
+                            sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('status')}
+                        className="py-3 px-4 text-center cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                        title="Klik untuk mengurutkan berdasarkan status"
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span>Status</span>
+                          {sortField === 'status' ? (
+                            sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('penginput')}
+                        className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                        title="Klik untuk mengurutkan berdasarkan penginput"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>Diinput Oleh</span>
+                          {sortField === 'penginput' ? (
+                            sortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                          )}
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
+                    {filteredData.map((row, idx) => {
+                      const st = (row.status || '').toLowerCase();
+                      const badgeClass =
+                        st === 'hadir'
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                          : st === 'izin'
+                          ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800'
+                          : st === 'sakit'
+                          ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                          : 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800';
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3 px-4 text-center text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <div className="font-bold text-slate-900 dark:text-white">{row.hari || '-'}</div>
+                            <div className="text-[11px] text-slate-400 font-mono">{row.tanggal || '-'}</div>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                            {row.jam_mulai ? `${row.jam_mulai}${row.jam_selesai ? ` - ${row.jam_selesai}` : ''}` : '-'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-800 dark:text-slate-200">{row.mata_pelajaran || '-'}</div>
+                            {row.keterangan && (
+                              <div className="text-[11px] text-slate-400 italic mt-0.5">Ket: {row.keterangan}</div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                            <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeClass}`}>
+                              {row.status || 'Alpha'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap text-slate-600 dark:text-slate-400 text-[11px]">
+                            {row.penginput || 'Pengajar'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           )}
 

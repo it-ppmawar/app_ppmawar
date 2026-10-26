@@ -1820,7 +1820,7 @@ function NotifikasiContent() {
                     }`}
                   >
                     <Calendar size={16} className={`shrink-0 ${guruCardTab === 'rekap' ? 'text-white' : 'text-purple-500'}`} />
-                    <span className="leading-tight font-extrabold text-[11px] sm:text-xs">Rekap Bulanan Guru</span>
+                    <span className="leading-tight font-extrabold text-[11px] sm:text-xs">Rekap Absensi Guru</span>
                   </button>
 
                   <button
