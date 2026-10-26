@@ -38,6 +38,8 @@ jobs:
             source ~/.bashrc 2>/dev/null || true
             source ~/.profile 2>/dev/null || true
             [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+            echo "🟢 Node.js Version: $(node -v 2>/dev/null || echo 'not found')"
+            echo "🟢 NPM Version: $(npm -v 2>/dev/null || echo 'not found')"
             cd ${{ secrets.VPS_TARGET_DIR || secrets.FTP_TARGET_DIR }}
             echo "📂 Direktori aplikasi: $(pwd)"
             git pull origin main
@@ -63,6 +65,8 @@ jobs:
             source ~/.bashrc 2>/dev/null || true
             source ~/.profile 2>/dev/null || true
             [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+            echo "🟢 Node.js Version: $(node -v 2>/dev/null || echo 'not found')"
+            echo "🟢 NPM Version: $(npm -v 2>/dev/null || echo 'not found')"
             cd ${{ secrets.VPS_TARGET_DIR || secrets.FTP_TARGET_DIR }}
             echo "📂 Direktori aplikasi: $(pwd)"
             git pull origin main
