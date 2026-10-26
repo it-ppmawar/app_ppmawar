@@ -340,7 +340,7 @@ export default function TabRekapGuru({
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.ppmawar.or.id';
     const previewUrl = item.preview_token
       ? `${origin}/rekapitulasi/preview?t=${item.preview_token}`
-      : `${origin}/rekapitulasi/preview?tipe=${item.kategori || 'madin'}&target_id=${item.kelas_id || ''}&sub_filter=${encodeURIComponent(item.nama || '')}`;
+      : `${origin}/rekapitulasi/preview?tipe=guru_mapel&guru_id=${item.guru_id || ''}&kategori=${kategoriMapel || 'all'}`;
 
     const masaBerlaku = item.token_duration_label || `${expiryDays} Hari`;
     const batasWaktu = item.token_exp_date || '-';
@@ -832,7 +832,7 @@ export default function TabRekapGuru({
                     const isSent = !!sentWaIds[item.id];
                     const previewUrl = item.preview_token
                       ? `/rekapitulasi/preview?t=${item.preview_token}`
-                      : `/rekapitulasi/preview?tipe=guru_mapel&guru_id=${item.guru_id || ''}`;
+                      : `/rekapitulasi/preview?tipe=guru_mapel&guru_id=${item.guru_id || ''}&kategori=${kategoriMapel || 'all'}`;
 
                     return (
                       <tr
@@ -938,7 +938,7 @@ export default function TabRekapGuru({
                 const isSent = !!sentWaIds[item.id];
                 const previewUrl = item.preview_token
                   ? `/rekapitulasi/preview?t=${item.preview_token}`
-                  : `/rekapitulasi/preview?tipe=guru_mapel&guru_id=${item.guru_id || ''}`;
+                  : `/rekapitulasi/preview?tipe=guru_mapel&guru_id=${item.guru_id || ''}&kategori=${kategoriMapel || 'all'}`;
 
                 return (
                   <div

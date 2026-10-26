@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon, X, TrendingUp, CalendarDays, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon, X, TrendingUp, CalendarDays, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import { exportToPDF } from '@/lib/exportUtils';
 
 const AVATAR_COLORS = [
@@ -123,6 +123,11 @@ function RekapPreviewContent() {
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  const toggleSectionCollapse = (key: string) => {
+    setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // State Grafik Tren Kehadiran
   const [hoveredTrend, setHoveredTrend] = useState<any | null>(null);
@@ -310,7 +315,13 @@ function RekapPreviewContent() {
   // Kategori Label
   const tipeLabel = useMemo(() => {
     if (!meta) return 'Presensi';
-    if (meta.tipe === 'guru_mapel' || meta.is_guru_mapel) return 'Rekapitulasi Santri per Mapel Guru';
+    if (meta.tipe === 'guru_mapel' || meta.is_guru_mapel) {
+      if (meta.kategori_label) return meta.kategori_label;
+      if (meta.kategori === 'madin') return 'Madrasah Diniyah (Madin)';
+      if (meta.kategori === 'quran') return "Al-Qur'an (Tahfidz/Tartil)";
+      if (meta.kategori === 'kegiatan') return 'Kegiatan Asrama / Pesantren';
+      return 'Rekapitulasi Santri per Mapel Guru';
+    }
     if (meta.tipe === 'madin') return 'Madrasah Diniyah (Madin)';
     if (meta.tipe === 'quran') return "Al-Qur'an (Tahfidz/Tartil)";
     if (meta.tipe === 'kegiatan') return 'Kegiatan Asrama / Pesantren';
@@ -323,7 +334,12 @@ function RekapPreviewContent() {
   const tipeShortBadge = useMemo(() => {
     if (!meta?.tipe) return '';
     const t = meta.tipe.toLowerCase();
-    if (t === 'guru_mapel') return '(Guru Mapel)';
+    if (t === 'guru_mapel') {
+      if (meta.kategori === 'madin') return '(Guru Madin)';
+      if (meta.kategori === 'quran') return "(Guru Qur'an)";
+      if (meta.kategori === 'kegiatan') return '(Guru Asrama)';
+      return '(Guru Mapel)';
+    }
     if (t === 'madin') return '(Madin)';
     if (t === 'quran') return "(Qur'an)";
     if (t === 'kegiatan') return '(Kegiatan)';
@@ -1277,14 +1293,34 @@ function RekapPreviewContent() {
 
         {/* Tabel Detail Riwayat Kehadiran (Foto 2) */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
             <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
               <BookOpen size={16} className="text-purple-600" />
               {meta?.is_guru_mapel ? 'Catatan Rincian Presensi Santri per Mapel & Kelas' : 'Catatan Rincian Presensi Sesi'}
             </h3>
-            <span className="text-xs text-slate-400 font-medium">
-              {meta?.is_guru_mapel ? `${filteredData.length} Santri` : `${filteredData.length} Catatan`}
-            </span>
+            <div className="flex items-center gap-2">
+              {meta?.is_guru_mapel && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allKeys = Array.from(new Set(filteredData.map(d => d.section_key || 'default')));
+                    const areAllCollapsed = allKeys.every(k => collapsedSections[k]);
+                    const next: Record<string, boolean> = {};
+                    allKeys.forEach(k => {
+                      next[k] = !areAllCollapsed;
+                    });
+                    setCollapsedSections(next);
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  title="Buka atau tutup semua kelompok mapel/kelas sekaligus"
+                >
+                  {Object.values(collapsedSections).some(Boolean) ? 'Buka Semua' : 'Tutup Semua'}
+                </button>
+              )}
+              <span className="text-xs text-slate-400 font-medium">
+                {meta?.is_guru_mapel ? `${filteredData.length} Santri` : `${filteredData.length} Catatan`}
+              </span>
+            </div>
           </div>
 
           {filteredData.length === 0 ? (
@@ -1325,26 +1361,46 @@ function RekapPreviewContent() {
                       return sections.map(({ key, items }) => {
                         const first = items[0];
                         const kategoriLabel = first?.kategori_label || 'Madin';
+                        const isCollapsed = !!collapsedSections[key];
 
                         return (
                           <React.Fragment key={key}>
-                            {/* Pemisah Kelas / Mapel Gabungan */}
-                            <tr className="bg-emerald-50/80 dark:bg-emerald-950/40 border-y border-emerald-200 dark:border-emerald-800/60">
+                            {/* Pemisah Kelas / Mapel Gabungan (Bisa Diklik Buka-Tutup) */}
+                            <tr
+                              onClick={() => toggleSectionCollapse(key)}
+                              className="bg-emerald-50/90 dark:bg-emerald-950/50 border-y border-emerald-200 dark:border-emerald-800/60 cursor-pointer hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60 transition-colors select-none"
+                              title={isCollapsed ? "Klik untuk membuka rincian santri" : "Klik untuk menutup rincian santri"}
+                            >
                               <td colSpan={8} className="py-2.5 px-4 font-bold text-xs text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
-                                <div className="flex items-center justify-between flex-wrap gap-2">
-                                  <div className="flex items-center gap-2">
-                                    <BookOpen size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                    <span>--- KELAS {String(first?.kelas_nama || '').toUpperCase()} • MAPEL: {String(first?.mata_pelajaran || '').toUpperCase()} ({items.length} Santri) ---</span>
+                                <div className="flex flex-col items-start gap-1 w-full">
+                                  {/* Baris 1: Ikon Expand + Teks Label Mapel/Kelas + Indikator Buka/Tutup */}
+                                  <div className="flex items-center justify-between w-full gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-1 rounded-md bg-emerald-200/60 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 shrink-0">
+                                        {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                                      </div>
+                                      <BookOpen size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                      <span className="font-extrabold text-slate-900 dark:text-slate-100 text-[11px] sm:text-xs">
+                                        --- KELAS {String(first?.kelas_nama || '').toUpperCase()} • MAPEL: {String(first?.mata_pelajaran || '').toUpperCase()} ({items.length} Santri) ---
+                                      </span>
+                                    </div>
+                                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 opacity-75 shrink-0 hidden sm:inline">
+                                      {isCollapsed ? 'Klik Buka ▾' : 'Klik Tutup ▴'}
+                                    </span>
                                   </div>
-                                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-white/80 dark:bg-emerald-900/60 px-2.5 py-0.5 rounded-full border border-emerald-300/60 dark:border-emerald-700/60">
-                                    {kategoriLabel}
-                                  </span>
+
+                                  {/* Baris 2: Badge Kategori Rata Kiri */}
+                                  <div className="pl-7">
+                                    <span className="inline-block text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-white/90 dark:bg-emerald-900/80 px-2.5 py-0.5 rounded-full border border-emerald-300/80 dark:border-emerald-700/80 shadow-2xs">
+                                      {kategoriLabel}
+                                    </span>
+                                  </div>
                                 </div>
                               </td>
                             </tr>
 
-                            {/* Daftar Santri */}
-                            {items.map((row, idx) => {
+                            {/* Daftar Santri (Hanya Ditampilkan Saat Terbuka / Tidak Tertutup) */}
+                            {!isCollapsed && items.map((row, idx) => {
                               const persentase = row.persentase ?? 0;
                               const badgeClass =
                                 persentase >= 85

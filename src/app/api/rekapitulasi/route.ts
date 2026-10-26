@@ -30,6 +30,7 @@ export async function GET(request: Request) {
     const tanggal_dari = searchParams.get('tanggal_dari'); // YYYY-MM-DD
     const tanggal_sampai = searchParams.get('tanggal_sampai'); // YYYY-MM-DD
     const sub_filter = searchParams.get('sub_filter') || ''; // nama mapel/majlis/kegiatan
+    const kategoriParam = searchParams.get('kategori') || 'all'; // 'madin', 'quran', 'kegiatan', 'all'
 
     // Mode: rentang tanggal atau bulan/tahun
     const isRentang = !!(tanggal_dari && tanggal_sampai);
@@ -714,6 +715,7 @@ export async function GET(request: Request) {
           preview_token = signToken({
             tipe: 'guru_mapel',
             guru_id: r.guru_id,
+            kategori: kategoriParam,
             bulan: !isRentang ? bulan : undefined,
             tahun: !isRentang ? tahun : undefined,
             tanggal_dari: isRentang ? tanggal_dari : undefined,

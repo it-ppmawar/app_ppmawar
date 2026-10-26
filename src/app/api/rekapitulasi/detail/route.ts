@@ -46,6 +46,7 @@ export async function GET(request: Request) {
     const tanggal_dari = payload.tanggal_dari || searchParams.get("tanggal_dari");
     const tanggal_sampai = payload.tanggal_sampai || searchParams.get("tanggal_sampai");
     const sub_filter = payload.sub_filter || searchParams.get("sub_filter") || "";
+    const kategori = payload.kategori || searchParams.get("kategori") || "all";
 
     if ((payload.role === 'wali_murid' || payload.role === 'wali_alumni') && !isGuruTipe && !isGuruMapel) {
       if (!payload.muridId && !murid_id) {
@@ -78,37 +79,43 @@ export async function GET(request: Request) {
       const schedulesList: any[] = [];
 
       // A. Madin
-      const [madinSchedules]: any = await pool.execute(
-        `SELECT jm.jadwal_id, jm.mata_pelajaran, jm.kelas_madin_id as kelas_id, km.nama_kelas, 'madin' as kategori, 'Madrasah Diniyah' as kategori_label
-         FROM jadwal_madin jm
-         JOIN kelas_madin km ON jm.kelas_madin_id = km.kelas_id
-         WHERE jm.guru_id = ?
-         ORDER BY km.nama_kelas ASC, jm.mata_pelajaran ASC`,
-        [guru_id]
-      );
-      schedulesList.push(...(madinSchedules || []));
+      if (kategori === 'all' || kategori === 'madin') {
+        const [madinSchedules]: any = await pool.execute(
+          `SELECT jm.jadwal_id, jm.mata_pelajaran, jm.kelas_madin_id as kelas_id, km.nama_kelas, 'madin' as kategori, 'Madrasah Diniyah' as kategori_label
+           FROM jadwal_madin jm
+           JOIN kelas_madin km ON jm.kelas_madin_id = km.kelas_id
+           WHERE jm.guru_id = ?
+           ORDER BY km.nama_kelas ASC, jm.mata_pelajaran ASC`,
+          [guru_id]
+        );
+        schedulesList.push(...(madinSchedules || []));
+      }
 
       // B. Quran
-      const [quranSchedules]: any = await pool.execute(
-        `SELECT jq.id as jadwal_id, COALESCE(jq.mata_pelajaran, "Majlis Al-Qur'an") as mata_pelajaran, jq.kelas_quran_id as kelas_id, kq.nama_kelas, 'quran' as kategori, "Al-Qur'an" as kategori_label
-         FROM jadwal_quran jq
-         JOIN kelas_quran kq ON jq.kelas_quran_id = kq.id
-         WHERE jq.guru_id = ?
-         ORDER BY kq.nama_kelas ASC, jq.mata_pelajaran ASC`,
-        [guru_id]
-      );
-      schedulesList.push(...(quranSchedules || []));
+      if (kategori === 'all' || kategori === 'quran') {
+        const [quranSchedules]: any = await pool.execute(
+          `SELECT jq.id as jadwal_id, COALESCE(jq.mata_pelajaran, "Majlis Al-Qur'an") as mata_pelajaran, jq.kelas_quran_id as kelas_id, kq.nama_kelas, 'quran' as kategori, "Al-Qur'an" as kategori_label
+           FROM jadwal_quran jq
+           JOIN kelas_quran kq ON jq.kelas_quran_id = kq.id
+           WHERE jq.guru_id = ?
+           ORDER BY kq.nama_kelas ASC, jq.mata_pelajaran ASC`,
+          [guru_id]
+        );
+        schedulesList.push(...(quranSchedules || []));
+      }
 
       // C. Kegiatan
-      const [kegiatanSchedules]: any = await pool.execute(
-        `SELECT jk.kegiatan_id as jadwal_id, jk.nama_kegiatan as mata_pelajaran, jk.kamar_id as kelas_id, k.nama_kamar as nama_kelas, 'kegiatan' as kategori, 'Asrama' as kategori_label
-         FROM jadwal_kegiatan jk
-         JOIN kamar k ON jk.kamar_id = k.kamar_id
-         WHERE jk.guru_id = ?
-         ORDER BY k.nama_kamar ASC, jk.nama_kegiatan ASC`,
-        [guru_id]
-      );
-      schedulesList.push(...(kegiatanSchedules || []));
+      if (kategori === 'all' || kategori === 'kegiatan') {
+        const [kegiatanSchedules]: any = await pool.execute(
+          `SELECT jk.kegiatan_id as jadwal_id, jk.nama_kegiatan as mata_pelajaran, jk.kamar_id as kelas_id, k.nama_kamar as nama_kelas, 'kegiatan' as kategori, 'Asrama' as kategori_label
+           FROM jadwal_kegiatan jk
+           JOIN kamar k ON jk.kamar_id = k.kamar_id
+           WHERE jk.guru_id = ?
+           ORDER BY k.nama_kamar ASC, jk.nama_kegiatan ASC`,
+          [guru_id]
+        );
+        schedulesList.push(...(kegiatanSchedules || []));
+      }
 
       interface MapelSection {
         section_key: string;
@@ -375,6 +382,11 @@ export async function GET(request: Request) {
       const daftarMapelList = Array.from(sectionsMap.values()).map(s => `${s.kelas_nama} (${s.mata_pelajaran})`);
       const daftarMapelTeks = daftarMapelList.join(', ');
 
+      let kategoriLabelDisplay = "Semua Kategori (Madin, Qur'an, Asrama)";
+      if (kategori === 'madin') kategoriLabelDisplay = 'Madrasah Diniyah (Madin)';
+      else if (kategori === 'quran') kategoriLabelDisplay = "Al-Qur'an (Tahfidz/Tartil)";
+      else if (kategori === 'kegiatan') kategoriLabelDisplay = 'Kegiatan Asrama / Pesantren';
+
       return NextResponse.json({
         success: true,
         data: allStudentsRows,
@@ -383,6 +395,8 @@ export async function GET(request: Request) {
         meta: {
           tipe: 'guru_mapel',
           is_guru_mapel: true,
+          kategori,
+          kategori_label: kategoriLabelDisplay,
           bulan,
           tahun,
           tanggal_dari,
