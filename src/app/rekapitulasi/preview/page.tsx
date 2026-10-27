@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon, X, TrendingUp, CalendarDays, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
+import { Download, Printer, Calendar, Clock, User, CheckCircle2, XCircle, AlertCircle, HelpCircle, FileText, ArrowLeft, RefreshCw, Sparkles, MapPin, BookOpen, ShieldCheck, Sun, Moon, X, TrendingUp, CalendarDays, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
 import { exportToPDF } from '@/lib/exportUtils';
 
 const AVATAR_COLORS = [
