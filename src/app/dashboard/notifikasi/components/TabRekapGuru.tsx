@@ -1429,12 +1429,12 @@ export default function TabRekapGuru({
                             </span>
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-                              {kepalaMadinData?.avgPct ?? 0}% Rata-rata Hadir
-                            </span>
-                            <span className="text-gray-300 dark:text-gray-600">•</span>
                             <span className="text-[11px] text-gray-600 dark:text-gray-400 font-medium">
                               {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {(kepalaMadinData?.totalIzin ?? 0) + (kepalaMadinData?.totalSakit ?? 0)}I/S · {kepalaMadinData?.totalAlpha ?? 0}A)
+                            </span>
+                            <span className="text-gray-300 dark:text-gray-600">•</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                              {kepalaMadinData?.avgPct ?? 0}% Hadir
                             </span>
                           </div>
                         </td>
@@ -1541,12 +1541,12 @@ export default function TabRekapGuru({
                       </div>
                       <div>
                         <span className="block text-gray-500 dark:text-gray-400 text-[11px]">Total Presensi Guru:</span>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 shrink-0">
-                            {kepalaMadinData?.avgPct ?? 0}% Hadir
-                          </span>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                           <span className="font-bold text-gray-800 dark:text-gray-200 text-xs leading-relaxed">
                             {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {(kepalaMadinData?.totalIzin ?? 0) + (kepalaMadinData?.totalSakit ?? 0)}I/S · {kepalaMadinData?.totalAlpha ?? 0}A)
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 shrink-0">
+                            {kepalaMadinData?.avgPct ?? 0}% Hadir
                           </span>
                         </div>
                       </div>
