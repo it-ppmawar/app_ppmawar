@@ -1054,22 +1054,15 @@ export default function TabRekapGuru({
           onClick={() => setShowAdvancedOptions(prev => !prev)}
           className="w-full p-4 sm:p-4.5 flex items-start justify-between gap-3 bg-purple-50/80 dark:bg-gray-800/90 hover:bg-purple-100/80 dark:hover:bg-gray-800 transition-colors text-left"
         >
-          <div className="min-w-0 flex-1 space-y-1.5">
-            {/* Baris 1: Ikon sejajar 1 baris dengan judul */}
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 sm:p-2 bg-purple-600 text-white rounded-xl shadow-xs shrink-0">
-                <Calendar size={18} />
-              </div>
-              <h5 className="font-extrabold text-sm text-purple-950 dark:text-purple-100 leading-snug">
-                ⚙️ Opsi Pengiriman Massal Otomatis & Laporan Khusus Kepala Madin
-              </h5>
-            </div>
-            {/* Baris 2: Sub-teks merapat ke ujung kiri sejajar dengan ujung kiri ikon */}
+          <div className="min-w-0 flex-1 space-y-1">
+            <h5 className="font-extrabold text-sm text-purple-950 dark:text-purple-100 leading-snug">
+              ⚙️ Opsi Pengiriman Massal Otomatis & Laporan Khusus Kepala Madin
+            </h5>
             <p className="text-xs text-gray-500 dark:text-gray-300 leading-relaxed">
               Buka penjadwalan looping bulanan otomatis (tiap tgl 1) serta siaran evaluasi ke Kepala Madin (Manual WA & Bot)
             </p>
           </div>
-          <div className="text-purple-600 dark:text-purple-400 shrink-0 mt-1">
+          <div className="text-purple-600 dark:text-purple-400 shrink-0 mt-0.5">
             {showAdvancedOptions ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </div>
         </button>
@@ -1391,20 +1384,22 @@ export default function TabRekapGuru({
 
               {/* TABEL & KARTU SIARAN WHATSAPP MANUAL KEPALA MADIN */}
               <div className="space-y-3 pt-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
-                    <span className="text-[11px] sm:text-xs font-extrabold text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                <div className="flex flex-col items-center justify-center text-center gap-2">
+                  <div className="flex flex-col items-center justify-center text-center gap-1.5 w-full">
+                    <span className="text-xs sm:text-sm font-extrabold text-gray-800 dark:text-gray-200 text-center">
                       Pengiriman Manual WhatsApp (Individu)
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 whitespace-nowrap shrink-0">
-                      1 Sasaran Kepala Madin
-                    </span>
+                    <div>
+                      <span className="inline-block text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 whitespace-nowrap text-center">
+                        1 Sasaran Kepala Madin
+                      </span>
+                    </div>
                   </div>
                   <button
                     type="button"
                     onClick={fetchKepalaMadinLink}
                     disabled={loadingKepalaMadinData}
-                    className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center justify-center gap-1 self-center sm:self-auto cursor-pointer"
+                    className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center justify-center gap-1 cursor-pointer mx-auto"
                   >
                     <RefreshCw size={12} className={loadingKepalaMadinData ? 'animate-spin' : ''} />
                     <span>Perbarui Link & Data</span>
@@ -1515,24 +1510,19 @@ export default function TabRekapGuru({
                 <div className="block md:hidden">
                   <div className="bg-white dark:bg-gray-800/90 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-xs space-y-3">
                     <div className="space-y-1">
-                      {/* Baris 1: Sasaran + Badge Kehadiran (1 Baris Utuh) */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="font-bold text-gray-900 dark:text-gray-100 text-sm flex items-center gap-1.5 min-w-0">
-                          <Award size={15} className="text-amber-500 shrink-0" />
-                          <span className="whitespace-nowrap">
-                            {kepalaMadinTarget === 'putra'
-                              ? 'Kepala Madin Putra'
-                              : kepalaMadinTarget === 'putri'
-                                ? 'Kepala Madin Putri'
-                                : 'Kepala Madin (Semua)'}
-                          </span>
-                        </div>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 shrink-0 whitespace-nowrap">
-                          {kepalaMadinData?.avgPct ?? 0}% Hadir
+                      {/* Baris 1: Sasaran Kepala Madin (Utuh tanpa badge di sampingnya agar tidak bertumpuk) */}
+                      <div className="font-bold text-gray-900 dark:text-gray-100 text-sm flex items-center gap-1.5 min-w-0">
+                        <Award size={15} className="text-amber-500 shrink-0" />
+                        <span>
+                          {kepalaMadinTarget === 'putra'
+                            ? 'Kepala Madin Putra'
+                            : kepalaMadinTarget === 'putri'
+                              ? 'Kepala Madin Putri'
+                              : 'Kepala Madin (Semua)'}
                         </span>
                       </div>
 
-                      {/* Baris 2: Nama Kepala Madin melebar penuh hingga ujung kanan tanpa terdesak */}
+                      {/* Baris 2: Nama Kepala Madin melebar penuh hingga ujung kanan */}
                       {(() => {
                         const selectedGuru = guruList.find(g => String(g.guru_id) === String(selectedKepalaMadinId));
                         return (
@@ -1553,8 +1543,14 @@ export default function TabRekapGuru({
                       <div>
                         <span className="block text-gray-500 dark:text-gray-400 text-[11px]">Total Presensi Guru:</span>
                         <span className="block font-bold text-gray-800 dark:text-gray-200 text-xs mt-0.5">
-                          {kepalaMadinData?.totalGuru ?? 0} Guru ({kepalaMadinData?.totalSesi ?? 0} Sesi)
+                          {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {(kepalaMadinData?.totalIzin ?? 0) + (kepalaMadinData?.totalSakit ?? 0)}I/S · {kepalaMadinData?.totalAlpha ?? 0}A)
                         </span>
+                        {/* Badge Kehadiran dipindahkan ke bawah teks total presensi guru */}
+                        <div className="mt-1.5">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60">
+                            {kepalaMadinData?.avgPct ?? 0}% Hadir
+                          </span>
+                        </div>
                       </div>
                     </div>
 
