@@ -1411,7 +1411,7 @@ export default function TabRekapGuru({
                     <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-200 dark:border-gray-700 text-xs">
                       <tr>
                         <th className="px-5 py-3.5 rounded-l-xl">Sasaran Kepala Madin</th>
-                        <th className="px-5 py-3.5">Total Presensi Guru:</th>
+                        <th className="px-5 py-3.5">Total Presensi Guru</th>
                         <th className="px-5 py-3.5 text-right rounded-r-xl">Aksi</th>
                       </tr>
                     </thead>
