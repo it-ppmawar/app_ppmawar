@@ -1052,22 +1052,24 @@ export default function TabRekapGuru({
         <button
           type="button"
           onClick={() => setShowAdvancedOptions(prev => !prev)}
-          className="w-full p-4.5 flex items-center justify-between bg-purple-50/80 dark:bg-gray-800/90 hover:bg-purple-100/80 dark:hover:bg-gray-800 transition-colors text-left"
+          className="w-full p-4 sm:p-4.5 flex items-start justify-between gap-3 bg-purple-50/80 dark:bg-gray-800/90 hover:bg-purple-100/80 dark:hover:bg-gray-800 transition-colors text-left"
         >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-600 text-white rounded-xl shadow-xs">
-              <Calendar size={18} />
-            </div>
-            <div>
-              <h5 className="font-extrabold text-sm text-purple-950 dark:text-purple-100 leading-tight">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            {/* Baris 1: Ikon sejajar 1 baris dengan judul */}
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 sm:p-2 bg-purple-600 text-white rounded-xl shadow-xs shrink-0">
+                <Calendar size={18} />
+              </div>
+              <h5 className="font-extrabold text-sm text-purple-950 dark:text-purple-100 leading-snug">
                 ⚙️ Opsi Pengiriman Massal Otomatis & Laporan Khusus Kepala Madin
               </h5>
-              <p className="text-xs text-gray-500 dark:text-gray-300 mt-0.5">
-                Buka penjadwalan looping bulanan otomatis (tiap tgl 1) serta siaran evaluasi ke Kepala Madin (Manual WA & Bot)
-              </p>
             </div>
+            {/* Baris 2: Sub-teks merapat ke ujung kiri sejajar dengan ujung kiri ikon */}
+            <p className="text-xs text-gray-500 dark:text-gray-300 leading-relaxed">
+              Buka penjadwalan looping bulanan otomatis (tiap tgl 1) serta siaran evaluasi ke Kepala Madin (Manual WA & Bot)
+            </p>
           </div>
-          <div className="text-purple-600 dark:text-purple-400 shrink-0">
+          <div className="text-purple-600 dark:text-purple-400 shrink-0 mt-1">
             {showAdvancedOptions ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </div>
         </button>
@@ -1389,12 +1391,12 @@ export default function TabRekapGuru({
 
               {/* TABEL & KARTU SIARAN WHATSAPP MANUAL KEPALA MADIN */}
               <div className="space-y-3 pt-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-extrabold text-gray-800 dark:text-gray-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
+                    <span className="text-[11px] sm:text-xs font-extrabold text-gray-800 dark:text-gray-200 whitespace-nowrap">
                       Pengiriman Manual WhatsApp (Individu)
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 whitespace-nowrap shrink-0">
                       1 Sasaran Kepala Madin
                     </span>
                   </div>
@@ -1402,7 +1404,7 @@ export default function TabRekapGuru({
                     type="button"
                     onClick={fetchKepalaMadinLink}
                     disabled={loadingKepalaMadinData}
-                    className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                    className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center justify-center gap-1 self-center sm:self-auto cursor-pointer"
                   >
                     <RefreshCw size={12} className={loadingKepalaMadinData ? 'animate-spin' : ''} />
                     <span>Perbarui Link & Data</span>
@@ -1512,11 +1514,12 @@ export default function TabRekapGuru({
                 {/* Mobile View Card */}
                 <div className="block md:hidden">
                   <div className="bg-white dark:bg-gray-800/90 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-xs space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-bold text-gray-900 dark:text-gray-100 text-sm flex items-center gap-1.5">
+                    <div className="space-y-1">
+                      {/* Baris 1: Sasaran + Badge Kehadiran (1 Baris Utuh) */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-bold text-gray-900 dark:text-gray-100 text-sm flex items-center gap-1.5 min-w-0">
                           <Award size={15} className="text-amber-500 shrink-0" />
-                          <span>
+                          <span className="whitespace-nowrap">
                             {kepalaMadinTarget === 'putra'
                               ? 'Kepala Madin Putra'
                               : kepalaMadinTarget === 'putri'
@@ -1524,28 +1527,34 @@ export default function TabRekapGuru({
                                 : 'Kepala Madin (Semua)'}
                           </span>
                         </div>
-                        {(() => {
-                          const selectedGuru = guruList.find(g => String(g.guru_id) === String(selectedKepalaMadinId));
-                          return (
-                            <div className="text-xs text-gray-600 dark:text-gray-300 font-medium mt-0.5">
-                              {selectedGuru?.nama || 'Akun Belum Ditautkan'}
-                            </div>
-                          );
-                        })()}
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 shrink-0 whitespace-nowrap">
+                          {kepalaMadinData?.avgPct ?? 0}% Hadir
+                        </span>
                       </div>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 shrink-0">
-                        {kepalaMadinData?.avgPct ?? 0}% Hadir
-                      </span>
+
+                      {/* Baris 2: Nama Kepala Madin melebar penuh hingga ujung kanan tanpa terdesak */}
+                      {(() => {
+                        const selectedGuru = guruList.find(g => String(g.guru_id) === String(selectedKepalaMadinId));
+                        return (
+                          <div className="text-xs text-gray-600 dark:text-gray-300 font-medium pl-5">
+                            {selectedGuru?.nama || 'Akun Belum Ditautkan'}
+                          </div>
+                        );
+                      })()}
                     </div>
 
-                    <div className="p-2.5 bg-gray-50 dark:bg-gray-900/60 rounded-xl space-y-1 text-xs border border-gray-100 dark:border-gray-800">
-                      <div className="flex items-center justify-between text-gray-600 dark:text-gray-400 text-[11px]">
-                        <span>Nomor WhatsApp:</span>
-                        <span className="font-mono font-bold text-gray-800 dark:text-gray-200">{kepalaMadinPhone || '-'}</span>
+                    <div className="p-3 bg-gray-50 dark:bg-gray-900/60 rounded-xl space-y-2.5 text-xs border border-gray-100 dark:border-gray-800">
+                      <div>
+                        <span className="block text-gray-500 dark:text-gray-400 text-[11px]">Nomor WhatsApp:</span>
+                        <span className="block font-mono font-bold text-gray-800 dark:text-gray-200 text-xs mt-0.5">
+                          {kepalaMadinPhone || '-'}
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between text-gray-600 dark:text-gray-400 text-[11px]">
-                        <span>Total Presensi Guru:</span>
-                        <span className="font-bold text-gray-800 dark:text-gray-200">{kepalaMadinData?.totalGuru ?? 0} Guru ({kepalaMadinData?.totalSesi ?? 0} Sesi)</span>
+                      <div>
+                        <span className="block text-gray-500 dark:text-gray-400 text-[11px]">Total Presensi Guru:</span>
+                        <span className="block font-bold text-gray-800 dark:text-gray-200 text-xs mt-0.5">
+                          {kepalaMadinData?.totalGuru ?? 0} Guru ({kepalaMadinData?.totalSesi ?? 0} Sesi)
+                        </span>
                       </div>
                     </div>
 
