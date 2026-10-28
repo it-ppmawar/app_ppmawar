@@ -1445,7 +1445,7 @@ export default function TabRekapGuru({
                         </td>
                         <td className="px-5 py-4 text-gray-600 dark:text-gray-300">
                           <div className="font-bold text-gray-800 dark:text-gray-200 text-xs">
-                            {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {(kepalaMadinData?.totalIzin ?? 0) + (kepalaMadinData?.totalSakit ?? 0)}I/S · {kepalaMadinData?.totalAlpha ?? 0}A)
+                            {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {kepalaMadinData?.totalIzin ?? 0}I · {kepalaMadinData?.totalSakit ?? 0}S · {kepalaMadinData?.totalAlpha ?? 0}A)
                           </div>
                           <div className="mt-1.5">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
@@ -1541,7 +1541,7 @@ export default function TabRekapGuru({
                       <div>
                         <span className="block text-gray-500 dark:text-gray-400 text-[11px]">Total Presensi Guru:</span>
                         <div className="font-bold text-gray-800 dark:text-gray-200 text-xs leading-relaxed mt-0.5">
-                          {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {(kepalaMadinData?.totalIzin ?? 0) + (kepalaMadinData?.totalSakit ?? 0)}I/S · {kepalaMadinData?.totalAlpha ?? 0}A)
+                          {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {kepalaMadinData?.totalIzin ?? 0}I · {kepalaMadinData?.totalSakit ?? 0}S · {kepalaMadinData?.totalAlpha ?? 0}A)
                         </div>
                         <div className="flex justify-center mt-2">
                           <span className="inline-flex items-center px-3 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 text-center">
