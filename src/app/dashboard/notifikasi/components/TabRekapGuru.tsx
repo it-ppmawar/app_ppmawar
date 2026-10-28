@@ -1411,7 +1411,7 @@ export default function TabRekapGuru({
                     <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-200 dark:border-gray-700 text-xs">
                       <tr>
                         <th className="px-5 py-3.5 rounded-l-xl">Sasaran Kepala Madin</th>
-                        <th className="px-5 py-3.5">Akun & Kontak WhatsApp</th>
+                        <th className="px-5 py-3.5">Total Presensi Guru:</th>
                         <th className="px-5 py-3.5 text-right rounded-r-xl">Aksi</th>
                       </tr>
                     </thead>
@@ -1428,31 +1428,30 @@ export default function TabRekapGuru({
                                   : 'Kepala Madrasah Diniyah (Semua)'}
                             </span>
                           </div>
-                          <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs">
-                            <span className="text-[11px] text-gray-600 dark:text-gray-400 font-medium">
-                              {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {(kepalaMadinData?.totalIzin ?? 0) + (kepalaMadinData?.totalSakit ?? 0)}I/S · {kepalaMadinData?.totalAlpha ?? 0}A)
-                            </span>
-                            <span className="text-gray-300 dark:text-gray-600">•</span>
+                          {(() => {
+                            const selectedGuru = guruList.find(g => String(g.guru_id) === String(selectedKepalaMadinId));
+                            return (
+                              <div className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                                <div className="font-bold text-gray-800 dark:text-gray-200">
+                                  {selectedGuru?.nama || 'Akun Belum Ditautkan'}
+                                </div>
+                                <div className="text-[11px] font-mono mt-0.5 text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                  <Phone size={12} className="text-gray-400 shrink-0" />
+                                  <span>{kepalaMadinPhone || '-'}</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td className="px-5 py-4 text-gray-600 dark:text-gray-300">
+                          <div className="font-bold text-gray-800 dark:text-gray-200 text-xs">
+                            {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {(kepalaMadinData?.totalIzin ?? 0) + (kepalaMadinData?.totalSakit ?? 0)}I/S · {kepalaMadinData?.totalAlpha ?? 0}A)
+                          </div>
+                          <div className="mt-1.5">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
                               {kepalaMadinData?.avgPct ?? 0}% Hadir
                             </span>
                           </div>
-                        </td>
-                        <td className="px-5 py-4 text-gray-600 dark:text-gray-300">
-                          {(() => {
-                            const selectedGuru = guruList.find(g => String(g.guru_id) === String(selectedKepalaMadinId));
-                            return (
-                              <>
-                                <div className="font-bold text-gray-800 dark:text-gray-200">
-                                  {selectedGuru?.nama || 'Akun Belum Ditautkan'}
-                                </div>
-                                <div className="text-xs font-mono mt-0.5 text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                  <Phone size={12} className="text-gray-400 shrink-0" />
-                                  <span>{kepalaMadinPhone || '-'}</span>
-                                </div>
-                              </>
-                            );
-                          })()}
                         </td>
                         <td className="px-5 py-4 text-right space-x-2 whitespace-nowrap">
                           {/* Tombol Lihat Laporan */}
@@ -1541,11 +1540,11 @@ export default function TabRekapGuru({
                       </div>
                       <div>
                         <span className="block text-gray-500 dark:text-gray-400 text-[11px]">Total Presensi Guru:</span>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                          <span className="font-bold text-gray-800 dark:text-gray-200 text-xs leading-relaxed">
-                            {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {(kepalaMadinData?.totalIzin ?? 0) + (kepalaMadinData?.totalSakit ?? 0)}I/S · {kepalaMadinData?.totalAlpha ?? 0}A)
-                          </span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 shrink-0">
+                        <div className="font-bold text-gray-800 dark:text-gray-200 text-xs leading-relaxed mt-0.5">
+                          {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {(kepalaMadinData?.totalIzin ?? 0) + (kepalaMadinData?.totalSakit ?? 0)}I/S · {kepalaMadinData?.totalAlpha ?? 0}A)
+                        </div>
+                        <div className="flex justify-center mt-2">
+                          <span className="inline-flex items-center px-3 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 text-center">
                             {kepalaMadinData?.avgPct ?? 0}% Hadir
                           </span>
                         </div>
