@@ -1384,22 +1384,21 @@ export default function TabRekapGuru({
 
               {/* TABEL & KARTU SIARAN WHATSAPP MANUAL KEPALA MADIN */}
               <div className="space-y-3 pt-3">
-                <div className="flex flex-col items-center justify-center text-center gap-2">
-                  <div className="flex flex-col items-center justify-center text-center gap-1.5 w-full">
-                    <span className="text-xs sm:text-sm font-extrabold text-gray-800 dark:text-gray-200 text-center">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  {/* Judul & Badge: Di mobile bertumpuk rata tengah, di desktop 1 baris rata kiri */}
+                  <div className="flex flex-col sm:flex-row items-center sm:items-center justify-center sm:justify-start text-center sm:text-left gap-1.5 sm:gap-2">
+                    <span className="text-xs sm:text-sm font-extrabold text-gray-800 dark:text-gray-200 whitespace-nowrap">
                       Pengiriman Manual WhatsApp (Individu)
                     </span>
-                    <div>
-                      <span className="inline-block text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 whitespace-nowrap text-center">
-                        1 Sasaran Kepala Madin
-                      </span>
-                    </div>
+                    <span className="inline-block text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 whitespace-nowrap">
+                      1 Sasaran Kepala Madin
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={fetchKepalaMadinLink}
                     disabled={loadingKepalaMadinData}
-                    className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center justify-center gap-1 cursor-pointer mx-auto"
+                    className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center justify-center gap-1 self-center sm:self-auto cursor-pointer"
                   >
                     <RefreshCw size={12} className={loadingKepalaMadinData ? 'animate-spin' : ''} />
                     <span>Perbarui Link & Data</span>
@@ -1542,13 +1541,12 @@ export default function TabRekapGuru({
                       </div>
                       <div>
                         <span className="block text-gray-500 dark:text-gray-400 text-[11px]">Total Presensi Guru:</span>
-                        <span className="block font-bold text-gray-800 dark:text-gray-200 text-xs mt-0.5">
-                          {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {(kepalaMadinData?.totalIzin ?? 0) + (kepalaMadinData?.totalSakit ?? 0)}I/S · {kepalaMadinData?.totalAlpha ?? 0}A)
-                        </span>
-                        {/* Badge Kehadiran dipindahkan ke bawah teks total presensi guru */}
-                        <div className="mt-1.5">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 shrink-0">
                             {kepalaMadinData?.avgPct ?? 0}% Hadir
+                          </span>
+                          <span className="font-bold text-gray-800 dark:text-gray-200 text-xs leading-relaxed">
+                            {kepalaMadinData?.totalGuru ?? 0} Guru Terdata ({kepalaMadinData?.totalHadir ?? 0}H · {(kepalaMadinData?.totalIzin ?? 0) + (kepalaMadinData?.totalSakit ?? 0)}I/S · {kepalaMadinData?.totalAlpha ?? 0}A)
                           </span>
                         </div>
                       </div>
