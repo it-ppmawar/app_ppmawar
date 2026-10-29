@@ -242,7 +242,7 @@ export default function TabHarian({
           </div>
 
           {/* Sort Controls — Tagihan */}
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
             <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mr-0.5">Urutkan:</span>
             <SortButton<BillingSortField> field="nama_santri"  label="Nama Santri" current={billingSortField} dir={billingSortDir} onSort={handleBillingSort} />
             <SortButton<BillingSortField> field="nama_wali"    label="Nama Wali"   current={billingSortField} dir={billingSortDir} onSort={handleBillingSort} />
@@ -552,7 +552,7 @@ export default function TabHarian({
           </div>
           {/* Sort Controls — Absensi & Info Akun */}
           {hasSearch && filteredMurid.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
               <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mr-0.5">Urutkan:</span>
               <SortButton<SortField> field="nama"      label="Nama Santri" current={sortField} dir={sortDir} onSort={handleSort} />
               <SortButton<SortField> field="nama_wali" label="Nama Wali"   current={sortField} dir={sortDir} onSort={handleSort} />
