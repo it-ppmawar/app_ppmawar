@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { CalendarDays, Clock, MapPin, User, Edit, Trash2, CheckSquare, FileText, Download, Upload, X, Search, ChevronDown } from 'lucide-react';
+import { CalendarDays, Clock, MapPin, User, Edit, Trash2, CheckSquare, FileText, Download, Upload, X, Search, ChevronDown, Check } from 'lucide-react';
 import { downloadTemplate } from '@/lib/downloadTemplate';
 
 // Custom direct time input — memungkinkan ketik langsung jam & menit di HP tanpa popup radio dialog panjang
@@ -188,20 +188,47 @@ export default function JadwalPage() {
   const [showGuruDropdownAdd, setShowGuruDropdownAdd] = useState(false);
   const guruDropdownRefAdd = useRef<HTMLDivElement>(null);
   const guruTriggerRefAdd = useRef<HTMLDivElement>(null);
+  const guruFloatingRefAdd = useRef<HTMLDivElement>(null);
   const [guruDropdownRectAdd, setGuruDropdownRectAdd] = useState<DOMRect | null>(null);
 
   const [guruSearchEdit, setGuruSearchEdit] = useState('');
   const [showGuruDropdownEdit, setShowGuruDropdownEdit] = useState(false);
   const guruDropdownRefEdit = useRef<HTMLDivElement>(null);
   const guruTriggerRefEdit = useRef<HTMLDivElement>(null);
+  const guruFloatingRefEdit = useRef<HTMLDivElement>(null);
   const [guruDropdownRectEdit, setGuruDropdownRectEdit] = useState<DOMRect | null>(null);
 
   useEffect(() => {
+    const updateRects = () => {
+      if (showGuruDropdownEdit && guruTriggerRefEdit.current) {
+        setGuruDropdownRectEdit(guruTriggerRefEdit.current.getBoundingClientRect());
+      }
+      if (showGuruDropdownAdd && guruTriggerRefAdd.current) {
+        setGuruDropdownRectAdd(guruTriggerRefAdd.current.getBoundingClientRect());
+      }
+    };
+    window.addEventListener('scroll', updateRects, true);
+    window.addEventListener('resize', updateRects);
+    return () => {
+      window.removeEventListener('scroll', updateRects, true);
+      window.removeEventListener('resize', updateRects);
+    };
+  }, [showGuruDropdownEdit, showGuruDropdownAdd]);
+
+  useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (guruDropdownRefAdd.current && !guruDropdownRefAdd.current.contains(e.target as Node)) {
+      if (
+        guruDropdownRefAdd.current &&
+        !guruDropdownRefAdd.current.contains(e.target as Node) &&
+        (!guruFloatingRefAdd.current || !guruFloatingRefAdd.current.contains(e.target as Node))
+      ) {
         setShowGuruDropdownAdd(false);
       }
-      if (guruDropdownRefEdit.current && !guruDropdownRefEdit.current.contains(e.target as Node)) {
+      if (
+        guruDropdownRefEdit.current &&
+        !guruDropdownRefEdit.current.contains(e.target as Node) &&
+        (!guruFloatingRefEdit.current || !guruFloatingRefEdit.current.contains(e.target as Node))
+      ) {
         setShowGuruDropdownEdit(false);
       }
       if (filterGuruDropdownRef.current && !filterGuruDropdownRef.current.contains(e.target as Node)) {
@@ -230,6 +257,8 @@ export default function JadwalPage() {
   const handleOpenAddModal = () => {
     setSelectedHariAdd(['Senin']);
     setNewJadwal({ hari: 'Senin', jam_mulai: '', jam_selesai: '', kegiatan: '', tempat_id: '', guru_id: '' });
+    setGuruSearchAdd('');
+    setShowGuruDropdownAdd(false);
     fetchOptions();
     setIsAddModalOpen(true);
   };
@@ -505,6 +534,8 @@ export default function JadwalPage() {
       tempat_id: item.tempat_id || '',
       guru_id: item.guru_id || ''
     });
+    setGuruSearchEdit('');
+    setShowGuruDropdownEdit(false);
     fetchOptions();
     setIsEditModalOpen(true);
   };
@@ -1004,56 +1035,62 @@ export default function JadwalPage() {
               </div>
               <div className="relative" ref={guruDropdownRefEdit}>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Guru Pengajar</label>
-                
-                {/* Search Input */}
-                <div className="flex items-center px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-t-lg">
-                  <Search className="text-gray-400 mr-2" size={13} />
+                <div
+                  ref={guruTriggerRefEdit}
+                  className={`w-full flex items-center justify-between gap-1.5 px-3 py-2 bg-gray-50 dark:bg-gray-900 border ${
+                    showGuruDropdownEdit
+                      ? 'border-indigo-500 ring-2 ring-indigo-500/20'
+                      : 'border-gray-200 dark:border-gray-700'
+                  } rounded-lg text-xs transition-all cursor-text`}
+                  onClick={() => {
+                    const rect = guruTriggerRefEdit.current?.getBoundingClientRect();
+                    setGuruDropdownRectEdit(rect || null);
+                    setShowGuruDropdownEdit(true);
+                  }}
+                >
                   <input
                     type="text"
-                    placeholder="Ketik nama guru..."
-                    value={guruSearchEdit}
-                    onChange={e => setGuruSearchEdit(e.target.value)}
+                    placeholder="-- Pilih / Cari Guru Pengajar --"
+                    value={
+                      showGuruDropdownEdit
+                        ? guruSearchEdit
+                        : (guruOptions.find(g => g.id.toString() === (editingJadwal.guru_id || '').toString())?.nama || '')
+                    }
+                    onChange={(e) => {
+                      setGuruSearchEdit(e.target.value);
+                      const rect = guruTriggerRefEdit.current?.getBoundingClientRect();
+                      setGuruDropdownRectEdit(rect || null);
+                      setShowGuruDropdownEdit(true);
+                    }}
                     onFocus={() => {
                       const rect = guruTriggerRefEdit.current?.getBoundingClientRect();
                       setGuruDropdownRectEdit(rect || null);
                       setShowGuruDropdownEdit(true);
                     }}
-                    className="flex-1 bg-transparent text-xs text-gray-700 dark:text-gray-200 outline-none placeholder-gray-400 w-full"
+                    className="w-full bg-transparent outline-none text-xs text-gray-700 dark:text-gray-200 placeholder:text-gray-400 font-medium cursor-text min-w-0"
                     autoComplete="off"
                   />
-                  {guruSearchEdit && (
-                    <button type="button" onClick={() => setGuruSearchEdit('')} className="text-gray-400 hover:text-red-400">
-                      <X size={12} />
+                  {editingJadwal.guru_id && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingJadwal({ ...editingJadwal, guru_id: '' });
+                        setGuruSearchEdit('');
+                      }}
+                      className="text-gray-400 hover:text-red-400 shrink-0 p-0.5"
+                      title="Hapus pilihan guru"
+                    >
+                      <X size={13} />
                     </button>
                   )}
+                  <ChevronDown
+                    size={14}
+                    className={`text-gray-400 shrink-0 transition-transform ${
+                      showGuruDropdownEdit ? 'rotate-180 text-indigo-500' : ''
+                    }`}
+                  />
                 </div>
-
-                {/* Selected Display Dropdown - acts as trigger */}
-                <div
-                  ref={guruTriggerRefEdit}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-b-lg text-xs text-gray-700 dark:text-gray-200 cursor-pointer flex justify-between items-center"
-                  onClick={() => {
-                    if (showGuruDropdownEdit) {
-                      setShowGuruDropdownEdit(false);
-                    } else {
-                      const rect = guruTriggerRefEdit.current?.getBoundingClientRect();
-                      setGuruDropdownRectEdit(rect || null);
-                      setShowGuruDropdownEdit(true);
-                    }
-                  }}
-                >
-                  <span className={editingJadwal.guru_id ? '' : 'text-gray-400'}>
-                    {editingJadwal.guru_id
-                      ? (() => {
-                          const guru = guruOptions.find(g => g.id.toString() === editingJadwal.guru_id.toString());
-                          return guru ? guru.nama : '-- Tidak Ada / Kosong --';
-                        })()
-                      : '-- Tidak Ada / Kosong --'}
-                  </span>
-                  <ChevronDown size={13} className="text-gray-400" />
-                </div>
-
-                {/* Dropdown rendered outside via fixed positioned portal-like element - see below */}
               </div>
               <div className="flex gap-2 pt-2">
                 <button type="button" onClick={() => { setIsEditModalOpen(false); handleDeleteJadwal(editingJadwal); }} className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl transition-colors text-xs flex items-center gap-1" title="Hapus Jadwal Ini">
@@ -1161,56 +1198,62 @@ export default function JadwalPage() {
               </div>
               <div className="relative" ref={guruDropdownRefAdd}>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Guru Pengajar</label>
-                
-                {/* Search Input */}
-                <div className="flex items-center px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-t-lg">
-                  <Search className="text-gray-400 mr-2" size={13} />
+                <div
+                  ref={guruTriggerRefAdd}
+                  className={`w-full flex items-center justify-between gap-1.5 px-3 py-2 bg-gray-50 dark:bg-gray-900 border ${
+                    showGuruDropdownAdd
+                      ? 'border-green-500 ring-2 ring-green-500/20'
+                      : 'border-gray-200 dark:border-gray-700'
+                  } rounded-lg text-xs transition-all cursor-text`}
+                  onClick={() => {
+                    const rect = guruTriggerRefAdd.current?.getBoundingClientRect();
+                    setGuruDropdownRectAdd(rect || null);
+                    setShowGuruDropdownAdd(true);
+                  }}
+                >
                   <input
                     type="text"
-                    placeholder="Ketik nama guru..."
-                    value={guruSearchAdd}
-                    onChange={e => setGuruSearchAdd(e.target.value)}
+                    placeholder="-- Pilih / Cari Guru Pengajar --"
+                    value={
+                      showGuruDropdownAdd
+                        ? guruSearchAdd
+                        : (guruOptions.find(g => g.id.toString() === (newJadwal.guru_id || '').toString())?.nama || '')
+                    }
+                    onChange={(e) => {
+                      setGuruSearchAdd(e.target.value);
+                      const rect = guruTriggerRefAdd.current?.getBoundingClientRect();
+                      setGuruDropdownRectAdd(rect || null);
+                      setShowGuruDropdownAdd(true);
+                    }}
                     onFocus={() => {
                       const rect = guruTriggerRefAdd.current?.getBoundingClientRect();
                       setGuruDropdownRectAdd(rect || null);
                       setShowGuruDropdownAdd(true);
                     }}
-                    className="flex-1 bg-transparent text-xs text-gray-700 dark:text-gray-200 outline-none placeholder-gray-400 w-full"
+                    className="w-full bg-transparent outline-none text-xs text-gray-700 dark:text-gray-200 placeholder:text-gray-400 font-medium cursor-text min-w-0"
                     autoComplete="off"
                   />
-                  {guruSearchAdd && (
-                    <button type="button" onClick={() => setGuruSearchAdd('')} className="text-gray-400 hover:text-red-400">
-                      <X size={12} />
+                  {newJadwal.guru_id && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNewJadwal({ ...newJadwal, guru_id: '' });
+                        setGuruSearchAdd('');
+                      }}
+                      className="text-gray-400 hover:text-red-400 shrink-0 p-0.5"
+                      title="Hapus pilihan guru"
+                    >
+                      <X size={13} />
                     </button>
                   )}
+                  <ChevronDown
+                    size={14}
+                    className={`text-gray-400 shrink-0 transition-transform ${
+                      showGuruDropdownAdd ? 'rotate-180 text-green-500' : ''
+                    }`}
+                  />
                 </div>
-
-                {/* Selected Display Dropdown - acts as trigger */}
-                <div
-                  ref={guruTriggerRefAdd}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-b-lg text-xs text-gray-700 dark:text-gray-200 cursor-pointer flex justify-between items-center"
-                  onClick={() => {
-                    if (showGuruDropdownAdd) {
-                      setShowGuruDropdownAdd(false);
-                    } else {
-                      const rect = guruTriggerRefAdd.current?.getBoundingClientRect();
-                      setGuruDropdownRectAdd(rect || null);
-                      setShowGuruDropdownAdd(true);
-                    }
-                  }}
-                >
-                  <span className={newJadwal.guru_id ? '' : 'text-gray-400'}>
-                    {newJadwal.guru_id
-                      ? (() => {
-                          const guru = guruOptions.find(g => g.id.toString() === newJadwal.guru_id.toString());
-                          return guru ? guru.nama : '-- Tidak Ada / Kosong --';
-                        })()
-                      : '-- Tidak Ada / Kosong --'}
-                  </span>
-                  <ChevronDown size={13} className="text-gray-400" />
-                </div>
-
-                {/* Dropdown rendered outside via fixed positioned portal-like element - see below */}
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Batal</button>
@@ -1351,7 +1394,8 @@ export default function JadwalPage() {
       {/* Floating Fixed Dropdown - Guru Edit (melewati batas modal) */}
       {showGuruDropdownEdit && guruDropdownRectEdit && (
         <div
-          className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-y-auto"
+          ref={guruFloatingRefEdit}
+          className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-y-auto py-1"
           style={{
             top: guruDropdownRectEdit.bottom + 4,
             left: guruDropdownRectEdit.left,
@@ -1364,8 +1408,9 @@ export default function JadwalPage() {
             onMouseDown={() => {
               setEditingJadwal({ ...editingJadwal, guru_id: '' });
               setShowGuruDropdownEdit(false);
+              setGuruSearchEdit('');
             }}
-            className="w-full text-left px-3 py-2 text-xs text-gray-400 italic hover:bg-gray-50 dark:hover:bg-gray-700"
+            className="w-full text-left px-3 py-2 text-xs text-gray-400 italic hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
           >
             -- Tidak Ada / Kosong --
           </button>
@@ -1374,24 +1419,28 @@ export default function JadwalPage() {
               guruSearchEdit === '' ||
               g.nama.toLowerCase().includes(guruSearchEdit.toLowerCase())
             )
-            .map(g => (
-              <button
-                key={g.id}
-                type="button"
-                onMouseDown={() => {
-                  setEditingJadwal({ ...editingJadwal, guru_id: g.id.toString() });
-                  setShowGuruDropdownEdit(false);
-                  setGuruSearchEdit('');
-                }}
-                className={`w-full text-left px-3 py-2 text-xs transition-colors ${
-                  editingJadwal && editingJadwal.guru_id.toString() === g.id.toString()
-                    ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-semibold'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
-                }`}
-              >
-                {g.nama}
-              </button>
-            ))}
+            .map(g => {
+              const isSelected = editingJadwal && editingJadwal.guru_id.toString() === g.id.toString();
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onMouseDown={() => {
+                    setEditingJadwal({ ...editingJadwal, guru_id: g.id.toString() });
+                    setShowGuruDropdownEdit(false);
+                    setGuruSearchEdit('');
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                    isSelected
+                      ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
+                  }`}
+                >
+                  <span>{g.nama}</span>
+                  {isSelected && <Check size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />}
+                </button>
+              );
+            })}
           {guruOptions.filter(g =>
             guruSearchEdit === '' ||
             g.nama.toLowerCase().includes(guruSearchEdit.toLowerCase())
@@ -1406,7 +1455,8 @@ export default function JadwalPage() {
       {/* Floating Fixed Dropdown - Guru Add (melewati batas modal) */}
       {showGuruDropdownAdd && guruDropdownRectAdd && (
         <div
-          className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-y-auto"
+          ref={guruFloatingRefAdd}
+          className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-y-auto py-1"
           style={{
             top: guruDropdownRectAdd.bottom + 4,
             left: guruDropdownRectAdd.left,
@@ -1419,8 +1469,9 @@ export default function JadwalPage() {
             onMouseDown={() => {
               setNewJadwal({ ...newJadwal, guru_id: '' });
               setShowGuruDropdownAdd(false);
+              setGuruSearchAdd('');
             }}
-            className="w-full text-left px-3 py-2 text-xs text-gray-400 italic hover:bg-gray-50 dark:hover:bg-gray-700"
+            className="w-full text-left px-3 py-2 text-xs text-gray-400 italic hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
           >
             -- Tidak Ada / Kosong --
           </button>
@@ -1429,24 +1480,28 @@ export default function JadwalPage() {
               guruSearchAdd === '' ||
               g.nama.toLowerCase().includes(guruSearchAdd.toLowerCase())
             )
-            .map(g => (
-              <button
-                key={g.id}
-                type="button"
-                onMouseDown={() => {
-                  setNewJadwal({ ...newJadwal, guru_id: g.id.toString() });
-                  setShowGuruDropdownAdd(false);
-                  setGuruSearchAdd('');
-                }}
-                className={`w-full text-left px-3 py-2 text-xs transition-colors ${
-                  newJadwal.guru_id.toString() === g.id.toString()
-                    ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-semibold'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
-                }`}
-              >
-                {g.nama}
-              </button>
-            ))}
+            .map(g => {
+              const isSelected = newJadwal.guru_id.toString() === g.id.toString();
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onMouseDown={() => {
+                    setNewJadwal({ ...newJadwal, guru_id: g.id.toString() });
+                    setShowGuruDropdownAdd(false);
+                    setGuruSearchAdd('');
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                    isSelected
+                      ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-bold'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
+                  }`}
+                >
+                  <span>{g.nama}</span>
+                  {isSelected && <Check size={14} className="text-green-600 dark:text-green-400 shrink-0" />}
+                </button>
+              );
+            })}
           {guruOptions.filter(g =>
             guruSearchAdd === '' ||
             g.nama.toLowerCase().includes(guruSearchAdd.toLowerCase())
