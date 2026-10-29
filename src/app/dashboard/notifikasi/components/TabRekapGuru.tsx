@@ -843,7 +843,7 @@ export default function TabRekapGuru({
                 <RekapGuruSortButton field="nama"       label="Nama Guru"   current={sortField} dir={sortDir} onSort={handleSort} />
                 <RekapGuruSortButton field="persentase" label="% Kehadiran" current={sortField} dir={sortDir} onSort={handleSort} />
                 <RekapGuruSortButton field="hadir"      label="Jml Hadir"   current={sortField} dir={sortDir} onSort={handleSort} />
-                <RekapGuruSortButton field="mapel"      label="Jml Mapel"   current={sortField} dir={sortDir} onSort={handleSort} />
+                <RekapGuruSortButton field="mapel"      label="Jml Kelas/Mapel" current={sortField} dir={sortDir} onSort={handleSort} />
                 <RekapGuruSortButton field="nip"        label="NIP"         current={sortField} dir={sortDir} onSort={handleSort} />
               </div>
             </div>
