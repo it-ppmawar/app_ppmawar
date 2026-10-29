@@ -582,7 +582,7 @@ export default function TabRekapitulasi({
 
             {/* Baris 4: Sort / Urutkan */}
             <div className="pt-1 border-t border-gray-100 dark:border-gray-700/60">
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
                 <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mr-0.5">Urutkan:</span>
                 <RekapSortButton field="nama"       label="Nama Santri"  current={rekapSortField} dir={rekapSortDir} onSort={handleRekapSort} />
                 <RekapSortButton field="nama_wali"  label="Nama Wali"    current={rekapSortField} dir={rekapSortDir} onSort={handleRekapSort} />

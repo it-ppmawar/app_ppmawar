@@ -2096,7 +2096,7 @@ function NotifikasiContent() {
 
                   {/* Sort Controls — Pengingat Otomatis */}
                   {activeReminders.length > 0 && (
-                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 mb-3">
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 mb-3">
                       <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mr-0.5">Urutkan:</span>
                       <SortButton<ReminderSortField> field="nama"  label="Nama Guru"    current={reminderSortField} dir={reminderSortDir} onSort={handleReminderSort} color="amber" />
                       <SortButton<ReminderSortField> field="kelas" label="Kelas / Kamar" current={reminderSortField} dir={reminderSortDir} onSort={handleReminderSort} color="amber" />
@@ -2592,7 +2592,7 @@ function NotifikasiContent() {
 
               {/* Sort Controls — Info Akun Guru */}
               {(guruSearch.trim().length > 0 || showAllInfoGuru) && guruList.length > 0 && (
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
                   <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mr-0.5">Urutkan:</span>
                   <SortButton<GuruInfoSortField> field="nama" label="Nama Guru / Staff" current={guruInfoSortField} dir={guruInfoSortDir} onSort={handleGuruInfoSort} color="emerald" />
                   <SortButton<GuruInfoSortField> field="nip"  label="NIP"               current={guruInfoSortField} dir={guruInfoSortDir} onSort={handleGuruInfoSort} color="emerald" />
