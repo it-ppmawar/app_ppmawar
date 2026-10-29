@@ -947,7 +947,7 @@ export default function TabRekapGuru({
 
                               {item.daftar_mapel && (
                                 <div className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400 line-clamp-1 truncate max-w-2xl font-normal">
-                                  <span className="font-semibold text-gray-600 dark:text-gray-300">Mapel: </span>
+                                  <span className="font-semibold text-gray-600 dark:text-gray-300">Kelas/Mapel: </span>
                                   {item.daftar_mapel}
                                 </div>
                               )}
@@ -1039,7 +1039,7 @@ export default function TabRekapGuru({
 
                     {item.daftar_mapel && (
                       <div className="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/60 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800/80 leading-relaxed">
-                        <span className="font-bold text-gray-700 dark:text-gray-200">Mapel: </span>
+                        <span className="font-bold text-gray-700 dark:text-gray-200">Kelas/Mapel: </span>
                         <span>{item.daftar_mapel}</span>
                       </div>
                     )}
