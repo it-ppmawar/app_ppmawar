@@ -380,6 +380,16 @@ export async function GET(request: Request) {
         subFilterJoinCond = ' AND a.kegiatan_id IS NOT NULL';
       }
 
+      // Filter WHERE guru: hanya tampilkan guru yang punya jadwal sesuai filter
+      let guruWhereFilter = '';
+      if (sf === 'madin' || sf === 'jadwal madin') {
+        guruWhereFilter = ' AND g.guru_id IN (SELECT DISTINCT guru_id FROM jadwal_madin WHERE guru_id IS NOT NULL AND guru_id > 0)';
+      } else if (sf === 'quran' || sf === "qur'an" || sf === 'jadwal quran' || sf === "jadwal qur'an" || sf === 'jadwal qur an') {
+        guruWhereFilter = ' AND g.guru_id IN (SELECT DISTINCT guru_id FROM jadwal_quran WHERE guru_id IS NOT NULL AND guru_id > 0)';
+      } else if (sf === 'kegiatan' || sf === 'jadwal kegiatan') {
+        guruWhereFilter = ' AND g.guru_id IN (SELECT DISTINCT guru_id FROM jadwal_kegiatan WHERE guru_id IS NOT NULL AND guru_id > 0)';
+      }
+
       if (target_id && target_id !== 'all') {
         query = `
           SELECT g.guru_id as id, g.nip as identifier, g.nama, g.foto, g.alamat, g.no_hp, g.no_hp as nama_wali,
@@ -389,7 +399,7 @@ export async function GET(request: Request) {
             SUM(CASE WHEN a.absensi_id IS NOT NULL AND (LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL) THEN 1 ELSE 0 END) as alpha
           FROM guru g
           LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${joinDateCond}${subFilterJoinCond}
-          WHERE g.guru_id = ?
+          WHERE g.guru_id = ?${guruWhereFilter}
           GROUP BY g.guru_id, g.nip, g.nama, g.foto, g.alamat, g.no_hp
           ORDER BY g.nama ASC
         `;
@@ -403,6 +413,7 @@ export async function GET(request: Request) {
             SUM(CASE WHEN a.absensi_id IS NOT NULL AND (LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL) THEN 1 ELSE 0 END) as alpha
           FROM guru g
           LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${joinDateCond}${subFilterJoinCond}
+          WHERE 1=1${guruWhereFilter}
           GROUP BY g.guru_id, g.nip, g.nama, g.foto, g.alamat, g.no_hp
           ORDER BY g.nama ASC
         `;
