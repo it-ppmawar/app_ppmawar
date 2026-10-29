@@ -228,10 +228,10 @@ export default function TabRekapitulasi({
               onClick={() => setRekapModeRentang(v => !v)}
               className="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-purple-400 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 transition-all cursor-pointer select-none"
             >
-              <span className="text-gray-500 dark:text-gray-400 font-medium">
-                {rekapModeRentang ? 'Rentang Tanggal' : 'Mode Bulanan'}
+              <span className="text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                {rekapModeRentang ? 'Mode Rentang' : 'Mode Bulanan'}
               </span>
-              <span className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg ${
+              <span className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
                 rekapModeRentang
                   ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
                   : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
