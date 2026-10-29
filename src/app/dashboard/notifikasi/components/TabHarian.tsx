@@ -2,8 +2,35 @@
 
 import React from 'react';
 import {
-  Search, RefreshCw, CheckCircle2, MessageCircle, Users, Check
+  Search, RefreshCw, CheckCircle2, MessageCircle, Users, Check,
+  ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
+
+type SortField = 'nama' | 'nama_wali' | 'no_wali';
+type SortDir = 'asc' | 'desc';
+type BillingSortField = 'nama_santri' | 'nama_wali' | 'nama_tagihan' | 'nominal';
+
+function SortButton<T extends string>({
+  field, label, current, dir, onSort,
+}: {
+  field: T; label: string; current: T; dir: SortDir; onSort: (f: T) => void;
+}) {
+  const active = current === field;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(field)}
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+        active
+          ? 'bg-green-600 text-white border-green-600 shadow-sm'
+          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-green-400 hover:text-green-600'
+      }`}
+    >
+      {active ? (dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />) : <ArrowUpDown size={11} />}
+      {label}
+    </button>
+  );
+}
 
 export interface TabHarianProps {
   manualMode: 'absensi' | 'rekapitulasi' | 'info_akun' | 'pembayaran';
@@ -106,6 +133,34 @@ export default function TabHarian({
   getWaLink,
   markAsSent,
 }: TabHarianProps) {
+  // ── Sort state ──────────────────────────────────────────────────
+  const [sortField, setSortField] = React.useState<SortField>('nama');
+  const [sortDir, setSortDir] = React.useState<SortDir>('asc');
+  const [billingSortField, setBillingSortField] = React.useState<BillingSortField>('nama_santri');
+  const [billingSortDir, setBillingSortDir] = React.useState<SortDir>('asc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortField(field); setSortDir('asc'); }
+  };
+
+  const handleBillingSort = (field: BillingSortField) => {
+    if (billingSortField === field) setBillingSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setBillingSortField(field); setBillingSortDir('asc'); }
+  };
+
+  const sortedMurid = React.useMemo(() => {
+    return [...filteredMurid].sort((a, b) => {
+      let va = '';
+      let vb = '';
+      if (sortField === 'nama') { va = a.nama || ''; vb = b.nama || ''; }
+      else if (sortField === 'nama_wali') { va = a.nama_wali || ''; vb = b.nama_wali || ''; }
+      else if (sortField === 'no_wali') { va = a.no_wali || ''; vb = b.no_wali || ''; }
+      const cmp = va.localeCompare(vb, 'id');
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [filteredMurid, sortField, sortDir]);
+
   return (
     <>
       {/* ===== TAB TAGIHAN & PEMBAYARAN ===== */}
@@ -186,17 +241,40 @@ export default function TabHarian({
             </button>
           </div>
 
+          {/* Sort Controls — Tagihan */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mr-0.5">Urutkan:</span>
+            <SortButton<BillingSortField> field="nama_santri"  label="Nama Santri" current={billingSortField} dir={billingSortDir} onSort={handleBillingSort} />
+            <SortButton<BillingSortField> field="nama_wali"    label="Nama Wali"   current={billingSortField} dir={billingSortDir} onSort={handleBillingSort} />
+            <SortButton<BillingSortField> field="nama_tagihan" label="Tagihan"     current={billingSortField} dir={billingSortDir} onSort={handleBillingSort} />
+            <SortButton<BillingSortField> field="nominal"      label="Nominal"     current={billingSortField} dir={billingSortDir} onSort={handleBillingSort} />
+          </div>
+
           {/* List Tagihan Belum Lunas */}
           {loadingBilling ? (
             <div className="flex justify-center py-8"><RefreshCw className="animate-spin text-orange-500" /></div>
           ) : (() => {
-            const filteredBilling = billingList.filter(b => {
-              if (!billingSearch.trim()) return true;
-              const q = billingSearch.toLowerCase();
-              return (b.nama_santri || '').toLowerCase().includes(q) ||
-                     (b.nis || '').toLowerCase().includes(q) ||
-                     (b.nama_wali || '').toLowerCase().includes(q);
-            });
+            const filteredBilling = billingList
+              .filter(b => {
+                if (!billingSearch.trim()) return true;
+                const q = billingSearch.toLowerCase();
+                return (b.nama_santri || '').toLowerCase().includes(q) ||
+                       (b.nis || '').toLowerCase().includes(q) ||
+                       (b.nama_wali || '').toLowerCase().includes(q);
+              })
+              .sort((a, b) => {
+                let va: string | number = '';
+                let vb: string | number = '';
+                if (billingSortField === 'nama_santri')  { va = a.nama_santri || ''; vb = b.nama_santri || ''; }
+                else if (billingSortField === 'nama_wali') { va = a.nama_wali || ''; vb = b.nama_wali || ''; }
+                else if (billingSortField === 'nama_tagihan') { va = a.nama_tagihan || ''; vb = b.nama_tagihan || ''; }
+                else if (billingSortField === 'nominal') { va = Number(a.nominal || 0); vb = Number(b.nominal || 0); }
+                if (typeof va === 'number' && typeof vb === 'number') {
+                  return billingSortDir === 'asc' ? va - vb : vb - va;
+                }
+                const cmp = String(va).localeCompare(String(vb), 'id');
+                return billingSortDir === 'asc' ? cmp : -cmp;
+              });
 
             if (filteredBilling.length === 0) {
               return (
@@ -461,15 +539,26 @@ export default function TabHarian({
 
       {/* Search bar — hanya tampil untuk mode absensi & info_akun */}
       {manualMode !== 'pembayaran' && manualMode !== 'rekapitulasi' && (
-        <div id="search-wali-container" className="relative mb-4">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Ketik nama santri atau nama wali untuk mencari..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm transition-all"
-          />
+        <div className="space-y-3 mb-4">
+          <div id="search-wali-container" className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Ketik nama santri atau nama wali untuk mencari..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm transition-all"
+            />
+          </div>
+          {/* Sort Controls — Absensi & Info Akun */}
+          {hasSearch && filteredMurid.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mr-0.5">Urutkan:</span>
+              <SortButton<SortField> field="nama"      label="Nama Santri" current={sortField} dir={sortDir} onSort={handleSort} />
+              <SortButton<SortField> field="nama_wali" label="Nama Wali"   current={sortField} dir={sortDir} onSort={handleSort} />
+              <SortButton<SortField> field="no_wali"   label="No. WA"      current={sortField} dir={sortDir} onSort={handleSort} />
+            </div>
+          )}
         </div>
       )}
 
@@ -510,7 +599,7 @@ export default function TabHarian({
                     </td>
                   </tr>
                 ) : (
-                  filteredMurid.map(m => (
+                  sortedMurid.map(m => (
                     <tr key={m.murid_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="px-5 py-4 font-semibold text-gray-800 dark:text-gray-200">
                         {m.nama}
@@ -588,7 +677,7 @@ export default function TabHarian({
                 Santri &quot;{search}&quot; tidak ditemukan
               </div>
             ) : (
-              filteredMurid.map(m => (
+              sortedMurid.map(m => (
                 <div key={m.murid_id} className={`bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border transition-colors ${
                   sentWaIds[m.murid_id] ? 'border-green-200 dark:border-green-800 bg-green-50/10 dark:bg-green-900/10' : 'border-gray-100 dark:border-gray-700'
                 } space-y-3`}>

@@ -3,8 +3,38 @@
 import React from 'react';
 import {
   FileText, Search, X, ToggleRight, ToggleLeft, RefreshCw,
-  Clock, CheckCircle2, AlertCircle, Phone, MessageCircle
+  Clock, CheckCircle2, AlertCircle, Phone, MessageCircle,
+  ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
+
+type RekapSortField = 'nama' | 'persentase' | 'hadir' | 'nama_wali';
+type SortDir = 'asc' | 'desc';
+
+function RekapSortButton({
+  field, label, current, dir, onSort, color = 'purple',
+}: {
+  field: RekapSortField; label: string; current: RekapSortField; dir: SortDir;
+  onSort: (f: RekapSortField) => void; color?: string;
+}) {
+  const active = current === field;
+  const colorMap: Record<string, string> = {
+    purple: 'bg-purple-600 text-white border-purple-600 shadow-sm',
+  };
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(field)}
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+        active
+          ? colorMap[color] || colorMap.purple
+          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-purple-400 hover:text-purple-600'
+      }`}
+    >
+      {active ? (dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />) : <ArrowUpDown size={11} />}
+      {label}
+    </button>
+  );
+}
 
 export interface RekapFilterState {
   tipe: string;
@@ -86,6 +116,13 @@ export default function TabRekapitulasi({
 }: TabRekapitulasiProps) {
   const [waFilter, setWaFilter] = React.useState<'semua' | 'ada' | 'tidak_ada'>('semua');
   const [autoScrollRekap, setAutoScrollRekap] = React.useState<boolean>(true);
+  const [rekapSortField, setRekapSortField] = React.useState<RekapSortField>('nama');
+  const [rekapSortDir, setRekapSortDir] = React.useState<SortDir>('asc');
+
+  const handleRekapSort = (field: RekapSortField) => {
+    if (rekapSortField === field) setRekapSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setRekapSortField(field); setRekapSortDir('asc'); }
+  };
 
   // Auto-scroll ke hasil setelah tombol "Tampilkan Data Rekap" diklik dan data berhasil dimuat
   React.useEffect(() => {
@@ -441,14 +478,32 @@ export default function TabRekapitulasi({
         }).length;
         const tidakAdaWaCount = totalCount - adaWaCount;
 
-        const filteredList = searchFiltered.filter(item => {
-          if (waFilter === 'semua') return true;
-          const waLink = getWaWaliRekapLink(item);
-          const hasWa = waLink !== '#';
-          if (waFilter === 'ada') return hasWa;
-          if (waFilter === 'tidak_ada') return !hasWa;
-          return true;
-        });
+        const filteredList = searchFiltered
+          .filter(item => {
+            if (waFilter === 'semua') return true;
+            const waLink = getWaWaliRekapLink(item);
+            const hasWa = waLink !== '#';
+            if (waFilter === 'ada') return hasWa;
+            if (waFilter === 'tidak_ada') return !hasWa;
+            return true;
+          })
+          .sort((a, b) => {
+            let cmp = 0;
+            if (rekapSortField === 'nama') {
+              cmp = (a.nama || '').localeCompare(b.nama || '', 'id');
+            } else if (rekapSortField === 'nama_wali') {
+              cmp = (a.nama_wali || '').localeCompare(b.nama_wali || '', 'id');
+            } else if (rekapSortField === 'persentase') {
+              const totalA = Number(a.total || ((+a.hadir||0)+(+a.izin||0)+(+a.sakit||0)+(+a.alpha||0)));
+              const totalB = Number(b.total || ((+b.hadir||0)+(+b.izin||0)+(+b.sakit||0)+(+b.alpha||0)));
+              const pA = totalA > 0 ? (+a.hadir || 0) / totalA : 0;
+              const pB = totalB > 0 ? (+b.hadir || 0) / totalB : 0;
+              cmp = pA - pB;
+            } else if (rekapSortField === 'hadir') {
+              cmp = (+a.hadir || 0) - (+b.hadir || 0);
+            }
+            return rekapSortDir === 'asc' ? cmp : -cmp;
+          });
 
         const renderControls = () => (
           <div className="flex flex-col gap-2 p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-2xs">
@@ -523,6 +578,17 @@ export default function TabRekapitulasi({
                 <span className={`w-2 h-2 rounded-full ${autoScrollRekap ? 'bg-purple-600 animate-pulse' : 'bg-gray-400'}`} />
                 <span>Auto-scroll {autoScrollRekap ? 'Aktif' : 'Mati'}</span>
               </button>
+            </div>
+
+            {/* Baris 4: Sort / Urutkan */}
+            <div className="pt-1 border-t border-gray-100 dark:border-gray-700/60">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mr-0.5">Urutkan:</span>
+                <RekapSortButton field="nama"       label="Nama Santri"  current={rekapSortField} dir={rekapSortDir} onSort={handleRekapSort} />
+                <RekapSortButton field="nama_wali"  label="Nama Wali"    current={rekapSortField} dir={rekapSortDir} onSort={handleRekapSort} />
+                <RekapSortButton field="persentase" label="% Kehadiran"  current={rekapSortField} dir={rekapSortDir} onSort={handleRekapSort} />
+                <RekapSortButton field="hadir"      label="Jml Hadir"    current={rekapSortField} dir={rekapSortDir} onSort={handleRekapSort} />
+              </div>
             </div>
           </div>
         );

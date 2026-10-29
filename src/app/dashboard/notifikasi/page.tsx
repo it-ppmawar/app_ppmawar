@@ -4,12 +4,47 @@ import {
   Bell, AlertTriangle, CheckCircle2, MessageCircle, Phone, Search, 
   RefreshCw, Users, Check, Smartphone, Info, ChevronDown, ChevronUp, 
   Zap, Settings2, Clock, Send, Sparkles, Loader2, Calendar, Trash2, Award, Power, QrCode,
-  FileText, Download, ToggleLeft, ToggleRight, ExternalLink, X, AlertCircle
+  FileText, Download, ToggleLeft, ToggleRight, ExternalLink, X, AlertCircle,
+  ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { formatHariTanggalPesantren, formatHariPesantren } from '@/lib/formatHariPesantren';
 import CardSiaranWaManual from './components/CardSiaranWaManual';
 import TabRekapGuru, { DEFAULT_REKAP_GURU_TEMPLATE } from './components/TabRekapGuru';
+
+function SortButton<T extends string>({
+  field, label, current, dir, onSort, color = 'amber',
+}: {
+  field: T; label: string; current: T; dir: 'asc' | 'desc'; onSort: (f: T) => void; color?: 'amber' | 'emerald' | 'purple' | 'blue';
+}) {
+  const active = current === field;
+  const colorMap = {
+    amber: 'bg-amber-500 text-white border-amber-500 shadow-sm',
+    emerald: 'bg-emerald-600 text-white border-emerald-600 shadow-sm',
+    purple: 'bg-purple-600 text-white border-purple-600 shadow-sm',
+    blue: 'bg-blue-600 text-white border-blue-600 shadow-sm',
+  };
+  const hoverMap = {
+    amber: 'hover:border-amber-400 hover:text-amber-600',
+    emerald: 'hover:border-emerald-400 hover:text-emerald-600',
+    purple: 'hover:border-purple-400 hover:text-purple-600',
+    blue: 'hover:border-blue-400 hover:text-blue-600',
+  };
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(field)}
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+        active
+          ? colorMap[color]
+          : `bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 ${hoverMap[color]}`
+      }`}
+    >
+      {active ? (dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />) : <ArrowUpDown size={11} />}
+      {label}
+    </button>
+  );
+}
 
 function NotifikasiContent() {
   const router = useRouter();
@@ -43,6 +78,38 @@ function NotifikasiContent() {
   const [tipeGuru, setTipeGuru] = useState<'madin' | 'quran' | 'kamar'>('quran');
   const [guruSearch, setGuruSearch] = useState('');
   const [selectedGuruId, setSelectedGuruId] = useState('');
+
+  // Sort states untuk kartu Siaran WA Guru & Staff
+  type ReminderSortField = 'nama' | 'kelas' | 'jam' | 'tipe';
+  const [reminderSortField, setReminderSortField] = useState<ReminderSortField>('nama');
+  const [reminderSortDir, setReminderSortDir] = useState<'asc' | 'desc'>('asc');
+  const handleReminderSort = (field: ReminderSortField) => {
+    if (reminderSortField === field) setReminderSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setReminderSortField(field); setReminderSortDir('asc'); }
+  };
+
+  type GuruInfoSortField = 'nama' | 'nip';
+  const [guruInfoSortField, setGuruInfoSortField] = useState<GuruInfoSortField>('nama');
+  const [guruInfoSortDir, setGuruInfoSortDir] = useState<'asc' | 'desc'>('asc');
+  const handleGuruInfoSort = (field: GuruInfoSortField) => {
+    if (guruInfoSortField === field) setGuruInfoSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setGuruInfoSortField(field); setGuruInfoSortDir('asc'); }
+  };
+
+  // Searchable combobox untuk Tab "Pilih Manual" (1 baris serasi)
+  const [manualGuruSearch, setManualGuruSearch] = useState('');
+  const [showManualGuruDropdown, setShowManualGuruDropdown] = useState(false);
+  const manualGuruDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (manualGuruDropdownRef.current && !manualGuruDropdownRef.current.contains(event.target as Node)) {
+        setShowManualGuruDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Tab aktif pada kartu terpadu Admin/Staff: 'auto' | 'manual' | 'rekap' | 'info_akun'
   const [guruCardTab, setGuruCardTab] = useState<'auto' | 'manual' | 'rekap' | 'info_akun'>('auto');
@@ -2027,6 +2094,17 @@ function NotifikasiContent() {
                     </div>
                   </div>
 
+                  {/* Sort Controls — Pengingat Otomatis */}
+                  {activeReminders.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                      <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mr-0.5">Urutkan:</span>
+                      <SortButton<ReminderSortField> field="nama"  label="Nama Guru"    current={reminderSortField} dir={reminderSortDir} onSort={handleReminderSort} color="amber" />
+                      <SortButton<ReminderSortField> field="kelas" label="Kelas / Kamar" current={reminderSortField} dir={reminderSortDir} onSort={handleReminderSort} color="amber" />
+                      <SortButton<ReminderSortField> field="jam"   label="Jam"          current={reminderSortField} dir={reminderSortDir} onSort={handleReminderSort} color="amber" />
+                      <SortButton<ReminderSortField> field="tipe"  label="Kategori"     current={reminderSortField} dir={reminderSortDir} onSort={handleReminderSort} color="amber" />
+                    </div>
+                  )}
+
                   {(() => {
                     const filteredActiveReminders = activeReminders.filter(r => {
                       if (subTabAuto === 'semua') return true;
@@ -2042,6 +2120,20 @@ function NotifikasiContent() {
                         </div>
                       );
                     }
+
+                    const sortedReminders = [...filteredActiveReminders].sort((a, b) => {
+                      let cmp = 0;
+                      if (reminderSortField === 'nama') {
+                        cmp = (a.guru_nama || '').localeCompare(b.guru_nama || '', 'id');
+                      } else if (reminderSortField === 'kelas') {
+                        cmp = (a.kelas_nama || '').localeCompare(b.kelas_nama || '', 'id');
+                      } else if (reminderSortField === 'jam') {
+                        cmp = (a.jam_mulai || '').localeCompare(b.jam_mulai || '');
+                      } else if (reminderSortField === 'tipe') {
+                        cmp = (a.tipe || '').localeCompare(b.tipe || '');
+                      }
+                      return reminderSortDir === 'asc' ? cmp : -cmp;
+                    });
 
                     const remindedCount = filteredActiveReminders.filter(r => {
                       const reminderKey = `${r.tipe}_${r.jadwal_id}_${new Date().toLocaleDateString()}`;
@@ -2062,7 +2154,7 @@ function NotifikasiContent() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                              {filteredActiveReminders.map((r, idx) => {
+                              {sortedReminders.map((r, idx) => {
                                 const reminderKey = `${r.tipe}_${r.jadwal_id}_${new Date().toLocaleDateString()}`;
                                 const isSent = sentReminderIds[reminderKey];
                                 const isSendingSingle = sendingSingleKey === reminderKey;
@@ -2146,7 +2238,7 @@ function NotifikasiContent() {
 
                         {/* Tampilan Mobile (Kartu Bertumpuk) */}
                         <div className="block md:hidden space-y-4">
-                          {filteredActiveReminders.map((r, idx) => {
+                          {sortedReminders.map((r, idx) => {
                             const reminderKey = `${r.tipe}_${r.jadwal_id}_${new Date().toLocaleDateString()}`;
                             const isSent = sentReminderIds[reminderKey];
                             const isSendingSingle = sendingSingleKey === reminderKey;
@@ -2257,30 +2349,90 @@ function NotifikasiContent() {
           {guruCardTab === 'manual' && (
             <div className="p-6 pt-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5 bg-blue-50/50 dark:bg-blue-950/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
-                <div>
+                <div ref={manualGuruDropdownRef} className="relative">
                   <label className="block text-xs font-bold text-blue-800 dark:text-blue-400 mb-1.5">1. Cari & Pilih Guru</label>
-                  <div className="space-y-2">
+                  <div
+                    className={`w-full flex items-center justify-between gap-1.5 px-3 py-2 bg-white dark:bg-gray-900 border ${
+                      showManualGuruDropdown ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-gray-200 dark:border-gray-700'
+                    } rounded-xl text-sm transition-all cursor-text h-[38px]`}
+                    onClick={() => setShowManualGuruDropdown(true)}
+                  >
                     <input
                       type="text"
-                      placeholder="Ketik untuk memfilter nama..."
-                      value={guruSearch}
-                      onChange={(e) => setGuruSearch(e.target.value)}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
+                      placeholder="-- Pilih / Cari Guru/Pengurus --"
+                      value={showManualGuruDropdown ? manualGuruSearch : (selectedGuruObj?.nama || '')}
+                      onChange={(e) => {
+                        setManualGuruSearch(e.target.value);
+                        setShowManualGuruDropdown(true);
+                      }}
+                      onFocus={() => setShowManualGuruDropdown(true)}
+                      className="w-full bg-transparent outline-none text-gray-800 dark:text-gray-100 text-sm font-medium placeholder:text-gray-400 cursor-text"
                     />
-                    <select
-                      value={selectedGuruId}
-                      onChange={(e) => setSelectedGuruId(e.target.value)}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                    >
-                      <option value="">-- Pilih Guru/Pengurus --</option>
-                      {guruList
-                        .filter(g => g.nama?.toLowerCase().includes(guruSearch.toLowerCase()))
-                        .map(g => (
-                          <option key={g.guru_id} value={g.guru_id}>{g.nama}</option>
-                        ))
-                      }
-                    </select>
+                    {selectedGuruId && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedGuruId('');
+                          setManualGuruSearch('');
+                        }}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-0.5 shrink-0"
+                        title="Hapus pilihan"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                    <ChevronDown
+                      size={16}
+                      className={`text-gray-400 shrink-0 transition-transform ${showManualGuruDropdown ? 'rotate-180 text-blue-500' : ''}`}
+                    />
                   </div>
+
+                  {showManualGuruDropdown && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto py-1">
+                      <div
+                        className="px-3 py-2 text-xs text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/60 cursor-pointer"
+                        onClick={() => {
+                          setSelectedGuruId('');
+                          setManualGuruSearch('');
+                          setShowManualGuruDropdown(false);
+                        }}
+                      >
+                        -- Pilih Guru/Pengurus --
+                      </div>
+                      {guruList
+                        .filter(g => (g.nama || '').toLowerCase().includes(manualGuruSearch.toLowerCase()))
+                        .length === 0 ? (
+                        <div className="px-3 py-3 text-xs text-gray-400 text-center italic">
+                          Guru &quot;{manualGuruSearch}&quot; tidak ditemukan
+                        </div>
+                      ) : (
+                        guruList
+                          .filter(g => (g.nama || '').toLowerCase().includes(manualGuruSearch.toLowerCase()))
+                          .map((g) => {
+                            const isSelected = String(g.guru_id) === String(selectedGuruId);
+                            return (
+                              <div
+                                key={g.guru_id}
+                                onClick={() => {
+                                  setSelectedGuruId(String(g.guru_id));
+                                  setManualGuruSearch('');
+                                  setShowManualGuruDropdown(false);
+                                }}
+                                className={`px-3 py-2 text-sm flex items-center justify-between cursor-pointer transition-colors ${
+                                  isSelected
+                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold'
+                                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/60'
+                                }`}
+                              >
+                                <span>{g.nama}</span>
+                                {isSelected && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                              </div>
+                            );
+                          })
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-blue-800 dark:text-blue-400 mb-1.5">2. Kategori Pengajar</label>
@@ -2438,6 +2590,15 @@ function NotifikasiContent() {
                 />
               </div>
 
+              {/* Sort Controls — Info Akun Guru */}
+              {(guruSearch.trim().length > 0 || showAllInfoGuru) && guruList.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mr-0.5">Urutkan:</span>
+                  <SortButton<GuruInfoSortField> field="nama" label="Nama Guru / Staff" current={guruInfoSortField} dir={guruInfoSortDir} onSort={handleGuruInfoSort} color="emerald" />
+                  <SortButton<GuruInfoSortField> field="nip"  label="NIP"               current={guruInfoSortField} dir={guruInfoSortDir} onSort={handleGuruInfoSort} color="emerald" />
+                </div>
+              )}
+
               <div className="space-y-3">
                 {/* Desktop Table */}
                 <div className="hidden md:block overflow-x-auto">
@@ -2467,10 +2628,20 @@ function NotifikasiContent() {
                         </tr>
                       ) : (
                         (() => {
-                          const filteredGurus = guruList.filter(g => 
-                            g.nama?.toLowerCase().includes(guruSearch.toLowerCase()) || 
-                            g.nip?.includes(guruSearch)
-                          );
+                          const filteredGurus = guruList
+                            .filter(g => 
+                              g.nama?.toLowerCase().includes(guruSearch.toLowerCase()) || 
+                              g.nip?.includes(guruSearch)
+                            )
+                            .sort((a, b) => {
+                              let cmp = 0;
+                              if (guruInfoSortField === 'nama') {
+                                cmp = (a.nama || '').localeCompare(b.nama || '', 'id');
+                              } else if (guruInfoSortField === 'nip') {
+                                cmp = String(a.nip || '').localeCompare(String(b.nip || ''), 'id');
+                              }
+                              return guruInfoSortDir === 'asc' ? cmp : -cmp;
+                            });
                           if (filteredGurus.length === 0) {
                             return (
                               <tr>
@@ -2545,10 +2716,20 @@ function NotifikasiContent() {
                     </div>
                   ) : (
                     (() => {
-                      const filteredGurus = guruList.filter(g => 
-                        g.nama?.toLowerCase().includes(guruSearch.toLowerCase()) || 
-                        g.nip?.includes(guruSearch)
-                      );
+                      const filteredGurus = guruList
+                        .filter(g => 
+                          g.nama?.toLowerCase().includes(guruSearch.toLowerCase()) || 
+                          g.nip?.includes(guruSearch)
+                        )
+                        .sort((a, b) => {
+                          let cmp = 0;
+                          if (guruInfoSortField === 'nama') {
+                            cmp = (a.nama || '').localeCompare(b.nama || '', 'id');
+                          } else if (guruInfoSortField === 'nip') {
+                            cmp = String(a.nip || '').localeCompare(String(b.nip || ''), 'id');
+                          }
+                          return guruInfoSortDir === 'asc' ? cmp : -cmp;
+                        });
                       if (filteredGurus.length === 0) {
                         return (
                           <div className="text-center py-8 text-gray-500">

@@ -4,8 +4,35 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   FileText, Search, X, ToggleRight, ToggleLeft, RefreshCw,
   Clock, CheckCircle2, AlertCircle, AlertTriangle, Phone, MessageCircle,
-  Calendar, Award, Send, ChevronDown, ChevronUp, Loader2, Sparkles, User, BookOpen
+  Calendar, Award, Send, ChevronDown, ChevronUp, Loader2, Sparkles, User, BookOpen,
+  ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
+
+type RekapGuruSortField = 'nama' | 'persentase' | 'hadir' | 'mapel' | 'nip';
+type SortDir = 'asc' | 'desc';
+
+function RekapGuruSortButton({
+  field, label, current, dir, onSort,
+}: {
+  field: RekapGuruSortField; label: string; current: RekapGuruSortField; dir: SortDir;
+  onSort: (f: RekapGuruSortField) => void;
+}) {
+  const active = current === field;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(field)}
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+        active
+          ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-purple-400 hover:text-purple-600'
+      }`}
+    >
+      {active ? (dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />) : <ArrowUpDown size={11} />}
+      {label}
+    </button>
+  );
+}
 
 export const DEFAULT_KEPALA_MADIN_TEMPLATE = 
 `Assalamu'alaikum Warohmatullah,
@@ -177,6 +204,13 @@ export default function TabRekapGuru({
   const [waFilter, setWaFilter] = useState<'semua' | 'ada' | 'tidak_ada'>('semua');
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
   const [sentWaIds, setSentWaIds] = useState<Record<string, boolean>>({});
+  const [sortField, setSortField] = useState<RekapGuruSortField>('nama');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const handleSort = (field: RekapGuruSortField) => {
+    if (sortField === field) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortField(field); setSortDir('asc'); }
+  };
 
   // Accordion Fitur Tambahan (Looping Bulanan & Kepala Madin)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState<boolean>(false);
@@ -692,14 +726,40 @@ export default function TabRekapGuru({
         }).length;
         const tidakAdaWaCount = totalCount - adaWaCount;
 
-        const filteredList = searchFiltered.filter(item => {
-          if (waFilter === 'semua') return true;
-          const rawPhone = item.no_hp || item.nama_wali || '';
-          const hasWa = Boolean(formatPhoneNumber(rawPhone));
-          if (waFilter === 'ada') return hasWa;
-          if (waFilter === 'tidak_ada') return !hasWa;
-          return true;
-        });
+        const filteredList = searchFiltered
+          .filter(item => {
+            if (waFilter === 'semua') return true;
+            const rawPhone = item.no_hp || item.nama_wali || '';
+            const hasWa = Boolean(formatPhoneNumber(rawPhone));
+            if (waFilter === 'ada') return hasWa;
+            if (waFilter === 'tidak_ada') return !hasWa;
+            return true;
+          })
+          .sort((a, b) => {
+            let cmp = 0;
+            if (sortField === 'nama') {
+              const nameA = a.guru_nama || a.nama || '';
+              const nameB = b.guru_nama || b.nama || '';
+              cmp = nameA.localeCompare(nameB, 'id');
+            } else if (sortField === 'persentase') {
+              const hadirA = Number(a.hadir || 0);
+              const hadirB = Number(b.hadir || 0);
+              const totalA = Number(a.total || ((+a.hadir || 0) + (+a.izin || 0) + (+a.sakit || 0) + (+a.alpha || 0)));
+              const totalB = Number(b.total || ((+b.hadir || 0) + (+b.izin || 0) + (+b.sakit || 0) + (+b.alpha || 0)));
+              const pA = totalA > 0 ? (hadirA / totalA) : 0;
+              const pB = totalB > 0 ? (hadirB / totalB) : 0;
+              cmp = pA - pB;
+            } else if (sortField === 'hadir') {
+              cmp = Number(a.hadir || 0) - Number(b.hadir || 0);
+            } else if (sortField === 'mapel') {
+              cmp = Number(a.total_mapel || 0) - Number(b.total_mapel || 0);
+            } else if (sortField === 'nip') {
+              const nipA = String(a.identifier || a.guru_nip || '');
+              const nipB = String(b.identifier || b.guru_nip || '');
+              cmp = nipA.localeCompare(nipB, 'id');
+            }
+            return sortDir === 'asc' ? cmp : -cmp;
+          });
 
         const renderControls = () => (
           <div className="flex flex-col gap-2 p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-2xs">
@@ -774,6 +834,18 @@ export default function TabRekapGuru({
                 <span className={`w-2 h-2 rounded-full ${autoScroll ? 'bg-purple-600 animate-pulse' : 'bg-gray-400'}`} />
                 <span>Auto-scroll {autoScroll ? 'Aktif' : 'Mati'}</span>
               </button>
+            </div>
+
+            {/* Baris 4: Sort / Urutkan */}
+            <div className="pt-1 border-t border-gray-100 dark:border-gray-700/60">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mr-0.5">Urutkan:</span>
+                <RekapGuruSortButton field="nama"       label="Nama Guru"   current={sortField} dir={sortDir} onSort={handleSort} />
+                <RekapGuruSortButton field="persentase" label="% Kehadiran" current={sortField} dir={sortDir} onSort={handleSort} />
+                <RekapGuruSortButton field="hadir"      label="Jml Hadir"   current={sortField} dir={sortDir} onSort={handleSort} />
+                <RekapGuruSortButton field="mapel"      label="Jml Mapel"   current={sortField} dir={sortDir} onSort={handleSort} />
+                <RekapGuruSortButton field="nip"        label="NIP"         current={sortField} dir={sortDir} onSort={handleSort} />
+              </div>
             </div>
           </div>
         );
