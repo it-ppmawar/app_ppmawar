@@ -737,15 +737,25 @@ export default function RekapitulasiPage() {
     const rawTargetName = options.find(o => o.id.toString() === filter.target_id)?.nama || (filter.target_id === 'all' ? 'Semua Guru' : filter.target_id === 'SEMUA' ? 'Semua Unit' : '-');
     const targetName = rawTargetName.replace(/[\u{1F300}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1FA70}-\u{1FAFF}\u{FE00}-\u{FE0F}]/gu, '').trim();
     
+    let schedLabel = '';
+    if (filter.tipe === 'guru') {
+      if (subFilter === 'quran') schedLabel = "\nJenis Jadwal: Jadwal Qur'an";
+      else if (subFilter === 'madin') schedLabel = '\nJenis Jadwal: Jadwal Madin';
+      else if (subFilter === 'kegiatan') schedLabel = '\nJenis Jadwal: Jadwal Kegiatan';
+    } else if (subFilter) {
+      schedLabel = `\n${filter.tipe === 'quran' ? 'Majlis' : filter.tipe === 'madin' ? 'Mapel' : 'Kegiatan'}: ${subFilter}`;
+    }
+
     const title = filter.tipe === 'dewan_guru' ? 'REKAPITULASI PRESENSI DEWAN GURU YPMA' : 'REKAPITULASI KEHADIRAN';
     const subtitle = filter.tipe === 'dewan_guru'
       ? `Unit / Homebase: ${targetName}`
-      : `Tipe: ${tipeText}\n${filter.tipe === 'guru' ? 'Guru' : 'Kelas/Kamar'}: ${targetName}`;
+      : `Tipe: ${tipeText}\n${filter.tipe === 'guru' ? 'Guru' : 'Kelas/Kamar'}: ${targetName}${schedLabel}`;
     const period = getPeriodText();
     const safePeriod = modeRentang
       ? `${filter.tanggal_dari}_sd_${filter.tanggal_sampai}`
       : `${months[parseInt(filter.bulan) - 1]}_${filter.tahun}`;
-    const filename = `Rekap_${tipeText.replace(/[^a-zA-Z0-9]/g, '')}_${safePeriod}`;
+    const safeSub = subFilter ? `_${subFilter.replace(/[^a-zA-Z0-9]/g, '')}` : '';
+    const filename = `Rekap_${tipeText.replace(/[^a-zA-Z0-9]/g, '')}${safeSub}_${safePeriod}`;
 
     const tableColumn = filter.tipe === 'dewan_guru'
       ? ["No", "Nama Lengkap", "NIP", "Unit / Homebase", "No HP / WA", "Hadir", "Izin", "Sakit", "Alpha", "% Kehadiran"]
@@ -902,8 +912,17 @@ export default function RekapitulasiPage() {
     const isGuru = filter.tipe === 'guru' || filter.tipe === 'dewan_guru';
     const tipeLabel = filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan Asrama' : filter.tipe === 'dewan_guru' ? 'Dewan Guru YPMA' : 'Guru / Pengajar';
 
+    let detailSchedLabel = '';
+    if (filter.tipe === 'guru') {
+      if (subFilter === 'quran') detailSchedLabel = " (Qur'an)";
+      else if (subFilter === 'madin') detailSchedLabel = ' (Madin)';
+      else if (subFilter === 'kegiatan') detailSchedLabel = ' (Kegiatan)';
+    } else if (subFilter) {
+      detailSchedLabel = ` (${subFilter})`;
+    }
+
     const title = 'RINCIAN KEHADIRAN INDIVIDUAL';
-    const subtitle = `Nama: ${item.nama}\n${isGuru ? 'NIP' : 'NIS'}: ${item.identifier || '-'}\nKategori: ${tipeLabel}${detailModal.activeStatus !== 'semua' ? `\nFilter Status: ${detailModal.activeStatus}` : ''}`;
+    const subtitle = `Nama: ${item.nama}\n${isGuru ? 'NIP' : 'NIS'}: ${item.identifier || '-'}\nKategori: ${tipeLabel}${detailSchedLabel}${detailModal.activeStatus !== 'semua' ? `\nFilter Status: ${detailModal.activeStatus}` : ''}`;
     const period = getPeriodText();
     const safeNama = (item.nama || 'Individu').replace(/[^a-zA-Z0-9]/g, '_');
     const safePeriod = modeRentang
@@ -1061,7 +1080,7 @@ export default function RekapitulasiPage() {
             </select>
           </div>
 
-          {/* Kolom 4: Sub-filter Mapel / Majlis / Kegiatan — hanya tampil jika relevan, selalu di ujung kanan */}
+          {/* Kolom 4: Sub-filter Mapel / Majlis / Kegiatan / Jenis Jadwal Guru — selalu di ujung kanan */}
           <div>
             {['madin', 'quran', 'kegiatan'].includes(filter.tipe) ? (
               <>
@@ -1072,7 +1091,7 @@ export default function RekapitulasiPage() {
                   value={subFilter}
                   onChange={e => setSubFilter(e.target.value)}
                   disabled={loadingSubFilter}
-                  className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50 focus:ring-2 focus:ring-purple-500 transition-all"
+                  className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50 focus:ring-2 focus:ring-purple-500 transition-all cursor-pointer"
                 >
                   <option value="">
                     {loadingSubFilter ? 'Memuat...' : filter.tipe === 'quran' ? 'Semua Majlis' : filter.tipe === 'madin' ? 'Semua Mapel' : 'Semua Kegiatan'}
@@ -1082,8 +1101,24 @@ export default function RekapitulasiPage() {
                   ))}
                 </select>
               </>
+            ) : filter.tipe === 'guru' ? (
+              <>
+                <label className="block text-xs font-bold text-gray-500 mb-1">
+                  Pilih Jenis Jadwal
+                </label>
+                <select
+                  value={subFilter}
+                  onChange={e => setSubFilter(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 transition-all cursor-pointer"
+                >
+                  <option value="">Semua Jenis Jadwal</option>
+                  <option value="quran">Jadwal Qur&apos;an</option>
+                  <option value="madin">Jadwal Madin</option>
+                  <option value="kegiatan">Jadwal Kegiatan</option>
+                </select>
+              </>
             ) : (
-              /* Kolom kosong untuk tipe Guru/Dewan Guru — tetap mengisi grid agar Cari Nama tidak bergeser */
+              /* Kolom kosong untuk tipe Dewan Guru — tetap mengisi grid agar Cari Nama tidak bergeser */
               <div className="hidden md:block" aria-hidden="true" />
             )}
           </div>
@@ -1210,6 +1245,9 @@ export default function RekapitulasiPage() {
                 <span className="font-medium">
                   Menampilkan <strong className="text-gray-800 dark:text-gray-200">{filteredData.length}</strong> dari <strong className="text-gray-800 dark:text-gray-200">{data.length}</strong> data
                   {searchNama && <span> untuk kata kunci &quot;<strong className="text-purple-600 dark:text-purple-400">{searchNama}</strong>&quot;</span>}
+                  {filter.tipe === 'guru' && subFilter && (
+                    <span className="text-purple-600 dark:text-purple-400 font-bold"> ({subFilter === 'quran' ? "Jadwal Qur'an" : subFilter === 'madin' ? "Jadwal Madin" : "Jadwal Kegiatan"})</span>
+                  )}
                 </span>
                 {viewMode !== 'grafik' && (
                   <span className="text-[11px] text-gray-400 font-medium hidden sm:inline">
@@ -2527,7 +2565,7 @@ export default function RekapitulasiPage() {
                       {detailModal.item.nama}
                     </h3>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 shrink-0 mt-0.5">
-                      {filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan' : filter.tipe === 'dewan_guru' ? 'Dewan Guru' : 'Guru'}
+                      {filter.tipe === 'madin' ? 'Madin' : filter.tipe === 'quran' ? "Qur'an" : filter.tipe === 'kegiatan' ? 'Kegiatan' : filter.tipe === 'dewan_guru' ? 'Dewan Guru' : subFilter ? (subFilter === 'quran' ? "Guru (Qur'an)" : subFilter === 'madin' ? 'Guru (Madin)' : subFilter === 'kegiatan' ? 'Guru (Kegiatan)' : `Guru (${subFilter})`) : 'Guru'}
                     </span>
                   </div>
                   <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">

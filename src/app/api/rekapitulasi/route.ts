@@ -369,15 +369,26 @@ export async function GET(request: Request) {
 
       const { cond: joinDateCond, params: joinDateParams } = makeDateCond('a.tanggal');
 
+      // Filter sub_filter jenis jadwal guru: madin, quran, kegiatan
+      let subFilterJoinCond = '';
+      const sf = (sub_filter || '').toLowerCase().trim();
+      if (sf === 'madin' || sf === 'jadwal madin') {
+        subFilterJoinCond = ' AND a.jadwal_madin_id IS NOT NULL';
+      } else if (sf === 'quran' || sf === "qur'an" || sf === 'jadwal quran' || sf === "jadwal qur'an" || sf === 'jadwal qur an') {
+        subFilterJoinCond = ' AND a.jadwal_quran_id IS NOT NULL';
+      } else if (sf === 'kegiatan' || sf === 'jadwal kegiatan') {
+        subFilterJoinCond = ' AND a.kegiatan_id IS NOT NULL';
+      }
+
       if (target_id && target_id !== 'all') {
         query = `
           SELECT g.guru_id as id, g.nip as identifier, g.nama, g.foto, g.alamat, g.no_hp, g.no_hp as nama_wali,
             SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
             SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
             SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
+            SUM(CASE WHEN a.absensi_id IS NOT NULL AND (LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL) THEN 1 ELSE 0 END) as alpha
           FROM guru g
-          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${joinDateCond}
+          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${joinDateCond}${subFilterJoinCond}
           WHERE g.guru_id = ?
           GROUP BY g.guru_id, g.nip, g.nama, g.foto, g.alamat, g.no_hp
           ORDER BY g.nama ASC
@@ -389,9 +400,9 @@ export async function GET(request: Request) {
             SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
             SUM(CASE WHEN LOWER(a.status) = 'izin' THEN 1 ELSE 0 END) as izin,
             SUM(CASE WHEN LOWER(a.status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-            SUM(CASE WHEN LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL THEN 1 ELSE 0 END) as alpha
+            SUM(CASE WHEN a.absensi_id IS NOT NULL AND (LOWER(a.status) IN ('alpha', 'alpa') OR a.status = '' OR a.status IS NULL) THEN 1 ELSE 0 END) as alpha
           FROM guru g
-          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${joinDateCond}
+          LEFT JOIN absensi_guru a ON g.guru_id = a.guru_id AND ${joinDateCond}${subFilterJoinCond}
           GROUP BY g.guru_id, g.nip, g.nama, g.foto, g.alamat, g.no_hp
           ORDER BY g.nama ASC
         `;
@@ -405,6 +416,9 @@ export async function GET(request: Request) {
       if (target_id && target_id !== 'all') {
         trendWhere = 'AND a.guru_id = ?';
         trendParams.push(target_id);
+      }
+      if (subFilterJoinCond) {
+        trendWhere += subFilterJoinCond;
       }
 
       trendQuery = `

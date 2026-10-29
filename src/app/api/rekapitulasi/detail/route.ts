@@ -622,6 +622,16 @@ export async function GET(request: Request) {
         [guru_id, guru_id, guru_id]
       ).catch(() => [[] as RowDataPacket[]]);
 
+      const sf = (sub_filter || '').toLowerCase().trim();
+      let subFilterWhere = '';
+      if (sf === 'madin' || sf === 'jadwal madin') {
+        subFilterWhere = ' AND a.jadwal_madin_id IS NOT NULL';
+      } else if (sf === 'quran' || sf === "qur'an" || sf === 'jadwal quran' || sf === "jadwal qur'an" || sf === 'jadwal qur an') {
+        subFilterWhere = ' AND a.jadwal_quran_id IS NOT NULL';
+      } else if (sf === 'kegiatan' || sf === 'jadwal kegiatan') {
+        subFilterWhere = ' AND a.kegiatan_id IS NOT NULL';
+      }
+
       const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const dateParams: any[] = isRentang ? [guru_id, tanggal_dari, tanggal_sampai] : [guru_id, bulan, tahun];
       const [result] = await pool.execute<RowDataPacket[]>(
@@ -647,7 +657,7 @@ export async function GET(request: Request) {
          LEFT JOIN jadwal_kegiatan jk ON a.kegiatan_id = jk.kegiatan_id
          LEFT JOIN kamar k ON jk.kamar_id = k.kamar_id
          LEFT JOIN guru g ON a.guru_id = g.guru_id
-         WHERE a.guru_id = ? AND ${dateWhere}
+         WHERE a.guru_id = ? AND ${dateWhere}${subFilterWhere}
          ORDER BY a.tanggal DESC, a.absensi_id DESC`,
         dateParams
       );
@@ -671,6 +681,16 @@ export async function GET(request: Request) {
         }
         return r;
       });
+
+      if (sf) {
+        rows = rows.filter((r: any) => {
+          const t = (r.tipe_label || '').toLowerCase();
+          if (sf === 'madin' || sf === 'jadwal madin') return t === 'madin';
+          if (sf === 'quran' || sf === "qur'an" || sf === 'jadwal quran' || sf === "jadwal qur'an" || sf === 'jadwal qur an') return t === 'quran';
+          if (sf === 'kegiatan' || sf === 'jadwal kegiatan') return t === 'kegiatan';
+          return true;
+        });
+      }
     } else if (effectiveTipe === "dewan_guru" && guru_id) {
       const dateWhere = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const dateParams: any[] = isRentang ? [guru_id, tanggal_dari, tanggal_sampai] : [guru_id, bulan, tahun];
