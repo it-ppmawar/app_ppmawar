@@ -1193,7 +1193,7 @@ export default function TabRekapGuru({
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="block text-[11px] text-gray-500 dark:text-gray-300 mb-1 font-semibold">Bulan</label>
                       <select
