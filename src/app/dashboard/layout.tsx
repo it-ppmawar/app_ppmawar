@@ -1280,7 +1280,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Navigasi Bawah (Mobile App Style) */}
       <nav className="fixed bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_15px_rgba(0,0,0,0.3)] z-50 rounded-t-3xl pb-safe transition-colors duration-300">
-        <div className="flex justify-around items-center py-1 px-3">
+        <div className="flex justify-around items-center py-2 px-3">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isAbsen = item.name === 'Absen';
@@ -1291,36 +1291,51 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="flex flex-col items-center -mt-5 group transition-all duration-300 relative focus:outline-none"
+                  className="flex flex-col items-center group transition-all duration-300 relative focus:outline-none"
                 >
                   <div className="relative">
-                    {/* Garis luar yang berdetak (Radar Ping & Outline Pulse) jika ada jadwal / input absen yang aktif */}
+                    {/* Garis luar yang berdetak jika ada jadwal aktif */}
                     {hasActiveAbsen && (
                       <>
-                        <span className="absolute -inset-1.5 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
-                        <span className="absolute -inset-1 rounded-full border-2 border-emerald-400 dark:border-emerald-300 animate-pulse pointer-events-none" />
+                        <span className="absolute -inset-2 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
+                        <span className="absolute -inset-1.5 rounded-full border-2 border-emerald-400 dark:border-emerald-300 animate-pulse pointer-events-none" />
                       </>
                     )}
 
-                    {/* Tombol Lingkaran Besar Melewati Ukuran Bottombar */}
+                    {/* Lingkaran Absen — sejajar ikon lain, teks di dalam, warna mati jika tidak ada jadwal */}
                     <div
-                      className={`w-[52px] h-[52px] rounded-full flex items-center justify-center transition-all duration-300 ring-4 ring-white dark:ring-gray-800 ${
-                        isActive
-                          ? 'bg-gradient-to-tr from-emerald-600 via-green-600 to-teal-500 text-white shadow-lg shadow-emerald-600/40 scale-105'
-                          : 'bg-gradient-to-tr from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-700/30 group-hover:scale-105 active:scale-95'
+                      className={`w-[54px] h-[54px] rounded-full flex flex-col items-center justify-center gap-0.5 transition-all duration-300 ring-2 shadow-md group-hover:scale-105 active:scale-95 ${
+                        hasActiveAbsen
+                          ? isActive
+                            ? 'ring-emerald-300 dark:ring-emerald-500 bg-gradient-to-tr from-emerald-600 via-green-600 to-teal-500 shadow-emerald-600/40'
+                            : 'ring-emerald-300/60 dark:ring-emerald-700 bg-gradient-to-tr from-emerald-500 to-teal-500 shadow-emerald-700/30'
+                          : isActive
+                            ? 'ring-green-200 dark:ring-green-800 bg-green-100 dark:bg-green-900/50'
+                            : 'ring-gray-200 dark:ring-gray-600 bg-gray-100 dark:bg-gray-700'
                       }`}
                     >
-                      <Icon size={24} strokeWidth={2.5} className="text-white drop-shadow-sm" />
+                      <Icon
+                        size={20}
+                        strokeWidth={2.5}
+                        className={
+                          hasActiveAbsen
+                            ? 'text-white drop-shadow-sm'
+                            : isActive
+                              ? 'text-green-700 dark:text-green-400'
+                              : 'text-gray-500 dark:text-gray-400'
+                        }
+                      />
+                      <span className={`text-[8px] font-bold leading-none ${
+                        hasActiveAbsen
+                          ? 'text-white'
+                          : isActive
+                            ? 'text-green-700 dark:text-green-400'
+                            : 'text-gray-500 dark:text-gray-400'
+                      }`}>
+                        {item.name}
+                      </span>
                     </div>
                   </div>
-
-                  <span
-                    className={`text-[10px] font-bold mt-1 transition-colors ${
-                      isActive ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'
-                    }`}
-                  >
-                    {item.name}
-                  </span>
                 </Link>
               );
             }
