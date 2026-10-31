@@ -216,9 +216,11 @@ export default function RekapitulasiPage() {
           setIsPengasuh(userIsPengasuh);
 
           const isFullRole = ['admin', 'staff'].includes(userRole);
+          // Wali murid & wali alumni: selalu tampilkan semua 3 tipe absensi santri
+          const isWaliRole = userRole === 'wali_murid' || userRole === 'wali_alumni';
           let allowedTipes = ['madin', 'quran', 'kegiatan'];
 
-          if (!isFullRole && jadwalData.success && Array.isArray(jadwalData.data)) {
+          if (!isFullRole && !isWaliRole && jadwalData.success && Array.isArray(jadwalData.data)) {
             const activeTipes = (['madin', 'quran', 'kegiatan'] as const).filter(t =>
               jadwalData.data.some((j: any) => j.tipe === t)
             );

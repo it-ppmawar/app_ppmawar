@@ -46,7 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Beranda', href: '/dashboard', icon: Home },
     { name: 'Jadwal', href: '/dashboard/jadwal', icon: CalendarDays },
     ...(user?.role !== 'wali_murid' && user?.role !== 'wali_alumni' && user?.role !== 'tamu' ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
-    ...(user?.role !== 'tamu' ? [{ name: 'Notifikasi', href: '/dashboard/notifikasi', icon: Bell }] : []),
+    ...(user?.role !== 'tamu' && user?.role !== 'wali_murid' && user?.role !== 'wali_alumni' ? [{ name: 'Notifikasi', href: '/dashboard/notifikasi', icon: Bell }] : []),
     { name: 'Profil', href: '/dashboard/profil', icon: User },
   ];
 

@@ -347,7 +347,8 @@ export default function JadwalPage() {
   }, []);
 
   // Roles yang selalu melihat semua 3 tab jadwal (terlepas dari data)
-  const isFullTabRole = ['admin', 'staff'].includes(role);
+  // Wali murid & wali alumni: selalu tampilkan semua 3 tab (quran, madin, kegiatan asrama)
+  const isFullTabRole = ['admin', 'staff', 'wali_murid', 'wali_alumni'].includes(role);
 
   const fetchData = async () => {
     setLoading(true);
