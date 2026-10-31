@@ -1278,7 +1278,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {children}
       </main>
 
-      {/* Navigasi Bawah Modern dengan Celah Transparan Berkontur Heksagonal Presisi */}
+      {/* Navigasi Bawah Modern dengan Celah Melengkung Meliuk Anggun Konsentris & Tombol Lingkaran */}
       {(() => {
         const absenIndex = navItems.findIndex((item) => item.name === 'Absen');
         const hasAbsenItem = absenIndex !== -1;
@@ -1289,9 +1289,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         if (hasAbsenItem && absenItem) {
           return (
             <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none pb-safe transition-colors duration-300">
-              <div className="w-full flex items-center justify-between px-0.5 sm:px-2">
-                {/* Bilah Kiri dengan Ujung Berkontur Mengikuti Sisi Heksagonal */}
-                <div className="pointer-events-auto flex-1 min-w-0 flex items-center h-[60px] bg-white dark:bg-gray-800 border-t border-b border-l border-gray-100 dark:border-gray-700/80 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.3)] rounded-tl-2xl rounded-bl-xl pl-1 sm:pl-2">
+              <div className="w-full flex items-center justify-between px-1 sm:px-2">
+                {/* Bilah Kiri dengan Cekungan Melingkar Konsentris di Ujung Kanan */}
+                <div className="pointer-events-auto flex-1 min-w-0 flex items-center h-[60px] bg-white dark:bg-gray-800 border-t border-b border-l border-gray-100 dark:border-gray-700/80 shadow-[0_-4px_14px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_14px_rgba(0,0,0,0.3)] rounded-tl-2xl rounded-bl-xl pl-1 sm:pl-2">
                   <div className="flex-1 flex justify-around items-center min-w-0">
                     {leftNavItems.map((item) => {
                       const Icon = item.icon;
@@ -1300,7 +1300,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <Link
                           key={item.name}
                           href={item.href}
-                          className="flex-1 min-w-0 max-w-[64px] flex flex-col items-center justify-center gap-0.5 group transition-all duration-300 py-1"
+                          className="flex-1 min-w-0 max-w-[62px] flex flex-col items-center justify-center gap-0.5 group transition-all duration-300 py-1"
                         >
                           <div className={`p-1 sm:p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 shadow-sm scale-105' : 'text-gray-400 dark:text-gray-500 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'}`}>
                             <Icon size={21} strokeWidth={isActive ? 2.5 : 2} />
@@ -1312,17 +1312,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       );
                     })}
                   </div>
-                  {/* Ujung Lekukan Notch Berkontur Heksagonal (Sisi Kanan Bilah Kiri) */}
-                  <svg viewBox="0 0 8 60" className="h-[60px] w-[8px] shrink-0 fill-white dark:fill-gray-800 -mr-[0.5px] overflow-visible">
+                  {/* Ujung Cekungan Melingkar Meliuk Anggun (Radius 36px untuk Lingkaran 62px -> Celah Seragam 5px) */}
+                  <svg viewBox="0 0 18 60" className="h-[60px] w-[18px] shrink-0 fill-white dark:fill-gray-800 -mr-[0.5px] overflow-visible">
                     <path
-                      d="M 0,0 L 8,0 Q 3,8 1,28 Q 0,30 1,32 Q 3,52 8,60 L 0,60 Z"
-                      className="stroke-gray-100 dark:stroke-gray-700 stroke-[1px]"
+                      d="M 0,0 L 18,0 A 36 36 0 0 0 18,60 L 0,60 Z"
+                      className="stroke-gray-100 dark:stroke-gray-700/80 stroke-[1px]"
                     />
                   </svg>
                 </div>
 
-                {/* Celah Transparan Sempit & Presisi (Konten Tembus Pandang Saat Scroll) & Wadah Tombol Heksagonal */}
-                <div className="pointer-events-auto shrink-0 px-1 sm:px-1.5 flex items-center justify-center">
+                {/* Wadah Tombol Lingkaran Absen — Tepat di Tengah Cekungan Konsentris (Celah 5px Meliuk Sempurna) */}
+                <div className="pointer-events-auto shrink-0 flex items-center justify-center -mx-[12px] z-10">
                   {(() => {
                     const Icon = absenItem.icon;
                     const isActive = pathname.startsWith('/dashboard/absen');
@@ -1332,82 +1332,56 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         className="relative flex flex-col items-center group transition-transform duration-300 active:scale-95 hover:scale-105 focus:outline-none cursor-pointer"
                         aria-label="Menu Absen"
                       >
-                        {/* Wadah Heksagonal Vertikal (Tinggi 68px, Meluber 4px di atas & 4px di bawah bar 60px) */}
-                        <div className="relative w-[58px] h-[68px] flex items-center justify-center filter drop-shadow-[0_4px_10px_rgba(0,0,0,0.18)]">
-                          {/* Efek Radar Ping jika Ada Jadwal Aktif */}
+                        {/* Lingkaran Absen (Diameter 62px, Meluber 1px di atas & 1px di bawah bar 60px) */}
+                        <div
+                          className={`relative w-[62px] h-[62px] rounded-full flex flex-col items-center justify-center gap-0.5 transition-all duration-300 shadow-lg ${
+                            hasActiveAbsen
+                              ? 'bg-gradient-to-tr from-emerald-600 via-green-600 to-teal-500 shadow-emerald-600/40 ring-2 ring-emerald-300/90'
+                              : isActive
+                              ? 'bg-green-100 dark:bg-green-950/80 text-green-700 dark:text-green-400 ring-2 ring-emerald-500/80 shadow-emerald-500/20'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 shadow-sm'
+                          }`}
+                        >
+                          {/* Efek Radar Ping jika Ada Jadwal Aktif Memancar ke Celah Melingkar */}
                           {hasActiveAbsen && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <span className="w-12 h-12 rounded-full border-2 border-emerald-400 animate-ping opacity-75" />
-                            </div>
+                            <span className="absolute -inset-1 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
                           )}
 
-                          <svg
-                            viewBox="0 0 58 68"
-                            className={`w-full h-full overflow-visible transition-all duration-300 ${
+                          <Icon
+                            size={21}
+                            strokeWidth={2.5}
+                            className={
                               hasActiveAbsen
-                                ? 'drop-shadow-[0_0_12px_rgba(16,185,129,0.6)] animate-pulse'
-                                : ''
+                                ? 'text-white drop-shadow-sm'
+                                : isActive
+                                ? 'text-green-700 dark:text-green-400'
+                                : 'text-gray-500 dark:text-gray-400'
+                            }
+                          />
+                          <span
+                            className={`text-[9px] font-extrabold leading-none tracking-tight ${
+                              hasActiveAbsen
+                                ? 'text-white drop-shadow-sm'
+                                : isActive
+                                ? 'text-green-700 dark:text-green-400'
+                                : 'text-gray-500 dark:text-gray-400'
                             }`}
                           >
-                            <defs>
-                              <linearGradient id="absenHexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#059669" />
-                                <stop offset="50%" stopColor="#10b981" />
-                                <stop offset="100%" stopColor="#14b8a6" />
-                              </linearGradient>
-                            </defs>
-                            <polygon
-                              points="29,2 56,17 56,49 29,64 2,49 2,17"
-                              strokeLinejoin="round"
-                              strokeWidth="2.5"
-                              className={
-                                hasActiveAbsen
-                                  ? 'fill-[url(#absenHexGrad)] stroke-emerald-300'
-                                  : isActive
-                                  ? 'fill-green-100 dark:fill-green-950/80 stroke-emerald-500'
-                                  : 'fill-gray-100 dark:fill-gray-700 stroke-gray-300 dark:stroke-gray-600'
-                              }
-                            />
-                          </svg>
-
-                          {/* Konten Ikon & Teks di Dalam Heksagonal */}
-                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">
-                            <Icon
-                              size={19}
-                              strokeWidth={2.5}
-                              className={
-                                hasActiveAbsen
-                                  ? 'text-white drop-shadow-sm'
-                                  : isActive
-                                  ? 'text-green-700 dark:text-green-400'
-                                  : 'text-gray-500 dark:text-gray-400'
-                              }
-                            />
-                            <span
-                              className={`text-[8.5px] font-bold leading-none tracking-tight ${
-                                hasActiveAbsen
-                                  ? 'text-white drop-shadow-sm'
-                                  : isActive
-                                  ? 'text-green-700 dark:text-green-400'
-                                  : 'text-gray-500 dark:text-gray-400'
-                              }`}
-                            >
-                              {absenItem.name}
-                            </span>
-                          </div>
+                            {absenItem.name}
+                          </span>
                         </div>
                       </Link>
                     );
                   })()}
                 </div>
 
-                {/* Bilah Kanan dengan Ujung Berkontur Mengikuti Sisi Heksagonal */}
-                <div className="pointer-events-auto flex-1 min-w-0 flex items-center h-[60px] bg-white dark:bg-gray-800 border-t border-b border-r border-gray-100 dark:border-gray-700/80 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.3)] rounded-tr-2xl rounded-br-xl pr-1 sm:pr-2">
-                  {/* Ujung Lekukan Notch Berkontur Heksagonal (Sisi Kiri Bilah Kanan) */}
-                  <svg viewBox="0 0 8 60" className="h-[60px] w-[8px] shrink-0 fill-white dark:fill-gray-800 -ml-[0.5px] overflow-visible">
+                {/* Bilah Kanan dengan Cekungan Melingkar Konsentris di Ujung Kiri */}
+                <div className="pointer-events-auto flex-1 min-w-0 flex items-center h-[60px] bg-white dark:bg-gray-800 border-t border-b border-r border-gray-100 dark:border-gray-700/80 shadow-[0_-4px_14px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_14px_rgba(0,0,0,0.3)] rounded-tr-2xl rounded-br-xl pr-1 sm:pr-2">
+                  {/* Ujung Cekungan Melingkar Meliuk Anggun (Sisi Kiri Bilah Kanan) */}
+                  <svg viewBox="0 0 18 60" className="h-[60px] w-[18px] shrink-0 fill-white dark:fill-gray-800 -ml-[0.5px] overflow-visible">
                     <path
-                      d="M 8,0 L 0,0 Q 5,8 7,28 Q 8,30 7,32 Q 5,52 0,60 L 8,60 Z"
-                      className="stroke-gray-100 dark:stroke-gray-700 stroke-[1px]"
+                      d="M 0,0 A 36 36 0 0 1 0,60 L 18,60 L 18,0 Z"
+                      className="stroke-gray-100 dark:stroke-gray-700/80 stroke-[1px]"
                     />
                   </svg>
                   <div className="flex-1 flex justify-around items-center min-w-0">
@@ -1418,7 +1392,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <Link
                           key={item.name}
                           href={item.href}
-                          className="flex-1 min-w-0 max-w-[64px] flex flex-col items-center justify-center gap-0.5 group transition-all duration-300 py-1"
+                          className="flex-1 min-w-0 max-w-[62px] flex flex-col items-center justify-center gap-0.5 group transition-all duration-300 py-1"
                         >
                           <div className={`p-1 sm:p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 shadow-sm scale-105' : 'text-gray-400 dark:text-gray-500 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'}`}>
                             <Icon size={21} strokeWidth={isActive ? 2.5 : 2} />
@@ -1446,7 +1420,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="flex-1 min-w-0 max-w-[64px] flex flex-col items-center justify-center gap-0.5 group transition-all duration-300 py-1"
+                    className="flex-1 min-w-0 max-w-[62px] flex flex-col items-center justify-center gap-0.5 group transition-all duration-300 py-1"
                   >
                     <div className={`p-1 sm:p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 shadow-sm scale-105' : 'text-gray-400 dark:text-gray-500 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'}`}>
                       <Icon size={21} strokeWidth={isActive ? 2.5 : 2} />
