@@ -1170,7 +1170,7 @@ export default function TabRekapGuru({
 
                 {/* Conditional Inputs */}
                 {rekapModeRentang ? (
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="block text-[11px] text-gray-500 dark:text-gray-300 mb-1 font-semibold">Dari Tanggal</label>
                       <input
@@ -1623,24 +1623,24 @@ export default function TabRekapGuru({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="flex flex-col gap-2 pt-1">
                       {kepalaMadinData?.reportUrl ? (
                         <a
                           href={kepalaMadinData.reportUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+                          className="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors flex items-center justify-center gap-2 shadow-2xs"
                         >
-                          <FileText size={13} className="text-amber-500" />
+                          <FileText size={14} className="text-amber-500 shrink-0" />
                           <span>Lihat Laporan</span>
                         </a>
                       ) : (
                         <button
                           type="button"
                           disabled
-                          className="w-full py-2 rounded-xl text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-400 flex items-center justify-center gap-1 opacity-60"
+                          className="w-full py-2.5 rounded-xl text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-400 flex items-center justify-center gap-2 opacity-60"
                         >
-                          <FileText size={13} />
+                          <FileText size={14} className="shrink-0" />
                           <span>Memuat...</span>
                         </button>
                       )}
@@ -1651,17 +1651,17 @@ export default function TabRekapGuru({
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => setSentKepalaMadinWa(true)}
-                          className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs ${
+                          className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs ${
                             sentKepalaMadinWa
                               ? 'bg-gray-100 dark:bg-gray-700 text-gray-500'
                               : 'bg-green-600 hover:bg-green-700 text-white'
                           }`}
                         >
-                          <MessageCircle size={14} />
-                          <span>{sentKepalaMadinWa ? 'Terkirim ✓' : 'WA Kepala'}</span>
+                          <MessageCircle size={15} className="shrink-0" />
+                          <span>{sentKepalaMadinWa ? 'Terkirim ✓' : 'WA Kepala Madin'}</span>
                         </a>
                       ) : (
-                        <div className="w-full py-2 rounded-xl text-xs font-bold text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 border border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center italic">
+                        <div className="w-full py-2.5 rounded-xl text-xs font-bold text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 border border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center italic">
                           <span>No WA Kosong</span>
                         </div>
                       )}
