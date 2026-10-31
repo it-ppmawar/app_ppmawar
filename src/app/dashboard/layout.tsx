@@ -1296,16 +1296,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 >
                   {/* Wadah Heksagonal Vertikal (Tinggi 66px, Sedikit Meluber dari Bar 62px) */}
                   <div className="relative w-[58px] h-[66px] flex items-center justify-center filter drop-shadow-[0_3px_8px_rgba(0,0,0,0.15)]">
-                    {/* Efek Radar Ping jika Ada Jadwal Aktif */}
+                    {/* 1. Efek Radar Ping Heksagonal (Radar Memancar ke Luar) */}
                     {hasActiveAbsen && (
-                      <span className="absolute -inset-1 rounded-2xl border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none animate-ping opacity-75 z-0">
+                        <svg viewBox="0 0 58 66" className="w-full h-full overflow-visible">
+                          <polygon
+                            points="29,2 56,17 56,49 29,64 2,49 2,17"
+                            strokeLinejoin="round"
+                            strokeWidth="2.5"
+                            className="fill-none stroke-emerald-400"
+                          />
+                        </svg>
+                      </div>
                     )}
 
+                    {/* 2. Efek Outline Heksagonal Berdetak (Pulse Membingkai Tombol) */}
+                    {hasActiveAbsen && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none scale-110 origin-center animate-pulse z-0">
+                        <svg viewBox="0 0 58 66" className="w-full h-full overflow-visible">
+                          <polygon
+                            points="29,2 56,17 56,49 29,64 2,49 2,17"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            className="fill-none stroke-emerald-300 dark:stroke-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+                          />
+                        </svg>
+                      </div>
+                    )}
+
+                    {/* Tombol Utama Heksagonal */}
                     <svg
                       viewBox="0 0 58 66"
-                      className={`w-full h-full overflow-visible transition-all duration-300 ${
+                      className={`w-full h-full overflow-visible transition-all duration-300 relative z-10 ${
                         hasActiveAbsen
-                          ? 'drop-shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse'
+                          ? 'drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]'
                           : ''
                       }`}
                     >
@@ -1331,7 +1355,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </svg>
 
                     {/* Konten Ikon & Teks di Dalam Heksagonal */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none z-20">
                       <Icon
                         size={20}
                         strokeWidth={2.5}
