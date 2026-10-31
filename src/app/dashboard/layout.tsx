@@ -1278,82 +1278,159 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {children}
       </main>
 
-      {/* Navigasi Bawah (Mobile App Style) */}
-      <nav className="fixed bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_15px_rgba(0,0,0,0.3)] z-50 rounded-t-3xl pb-safe transition-colors duration-300">
-        <div className="flex justify-around items-center h-[64px] px-3">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isAbsen = item.name === 'Absen';
-            const isActive = isAbsen ? pathname.startsWith('/dashboard/absen') : pathname === item.href;
+      {/* Navigasi Bawah Modern dengan Celah Transparan Nyata & Tombol Heksagonal */}
+      {(() => {
+        const absenIndex = navItems.findIndex((item) => item.name === 'Absen');
+        const hasAbsenItem = absenIndex !== -1;
+        const leftNavItems = hasAbsenItem ? navItems.slice(0, absenIndex) : navItems;
+        const absenItem = hasAbsenItem ? navItems[absenIndex] : null;
+        const rightNavItems = hasAbsenItem ? navItems.slice(absenIndex + 1) : [];
 
-            if (isAbsen) {
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="flex flex-col items-center group transition-all duration-300 relative focus:outline-none shrink-0 mx-1.5"
-                >
-                  {/* Parit Celah Pemisah (Cutout Gap) — ukuran 64px sejajar ujung atas & bawah bottombar */}
-                  <div className="relative w-[64px] h-[64px] rounded-full p-[4px] bg-gray-50 dark:bg-gray-900 shadow-inner flex items-center justify-center">
-                    {/* Garis luar yang berdetak jika ada jadwal aktif */}
-                    {hasActiveAbsen && (
-                      <>
-                        <span className="absolute -inset-1 rounded-full border-2 border-emerald-400 animate-ping opacity-75 pointer-events-none" />
-                        <span className="absolute -inset-0.5 rounded-full border-2 border-emerald-400 dark:border-emerald-300 animate-pulse pointer-events-none" />
-                      </>
-                    )}
-
-                    {/* Lingkaran Tombol Absen — Teks & Ikon di dalam, warna dinamis sesuai jadwal aktif */}
-                    <div
-                      className={`w-full h-full rounded-full flex flex-col items-center justify-center gap-0.5 transition-all duration-300 ring-1 shadow-sm group-hover:scale-105 active:scale-95 ${
-                        hasActiveAbsen
-                          ? isActive
-                            ? 'ring-emerald-300 dark:ring-emerald-500 bg-gradient-to-tr from-emerald-600 via-green-600 to-teal-500 shadow-emerald-600/40'
-                            : 'ring-emerald-300/60 dark:ring-emerald-700 bg-gradient-to-tr from-emerald-500 to-teal-500 shadow-emerald-700/30'
-                          : isActive
-                            ? 'ring-green-200 dark:ring-green-800 bg-green-100 dark:bg-green-900/50'
-                            : 'ring-gray-200 dark:ring-gray-600 bg-gray-100 dark:bg-gray-700'
-                      }`}
-                    >
-                      <Icon
-                        size={21}
-                        strokeWidth={2.5}
-                        className={
-                          hasActiveAbsen
-                            ? 'text-white drop-shadow-sm'
-                            : isActive
-                              ? 'text-green-700 dark:text-green-400'
-                              : 'text-gray-500 dark:text-gray-400'
-                        }
-                      />
-                      <span className={`text-[9px] font-bold leading-none ${
-                        hasActiveAbsen
-                          ? 'text-white'
-                          : isActive
-                            ? 'text-green-700 dark:text-green-400'
-                            : 'text-gray-500 dark:text-gray-400'
-                      }`}>
-                        {item.name}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              );
-            }
-
-            return (
-              <Link key={item.name} href={item.href} className="flex flex-col items-center gap-0.5 w-16 group transition-all duration-300">
-                <div className={`p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 shadow-sm scale-105' : 'text-gray-400 dark:text-gray-500 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'}`}>
-                  <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+        if (hasAbsenItem && absenItem) {
+          return (
+            <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none pb-safe transition-colors duration-300">
+              <div className="w-full flex items-center justify-between">
+                {/* Bilah Kiri */}
+                <div className="pointer-events-auto flex-1 flex justify-around items-center h-[64px] bg-white dark:bg-gray-800 border-t border-r border-gray-100 dark:border-gray-700 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_15px_rgba(0,0,0,0.3)] rounded-tl-3xl rounded-tr-2xl px-1 sm:px-3">
+                  {leftNavItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link key={item.name} href={item.href} className="flex flex-col items-center gap-0.5 w-16 group transition-all duration-300">
+                        <div className={`p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 shadow-sm scale-105' : 'text-gray-400 dark:text-gray-500 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'}`}>
+                          <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                        </div>
+                        <span className={`text-[10px] font-medium transition-colors ${isActive ? 'text-green-700 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                          {item.name}
+                        </span>
+                      </Link>
+                    );
+                  })}
                 </div>
-                <span className={`text-[10px] font-medium transition-colors ${isActive ? 'text-green-700 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                  {item.name}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+
+                {/* Celah Transparan Nyata (Tembus Pandang Saat Scroll) & Wadah Tombol Heksagonal */}
+                <div className="pointer-events-auto shrink-0 px-2 sm:px-3 flex items-center justify-center">
+                  {(() => {
+                    const Icon = absenItem.icon;
+                    const isActive = pathname.startsWith('/dashboard/absen');
+                    return (
+                      <Link
+                        href={absenItem.href}
+                        className="relative flex flex-col items-center group transition-transform duration-300 active:scale-95 hover:scale-105 focus:outline-none cursor-pointer"
+                        aria-label="Menu Absen"
+                      >
+                        {/* Wadah Heksagonal Vertikal — Tinggi 72px (Meluber 4px ke atas & 4px ke bawah dari bottombar 64px) */}
+                        <div className="relative w-[66px] h-[72px] flex items-center justify-center filter drop-shadow-[0_4px_10px_rgba(0,0,0,0.18)]">
+                          {/* Efek Radar Ping jika Ada Jadwal Aktif */}
+                          {hasActiveAbsen && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <span className="w-14 h-14 rounded-full border-2 border-emerald-400 animate-ping opacity-75" />
+                            </div>
+                          )}
+
+                          <svg
+                            viewBox="0 0 66 72"
+                            className={`w-full h-full overflow-visible transition-all duration-300 ${
+                              hasActiveAbsen
+                                ? 'drop-shadow-[0_0_12px_rgba(16,185,129,0.6)] animate-pulse'
+                                : ''
+                            }`}
+                          >
+                            <defs>
+                              <linearGradient id="absenHexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#059669" />
+                                <stop offset="50%" stopColor="#10b981" />
+                                <stop offset="100%" stopColor="#14b8a6" />
+                              </linearGradient>
+                            </defs>
+                            <polygon
+                              points="33,2 64,19 64,53 33,70 2,53 2,19"
+                              strokeLinejoin="round"
+                              strokeWidth="2.5"
+                              className={
+                                hasActiveAbsen
+                                  ? 'fill-[url(#absenHexGrad)] stroke-emerald-300'
+                                  : isActive
+                                  ? 'fill-green-100 dark:fill-green-950/80 stroke-emerald-500'
+                                  : 'fill-gray-100 dark:fill-gray-700 stroke-gray-300 dark:stroke-gray-600'
+                              }
+                            />
+                          </svg>
+
+                          {/* Konten Ikon & Teks di Dalam Heksagonal */}
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none">
+                            <Icon
+                              size={20}
+                              strokeWidth={2.5}
+                              className={
+                                hasActiveAbsen
+                                  ? 'text-white drop-shadow-sm'
+                                  : isActive
+                                  ? 'text-green-700 dark:text-green-400'
+                                  : 'text-gray-500 dark:text-gray-400'
+                              }
+                            />
+                            <span
+                              className={`text-[9px] font-bold leading-none tracking-tight ${
+                                hasActiveAbsen
+                                  ? 'text-white drop-shadow-sm'
+                                  : isActive
+                                  ? 'text-green-700 dark:text-green-400'
+                                  : 'text-gray-500 dark:text-gray-400'
+                              }`}
+                            >
+                              {absenItem.name}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })()}
+                </div>
+
+                {/* Bilah Kanan */}
+                <div className="pointer-events-auto flex-1 flex justify-around items-center h-[64px] bg-white dark:bg-gray-800 border-t border-l border-gray-100 dark:border-gray-700 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_15px_rgba(0,0,0,0.3)] rounded-tr-3xl rounded-tl-2xl px-1 sm:px-3">
+                  {rightNavItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link key={item.name} href={item.href} className="flex flex-col items-center gap-0.5 w-16 group transition-all duration-300">
+                        <div className={`p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 shadow-sm scale-105' : 'text-gray-400 dark:text-gray-500 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'}`}>
+                          <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                        </div>
+                        <span className={`text-[10px] font-medium transition-colors ${isActive ? 'text-green-700 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                          {item.name}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </nav>
+          );
+        }
+
+        return (
+          <nav className="fixed bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_15px_rgba(0,0,0,0.3)] z-50 rounded-t-3xl pb-safe transition-colors duration-300">
+            <div className="flex justify-around items-center h-[64px] px-3">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link key={item.name} href={item.href} className="flex flex-col items-center gap-0.5 w-16 group transition-all duration-300">
+                    <div className={`p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 shadow-sm scale-105' : 'text-gray-400 dark:text-gray-500 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'}`}>
+                      <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                    </div>
+                    <span className={`text-[10px] font-medium transition-colors ${isActive ? 'text-green-700 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                      {item.name}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        );
+      })()}
 
       {/* Modal Fullscreen Foto Profil */}
       {showAvatarFull && sidebarAvatar && (
