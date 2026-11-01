@@ -68,6 +68,7 @@ export async function POST(request: Request) {
       : ['madin'];
     const customTemplate = body.template || DEFAULT_REKAP_TEMPLATE;
     const mode: 'send_now' | 'schedule_monthly' = body.mode || 'send_now';
+    const expiryDays = Math.max(1, Math.min(365, Number(body.expiry_days) || 30));
 
     if (mode === 'schedule_monthly' && modeRentang) {
       return NextResponse.json({ error: 'Penjadwalan otomatis bulanan tidak didukung untuk mode rentang tanggal. Gunakan Mode Bulanan.' }, { status: 400 });
@@ -278,7 +279,7 @@ export async function POST(request: Request) {
         const kelasStr = kelasList.join(', ') || '-';
         const katStr = katList.join(', ') || 'Madrasah Diniyah';
 
-        // Buat JWT Token khusus rekap guru (berlaku 30 hari)
+        // Buat JWT Token khusus rekap guru dengan masa berlaku dinamis
         const rekapToken = signToken({
           type: 'rekap_guru',
           guru_id: g.guru_id,
@@ -286,7 +287,7 @@ export async function POST(request: Request) {
             ? { tanggal_dari: tanggalDari, tanggal_sampai: tanggalSampai }
             : { bulan, tahun }),
           categories,
-        }, '30d');
+        }, `${expiryDays}d`);
 
         const quickUrl = `https://app.ppmawar.or.id/rekap/guru?token=${rekapToken}`;
 
@@ -309,8 +310,8 @@ export async function POST(request: Request) {
           .replace(/{alpha}/g, String(att.alpha))
           .replace(/{total}/g, String(totalPresensi))
           .replace(/{persentase}/g, String(persentase))
-          .replace(/{masa_berlaku}/g, '30 Hari')
-          .replace(/{batas_waktu}/g, '30 hari ke depan')
+          .replace(/{masa_berlaku}/g, `${expiryDays} Hari`)
+          .replace(/{batas_waktu}/g, `${expiryDays} hari ke depan`)
           .replace(/{link_rekap}/g, quickUrl);
 
         // Sanitize

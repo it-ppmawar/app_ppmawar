@@ -225,6 +225,7 @@ function NotifikasiContent() {
   const [rekapMassalTanggalSampai, setRekapMassalTanggalSampai] = useState(() => {
     return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
   });
+  const [rekapMassalExpiryDays, setRekapMassalExpiryDays] = useState<number>(30);
 
   // State Siaran Khusus Kepala Madin (Putra vs Putri vs Gabungan)
   const [kepalaMadinTarget, setKepalaMadinTarget] = useState<'putra' | 'putri' | 'all'>('putra');
@@ -328,6 +329,7 @@ function NotifikasiContent() {
           categories: rekapCategories,
           template: pesanRekapGuruTemplate,
           mode,
+          expiry_days: rekapMassalExpiryDays,
         }),
       });
       const data = await res.json();
@@ -380,6 +382,7 @@ function NotifikasiContent() {
           phone_number: kepalaMadinPhone,
           template: pesanKepalaMadinTemplate,
           mode,
+          expiry_days: rekapMassalExpiryDays,
         }),
       });
       const data = await res.json();
@@ -2603,6 +2606,8 @@ function NotifikasiContent() {
                 isKepalaMadinScheduling={isKepalaMadinScheduling}
                 kepalaMadinStatusMsg={kepalaMadinStatusMsg}
                 handleSendKepalaMadinWA={handleSendKepalaMadin}
+                rekapExpiryDays={rekapMassalExpiryDays}
+                setRekapExpiryDays={setRekapMassalExpiryDays}
               />
             </div>
           )}

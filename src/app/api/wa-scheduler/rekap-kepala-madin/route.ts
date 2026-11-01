@@ -71,6 +71,7 @@ export async function POST(request: Request) {
     const rawPhone = body.phone_number;
     const customTemplate = body.template || DEFAULT_KEPALA_MADIN_TEMPLATE;
     const mode: 'send_now' | 'schedule_monthly' | 'get_link' = body.mode || 'send_now';
+    const expiryDays = Math.max(1, Math.min(365, Number(body.expiry_days) || 30));
 
     if (mode === 'schedule_monthly' && modeRentang) {
       return NextResponse.json({ error: 'Penjadwalan otomatis bulanan tidak didukung untuk mode rentang tanggal. Gunakan Mode Bulanan.' }, { status: 400 });
@@ -157,14 +158,14 @@ export async function POST(request: Request) {
 • Izin / Sakit: ${totalIzin + totalSakit} Sesi
 • Tanpa Keterangan: ${totalAlpha} Sesi`;
 
-    // 3. Generate Token Kepala Madin (30 hari) dengan target_wilayah
+    // 3. Generate Token Kepala Madin dengan target_wilayah & masa berlaku dinamis
     const reportToken = signToken({
       type: 'rekap_kepala_madin',
       bulan,
       tahun,
       target_wilayah: targetWilayah,
       ...(modeRentang ? { tanggal_dari: tanggalDari, tanggal_sampai: tanggalSampai } : {}),
-    }, '30d');
+    }, `${expiryDays}d`);
 
     const reportUrl = `https://app.ppmawar.or.id/rekap/kepala-madin?token=${reportToken}`;
 
@@ -203,6 +204,8 @@ export async function POST(request: Request) {
       .replace(/{total_guru}/g, String(totalGuru))
       .replace(/{avg_kehadiran}/g, String(avgPct))
       .replace(/{ringkasan_kehadiran}/g, ringkasanFormatted)
+      .replace(/{masa_berlaku}/g, `${expiryDays} Hari`)
+      .replace(/{batas_waktu}/g, `${expiryDays} hari ke depan`)
       .replace(/{link_laporan}/g, reportUrl);
 
     msg = sanitizeTextForWaScheduler(msg);

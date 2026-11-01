@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
@@ -43,14 +43,21 @@ export async function POST(request: Request) {
       : 2;
     const tenggangSecs = waktuTenggangJam * 3600;
 
-    const hasil: { tipe: string; jadwal_id: number; nama: string; jumlah_ditandai: number }[] = [];
+    // Ambil pengaturan auto-alpha untuk guru (default: aktif / 1)
+    const [guruSettingRows] = await connection.execute<RowDataPacket[]>(
+      'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "absensi_otomatis_guru"'
+    );
+    const isAutoAlphaGuru = guruSettingRows.length === 0 || guruSettingRows[0].nilai === '1' || guruSettingRows[0].nilai === 'true';
+
+    const hasil: { tipe: string; jadwal_id: number; nama: string; jumlah_ditandai: number; guru_alpha: boolean }[] = [];
     let totalDitandai = 0;
+    let totalGuruDitandai = 0;
 
     await connection.beginTransaction();
 
     // ===== 1. JADWAL MADIN =====
     const [madinJadwal] = await connection.execute<RowDataPacket[]>(
-      `SELECT j.jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.kelas_madin_id, km.nama_kelas
+      `SELECT j.jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.kelas_madin_id, km.nama_kelas, j.guru_id
        FROM jadwal_madin j
        JOIN kelas_madin km ON j.kelas_madin_id = km.kelas_id
        WHERE j.hari = ?`,
@@ -62,19 +69,48 @@ export async function POST(request: Request) {
       // Hanya jadwal yang sudah lewat waktu toleransi
       if (nowSecs <= lateSecs) continue;
 
-      // Cek apakah sudah ada absensi untuk jadwal ini hari ini
+      let guruMarked = false;
+      // 1.1 Catat Alpha untuk Guru jika belum ada presensi (belum scan mandiri, belum isi absen, belum izin)
+      if (isAutoAlphaGuru && jadwal.guru_id) {
+        const [guruAtt] = await connection.execute<RowDataPacket[]>(
+          `SELECT absensi_id FROM absensi_guru 
+           WHERE guru_id = ? AND tanggal = ? AND (jadwal_madin_id = ? OR (jadwal_madin_id IS NULL AND status = 'Hadir'))`,
+          [jadwal.guru_id, todayStr, jadwal.jadwal_id]
+        );
+        if (guruAtt.length === 0) {
+          await connection.execute(
+            `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) 
+             VALUES (?, ?, "Alpha", "Otomatis - Tidak Hadir / Mengabsen", 1, ?, ?)`,
+            [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+          );
+          totalGuruDitandai++;
+          guruMarked = true;
+        }
+      }
+
+      // 1.2 Cek apakah sudah ada absensi santri untuk jadwal ini hari ini
       const [existing] = await connection.execute<RowDataPacket[]>(
         'SELECT COUNT(*) as cnt FROM absensi WHERE jadwal_madin_id = ? AND tanggal = ?',
         [jadwal.jadwal_id, todayStr]
       );
-      if ((existing[0] as any).cnt > 0) continue; // Sudah ada data, skip
+      if ((existing[0] as any).cnt > 0) {
+        if (guruMarked) {
+          hasil.push({ tipe: 'Madin', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: 0, guru_alpha: true });
+        }
+        continue;
+      }
 
       // Ambil semua santri di kelas ini
       const [santri] = await connection.execute<RowDataPacket[]>(
         'SELECT murid_id FROM murid WHERE kelas_madin_id = ? OR kelas_madin_2_id = ?',
         [jadwal.kelas_madin_id, jadwal.kelas_madin_id]
       );
-      if (santri.length === 0) continue;
+      if (santri.length === 0) {
+        if (guruMarked) {
+          hasil.push({ tipe: 'Madin', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: 0, guru_alpha: true });
+        }
+        continue;
+      }
 
       // Insert Alpha untuk semua santri
       for (const s of santri) {
@@ -83,13 +119,13 @@ export async function POST(request: Request) {
           [jadwal.jadwal_id, s.murid_id, todayStr]
         );
       }
-      hasil.push({ tipe: 'Madin', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: santri.length });
+      hasil.push({ tipe: 'Madin', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: santri.length, guru_alpha: guruMarked });
       totalDitandai += santri.length;
     }
 
     // ===== 2. JADWAL QURAN =====
     const [quranJadwal] = await connection.execute<RowDataPacket[]>(
-      `SELECT j.id as jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.kelas_quran_id, kq.nama_kelas
+      `SELECT j.id as jadwal_id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, j.kelas_quran_id, kq.nama_kelas, j.guru_id
        FROM jadwal_quran j
        JOIN kelas_quran kq ON j.kelas_quran_id = kq.id
        WHERE j.hari = ?`,
@@ -100,17 +136,46 @@ export async function POST(request: Request) {
       const lateSecs = selesaiSecs + tenggangSecs;
       if (nowSecs <= lateSecs) continue;
 
+      let guruMarked = false;
+      // 2.1 Catat Alpha untuk Guru jika belum ada presensi
+      if (isAutoAlphaGuru && jadwal.guru_id) {
+        const [guruAtt] = await connection.execute<RowDataPacket[]>(
+          `SELECT absensi_id FROM absensi_guru 
+           WHERE guru_id = ? AND tanggal = ? AND (jadwal_quran_id = ? OR (jadwal_quran_id IS NULL AND status = 'Hadir'))`,
+          [jadwal.guru_id, todayStr, jadwal.jadwal_id]
+        );
+        if (guruAtt.length === 0) {
+          await connection.execute(
+            `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) 
+             VALUES (?, ?, "Alpha", "Otomatis - Tidak Hadir / Mengabsen", 1, ?, ?)`,
+            [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+          );
+          totalGuruDitandai++;
+          guruMarked = true;
+        }
+      }
+
       const [existing] = await connection.execute<RowDataPacket[]>(
         'SELECT COUNT(*) as cnt FROM absensi_quran WHERE jadwal_quran_id = ? AND tanggal = ?',
         [jadwal.jadwal_id, todayStr]
       );
-      if ((existing[0] as any).cnt > 0) continue;
+      if ((existing[0] as any).cnt > 0) {
+        if (guruMarked) {
+          hasil.push({ tipe: 'Quran', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: 0, guru_alpha: true });
+        }
+        continue;
+      }
 
       const [santri] = await connection.execute<RowDataPacket[]>(
         'SELECT murid_id FROM murid WHERE kelas_quran_id = ?',
         [jadwal.kelas_quran_id]
       );
-      if (santri.length === 0) continue;
+      if (santri.length === 0) {
+        if (guruMarked) {
+          hasil.push({ tipe: 'Quran', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: 0, guru_alpha: true });
+        }
+        continue;
+      }
 
       for (const s of santri) {
         await connection.execute(
@@ -118,13 +183,13 @@ export async function POST(request: Request) {
           [jadwal.jadwal_id, s.murid_id, todayStr]
         );
       }
-      hasil.push({ tipe: 'Quran', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: santri.length });
+      hasil.push({ tipe: 'Quran', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: santri.length, guru_alpha: guruMarked });
       totalDitandai += santri.length;
     }
 
     // ===== 3. JADWAL KEGIATAN =====
     const [kegiatanJadwal] = await connection.execute<RowDataPacket[]>(
-      `SELECT j.kegiatan_id as jadwal_id, j.jam_mulai, j.jam_selesai, j.nama_kegiatan, j.kamar_id, k.nama_kamar
+      `SELECT j.kegiatan_id as jadwal_id, j.jam_mulai, j.jam_selesai, j.nama_kegiatan, j.kamar_id, k.nama_kamar, j.guru_id
        FROM jadwal_kegiatan j
        JOIN kamar k ON j.kamar_id = k.kamar_id
        WHERE j.hari = ?`,
@@ -135,17 +200,46 @@ export async function POST(request: Request) {
       const lateSecs = selesaiSecs + tenggangSecs;
       if (nowSecs <= lateSecs) continue;
 
+      let guruMarked = false;
+      // 3.1 Catat Alpha untuk Guru/Pembina jika belum ada presensi
+      if (isAutoAlphaGuru && jadwal.guru_id) {
+        const [guruAtt] = await connection.execute<RowDataPacket[]>(
+          `SELECT absensi_id FROM absensi_guru 
+           WHERE guru_id = ? AND tanggal = ? AND (kegiatan_id = ? OR (kegiatan_id IS NULL AND status = 'Hadir'))`,
+          [jadwal.guru_id, todayStr, jadwal.jadwal_id]
+        );
+        if (guruAtt.length === 0) {
+          await connection.execute(
+            `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) 
+             VALUES (?, ?, "Alpha", "Otomatis - Tidak Hadir / Mengabsen", 1, ?, ?)`,
+            [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+          );
+          totalGuruDitandai++;
+          guruMarked = true;
+        }
+      }
+
       const [existing] = await connection.execute<RowDataPacket[]>(
         'SELECT COUNT(*) as cnt FROM absensi_kegiatan WHERE kegiatan_id = ? AND tanggal = ?',
         [jadwal.jadwal_id, todayStr]
       );
-      if ((existing[0] as any).cnt > 0) continue;
+      if ((existing[0] as any).cnt > 0) {
+        if (guruMarked) {
+          hasil.push({ tipe: 'Kegiatan', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.nama_kegiatan} (${jadwal.nama_kamar})`, jumlah_ditandai: 0, guru_alpha: true });
+        }
+        continue;
+      }
 
       const [santri] = await connection.execute<RowDataPacket[]>(
         'SELECT murid_id FROM murid WHERE kamar_id = ?',
         [jadwal.kamar_id]
       );
-      if (santri.length === 0) continue;
+      if (santri.length === 0) {
+        if (guruMarked) {
+          hasil.push({ tipe: 'Kegiatan', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.nama_kegiatan} (${jadwal.nama_kamar})`, jumlah_ditandai: 0, guru_alpha: true });
+        }
+        continue;
+      }
 
       for (const s of santri) {
         await connection.execute(
@@ -153,26 +247,30 @@ export async function POST(request: Request) {
           [jadwal.jadwal_id, s.murid_id, todayStr]
         );
       }
-      hasil.push({ tipe: 'Kegiatan', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.nama_kegiatan} (${jadwal.nama_kamar})`, jumlah_ditandai: santri.length });
+      hasil.push({ tipe: 'Kegiatan', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.nama_kegiatan} (${jadwal.nama_kamar})`, jumlah_ditandai: santri.length, guru_alpha: guruMarked });
       totalDitandai += santri.length;
     }
 
     await connection.commit();
 
-    if (hasil.length === 0) {
+    if (hasil.length === 0 && totalGuruDitandai === 0) {
       return NextResponse.json({
         success: true,
-        message: 'Tidak ada jadwal yang perlu ditandai Alpha. Semua jadwal yang sudah lewat sudah memiliki data absensi, atau belum ada jadwal yang melewati waktu toleransi.',
+        message: 'Tidak ada jadwal yang perlu ditandai Alpha. Semua jadwal yang sudah lewat sudah memiliki data absensi (santri & guru), atau belum ada jadwal yang melewati waktu toleransi.',
         data: [],
         total: 0,
+        total_santri: 0,
+        total_guru: 0,
       });
     }
 
     return NextResponse.json({
       success: true,
-      message: `Berhasil menandai Alpha otomatis untuk ${totalDitandai} santri di ${hasil.length} jadwal yang belum diisi absensinya.`,
+      message: `Berhasil menandai Alpha otomatis untuk ${totalDitandai} santri dan ${totalGuruDitandai} guru di ${hasil.length} sesi jadwal.`,
       data: hasil,
-      total: totalDitandai,
+      total: totalDitandai + totalGuruDitandai,
+      total_santri: totalDitandai,
+      total_guru: totalGuruDitandai,
     });
 
   } catch (error: any) {

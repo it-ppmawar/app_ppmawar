@@ -140,6 +140,8 @@ export interface TabRekapGuruProps {
   isKepalaMadinScheduling: boolean;
   kepalaMadinStatusMsg: { type: 'success' | 'error' | 'info'; text: string } | null;
   handleSendKepalaMadinWA: (mode: 'send_now' | 'schedule_monthly') => Promise<void>;
+  rekapExpiryDays?: number;
+  setRekapExpiryDays?: React.Dispatch<React.SetStateAction<number>>;
 }
 
 export default function TabRekapGuru({
@@ -180,6 +182,8 @@ export default function TabRekapGuru({
   isKepalaMadinScheduling,
   kepalaMadinStatusMsg,
   handleSendKepalaMadinWA,
+  rekapExpiryDays = 30,
+  setRekapExpiryDays,
 }: TabRekapGuruProps) {
   // State Filter Presensi Guru
   const currentMonth = new Date().getMonth() + 1;
@@ -257,6 +261,7 @@ export default function TabRekapGuru({
           kepala_nama: kepalaNama,
           phone_number: kepalaMadinPhone,
           template: pesanKepalaMadinTemplate || DEFAULT_KEPALA_MADIN_TEMPLATE,
+          expiry_days: rekapExpiryDays,
         }),
       });
       const data = await res.json();
@@ -268,7 +273,7 @@ export default function TabRekapGuru({
     } finally {
       setLoadingKepalaMadinData(false);
     }
-  }, [guruList, selectedKepalaMadinId, kepalaMadinTarget, rekapBulan, rekapTahun, kepalaMadinPhone, pesanKepalaMadinTemplate, rekapModeRentang, rekapTanggalDari, rekapTanggalSampai]);
+  }, [guruList, selectedKepalaMadinId, kepalaMadinTarget, rekapBulan, rekapTahun, kepalaMadinPhone, pesanKepalaMadinTemplate, rekapModeRentang, rekapTanggalDari, rekapTanggalSampai, rekapExpiryDays]);
 
   useEffect(() => {
     if (showAdvancedOptions) {
@@ -1273,6 +1278,53 @@ export default function TabRekapGuru({
                     ? 'Rekapitulasi akan menghitung kehadiran guru pada rentang tanggal yang dipilih.'
                     : 'Rekapitulasi akan menghitung kehadiran guru & santri pada bulan terpilih.'}
                 </p>
+
+                {/* ⏱️ Masa Berlaku Tautan (Signed URL) & Preset Cepat */}
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700/80 flex flex-col gap-2.5 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-1.5 font-bold text-gray-750 dark:text-gray-200">
+                      <Clock size={14} className="text-purple-600 shrink-0" />
+                      <span>Masa Berlaku Tautan:</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-1 focus-within:ring-2 focus-within:ring-purple-500">
+                      <input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={rekapExpiryDays}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          if (setRekapExpiryDays) setRekapExpiryDays(isNaN(val) ? ('' as any) : val);
+                        }}
+                        onBlur={() => {
+                          if (setRekapExpiryDays && (!rekapExpiryDays || rekapExpiryDays < 1)) setRekapExpiryDays(30);
+                        }}
+                        className="w-12 bg-transparent text-center font-bold text-gray-800 dark:text-gray-100 outline-none text-xs"
+                      />
+                      <span className="font-semibold text-gray-500 text-xs">Hari</span>
+                    </div>
+                    <span className="text-[11px] text-gray-400 italic">(Minimal 1 hari)</span>
+                  </div>
+
+                  {/* Preset Cepat */}
+                  <div className="flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar">
+                    <span className="text-[11px] text-gray-400 mr-1 hidden sm:inline">Pilihan Cepat:</span>
+                    {[1, 3, 7, 14, 30].map(d => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setRekapExpiryDays && setRekapExpiryDays(d)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                          rekapExpiryDays === d
+                            ? 'bg-purple-600 text-white shadow-xs'
+                            : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-purple-400'
+                        }`}
+                      >
+                        {d} Hari{d === 30 ? ' (Standar)' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* 2. Pilih Kategori Jadwal (Checkbox) */}
