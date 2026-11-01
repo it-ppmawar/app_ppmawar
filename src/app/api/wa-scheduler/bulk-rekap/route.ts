@@ -262,11 +262,21 @@ export async function POST(request: Request) {
 
         // Susun ringkasan kehadiran
         const att = attendanceMap.get(g.guru_id) || { hadir: 0, izin: 0, sakit: 0, alpha: 0, total_sesi: 0 };
+        const totalPresensi = att.hadir + att.izin + att.sakit + att.alpha;
+        const persentase = totalPresensi > 0 ? Math.round((att.hadir / totalPresensi) * 100) : 0;
         const ringkasanFormatted = 
 `• Hadir Mengajar: ${att.hadir} sesi
 • Izin: ${att.izin} sesi
 • Sakit: ${att.sakit} sesi
 • Tanpa Keterangan: ${att.alpha} sesi`;
+
+        const mapelList = Array.from(new Set(g.classes.map((c: any) => c.mata_pelajaran).filter(Boolean)));
+        const kelasList = Array.from(new Set(g.classes.map((c: any) => c.kelas_nama).filter(Boolean)));
+        const katList = Array.from(new Set(g.classes.map((c: any) => c.tipe).filter(Boolean)));
+
+        const mapelStr = mapelList.join(', ') || '-';
+        const kelasStr = kelasList.join(', ') || '-';
+        const katStr = katList.join(', ') || 'Madrasah Diniyah';
 
         // Buat JWT Token khusus rekap guru (berlaku 30 hari)
         const rekapToken = signToken({
@@ -283,9 +293,24 @@ export async function POST(request: Request) {
         // Render template
         let msg = customTemplate
           .replace(/{nama_guru}/g, `*${g.guru_nama}*`)
+          .replace(/{periode}/g, `*${bulanTahunStr}*`)
           .replace(/{bulan_tahun}/g, `*${bulanTahunStr}*`)
+          .replace(/{nama_mapel}/g, mapelStr)
+          .replace(/{mapel}/g, mapelStr)
+          .replace(/{kelas}/g, kelasStr)
+          .replace(/{kategori}/g, katStr)
+          .replace(/{daftar_mapel}/g, classListFormatted)
+          .replace(/{kelas_mapel}/g, classListFormatted)
           .replace(/{daftar_kelas}/g, classListFormatted)
           .replace(/{ringkasan_kehadiran}/g, ringkasanFormatted)
+          .replace(/{hadir}/g, String(att.hadir))
+          .replace(/{izin}/g, String(att.izin))
+          .replace(/{sakit}/g, String(att.sakit))
+          .replace(/{alpha}/g, String(att.alpha))
+          .replace(/{total}/g, String(totalPresensi))
+          .replace(/{persentase}/g, String(persentase))
+          .replace(/{masa_berlaku}/g, '30 Hari')
+          .replace(/{batas_waktu}/g, '30 hari ke depan')
           .replace(/{link_rekap}/g, quickUrl);
 
         // Sanitize

@@ -379,15 +379,58 @@ export default function TabRekapGuru({
     const masaBerlaku = item.token_duration_label || `${expiryDays} Hari`;
     const batasWaktu = item.token_exp_date || '-';
 
+    // Ekstraksi nama mapel, kelas, dan kategori secara presisi
+    let resolvedMapel = item.nama_mapel || '';
+    let resolvedKelas = item.kelas_nama && item.kelas_nama !== '-' ? item.kelas_nama : '';
+    let resolvedKategori = item.kategori_label || item.kategori || '';
+
+    // Ekstraksi cerdas jika belum tersedia langsung (misal data cache / format lama)
+    if ((!resolvedMapel || !resolvedKelas) && item.daftar_mapel) {
+      const parts = String(item.daftar_mapel).split(',').map((s: string) => s.trim()).filter(Boolean);
+      const extractedClasses: string[] = [];
+      const extractedMapels: string[] = [];
+
+      for (const part of parts) {
+        const match = part.match(/^(.*?)\s*\((.*?)\)$/);
+        if (match) {
+          if (match[1] && match[1] !== '-' && !extractedClasses.includes(match[1])) extractedClasses.push(match[1]);
+          if (match[2] && !extractedMapels.includes(match[2])) extractedMapels.push(match[2]);
+        } else {
+          if (!extractedMapels.includes(part)) extractedMapels.push(part);
+        }
+      }
+
+      if (!resolvedKelas && extractedClasses.length > 0) {
+        resolvedKelas = extractedClasses.join(', ');
+      }
+      if (!resolvedMapel && extractedMapels.length > 0) {
+        resolvedMapel = extractedMapels.join(', ');
+      }
+    }
+
+    // Fallback kategori yang akurat
+    if (!resolvedKategori || resolvedKategori === '-') {
+      if (kategoriMapel === 'madin') resolvedKategori = 'Madrasah Diniyah (Madin)';
+      else if (kategoriMapel === 'quran') resolvedKategori = "Al-Qur'an (Tahfidz/Tartil)";
+      else if (kategoriMapel === 'kegiatan') resolvedKategori = 'Kegiatan Asrama';
+      else resolvedKategori = 'Madrasah Diniyah';
+    }
+
+    const resolvedDaftarMapel = item.daftar_mapel || (resolvedKelas && resolvedMapel ? `${resolvedKelas} (${resolvedMapel})` : (resolvedMapel || '-'));
+    const namaGuru = item.guru_nama || (item.nama !== resolvedMapel ? item.nama : '') || 'Ustadz/Ustadzah';
+
     const templateToUse = pesanRekapGuruTemplate || DEFAULT_REKAP_GURU_TEMPLATE;
     const text = templateToUse
-      .replace(/{nama_guru}/g, item.guru_nama || item.nama || '-')
-      .replace(/{nama_mapel}/g, item.nama || '-')
-      .replace(/{mapel}/g, item.nama || '-')
-      .replace(/{kelas}/g, item.kelas_nama || '-')
-      .replace(/{kategori}/g, item.kategori_label || item.kategori || '-')
-      .replace(/{tipe}/g, item.kategori_label || item.kategori || '-')
-      .replace(/{target_label}/g, item.kelas_nama || '-')
+      .replace(/{nama_guru}/g, namaGuru)
+      .replace(/{nama_mapel}/g, resolvedMapel || resolvedDaftarMapel || '-')
+      .replace(/{mapel}/g, resolvedMapel || resolvedDaftarMapel || '-')
+      .replace(/{kelas}/g, resolvedKelas || '-')
+      .replace(/{kategori}/g, resolvedKategori || '-')
+      .replace(/{daftar_mapel}/g, resolvedDaftarMapel)
+      .replace(/{kelas_mapel}/g, resolvedDaftarMapel)
+      .replace(/{daftar_kelas}/g, resolvedDaftarMapel)
+      .replace(/{tipe}/g, resolvedKategori || '-')
+      .replace(/{target_label}/g, resolvedKelas || '-')
       .replace(/{nip}/g, item.identifier || item.guru_nip || '-')
       .replace(/{periode}/g, periodeLabel)
       .replace(/{bulan_tahun}/g, periodeLabel)
@@ -645,7 +688,7 @@ export default function TabRekapGuru({
         <label className="block text-xs font-bold text-purple-900 dark:text-purple-300 mb-1.5 flex flex-col gap-1">
           <span>✏️ Edit Templat Pesan Rekapitulasi untuk Guru & Staff</span>
           <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500 leading-relaxed">
-            Placeholder: &#123;nama_guru&#125;, &#123;nama_mapel&#125;, &#123;kelas&#125;, &#123;kategori&#125;, &#123;nip&#125;, &#123;periode&#125;, &#123;hadir&#125;, &#123;izin&#125;, &#123;sakit&#125;, &#123;alpha&#125;, &#123;total&#125;, &#123;persentase&#125;, &#123;link_rekap&#125;, &#123;masa_berlaku&#125;, &#123;batas_waktu&#125;
+            Placeholder: &#123;nama_guru&#125;, &#123;nama_mapel&#125;, &#123;kelas&#125;, &#123;kategori&#125;, &#123;daftar_mapel&#125;, &#123;nip&#125;, &#123;periode&#125;, &#123;hadir&#125;, &#123;izin&#125;, &#123;sakit&#125;, &#123;alpha&#125;, &#123;total&#125;, &#123;persentase&#125;, &#123;link_rekap&#125;, &#123;masa_berlaku&#125;, &#123;batas_waktu&#125;
           </span>
         </label>
         <textarea
