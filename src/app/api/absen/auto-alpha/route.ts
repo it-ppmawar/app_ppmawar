@@ -34,20 +34,28 @@ export async function POST(request: Request) {
     };
     const nowSecs = parseTimeToSec(nowTime);
 
-    // Ambil waktu tenggang dari pengaturan (default: 2 jam)
-    const [settingRows] = await connection.execute<RowDataPacket[]>(
-      'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "waktu_tenggang_absensi"'
+    // Ambil semua pengaturan auto-alpha sekaligus
+    const [allSettingRows] = await connection.execute<RowDataPacket[]>(
+      `SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis 
+       WHERE nama_pengaturan IN ('waktu_tenggang_absensi', 'absensi_otomatis_guru', 
+       'absensi_otomatis_madin', 'absensi_otomatis_quran', 'absensi_otomatis_kegiatan')`
     );
-    const waktuTenggangJam = (settingRows.length > 0 && !isNaN(parseFloat(settingRows[0].nilai)))
-      ? parseFloat(settingRows[0].nilai)
+    const settingsMap: Record<string, string> = {};
+    for (const row of allSettingRows) {
+      settingsMap[row.nama_pengaturan] = row.nilai;
+    }
+
+    const waktuTenggangJam = settingsMap['waktu_tenggang_absensi'] && !isNaN(parseFloat(settingsMap['waktu_tenggang_absensi']))
+      ? parseFloat(settingsMap['waktu_tenggang_absensi'])
       : 2;
     const tenggangSecs = waktuTenggangJam * 3600;
 
-    // Ambil pengaturan auto-alpha untuk guru (default: aktif / 1)
-    const [guruSettingRows] = await connection.execute<RowDataPacket[]>(
-      'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "absensi_otomatis_guru"'
-    );
-    const isAutoAlphaGuru = guruSettingRows.length === 0 || guruSettingRows[0].nilai === '1' || guruSettingRows[0].nilai === 'true';
+    // Master toggle: apakah auto-alpha guru diaktifkan sama sekali
+    const isAutoAlphaGuruMaster = !settingsMap['absensi_otomatis_guru'] || settingsMap['absensi_otomatis_guru'] === '1' || settingsMap['absensi_otomatis_guru'] === 'true';
+    // Per-kategori toggles (default: aktif jika master aktif dan belum pernah diset)
+    const isAutoAlphaMadin = isAutoAlphaGuruMaster && (!settingsMap['absensi_otomatis_madin'] || settingsMap['absensi_otomatis_madin'] === '1' || settingsMap['absensi_otomatis_madin'] === 'true');
+    const isAutoAlphaQuran = isAutoAlphaGuruMaster && (!settingsMap['absensi_otomatis_quran'] || settingsMap['absensi_otomatis_quran'] === '1' || settingsMap['absensi_otomatis_quran'] === 'true');
+    const isAutoAlphaKegiatan = isAutoAlphaGuruMaster && (!settingsMap['absensi_otomatis_kegiatan'] || settingsMap['absensi_otomatis_kegiatan'] === '1' || settingsMap['absensi_otomatis_kegiatan'] === 'true');
 
     const hasil: { tipe: string; jadwal_id: number; nama: string; jumlah_ditandai: number; guru_alpha: boolean }[] = [];
     let totalDitandai = 0;
@@ -71,7 +79,7 @@ export async function POST(request: Request) {
 
       let guruMarked = false;
       // 1.1 Catat Alpha untuk Guru jika belum ada presensi (belum scan mandiri, belum isi absen, belum izin)
-      if (isAutoAlphaGuru && jadwal.guru_id) {
+      if (isAutoAlphaMadin && jadwal.guru_id) {
         const [guruAtt] = await connection.execute<RowDataPacket[]>(
           `SELECT absensi_id FROM absensi_guru 
            WHERE guru_id = ? AND tanggal = ? AND (jadwal_madin_id = ? OR (jadwal_madin_id IS NULL AND status = 'Hadir'))`,
@@ -138,7 +146,7 @@ export async function POST(request: Request) {
 
       let guruMarked = false;
       // 2.1 Catat Alpha untuk Guru jika belum ada presensi
-      if (isAutoAlphaGuru && jadwal.guru_id) {
+      if (isAutoAlphaQuran && jadwal.guru_id) {
         const [guruAtt] = await connection.execute<RowDataPacket[]>(
           `SELECT absensi_id FROM absensi_guru 
            WHERE guru_id = ? AND tanggal = ? AND (jadwal_quran_id = ? OR (jadwal_quran_id IS NULL AND status = 'Hadir'))`,
@@ -202,7 +210,7 @@ export async function POST(request: Request) {
 
       let guruMarked = false;
       // 3.1 Catat Alpha untuk Guru/Pembina jika belum ada presensi
-      if (isAutoAlphaGuru && jadwal.guru_id) {
+      if (isAutoAlphaKegiatan && jadwal.guru_id) {
         const [guruAtt] = await connection.execute<RowDataPacket[]>(
           `SELECT absensi_id FROM absensi_guru 
            WHERE guru_id = ? AND tanggal = ? AND (kegiatan_id = ? OR (kegiatan_id IS NULL AND status = 'Hadir'))`,
