@@ -165,7 +165,7 @@ function NotifikasiContent() {
   const [pesanBillingTemplate, setPesanBillingTemplate] = useState(defaultBillingTemplate);
   const [pesanRekapGuruTemplate, setPesanRekapGuruTemplate] = useState(defaultRekapGuruTemplate);
 
-  const defaultKepalaMadinTemplate = `Assalamu'alaikum Warohmatullah,\n\nYth. *Kepala Madrasah Diniyah (Madin)*\nPondok Pesantren Matholi'ul Anwar\n\nBerikut kami sampaikan Laporan Rekapitulasi Kehadiran Dewan Guru Madin untuk periode {bulan_tahun}:\n\n📊 *Ringkasan Presensi Dewan Guru Madin:*\n• Total Dewan Guru: {total_guru} Guru\n• Rata-rata Kehadiran: {avg_kehadiran}%\n{ringkasan_kehadiran}\n\n🔗 *Link Preview Detail Evaluasi Dewan Guru:*\n{link_laporan}\n\nTautan di atas berisi daftar lengkap kehadiran masing-masing guru, rincian jadwal kelas yang diampu, serta fitur ekspor/cetak laporan resmi untuk evaluasi madrasah.\n\nWassalamu'alaikum Warohmatullah,\n_Pengurus PP. Matholi'ul Anwar_`;
+  const defaultKepalaMadinTemplate = `Assalamu'alaikum Warohmatullah,\n\nYth. *Kepala Madrasah Diniyah (Madin)*\n*{nama_kepala}*\nPondok Pesantren Matholi'ul Anwar\n\nBerikut kami sampaikan Laporan Rekapitulasi Kehadiran Dewan Guru Madin untuk periode {bulan_tahun}:\n\n📊 *Ringkasan Presensi Dewan Guru Madin:*\n• Total Dewan Guru: {total_guru} Guru\n• Rata-rata Kehadiran: {avg_kehadiran}%\n{ringkasan_kehadiran}\n\n🔗 *Link Preview Detail Evaluasi Dewan Guru:*\n{link_laporan}\n\nTautan di atas berisi daftar lengkap kehadiran masing-masing guru, rincian jadwal kelas yang diampu, serta fitur ekspor/cetak laporan resmi untuk evaluasi madrasah.\n\nWassalamu'alaikum Warohmatullah,\n_Pengurus PP. Matholi'ul Anwar_`;
 
   const [pesanKepalaMadinTemplate, setPesanKepalaMadinTemplate] = useState(defaultKepalaMadinTemplate);
 
@@ -364,6 +364,10 @@ function NotifikasiContent() {
     setKepalaMadinStatusMsg(null);
 
     try {
+      const selectedGuru = guruList.find(g => String(g.guru_id) === String(selectedKepalaMadinId));
+      const targetLabel = kepalaMadinTarget === 'putri' ? 'Kepala Madin Putri' : kepalaMadinTarget === 'putra' ? 'Kepala Madin Putra' : 'Kepala Madrasah Diniyah';
+      const effectiveNama = selectedGuru?.nama || kepalaMadinNama || targetLabel;
+
       const res = await fetch('/api/wa-scheduler/rekap-kepala-madin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -372,7 +376,7 @@ function NotifikasiContent() {
             ? { tanggal_dari: rekapMassalTanggalDari, tanggal_sampai: rekapMassalTanggalSampai }
             : { bulan: rekapBulan, tahun: rekapTahun }),
           target_wilayah: kepalaMadinTarget,
-          kepala_nama: kepalaMadinNama,
+          kepala_nama: effectiveNama,
           phone_number: kepalaMadinPhone,
           template: pesanKepalaMadinTemplate,
           mode,
@@ -472,6 +476,24 @@ function NotifikasiContent() {
         }
       }
 
+      const storedKepalaMadin = localStorage.getItem('wa_template_kepala_madin');
+      if (storedKepalaMadin) {
+        if (!storedKepalaMadin.includes('{nama_kepala}')) {
+          let updated = storedKepalaMadin;
+          if (updated.includes('Yth. *Kepala Madrasah Diniyah (Madin)*')) {
+            updated = updated.replace('Yth. *Kepala Madrasah Diniyah (Madin)*', 'Yth. *Kepala Madrasah Diniyah (Madin)*\n*{nama_kepala}*');
+          } else if (updated.includes('Yth. *Kepala Madrasah Diniyah*')) {
+            updated = updated.replace('Yth. *Kepala Madrasah Diniyah*', 'Yth. *Kepala Madrasah Diniyah*\n*{nama_kepala}*');
+          } else if (updated.includes('Yth.')) {
+            updated = updated.replace('Yth.', 'Yth. *{nama_kepala}*\n');
+          }
+          setPesanKepalaMadinTemplate(updated);
+          localStorage.setItem('wa_template_kepala_madin', updated);
+        } else {
+          setPesanKepalaMadinTemplate(storedKepalaMadin);
+        }
+      }
+
       try {
         const storageKey = 'wa_reminded_teachers';
         const stored = localStorage.getItem(storageKey);
@@ -531,8 +553,18 @@ function NotifikasiContent() {
             }
           }
           if (t.wa_template_kepala_madin) {
-            setPesanKepalaMadinTemplate(t.wa_template_kepala_madin);
-            if (typeof window !== 'undefined') localStorage.setItem('wa_template_kepala_madin', t.wa_template_kepala_madin);
+            let tmpl = t.wa_template_kepala_madin;
+            if (!tmpl.includes('{nama_kepala}')) {
+              if (tmpl.includes('Yth. *Kepala Madrasah Diniyah (Madin)*')) {
+                tmpl = tmpl.replace('Yth. *Kepala Madrasah Diniyah (Madin)*', 'Yth. *Kepala Madrasah Diniyah (Madin)*\n*{nama_kepala}*');
+              } else if (tmpl.includes('Yth. *Kepala Madrasah Diniyah*')) {
+                tmpl = tmpl.replace('Yth. *Kepala Madrasah Diniyah*', 'Yth. *Kepala Madrasah Diniyah*\n*{nama_kepala}*');
+              } else if (tmpl.includes('Yth.')) {
+                tmpl = tmpl.replace('Yth.', 'Yth. *{nama_kepala}*\n');
+              }
+            }
+            setPesanKepalaMadinTemplate(tmpl);
+            if (typeof window !== 'undefined') localStorage.setItem('wa_template_kepala_madin', tmpl);
           }
           if (t.wa_template_billing) {
             setPesanBillingTemplate(t.wa_template_billing);

@@ -24,6 +24,7 @@ const DEFAULT_KEPALA_MADIN_TEMPLATE =
 `Assalamu'alaikum Warohmatullah,
 
 Yth. *Kepala Madrasah Diniyah (Madin)*
+*{nama_kepala}*
 Pondok Pesantren Matholi'ul Anwar
 
 Berikut kami sampaikan Laporan Rekapitulasi Kehadiran Dewan Guru Madin untuk periode {bulan_tahun}:
@@ -168,8 +169,36 @@ export async function POST(request: Request) {
     const reportUrl = `https://app.ppmawar.or.id/rekap/kepala-madin?token=${reportToken}`;
 
     // 4. Render template
-    let msg = customTemplate
-      .replace(/{nama_kepala}/g, `*${kepalaNama}*`)
+    let renderedTemplate = customTemplate;
+
+    // Jika template belum memuat placeholder {nama_kepala}, sisipkan nama kepala terpilih secara presisi
+    if (!renderedTemplate.includes('{nama_kepala}')) {
+      if (renderedTemplate.includes('Yth. *Kepala Madrasah Diniyah (Madin)*')) {
+        renderedTemplate = renderedTemplate.replace(
+          'Yth. *Kepala Madrasah Diniyah (Madin)*',
+          `Yth. *Kepala Madrasah Diniyah (Madin)*\n*${kepalaNama}*`
+        );
+      } else if (renderedTemplate.includes('Yth. *Kepala Madrasah Diniyah*')) {
+        renderedTemplate = renderedTemplate.replace(
+          'Yth. *Kepala Madrasah Diniyah*',
+          `Yth. *Kepala Madrasah Diniyah*\n*${kepalaNama}*`
+        );
+      } else if (renderedTemplate.includes('Yth. *Kepala Madin*')) {
+        renderedTemplate = renderedTemplate.replace(
+          'Yth. *Kepala Madin*',
+          `Yth. *Kepala Madin*\n*${kepalaNama}*`
+        );
+      } else if (renderedTemplate.includes('Yth.')) {
+        renderedTemplate = renderedTemplate.replace(
+          'Yth.',
+          `Yth. *${kepalaNama}*\n`
+        );
+      }
+    }
+
+    let msg = renderedTemplate
+      .replace(/\*?{nama_kepala}\*?/g, `*${kepalaNama}*`)
+      .replace(/{target_kepala}/g, targetWilayah === 'putri' ? 'Madin Putri' : targetWilayah === 'putra' ? 'Madin Putra' : 'Semua Madin')
       .replace(/{bulan_tahun}/g, `*${bulanTahunStr}${wilayahSub}*`)
       .replace(/{total_guru}/g, String(totalGuru))
       .replace(/{avg_kehadiran}/g, String(avgPct))

@@ -38,6 +38,7 @@ export const DEFAULT_KEPALA_MADIN_TEMPLATE =
 `Assalamu'alaikum Warohmatullah,
 
 Yth. *Kepala Madrasah Diniyah (Madin)*
+*{nama_kepala}*
 Pondok Pesantren Matholi'ul Anwar
 
 Berikut kami sampaikan Laporan Rekapitulasi Kehadiran Dewan Guru Madin untuk periode {bulan_tahun}:
@@ -1457,7 +1458,7 @@ export default function TabRekapGuru({
                 <label className="block text-xs font-bold text-amber-950 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <span>Edit Templat Pesan untuk Kepala Madin</span>
                   <span className="text-[10px] text-gray-500 dark:text-gray-400 font-normal">
-                    Placeholder: &#123;total_guru&#125;, &#123;avg_kehadiran&#125;, &#123;ringkasan_kehadiran&#125;, &#123;link_laporan&#125;
+                    Placeholder: &#123;nama_kepala&#125;, &#123;total_guru&#125;, &#123;avg_kehadiran&#125;, &#123;ringkasan_kehadiran&#125;, &#123;link_laporan&#125;
                   </span>
                 </label>
                 <textarea
