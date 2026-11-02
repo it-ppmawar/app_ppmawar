@@ -77,34 +77,45 @@ export async function POST(request: Request) {
       // Hanya jadwal yang sudah lewat waktu toleransi
       if (nowSecs <= lateSecs) continue;
 
+      // 1.1 Cek apakah sudah ada absensi santri untuk jadwal ini hari ini
+      const [existing] = await connection.execute<RowDataPacket[]>(
+        'SELECT COUNT(*) as cnt FROM absensi WHERE jadwal_madin_id = ? AND tanggal = ?',
+        [jadwal.jadwal_id, todayStr]
+      );
+      const isClassTaught = ((existing[0] as any).cnt || 0) > 0;
+
       let guruMarked = false;
-      // 1.1 Catat Alpha untuk Guru jika belum ada presensi apapun hari ini (Hadir/Izin/Sakit)
-      // Cek: ada record jadwal spesifik ini, ATAU ada record Hadir/Izin/Sakit umum di hari yang sama
-      if (isAutoAlphaMadin && jadwal.guru_id) {
+      // 1.2 Sinkronisasi status guru:
+      // Jika santri sudah diabsen -> guru Hadir!
+      // Jika santri belum diabsen dan waktu tenggang lewat -> guru Alpha (jika auto-alpha aktif)
+      if (jadwal.guru_id) {
         const [guruAtt] = await connection.execute<RowDataPacket[]>(
-          `SELECT absensi_id FROM absensi_guru 
+          `SELECT absensi_id, status FROM absensi_guru 
            WHERE guru_id = ? AND tanggal = ? 
            AND (jadwal_madin_id = ? OR status IN ('Hadir', 'Izin', 'Sakit'))
            LIMIT 1`,
           [jadwal.guru_id, todayStr, jadwal.jadwal_id]
         );
         if (guruAtt.length === 0) {
-          await connection.execute(
-            `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) 
-             VALUES (?, ?, "Alpha", "Otomatis - Tidak Hadir / Mengabsen", 1, ?, ?)`,
-            [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
-          );
-          totalGuruDitandai++;
-          guruMarked = true;
+          if (isClassTaught) {
+            await connection.execute(
+              `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) 
+               VALUES (?, ?, "Hadir", "Mengajar Kelas (Tersinkronisasi)", 0, ?, ?)`,
+              [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+            );
+          } else if (isAutoAlphaMadin) {
+            await connection.execute(
+              `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) 
+               VALUES (?, ?, "Alpha", "Otomatis - Tidak Hadir / Mengabsen", 1, ?, ?)`,
+              [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+            );
+            totalGuruDitandai++;
+            guruMarked = true;
+          }
         }
       }
 
-      // 1.2 Cek apakah sudah ada absensi santri untuk jadwal ini hari ini
-      const [existing] = await connection.execute<RowDataPacket[]>(
-        'SELECT COUNT(*) as cnt FROM absensi WHERE jadwal_madin_id = ? AND tanggal = ?',
-        [jadwal.jadwal_id, todayStr]
-      );
-      if ((existing[0] as any).cnt > 0) {
+      if (isClassTaught) {
         if (guruMarked) {
           hasil.push({ tipe: 'Madin', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: 0, guru_alpha: true });
         }
@@ -147,32 +158,41 @@ export async function POST(request: Request) {
       const lateSecs = selesaiSecs + tenggangSecs;
       if (nowSecs <= lateSecs) continue;
 
+      const [existing] = await connection.execute<RowDataPacket[]>(
+        'SELECT COUNT(*) as cnt FROM absensi_quran WHERE jadwal_quran_id = ? AND tanggal = ?',
+        [jadwal.jadwal_id, todayStr]
+      );
+      const isClassTaught = ((existing[0] as any).cnt || 0) > 0;
+
       let guruMarked = false;
-      // 2.1 Catat Alpha untuk Guru jika belum ada presensi apapun hari ini (Hadir/Izin/Sakit)
-      if (isAutoAlphaQuran && jadwal.guru_id) {
+      if (jadwal.guru_id) {
         const [guruAtt] = await connection.execute<RowDataPacket[]>(
-          `SELECT absensi_id FROM absensi_guru 
+          `SELECT absensi_id, status FROM absensi_guru 
            WHERE guru_id = ? AND tanggal = ? 
            AND (jadwal_quran_id = ? OR status IN ('Hadir', 'Izin', 'Sakit'))
            LIMIT 1`,
           [jadwal.guru_id, todayStr, jadwal.jadwal_id]
         );
         if (guruAtt.length === 0) {
-          await connection.execute(
-            `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) 
-             VALUES (?, ?, "Alpha", "Otomatis - Tidak Hadir / Mengabsen", 1, ?, ?)`,
-            [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
-          );
-          totalGuruDitandai++;
-          guruMarked = true;
+          if (isClassTaught) {
+            await connection.execute(
+              `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) 
+               VALUES (?, ?, "Hadir", "Mengajar Al-Quran (Tersinkronisasi)", 0, ?, ?)`,
+              [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+            );
+          } else if (isAutoAlphaQuran) {
+            await connection.execute(
+              `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) 
+               VALUES (?, ?, "Alpha", "Otomatis - Tidak Hadir / Mengabsen", 1, ?, ?)`,
+              [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+            );
+            totalGuruDitandai++;
+            guruMarked = true;
+          }
         }
       }
 
-      const [existing] = await connection.execute<RowDataPacket[]>(
-        'SELECT COUNT(*) as cnt FROM absensi_quran WHERE jadwal_quran_id = ? AND tanggal = ?',
-        [jadwal.jadwal_id, todayStr]
-      );
-      if ((existing[0] as any).cnt > 0) {
+      if (isClassTaught) {
         if (guruMarked) {
           hasil.push({ tipe: 'Quran', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: 0, guru_alpha: true });
         }
@@ -213,32 +233,41 @@ export async function POST(request: Request) {
       const lateSecs = selesaiSecs + tenggangSecs;
       if (nowSecs <= lateSecs) continue;
 
+      const [existing] = await connection.execute<RowDataPacket[]>(
+        'SELECT COUNT(*) as cnt FROM absensi_kegiatan WHERE kegiatan_id = ? AND tanggal = ?',
+        [jadwal.jadwal_id, todayStr]
+      );
+      const isClassTaught = ((existing[0] as any).cnt || 0) > 0;
+
       let guruMarked = false;
-      // 3.1 Catat Alpha untuk Guru/Pembina jika belum ada presensi apapun hari ini (Hadir/Izin/Sakit)
-      if (isAutoAlphaKegiatan && jadwal.guru_id) {
+      if (jadwal.guru_id) {
         const [guruAtt] = await connection.execute<RowDataPacket[]>(
-          `SELECT absensi_id FROM absensi_guru 
+          `SELECT absensi_id, status FROM absensi_guru 
            WHERE guru_id = ? AND tanggal = ? 
            AND (kegiatan_id = ? OR status IN ('Hadir', 'Izin', 'Sakit'))
            LIMIT 1`,
           [jadwal.guru_id, todayStr, jadwal.jadwal_id]
         );
         if (guruAtt.length === 0) {
-          await connection.execute(
-            `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) 
-             VALUES (?, ?, "Alpha", "Otomatis - Tidak Hadir / Mengabsen", 1, ?, ?)`,
-            [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
-          );
-          totalGuruDitandai++;
-          guruMarked = true;
+          if (isClassTaught) {
+            await connection.execute(
+              `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) 
+               VALUES (?, ?, "Hadir", "Mendampingi Kegiatan (Tersinkronisasi)", 0, ?, ?)`,
+              [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+            );
+          } else if (isAutoAlphaKegiatan) {
+            await connection.execute(
+              `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id) 
+               VALUES (?, ?, "Alpha", "Otomatis - Tidak Hadir / Mengabsen", 1, ?, ?)`,
+              [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+            );
+            totalGuruDitandai++;
+            guruMarked = true;
+          }
         }
       }
 
-      const [existing] = await connection.execute<RowDataPacket[]>(
-        'SELECT COUNT(*) as cnt FROM absensi_kegiatan WHERE kegiatan_id = ? AND tanggal = ?',
-        [jadwal.jadwal_id, todayStr]
-      );
-      if ((existing[0] as any).cnt > 0) {
+      if (isClassTaught) {
         if (guruMarked) {
           hasil.push({ tipe: 'Kegiatan', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.nama_kegiatan} (${jadwal.nama_kamar})`, jumlah_ditandai: 0, guru_alpha: true });
         }

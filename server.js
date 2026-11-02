@@ -85,25 +85,34 @@ app.prepare().then(() => {
       for (const jadwal of madinJadwal) {
         if (nowSecs <= parseTimeToSec(jadwal.jam_selesai) + tenggangSecs) continue;
 
-        if (isMadin && jadwal.guru_id) {
-          const [guruAtt] = await conn.execute(
-            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND (jadwal_madin_id = ? OR status IN ('Hadir', 'Izin', 'Sakit')) LIMIT 1`,
-            [jadwal.guru_id, todayStr, jadwal.jadwal_id]
-          );
-          if (guruAtt.length === 0) {
-            await conn.execute(
-              `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, 'Alpha', 'Otomatis - Tidak Hadir / Mengabsen', 1, ?, ?)`,
-              [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
-            );
-            totalGuru++;
-          }
-        }
-
         const [existing] = await conn.execute(
           'SELECT COUNT(*) as cnt FROM absensi WHERE jadwal_madin_id = ? AND tanggal = ?',
           [jadwal.jadwal_id, todayStr]
         );
-        if (existing[0].cnt > 0) continue;
+        const isClassTaught = ((existing[0] && existing[0].cnt) || 0) > 0;
+
+        if (jadwal.guru_id) {
+          const [guruAtt] = await conn.execute(
+            `SELECT absensi_id, status FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND (jadwal_madin_id = ? OR status IN ('Hadir', 'Izin', 'Sakit')) LIMIT 1`,
+            [jadwal.guru_id, todayStr, jadwal.jadwal_id]
+          );
+          if (guruAtt.length === 0) {
+            if (isClassTaught) {
+              await conn.execute(
+                `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, 'Hadir', 'Mengajar Kelas (Tersinkronisasi)', 0, ?, ?)`,
+                [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+              );
+            } else if (isMadin) {
+              await conn.execute(
+                `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id) VALUES (?, ?, 'Alpha', 'Otomatis - Tidak Hadir / Mengabsen', 1, ?, ?)`,
+                [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+              );
+              totalGuru++;
+            }
+          }
+        }
+
+        if (isClassTaught) continue;
 
         const [santri] = await conn.execute(
           'SELECT murid_id FROM murid WHERE kelas_madin_id = ? OR kelas_madin_2_id = ?',
@@ -127,25 +136,34 @@ app.prepare().then(() => {
       for (const jadwal of quranJadwal) {
         if (nowSecs <= parseTimeToSec(jadwal.jam_selesai) + tenggangSecs) continue;
 
-        if (isQuran && jadwal.guru_id) {
-          const [guruAtt] = await conn.execute(
-            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND (jadwal_quran_id = ? OR status IN ('Hadir', 'Izin', 'Sakit')) LIMIT 1`,
-            [jadwal.guru_id, todayStr, jadwal.jadwal_id]
-          );
-          if (guruAtt.length === 0) {
-            await conn.execute(
-              `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, 'Alpha', 'Otomatis - Tidak Hadir / Mengabsen', 1, ?, ?)`,
-              [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
-            );
-            totalGuru++;
-          }
-        }
-
         const [existing] = await conn.execute(
           'SELECT COUNT(*) as cnt FROM absensi_quran WHERE jadwal_quran_id = ? AND tanggal = ?',
           [jadwal.jadwal_id, todayStr]
         );
-        if (existing[0].cnt > 0) continue;
+        const isClassTaught = ((existing[0] && existing[0].cnt) || 0) > 0;
+
+        if (jadwal.guru_id) {
+          const [guruAtt] = await conn.execute(
+            `SELECT absensi_id, status FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND (jadwal_quran_id = ? OR status IN ('Hadir', 'Izin', 'Sakit')) LIMIT 1`,
+            [jadwal.guru_id, todayStr, jadwal.jadwal_id]
+          );
+          if (guruAtt.length === 0) {
+            if (isClassTaught) {
+              await conn.execute(
+                `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, 'Hadir', 'Mengajar Al-Quran (Tersinkronisasi)', 0, ?, ?)`,
+                [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+              );
+            } else if (isQuran) {
+              await conn.execute(
+                `INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id) VALUES (?, ?, 'Alpha', 'Otomatis - Tidak Hadir / Mengabsen', 1, ?, ?)`,
+                [jadwal.guru_id, todayStr, nowTime, jadwal.jadwal_id]
+              );
+              totalGuru++;
+            }
+          }
+        }
+
+        if (isClassTaught) continue;
 
         const [santri] = await conn.execute(
           'SELECT murid_id FROM murid WHERE kelas_quran_id = ?',

@@ -98,6 +98,61 @@ export async function GET() {
       console.warn('jadwalGuruRows error:', e);
     }
 
+    // Sinkronisasi otomatis: Jika santri pada jadwal madin/quran/kegiatan sudah diinputkan absensinya,
+    // maka dewan guru pengampu jadwal tersebut dipastikan Hadir mengajar.
+    // Perbaiki data absensi_guru yang sempat salah tercatat 'Alpha' oleh cron, atau yang belum terinput.
+    try {
+      await pool.execute(`
+        UPDATE absensi_guru ag
+        JOIN absensi a ON ag.jadwal_madin_id = a.jadwal_madin_id AND ag.tanggal = a.tanggal
+        SET ag.status = 'Hadir', ag.keterangan = 'Mengajar Kelas (Tersinkronisasi)', ag.is_otomatis = 0
+        WHERE ag.status = 'Alpha' AND ag.tanggal IN (?, ?)
+      `, [yesterdayGuruStr, todayStr]);
+
+      await pool.execute(`
+        INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id)
+        SELECT DISTINCT jm.guru_id, a.tanggal, 'Hadir', 'Mengajar Kelas (Tersinkronisasi)', 0, '19:30:00', a.jadwal_madin_id
+        FROM absensi a
+        JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
+        LEFT JOIN absensi_guru ag ON ag.guru_id = jm.guru_id AND ag.tanggal = a.tanggal AND (ag.jadwal_madin_id = a.jadwal_madin_id OR ag.status IN ('Hadir', 'Izin', 'Sakit'))
+        WHERE a.tanggal IN (?, ?) AND jm.guru_id IS NOT NULL AND jm.guru_id > 0 AND ag.absensi_id IS NULL
+      `, [yesterdayGuruStr, todayStr]);
+
+      await pool.execute(`
+        UPDATE absensi_guru ag
+        JOIN absensi_quran aq ON ag.jadwal_quran_id = aq.jadwal_quran_id AND ag.tanggal = aq.tanggal
+        SET ag.status = 'Hadir', ag.keterangan = 'Mengajar Al-Quran (Tersinkronisasi)', ag.is_otomatis = 0
+        WHERE ag.status = 'Alpha' AND ag.tanggal IN (?, ?)
+      `, [yesterdayGuruStr, todayStr]);
+
+      await pool.execute(`
+        INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id)
+        SELECT DISTINCT jq.guru_id, aq.tanggal, 'Hadir', 'Mengajar Al-Quran (Tersinkronisasi)', 0, '19:30:00', aq.jadwal_quran_id
+        FROM absensi_quran aq
+        JOIN jadwal_quran jq ON aq.jadwal_quran_id = jq.id
+        LEFT JOIN absensi_guru ag ON ag.guru_id = jq.guru_id AND ag.tanggal = aq.tanggal AND (ag.jadwal_quran_id = aq.jadwal_quran_id OR ag.status IN ('Hadir', 'Izin', 'Sakit'))
+        WHERE aq.tanggal IN (?, ?) AND jq.guru_id IS NOT NULL AND jq.guru_id > 0 AND ag.absensi_id IS NULL
+      `, [yesterdayGuruStr, todayStr]);
+
+      await pool.execute(`
+        UPDATE absensi_guru ag
+        JOIN absensi_kegiatan ak ON ag.kegiatan_id = ak.kegiatan_id AND ag.tanggal = ak.tanggal
+        SET ag.status = 'Hadir', ag.keterangan = 'Mendampingi Kegiatan (Tersinkronisasi)', ag.is_otomatis = 0
+        WHERE ag.status = 'Alpha' AND ag.tanggal IN (?, ?)
+      `, [yesterdayGuruStr, todayStr]);
+
+      await pool.execute(`
+        INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id)
+        SELECT DISTINCT jk.guru_id, ak.tanggal, 'Hadir', 'Mendampingi Kegiatan (Tersinkronisasi)', 0, '19:30:00', ak.kegiatan_id
+        FROM absensi_kegiatan ak
+        JOIN jadwal_kegiatan jk ON ak.kegiatan_id = jk.kegiatan_id
+        LEFT JOIN absensi_guru ag ON ag.guru_id = jk.guru_id AND ag.tanggal = ak.tanggal AND (ag.kegiatan_id = ak.kegiatan_id OR ag.status IN ('Hadir', 'Izin', 'Sakit'))
+        WHERE ak.tanggal IN (?, ?) AND jk.guru_id IS NOT NULL AND jk.guru_id > 0 AND ag.absensi_id IS NULL
+      `, [yesterdayGuruStr, todayStr]);
+    } catch (syncErr) {
+      console.warn('auto-heal guru absensi notice:', syncErr);
+    }
+
     let absenGuruRows: RowDataPacket[] = [];
     try {
       const [rows] = await pool.execute<RowDataPacket[]>(`
@@ -121,8 +176,10 @@ export async function GET() {
       else if (categoryKey === 'kegiatan') isCatAutoActive = isAutoAbsenKegiatan;
 
       distinctIds.forEach(gId => {
-        // Ambil data absensi yang terkait dengan kategori jadwal ini
-        // Prioritas: cek jadwal spesifik dulu, lalu fallback ke record Hadir/Izin/Sakit general
+        // Ambil SEMUA record absensi guru ini pada tanggal kemarin
+        // Gabungkan record spesifik (ada jadwal_id) + record general (tanpa jadwal_id)
+        // lalu terapkan prioritas: Hadir > Izin > Sakit > Alpha
+        // Ini penting agar record Hadir (dari tap tombol) tidak tertimpa Alpha (dari auto-cron)
         const guruAbsensSpesifik = absenGuruRows.filter(a => {
           if (a.guru_id !== gId) return false;
           if (categoryKey === 'madin') return a.jadwal_madin_id !== null && a.jadwal_madin_id !== undefined;
@@ -130,20 +187,18 @@ export async function GET() {
           if (categoryKey === 'kegiatan') return a.kegiatan_id !== null && a.kegiatan_id !== undefined;
           return false;
         });
-        // Fallback: record dengan status Hadir/Izin/Sakit yang ada di hari itu (tanpa jadwal spesifik)
-        // Ini menangani kasus guru scan hadir via tombol umum tanpa terhubung ke jadwal_id tertentu
         const guruAbsensGeneral = absenGuruRows.filter(a =>
           a.guru_id === gId &&
           (a.jadwal_madin_id === null || a.jadwal_madin_id === undefined) &&
           (a.jadwal_quran_id === null || a.jadwal_quran_id === undefined) &&
-          (a.kegiatan_id === null || a.kegiatan_id === undefined) &&
-          ['Hadir', 'Izin', 'Sakit'].includes(a.status)
+          (a.kegiatan_id === null || a.kegiatan_id === undefined)
         );
-        // Gabungkan: spesifik diprioritaskan, general sebagai fallback jika tidak ada spesifik
-        const guruAbsens = guruAbsensSpesifik.length > 0 ? guruAbsensSpesifik : guruAbsensGeneral;
+        // Merge keduanya → prioritas status terbaik berlaku di seluruh record
+        const guruAbsens = [...guruAbsensSpesifik, ...guruAbsensGeneral];
 
         let recordedStatus: string | undefined = undefined;
         if (guruAbsens.length > 0) {
+          // Prioritas: Hadir mengalahkan Alpha otomatis, meskipun record-nya berbeda tipe
           if (guruAbsens.some(a => a.status === 'Hadir')) recordedStatus = 'Hadir';
           else if (guruAbsens.some(a => a.status === 'Izin')) recordedStatus = 'Izin';
           else if (guruAbsens.some(a => a.status === 'Sakit')) recordedStatus = 'Sakit';
