@@ -250,6 +250,20 @@ function RekapPreviewContent() {
     }
   };
 
+  // State Pengurutan Tabel Santri Guru Mapel (Per Kelompok Kelas)
+  type GuruSortField = 'no' | 'nama' | 'hadir' | 'izin' | 'sakit' | 'alpha' | 'total' | 'persentase';
+  const [guruSortField, setGuruSortField] = useState<GuruSortField>('no');
+  const [guruSortOrder, setGuruSortOrder] = useState<SortOrder>('asc');
+
+  const handleGuruSort = (field: GuruSortField) => {
+    if (guruSortField === field) {
+      setGuruSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setGuruSortField(field);
+      setGuruSortOrder(field === 'nama' || field === 'no' ? 'asc' : 'desc');
+    }
+  };
+
   // Filter & Urutkan Baris Data
   const filteredData = useMemo(() => {
     if (meta?.is_guru_mapel) {
@@ -265,10 +279,33 @@ function RekapPreviewContent() {
       }
 
       return [...base].sort((a: any, b: any) => {
+        // 1. Kunci Utama: Tetap pada kelompok kelas & mapel masing-masing agar tidak tercampur
         if (a.section_key !== b.section_key) {
           return String(a.section_key || '').localeCompare(String(b.section_key || ''));
         }
-        return (a.no_urut || 0) - (b.no_urut || 0);
+
+        // 2. Kunci Kedua: Urutkan data santri DI DALAM KELOMPOK TERSEBUT
+        let res = 0;
+        if (guruSortField === 'nama') {
+          res = String(a.nama || '').localeCompare(String(b.nama || ''));
+        } else if (guruSortField === 'hadir') {
+          res = Number(a.hadir || 0) - Number(b.hadir || 0);
+        } else if (guruSortField === 'izin') {
+          res = Number(a.izin || 0) - Number(b.izin || 0);
+        } else if (guruSortField === 'sakit') {
+          res = Number(a.sakit || 0) - Number(b.sakit || 0);
+        } else if (guruSortField === 'alpha') {
+          res = Number(a.alpha || 0) - Number(b.alpha || 0);
+        } else if (guruSortField === 'total') {
+          res = Number(a.total || 0) - Number(b.total || 0);
+        } else if (guruSortField === 'persentase') {
+          res = Number(a.persentase || 0) - Number(b.persentase || 0);
+        } else {
+          // 'no' / nomor urut asli
+          res = (a.no_urut || 0) - (b.no_urut || 0);
+        }
+
+        return guruSortOrder === 'desc' ? -res : res;
       });
     }
 
@@ -297,7 +334,7 @@ function RekapPreviewContent() {
       }
       return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
     });
-  }, [data, statusFilter, sortField, sortOrder, meta]);
+  }, [data, statusFilter, sortField, sortOrder, meta, guruSortField, guruSortOrder]);
 
   // Hitung jumlah santri unik (tanpa hitungan ganda antar mapel berbeda)
   const uniqueSantriCount = useMemo(() => {
@@ -1341,14 +1378,118 @@ function RekapPreviewContent() {
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800 uppercase tracking-wider text-[10px]">
-                      <th className="py-3 px-3 w-10 text-center select-none">No</th>
-                      <th className="py-3 px-4 select-none">Nama Santri</th>
-                      <th className="py-3 px-2 text-center select-none text-emerald-600 dark:text-emerald-400">H</th>
-                      <th className="py-3 px-2 text-center select-none text-blue-600 dark:text-blue-400">I</th>
-                      <th className="py-3 px-2 text-center select-none text-amber-600 dark:text-amber-400">S</th>
-                      <th className="py-3 px-2 text-center select-none text-rose-600 dark:text-rose-400">A</th>
-                      <th className="py-3 px-3 text-center select-none whitespace-nowrap">Total</th>
-                      <th className="py-3 px-4 text-center select-none whitespace-nowrap">Kehadiran</th>
+                      <th
+                        onClick={() => handleGuruSort('no')}
+                        className="py-3 px-3 w-12 text-center cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                        title="Klik untuk mengurutkan berdasarkan nomor urut di setiap kelas"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span>No</span>
+                          {guruSortField === 'no' ? (
+                            guruSortOrder === 'asc' ? <ArrowUp size={11} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={11} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={10} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleGuruSort('nama')}
+                        className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                        title="Klik untuk mengurutkan berdasarkan nama santri di setiap kelas"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>Nama Santri</span>
+                          {guruSortField === 'nama' ? (
+                            guruSortOrder === 'asc' ? <ArrowUp size={12} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={11} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleGuruSort('hadir')}
+                        className="py-3 px-2 text-center cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap text-emerald-600 dark:text-emerald-400"
+                        title="Klik untuk mengurutkan berdasarkan hadir di setiap kelas"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span>H</span>
+                          {guruSortField === 'hadir' ? (
+                            guruSortOrder === 'asc' ? <ArrowUp size={11} className="shrink-0" /> : <ArrowDown size={11} className="shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={10} className="text-emerald-300 dark:text-emerald-700 group-hover:text-emerald-500 shrink-0" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleGuruSort('izin')}
+                        className="py-3 px-2 text-center cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap text-blue-600 dark:text-blue-400"
+                        title="Klik untuk mengurutkan berdasarkan izin di setiap kelas"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span>I</span>
+                          {guruSortField === 'izin' ? (
+                            guruSortOrder === 'asc' ? <ArrowUp size={11} className="shrink-0" /> : <ArrowDown size={11} className="shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={10} className="text-blue-300 dark:text-blue-700 group-hover:text-blue-500 shrink-0" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleGuruSort('sakit')}
+                        className="py-3 px-2 text-center cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap text-amber-600 dark:text-amber-400"
+                        title="Klik untuk mengurutkan berdasarkan sakit di setiap kelas"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span>S</span>
+                          {guruSortField === 'sakit' ? (
+                            guruSortOrder === 'asc' ? <ArrowUp size={11} className="shrink-0" /> : <ArrowDown size={11} className="shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={10} className="text-amber-300 dark:text-amber-700 group-hover:text-amber-500 shrink-0" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleGuruSort('alpha')}
+                        className="py-3 px-2 text-center cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap text-rose-600 dark:text-rose-400"
+                        title="Klik untuk mengurutkan berdasarkan alpha di setiap kelas"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span>A</span>
+                          {guruSortField === 'alpha' ? (
+                            guruSortOrder === 'asc' ? <ArrowUp size={11} className="shrink-0" /> : <ArrowDown size={11} className="shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={10} className="text-rose-300 dark:text-rose-700 group-hover:text-rose-500 shrink-0" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleGuruSort('total')}
+                        className="py-3 px-3 text-center cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                        title="Klik untuk mengurutkan berdasarkan total presensi di setiap kelas"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span>Total</span>
+                          {guruSortField === 'total' ? (
+                            guruSortOrder === 'asc' ? <ArrowUp size={11} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={11} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={10} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleGuruSort('persentase')}
+                        className="py-3 px-4 text-center cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors select-none group whitespace-nowrap"
+                        title="Klik untuk mengurutkan berdasarkan persentase kehadiran di setiap kelas"
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span>Kehadiran</span>
+                          {guruSortField === 'persentase' ? (
+                            guruSortOrder === 'asc' ? <ArrowUp size={11} className="text-purple-600 dark:text-purple-400 shrink-0" /> : <ArrowDown size={11} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                          ) : (
+                            <ArrowUpDown size={10} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                          )}
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
