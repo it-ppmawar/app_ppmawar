@@ -299,6 +299,13 @@ function RekapPreviewContent() {
     });
   }, [data, statusFilter, sortField, sortOrder, meta]);
 
+  // Hitung jumlah santri unik (tanpa hitungan ganda antar mapel berbeda)
+  const uniqueSantriCount = useMemo(() => {
+    if (!meta?.is_guru_mapel) return filteredData.length;
+    const set = new Set(filteredData.map(d => d.murid_id || d.nis || d.nama));
+    return set.size;
+  }, [filteredData, meta]);
+
   // Periode Label
   const periodeLabel = useMemo(() => {
     if (!meta) return '-';
@@ -1318,7 +1325,7 @@ function RekapPreviewContent() {
                 </button>
               )}
               <span className="text-xs text-slate-400 font-medium">
-                {meta?.is_guru_mapel ? `${filteredData.length} Santri` : `${filteredData.length} Catatan`}
+                {meta?.is_guru_mapel ? `${uniqueSantriCount} Santri Terbina` : `${filteredData.length} Catatan`}
               </span>
             </div>
           </div>

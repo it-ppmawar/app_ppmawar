@@ -148,7 +148,7 @@ export async function GET(request: Request) {
       }
 
       const allStudentsRows: any[] = [];
-      let totalSemuaSantri = 0;
+      const uniqueSantriIds = new Set<string | number>();
       let grandHadir = 0;
       let grandIzin = 0;
       let grandSakit = 0;
@@ -221,9 +221,10 @@ export async function GET(request: Request) {
           }
         }
 
-        totalSemuaSantri += studentsInClass.length;
-
         studentsInClass.forEach((st: any, idxSantri: number) => {
+          if (st.murid_id) {
+            uniqueSantriIds.add(st.murid_id);
+          }
           const att = attMap[String(st.murid_id)] || { hadir: 0, izin: 0, sakit: 0, alpha: 0, total: 0 };
           const h = Number(att.hadir || 0);
           const i = Number(att.izin || 0);
@@ -359,18 +360,21 @@ export async function GET(request: Request) {
       const grandTotalAtt = grandHadir + grandIzin + grandSakit + grandAlpha;
       const grandAvgPersen = grandTotalAtt > 0 ? Math.round((grandHadir / grandTotalAtt) * 100) : 0;
 
+      const totalSantriTerbina = uniqueSantriIds.size;
+
       const muridInfo = {
         murid_id: guruData.guru_id,
         nama: guruData.nama,
         nis: guruData.nip || '-',
         kelas_madin: `Pengajar ${sectionsMap.size} Mapel / Kelas`,
-        kelas_quran: `${totalSemuaSantri} Santri Terbina`,
+        kelas_quran: `${totalSantriTerbina} Santri Terbina`,
         no_hp_wali: guruData.no_hp || '',
         foto: guruData.foto || '',
         jenis_kelamin: 'Guru Mapel',
         is_guru_mapel: true,
         total_mapel: sectionsMap.size,
-        total_santri: totalSemuaSantri,
+        total_santri: totalSantriTerbina,
+        total_rincian_mapel: allStudentsRows.length,
         avg_persentase: grandAvgPersen,
         hadir: grandHadir,
         izin: grandIzin,
@@ -404,7 +408,8 @@ export async function GET(request: Request) {
           isRentang,
           sub_filter,
           total_mapel: sectionsMap.size,
-          total_santri: totalSemuaSantri,
+          total_santri: totalSantriTerbina,
+          total_rincian_mapel: allStudentsRows.length,
           daftar_mapel_list: daftarMapelList,
           daftar_mapel_teks: daftarMapelTeks,
           expires_at: payload.exp ? payload.exp * 1000 : null,
