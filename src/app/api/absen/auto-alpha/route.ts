@@ -78,11 +78,14 @@ export async function POST(request: Request) {
       if (nowSecs <= lateSecs) continue;
 
       let guruMarked = false;
-      // 1.1 Catat Alpha untuk Guru jika belum ada presensi (belum scan mandiri, belum isi absen, belum izin)
+      // 1.1 Catat Alpha untuk Guru jika belum ada presensi apapun hari ini (Hadir/Izin/Sakit)
+      // Cek: ada record jadwal spesifik ini, ATAU ada record Hadir/Izin/Sakit umum di hari yang sama
       if (isAutoAlphaMadin && jadwal.guru_id) {
         const [guruAtt] = await connection.execute<RowDataPacket[]>(
           `SELECT absensi_id FROM absensi_guru 
-           WHERE guru_id = ? AND tanggal = ? AND (jadwal_madin_id = ? OR (jadwal_madin_id IS NULL AND status = 'Hadir'))`,
+           WHERE guru_id = ? AND tanggal = ? 
+           AND (jadwal_madin_id = ? OR status IN ('Hadir', 'Izin', 'Sakit'))
+           LIMIT 1`,
           [jadwal.guru_id, todayStr, jadwal.jadwal_id]
         );
         if (guruAtt.length === 0) {
@@ -145,11 +148,13 @@ export async function POST(request: Request) {
       if (nowSecs <= lateSecs) continue;
 
       let guruMarked = false;
-      // 2.1 Catat Alpha untuk Guru jika belum ada presensi
+      // 2.1 Catat Alpha untuk Guru jika belum ada presensi apapun hari ini (Hadir/Izin/Sakit)
       if (isAutoAlphaQuran && jadwal.guru_id) {
         const [guruAtt] = await connection.execute<RowDataPacket[]>(
           `SELECT absensi_id FROM absensi_guru 
-           WHERE guru_id = ? AND tanggal = ? AND (jadwal_quran_id = ? OR (jadwal_quran_id IS NULL AND status = 'Hadir'))`,
+           WHERE guru_id = ? AND tanggal = ? 
+           AND (jadwal_quran_id = ? OR status IN ('Hadir', 'Izin', 'Sakit'))
+           LIMIT 1`,
           [jadwal.guru_id, todayStr, jadwal.jadwal_id]
         );
         if (guruAtt.length === 0) {
@@ -209,11 +214,13 @@ export async function POST(request: Request) {
       if (nowSecs <= lateSecs) continue;
 
       let guruMarked = false;
-      // 3.1 Catat Alpha untuk Guru/Pembina jika belum ada presensi
+      // 3.1 Catat Alpha untuk Guru/Pembina jika belum ada presensi apapun hari ini (Hadir/Izin/Sakit)
       if (isAutoAlphaKegiatan && jadwal.guru_id) {
         const [guruAtt] = await connection.execute<RowDataPacket[]>(
           `SELECT absensi_id FROM absensi_guru 
-           WHERE guru_id = ? AND tanggal = ? AND (kegiatan_id = ? OR (kegiatan_id IS NULL AND status = 'Hadir'))`,
+           WHERE guru_id = ? AND tanggal = ? 
+           AND (kegiatan_id = ? OR status IN ('Hadir', 'Izin', 'Sakit'))
+           LIMIT 1`,
           [jadwal.guru_id, todayStr, jadwal.jadwal_id]
         );
         if (guruAtt.length === 0) {

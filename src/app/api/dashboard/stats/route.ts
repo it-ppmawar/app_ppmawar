@@ -121,14 +121,26 @@ export async function GET() {
       else if (categoryKey === 'kegiatan') isCatAutoActive = isAutoAbsenKegiatan;
 
       distinctIds.forEach(gId => {
-        // HANYA ambil data absensi yang benar-benar terkait dengan kategori jadwal ini
-        const guruAbsens = absenGuruRows.filter(a => {
+        // Ambil data absensi yang terkait dengan kategori jadwal ini
+        // Prioritas: cek jadwal spesifik dulu, lalu fallback ke record Hadir/Izin/Sakit general
+        const guruAbsensSpesifik = absenGuruRows.filter(a => {
           if (a.guru_id !== gId) return false;
           if (categoryKey === 'madin') return a.jadwal_madin_id !== null && a.jadwal_madin_id !== undefined;
           if (categoryKey === 'quran') return a.jadwal_quran_id !== null && a.jadwal_quran_id !== undefined;
           if (categoryKey === 'kegiatan') return a.kegiatan_id !== null && a.kegiatan_id !== undefined;
           return false;
         });
+        // Fallback: record dengan status Hadir/Izin/Sakit yang ada di hari itu (tanpa jadwal spesifik)
+        // Ini menangani kasus guru scan hadir via tombol umum tanpa terhubung ke jadwal_id tertentu
+        const guruAbsensGeneral = absenGuruRows.filter(a =>
+          a.guru_id === gId &&
+          (a.jadwal_madin_id === null || a.jadwal_madin_id === undefined) &&
+          (a.jadwal_quran_id === null || a.jadwal_quran_id === undefined) &&
+          (a.kegiatan_id === null || a.kegiatan_id === undefined) &&
+          ['Hadir', 'Izin', 'Sakit'].includes(a.status)
+        );
+        // Gabungkan: spesifik diprioritaskan, general sebagai fallback jika tidak ada spesifik
+        const guruAbsens = guruAbsensSpesifik.length > 0 ? guruAbsensSpesifik : guruAbsensGeneral;
 
         let recordedStatus: string | undefined = undefined;
         if (guruAbsens.length > 0) {

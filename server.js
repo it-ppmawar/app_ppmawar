@@ -87,7 +87,7 @@ app.prepare().then(() => {
 
         if (isMadin && jadwal.guru_id) {
           const [guruAtt] = await conn.execute(
-            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND jadwal_madin_id = ?`,
+            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND (jadwal_madin_id = ? OR status IN ('Hadir', 'Izin', 'Sakit')) LIMIT 1`,
             [jadwal.guru_id, todayStr, jadwal.jadwal_id]
           );
           if (guruAtt.length === 0) {
@@ -129,7 +129,7 @@ app.prepare().then(() => {
 
         if (isQuran && jadwal.guru_id) {
           const [guruAtt] = await conn.execute(
-            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND jadwal_quran_id = ?`,
+            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND (jadwal_quran_id = ? OR status IN ('Hadir', 'Izin', 'Sakit')) LIMIT 1`,
             [jadwal.guru_id, todayStr, jadwal.jadwal_id]
           );
           if (guruAtt.length === 0) {
@@ -171,7 +171,7 @@ app.prepare().then(() => {
 
         if (isKegiatan && jadwal.guru_id) {
           const [guruAtt] = await conn.execute(
-            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND kegiatan_id = ?`,
+            `SELECT absensi_id FROM absensi_guru WHERE guru_id = ? AND tanggal = ? AND (kegiatan_id = ? OR status IN ('Hadir', 'Izin', 'Sakit')) LIMIT 1`,
             [jadwal.guru_id, todayStr, jadwal.jadwal_id]
           );
           if (guruAtt.length === 0) {
