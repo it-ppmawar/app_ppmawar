@@ -98,55 +98,85 @@ export async function GET() {
       console.warn('jadwalGuruRows error:', e);
     }
 
-    // Sinkronisasi otomatis: Jika santri pada jadwal madin/quran/kegiatan sudah diinputkan absensinya,
-    // maka dewan guru pengampu jadwal tersebut dipastikan Hadir mengajar.
-    // Perbaiki data absensi_guru yang sempat salah tercatat 'Alpha' oleh cron, atau yang belum terinput.
+    // 1. Ambil daftar jadwal yang sudah terbukti diajar (santri sudah diabsen) pada tanggal kemarin
+    const taughtMadinSet = new Set<number>();
+    const taughtQuranSet = new Set<number>();
+    const taughtKegiatanSet = new Set<number>();
+
     try {
+      const [mRows]: any = await pool.execute(
+        'SELECT DISTINCT jadwal_madin_id FROM absensi WHERE tanggal = ? AND jadwal_madin_id IS NOT NULL',
+        [yesterdayGuruStr]
+      );
+      (mRows || []).forEach((r: any) => taughtMadinSet.add(Number(r.jadwal_madin_id)));
+
+      const [qRows]: any = await pool.execute(
+        'SELECT DISTINCT jadwal_quran_id FROM absensi_quran WHERE tanggal = ? AND jadwal_quran_id IS NOT NULL',
+        [yesterdayGuruStr]
+      );
+      (qRows || []).forEach((r: any) => taughtQuranSet.add(Number(r.jadwal_quran_id)));
+
+      const [kRows]: any = await pool.execute(
+        'SELECT DISTINCT kegiatan_id FROM absensi_kegiatan WHERE tanggal = ? AND kegiatan_id IS NOT NULL',
+        [yesterdayGuruStr]
+      );
+      (kRows || []).forEach((r: any) => taughtKegiatanSet.add(Number(r.kegiatan_id)));
+    } catch (e) {
+      console.warn('Error fetching taught schedules:', e);
+    }
+
+    // 2. Self-healing database: sinkronkan absensi_guru berdasarkan data pengajaran santri nyata
+    try {
+      // Perbaiki guru yang tercatat Alpha padahal kelasnya sudah diajar (santri diabsen)
       await pool.execute(`
         UPDATE absensi_guru ag
-        JOIN absensi a ON ag.jadwal_madin_id = a.jadwal_madin_id AND ag.tanggal = a.tanggal
-        SET ag.status = 'Hadir', ag.keterangan = 'Mengajar Kelas (Tersinkronisasi)', ag.is_otomatis = 0
+        JOIN jadwal_madin jm ON ag.guru_id = jm.guru_id
+        JOIN absensi a ON a.jadwal_madin_id = jm.jadwal_id AND a.tanggal = ag.tanggal
+        SET ag.status = 'Hadir', ag.keterangan = 'Mengajar Kelas (Tersinkronisasi)', ag.is_otomatis = 0, ag.jadwal_madin_id = jm.jadwal_id
         WHERE ag.status = 'Alpha' AND ag.tanggal IN (?, ?)
       `, [yesterdayGuruStr, todayStr]);
 
+      // Masukkan kehadiran guru jika belum ada record sama sekali
       await pool.execute(`
         INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id)
-        SELECT DISTINCT jm.guru_id, a.tanggal, 'Hadir', 'Mengajar Kelas (Tersinkronisasi)', 0, '19:30:00', a.jadwal_madin_id
+        SELECT DISTINCT jm.guru_id, a.tanggal, 'Hadir', 'Mengajar Kelas (Tersinkronisasi)', 0, '19:30:00', jm.jadwal_id
         FROM absensi a
         JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
-        LEFT JOIN absensi_guru ag ON ag.guru_id = jm.guru_id AND ag.tanggal = a.tanggal AND (ag.jadwal_madin_id = a.jadwal_madin_id OR ag.status IN ('Hadir', 'Izin', 'Sakit'))
+        LEFT JOIN absensi_guru ag ON ag.guru_id = jm.guru_id AND ag.tanggal = a.tanggal
         WHERE a.tanggal IN (?, ?) AND jm.guru_id IS NOT NULL AND jm.guru_id > 0 AND ag.absensi_id IS NULL
       `, [yesterdayGuruStr, todayStr]);
 
       await pool.execute(`
         UPDATE absensi_guru ag
-        JOIN absensi_quran aq ON ag.jadwal_quran_id = aq.jadwal_quran_id AND ag.tanggal = aq.tanggal
-        SET ag.status = 'Hadir', ag.keterangan = 'Mengajar Al-Quran (Tersinkronisasi)', ag.is_otomatis = 0
+        JOIN jadwal_quran jq ON ag.guru_id = jq.guru_id
+        JOIN absensi_quran aq ON aq.jadwal_quran_id = jq.id AND aq.tanggal = ag.tanggal
+        SET ag.status = 'Hadir', ag.keterangan = 'Mengajar Al-Quran (Tersinkronisasi)', ag.is_otomatis = 0, ag.jadwal_quran_id = jq.id
         WHERE ag.status = 'Alpha' AND ag.tanggal IN (?, ?)
       `, [yesterdayGuruStr, todayStr]);
 
       await pool.execute(`
         INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_quran_id)
-        SELECT DISTINCT jq.guru_id, aq.tanggal, 'Hadir', 'Mengajar Al-Quran (Tersinkronisasi)', 0, '19:30:00', aq.jadwal_quran_id
+        SELECT DISTINCT jq.guru_id, aq.tanggal, 'Hadir', 'Mengajar Al-Quran (Tersinkronisasi)', 0, '19:30:00', jq.id
         FROM absensi_quran aq
         JOIN jadwal_quran jq ON aq.jadwal_quran_id = jq.id
-        LEFT JOIN absensi_guru ag ON ag.guru_id = jq.guru_id AND ag.tanggal = aq.tanggal AND (ag.jadwal_quran_id = aq.jadwal_quran_id OR ag.status IN ('Hadir', 'Izin', 'Sakit'))
+        LEFT JOIN absensi_guru ag ON ag.guru_id = jq.guru_id AND ag.tanggal = aq.tanggal
         WHERE aq.tanggal IN (?, ?) AND jq.guru_id IS NOT NULL AND jq.guru_id > 0 AND ag.absensi_id IS NULL
       `, [yesterdayGuruStr, todayStr]);
 
       await pool.execute(`
         UPDATE absensi_guru ag
-        JOIN absensi_kegiatan ak ON ag.kegiatan_id = ak.kegiatan_id AND ag.tanggal = ak.tanggal
-        SET ag.status = 'Hadir', ag.keterangan = 'Mendampingi Kegiatan (Tersinkronisasi)', ag.is_otomatis = 0
+        JOIN jadwal_kegiatan jk ON ag.guru_id = jk.guru_id
+        JOIN absensi_kegiatan ak ON ak.kegiatan_id = jk.kegiatan_id AND ak.tanggal = ag.tanggal
+        SET ag.status = 'Hadir', ag.keterangan = 'Mendampingi Kegiatan (Tersinkronisasi)', ag.is_otomatis = 0, ag.kegiatan_id = jk.kegiatan_id
         WHERE ag.status = 'Alpha' AND ag.tanggal IN (?, ?)
       `, [yesterdayGuruStr, todayStr]);
 
       await pool.execute(`
         INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, kegiatan_id)
-        SELECT DISTINCT jk.guru_id, ak.tanggal, 'Hadir', 'Mendampingi Kegiatan (Tersinkronisasi)', 0, '19:30:00', ak.kegiatan_id
+        SELECT DISTINCT jk.guru_id, ak.tanggal, 'Hadir', 'Mendampingi Kegiatan (Tersinkronisasi)', 0, '19:30:00', jk.kegiatan_id
         FROM absensi_kegiatan ak
         JOIN jadwal_kegiatan jk ON ak.kegiatan_id = jk.kegiatan_id
-        LEFT JOIN absensi_guru ag ON ag.guru_id = jk.guru_id AND ag.tanggal = ak.tanggal AND (ag.kegiatan_id = ak.kegiatan_id OR ag.status IN ('Hadir', 'Izin', 'Sakit'))
+        LEFT JOIN absensi_guru ag ON ag.guru_id = jk.guru_id AND ag.tanggal = ak.tanggal
         WHERE ak.tanggal IN (?, ?) AND jk.guru_id IS NOT NULL AND jk.guru_id > 0 AND ag.absensi_id IS NULL
       `, [yesterdayGuruStr, todayStr]);
     } catch (syncErr) {
@@ -176,35 +206,27 @@ export async function GET() {
       else if (categoryKey === 'kegiatan') isCatAutoActive = isAutoAbsenKegiatan;
 
       distinctIds.forEach(gId => {
-        // Ambil SEMUA record absensi guru ini pada tanggal kemarin
-        // Gabungkan record spesifik (ada jadwal_id) + record general (tanpa jadwal_id)
-        // lalu terapkan prioritas: Hadir > Izin > Sakit > Alpha
-        // Ini penting agar record Hadir (dari tap tombol) tidak tertimpa Alpha (dari auto-cron)
-        const guruAbsensSpesifik = absenGuruRows.filter(a => {
-          if (a.guru_id !== gId) return false;
-          if (categoryKey === 'madin') return a.jadwal_madin_id !== null && a.jadwal_madin_id !== undefined;
-          if (categoryKey === 'quran') return a.jadwal_quran_id !== null && a.jadwal_quran_id !== undefined;
-          if (categoryKey === 'kegiatan') return a.kegiatan_id !== null && a.kegiatan_id !== undefined;
+        // Cek apakah ada jadwal guru ini di kategori ini yang santrinya sudah terdata (kelas terlaksana)
+        const teacherSchedules = categoryRows.filter(j => j.guru_id === gId);
+        const hasTaughtClass = teacherSchedules.some(j => {
+          if (categoryKey === 'madin') return taughtMadinSet.has(Number(j.jadwal_id));
+          if (categoryKey === 'quran') return taughtQuranSet.has(Number(j.jadwal_id));
+          if (categoryKey === 'kegiatan') return taughtKegiatanSet.has(Number(j.jadwal_id));
           return false;
         });
-        const guruAbsensGeneral = absenGuruRows.filter(a =>
-          a.guru_id === gId &&
-          (a.jadwal_madin_id === null || a.jadwal_madin_id === undefined) &&
-          (a.jadwal_quran_id === null || a.jadwal_quran_id === undefined) &&
-          (a.kegiatan_id === null || a.kegiatan_id === undefined)
-        );
-        // Merge keduanya → prioritas status terbaik berlaku di seluruh record
-        const guruAbsens = [...guruAbsensSpesifik, ...guruAbsensGeneral];
+
+        const guruAbsens = absenGuruRows.filter(a => a.guru_id === gId);
 
         let recordedStatus: string | undefined = undefined;
-        if (guruAbsens.length > 0) {
-          // Prioritas: Hadir mengalahkan Alpha otomatis, meskipun record-nya berbeda tipe
-          if (guruAbsens.some(a => a.status === 'Hadir')) recordedStatus = 'Hadir';
-          else if (guruAbsens.some(a => a.status === 'Izin')) recordedStatus = 'Izin';
-          else if (guruAbsens.some(a => a.status === 'Sakit')) recordedStatus = 'Sakit';
-          else if (guruAbsens.some(a => a.status === 'Alpha')) recordedStatus = 'Alpha';
-          else recordedStatus = guruAbsens[0].status;
-        }
+        // Prioritas penentuan status:
+        // 1. Izin / Sakit (misalnya izin resmi atau digantikan guru badal)
+        if (guruAbsens.some(a => a.status === 'Izin')) recordedStatus = 'Izin';
+        else if (guruAbsens.some(a => a.status === 'Sakit')) recordedStatus = 'Sakit';
+        // 2. Hadir jika ada record Hadir ATAU jika kelasnya terbukti diajar (santri sudah diabsen)
+        else if (guruAbsens.some(a => a.status === 'Hadir') || hasTaughtClass) recordedStatus = 'Hadir';
+        // 3. Alpha jika tercatat Alpha dan kelas memang tidak terlaksana
+        else if (guruAbsens.some(a => a.status === 'Alpha')) recordedStatus = 'Alpha';
+        else if (guruAbsens.length > 0) recordedStatus = guruAbsens[0].status;
 
         if (recordedStatus === 'Hadir') hadir++;
         else if (recordedStatus === 'Izin') izin++;
@@ -212,11 +234,7 @@ export async function GET() {
         else if (recordedStatus === 'Alpha') alpha++;
         else {
           if (isCatAutoActive && !isModeLibur) {
-            const schedules = categoryRows.filter(j => j.guru_id === gId);
-            // Data yang ditampilkan adalah KEMARIN — hari sudah berganti sehingga
-            // semua jadwal kemarin sudah pasti melewati waktu tenggang.
-            // Tidak perlu cek jam (currentSecs > deadlineSec), langsung alpha.
-            if (schedules.length > 0) alpha++;
+            alpha++;
           }
         }
       });
@@ -242,13 +260,19 @@ export async function GET() {
     let overallHadir = 0, overallIzin = 0, overallSakit = 0, overallAlpha = 0;
     allGuruDistinctIds.forEach(gId => {
       const gAbs = absenGuruRows.filter(a => a.guru_id === gId);
-      if (gAbs.some(a => a.status === 'Hadir')) overallHadir++;
-      else if (gAbs.some(a => a.status === 'Izin')) overallIzin++;
+      const gSchedules = jadwalGuruRows.filter(j => j.guru_id === gId);
+      const hasTaught = gSchedules.some(s => {
+        if (s.tipe === 'madin') return taughtMadinSet.has(Number(s.jadwal_id));
+        if (s.tipe === 'quran') return taughtQuranSet.has(Number(s.jadwal_id));
+        if (s.tipe === 'kegiatan') return taughtKegiatanSet.has(Number(s.jadwal_id));
+        return false;
+      });
+
+      if (gAbs.some(a => a.status === 'Izin')) overallIzin++;
       else if (gAbs.some(a => a.status === 'Sakit')) overallSakit++;
+      else if (gAbs.some(a => a.status === 'Hadir') || hasTaught) overallHadir++;
       else if (gAbs.some(a => a.status === 'Alpha')) overallAlpha++;
       else {
-        // Cek apakah ada jadwal guru ini yang kategorinya mengaktifkan auto-alpha
-        const gSchedules = jadwalGuruRows.filter(j => j.guru_id === gId);
         const hasActiveAutoCat = gSchedules.some(s => {
           if (s.tipe === 'madin') return isAutoAbsenMadin;
           if (s.tipe === 'quran') return isAutoAbsenQuran;
@@ -267,7 +291,6 @@ export async function GET() {
       sakit: overallSakit,
       alpha: overallAlpha,
     };
-
     // Resolve guruId if null for role guru
     let resolvedGuruId = payload.guruId;
     if (payload.role === 'guru' && !resolvedGuruId && payload.userId) {
