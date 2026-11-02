@@ -120,7 +120,7 @@ function RekapPreviewContent() {
   const [meta, setMeta] = useState<any>(null);
   const [backendTrend, setBackendTrend] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('semua');
-  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+  const [zoomPhoto, setZoomPhoto] = useState<{ url: string; nama?: string } | null>(null);
   const [imgError, setImgError] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
@@ -595,7 +595,7 @@ function RekapPreviewContent() {
             <div
               onClick={() => {
                 if (fotoSrc && !imgError) {
-                  setZoomPhoto(fotoSrc);
+                  setZoomPhoto({ url: fotoSrc, nama: murid?.nama || 'Foto' });
                 }
               }}
               style={{ backgroundColor: !fotoSrc || imgError ? avatarBg : undefined }}
@@ -1419,7 +1419,7 @@ function RekapPreviewContent() {
                                   <td className="py-3 px-4">
                                     <div className="flex items-center gap-2.5">
                                       <div
-                                        onClick={() => sFoto && setZoomPhoto(sFoto)}
+                                        onClick={() => sFoto && setZoomPhoto({ url: sFoto, nama: row.nama })}
                                         style={{ backgroundColor: getAvatarColor(row.nama) }}
                                         className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-extrabold shrink-0 overflow-hidden select-none ${
                                           sFoto ? 'cursor-pointer hover:opacity-90' : ''
@@ -1610,13 +1610,15 @@ function RekapPreviewContent() {
               <X size={18} />
             </button>
             <img
-              src={zoomPhoto}
-              alt={murid?.nama || 'Foto Santri'}
+              src={zoomPhoto.url}
+              alt={zoomPhoto.nama || 'Foto'}
               className="w-full rounded-2xl shadow-2xl object-cover max-h-[85vh] bg-black"
             />
-            <p className="text-center text-xs text-white/90 font-bold mt-2.5">
-              {murid?.nama || 'Foto Santri'}
-            </p>
+            {zoomPhoto.nama && (
+              <p className="text-center text-xs text-white/90 font-bold mt-2.5">
+                {zoomPhoto.nama}
+              </p>
+            )}
           </div>
         </div>
       )}
