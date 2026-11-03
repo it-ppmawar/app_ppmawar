@@ -607,7 +607,7 @@ function RekapPreviewContent() {
               )}
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 text-center font-medium">
-              Pondok Pesantren Matholi&apos;ul Anwar
+              {murid?.nama || "Pondok Pesantren Matholi'ul Anwar"}
             </p>
           </div>
 
