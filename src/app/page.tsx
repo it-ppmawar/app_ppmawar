@@ -267,10 +267,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <p className="text-[11px] text-green-100/80 text-center font-medium leading-relaxed -mt-1 mb-1">
-            💡 <em>Wali Murid dapat masuk menggunakan <strong>NIS santri</strong></em>
-          </p>
-
           <button
             type="submit"
             disabled={loading}
