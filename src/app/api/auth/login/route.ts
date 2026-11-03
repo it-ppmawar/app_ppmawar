@@ -34,17 +34,69 @@ export async function POST(request: Request) {
 
     const { username, password } = body;
 
-    if (!username || !password) {
+    const cleanUsername = (username || '').toString().trim();
+    const cleanPassword = (password || '').toString().trim();
+
+    if (!cleanUsername || !cleanPassword) {
       return NextResponse.json({ error: 'Username dan Password wajib diisi' }, { status: 400 });
     }
 
-    const [users] = await pool.execute<RowDataPacket[]>(
-      `SELECT u.*, k.nama_asrama 
+    // 1. Cari user di tabel users (langsung via username, atau via relasi murid untuk wali_murid)
+    let [users] = await pool.execute<RowDataPacket[]>(
+      `SELECT u.*, k.nama_asrama, m.nis as santri_nis, m.nama as santri_nama, m.murid_id as santri_id
        FROM users u 
        LEFT JOIN kamar k ON u.kamar_id = k.kamar_id 
-       WHERE u.username = ? LIMIT 1`,
-      [username]
+       LEFT JOIN murid m ON u.murid_id = m.murid_id
+       WHERE u.username = ? 
+          OR (u.role = 'wali_murid' AND (
+               m.nis = ? 
+            OR CONCAT('2026', m.murid_id) = ? 
+            OR LOWER(TRIM(m.nama)) = LOWER(?)
+          ))
+       LIMIT 1`,
+      [cleanUsername, cleanUsername, cleanUsername, cleanUsername]
     );
+
+    // 2. Jika belum ditemukan di tabel users, periksa apakah username cocok dengan data santri di tabel murid
+    // (Auto-provision akun wali murid jika santri terdaftar tetapi belum dibuatkan record di tabel users)
+    if (users.length === 0) {
+      const [muridRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT murid_id, nis, nama, nama_wali FROM murid 
+         WHERE nis = ? 
+            OR CONCAT('2026', murid_id) = ? 
+            OR LOWER(TRIM(nama)) = LOWER(?)
+         LIMIT 1`,
+        [cleanUsername, cleanUsername, cleanUsername]
+      );
+
+      if (muridRows.length > 0) {
+        const m = muridRows[0];
+        const defaultNis = (m.nis || '').trim();
+        const defaultLegacy = `2026${m.murid_id}`;
+        
+        // Cek apakah password yang dimasukkan cocok dengan NIS atau 2026+murid_id
+        if ((defaultNis && cleanPassword === defaultNis) || cleanPassword === defaultLegacy) {
+          const userUname = defaultNis || defaultLegacy;
+          const hashed = await bcrypt.hash(cleanPassword, 10);
+          const namaWali = m.nama_wali || `Wali dari ${m.nama}`;
+          
+          // Buat akun wali murid baru secara otomatis
+          const [ins] = await pool.execute<any>(
+            `INSERT INTO users (username, password, role, nama, murid_id) VALUES (?, ?, 'wali_murid', ?, ?)`,
+            [userUname, hashed, namaWali, m.murid_id]
+          );
+          
+          const [newUsers] = await pool.execute<RowDataPacket[]>(
+            `SELECT u.*, NULL as nama_asrama, ? as santri_nis, ? as santri_nama, ? as santri_id
+             FROM users u WHERE u.id = ? LIMIT 1`,
+            [m.nis, m.nama, m.murid_id, ins.insertId]
+          );
+          if (newUsers.length > 0) {
+            users = newUsers;
+          }
+        }
+      }
+    }
 
     if (users.length === 0) {
       return NextResponse.json({ error: 'Username tidak ditemukan' }, { status: 401 });
@@ -53,13 +105,27 @@ export async function POST(request: Request) {
     const user = users[0];
 
     // Cek password (mendukung legacy plain-text password jika guru_id dikonversi)
-    const isHashed = user.password.length > 20; // Asumsi hash bcrypt > 20 chars
+    const isHashed = user.password && user.password.length > 20; // Asumsi hash bcrypt > 20 chars
     let validPassword = false;
 
     if (isHashed) {
-      validPassword = await bcrypt.compare(password, user.password);
+      validPassword = await bcrypt.compare(cleanPassword, user.password);
     } else {
-      validPassword = password === user.password;
+      validPassword = cleanPassword === user.password;
+    }
+
+    // Fallback fleksibel untuk Wali Murid:
+    // Izinkan login jika password cocok dengan NIS santri atau 2026+murid_id default
+    if (!validPassword && (user.role === 'wali_murid' || user.murid_id)) {
+      const defaultNis = (user.santri_nis || '').trim();
+      const defaultLegacy = user.santri_id ? `2026${user.santri_id}` : '';
+      if ((defaultNis && cleanPassword === defaultNis) || (defaultLegacy && cleanPassword === defaultLegacy)) {
+        validPassword = true;
+        // Auto-heal password di DB agar tersimpan hash terbarunya
+        bcrypt.hash(cleanPassword, 10).then(hashed => {
+          pool.execute('UPDATE users SET password = ? WHERE id = ?', [hashed, user.id]).catch(() => {});
+        }).catch(() => {});
+      }
     }
 
     if (!validPassword) {

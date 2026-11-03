@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, User, CalendarDays, Clock, Fingerprint, Eye } from 'lucide-react';
+import { Lock, User, CalendarDays, Clock, Fingerprint, Eye, EyeOff } from 'lucide-react';
 import { startAuthentication } from '@simplewebauthn/browser';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -54,6 +55,14 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedUsername || !trimmedPassword) {
+      setError('Nama Pengguna dan Kata Sandi wajib diisi');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -61,7 +70,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username: trimmedUsername, password: trimmedPassword })
       });
 
       const data = await res.json();
@@ -201,9 +210,12 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[14px] sm:text-[15px] font-bold placeholder-green-200/70 placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
                 style={{ fontFamily: '"Courier New", Courier, monospace' }}
-                placeholder="Nama Pengguna"
+                placeholder="Nama Pengguna / NIS"
                 required
               />
             </div>
@@ -217,14 +229,25 @@ export default function LoginPage() {
                   <Lock className="h-4 w-4 text-green-200" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[14px] sm:text-[15px] font-bold placeholder-green-200/70 placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="w-full pl-10 pr-10 py-3 bg-white/10 border border-white/20 rounded-xl text-white text-[14px] sm:text-[15px] font-bold placeholder-green-200/70 placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all"
                   style={{ fontFamily: '"Courier New", Courier, monospace' }}
                   placeholder="Kata Sandi"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(p => !p)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-green-200 hover:text-white transition-colors cursor-pointer"
+                  title={showPassword ? 'Sembunyikan Kata Sandi' : 'Lihat Kata Sandi'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
               {webAuthnSupported && (
                 <button
@@ -239,6 +262,10 @@ export default function LoginPage() {
               )}
             </div>
           </div>
+
+          <p className="text-[11px] text-green-100/80 text-center font-medium leading-relaxed -mt-1 mb-1">
+            💡 <em>Wali Murid dapat masuk menggunakan <strong>NIS santri</strong></em>
+          </p>
 
           <button
             type="submit"

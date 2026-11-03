@@ -51,8 +51,8 @@ export interface TabHarianProps {
   setSentBillingIds: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 
   // Absensi & Info Akun
-  tipePesan: 'madin' | 'quran' | 'kamar';
-  setTipePesan: React.Dispatch<React.SetStateAction<'madin' | 'quran' | 'kamar'>>;
+  tipePesan: 'madin' | 'quran' | 'kamar' | 'semua';
+  setTipePesan: React.Dispatch<React.SetStateAction<'madin' | 'quran' | 'kamar' | 'semua'>>;
   selectedKategoriId: string;
   handleKategoriChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   loadingKategori: boolean;
