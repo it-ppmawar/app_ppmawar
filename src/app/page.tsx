@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, User, CalendarDays, Clock, Fingerprint, Eye, EyeOff } from 'lucide-react';
+import { Lock, User, CalendarDays, Clock, Fingerprint, Lightbulb, LightbulbOff } from 'lucide-react';
 import { startAuthentication } from '@simplewebauthn/browser';
 
 export default function LoginPage() {
@@ -244,9 +244,13 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword(p => !p)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-green-200 hover:text-white transition-colors cursor-pointer"
-                  title={showPassword ? 'Sembunyikan Kata Sandi' : 'Lihat Kata Sandi'}
+                  title={showPassword ? 'Sembunyikan Kata Sandi' : 'Terangi / Lihat Kata Sandi'}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <Lightbulb className="h-4 w-4 text-amber-300 drop-shadow-[0_0_6px_rgba(252,211,77,0.7)]" />
+                  ) : (
+                    <LightbulbOff className="h-4 w-4 text-green-200/80 hover:text-white" />
+                  )}
                 </button>
               </div>
               {webAuthnSupported && (
