@@ -56,8 +56,8 @@ export interface CardSiaranWaManualProps {
   setSentBillingIds: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 
   // Tab Harian (Absensi & Info Akun) props
-  tipePesan: 'madin' | 'quran' | 'kamar';
-  setTipePesan: React.Dispatch<React.SetStateAction<'madin' | 'quran' | 'kamar'>>;
+  tipePesan: 'madin' | 'quran' | 'kamar' | 'semua';
+  setTipePesan: React.Dispatch<React.SetStateAction<'madin' | 'quran' | 'kamar' | 'semua'>>;
   selectedKategoriId: string;
   handleKategoriChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   loadingKategori: boolean;

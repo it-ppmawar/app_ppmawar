@@ -409,6 +409,10 @@ export default function TabHarian({
             onChange={(e) => setTipePesan(e.target.value as any)}
             className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none"
           >
+            {/* Opsi "Semua Kegiatan" hanya muncul di mode info_akun */}
+            {manualMode === 'info_akun' && (
+              <option value="semua">Semua Kegiatan</option>
+            )}
             {(role === 'admin' || role === 'staff' || userScheduleTypes.has('quran')) && (
               <option value="quran">Kelas Qur'an (Majlis)</option>
             )}
@@ -422,25 +426,36 @@ export default function TabHarian({
         </div>
         <div>
           <label className="block text-xs font-bold text-green-800 dark:text-green-400 mb-1.5">Pilihan Kelas / Kamar</label>
-          <select
-            value={selectedKategoriId}
-            onChange={handleKategoriChange}
-            disabled={loadingKategori || listKategori.length === 0}
-            className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none disabled:opacity-60"
-          >
-            {loadingKategori ? (
-              <option>Memuat...</option>
-            ) : listKategori.length === 0 ? (
-              <option>Tidak ada data</option>
-            ) : (
-              <>
-                <option value="all">Semua {tipePesan === 'kamar' ? 'Kamar' : 'Kelas'}</option>
-                {listKategori.map(k => (
-                  <option key={k.id} value={k.id}>{k.nama}</option>
-                ))}
-              </>
-            )}
-          </select>
+          {/* Jika "Semua Kegiatan" dipilih (mode info_akun), hanya tampil "Semua Kelas/Kamar" */}
+          {tipePesan === 'semua' ? (
+            <select
+              value="all"
+              disabled
+              className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none opacity-70"
+            >
+              <option value="all">Semua Kelas/Kamar</option>
+            </select>
+          ) : (
+            <select
+              value={selectedKategoriId}
+              onChange={handleKategoriChange}
+              disabled={loadingKategori || listKategori.length === 0}
+              className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none disabled:opacity-60"
+            >
+              {loadingKategori ? (
+                <option>Memuat...</option>
+              ) : listKategori.length === 0 ? (
+                <option>Tidak ada data</option>
+              ) : (
+                <>
+                  <option value="all">Semua {tipePesan === 'kamar' ? 'Kamar' : 'Kelas'}</option>
+                  {listKategori.map(k => (
+                    <option key={k.id} value={k.id}>{k.nama}</option>
+                  ))}
+                </>
+              )}
+            </select>
+          )}
         </div>
         {manualMode !== 'info_akun' && (
           <div>

@@ -63,7 +63,7 @@ function NotifikasiContent() {
   const [role, setRole] = useState('guru');
   const [isPengasuh, setIsPengasuh] = useState(false);
   const [isModeLibur, setIsModeLibur] = useState(false);
-  const [tipePesan, setTipePesan] = useState<'madin' | 'quran' | 'kamar'>(initKegiatan);
+  const [tipePesan, setTipePesan] = useState<'madin' | 'quran' | 'kamar' | 'semua'>(initKegiatan);
   const [selectedKategoriId, setSelectedKategoriId] = useState(initKelas);
   const [selectedKategoriNama, setSelectedKategoriNama] = useState('');
   const [statusAbsen, setStatusAbsen] = useState('Hadir');
@@ -961,6 +961,14 @@ function NotifikasiContent() {
 
   // Fetch daftar kelas/kamar sesuai tipePesan (terbatasi dinamis oleh API kelas sesuai role yang login)
   useEffect(() => {
+    // Jika "Semua Kegiatan" dipilih, tidak perlu fetch kelas
+    if (tipePesan === 'semua') {
+      setListKategori([]);
+      setSelectedKategoriId('all');
+      setSelectedKategoriNama('');
+      setLoadingKategori(false);
+      return;
+    }
     setLoadingKategori(true);
     fetch(`/api/kelas?type=${tipePesan === 'kamar' ? 'kamar' : tipePesan}&aggregate=true`)
       .then(res => res.json())
@@ -1064,7 +1072,7 @@ function NotifikasiContent() {
       return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
     }
 
-    let tipeLabel = tipePesan === 'madin' ? 'Kegiatan Madin' : tipePesan === 'quran' ? "Kegiatan Al-Qur'an" : 'Kegiatan Asrama';
+    let tipeLabel = tipePesan === 'madin' ? 'Kegiatan Madin' : tipePesan === 'quran' ? "Kegiatan Al-Qur'an" : tipePesan === 'semua' ? 'Kegiatan Pesantren' : 'Kegiatan Asrama';
     let tempatLabel = selectedKategoriNama ? `${selectedKategoriNama}` : '';
 
     const text = pesanWaliTemplate
@@ -1079,6 +1087,13 @@ function NotifikasiContent() {
 
   // Helpers Rekapitulasi Presensi (Siaran WhatsApp Manual ke Wali)
   const loadRekapOptions = async (tipe: string) => {
+    if (tipe === 'all') {
+      setRekapOptions([]);
+      setRekapFilter(prev => ({ ...prev, target_id: 'all' }));
+      setRekapSubFilter('');
+      setLoadingRekapOptions(false);
+      return;
+    }
     setLoadingRekapOptions(true);
     try {
       const res = await fetch(`/api/kelas?type=${tipe}&aggregate=true`);
@@ -1133,7 +1148,8 @@ function NotifikasiContent() {
   };
 
   const fetchRekapData = async () => {
-    if (!rekapFilter.target_id) {
+    // Validasi: jika bukan "Semua Kategori" dan tidak ada target, minta pilih kelas
+    if (rekapFilter.tipe !== 'all' && !rekapFilter.target_id) {
       setRekapErrorMsg('Silakan pilih kelas / kamar terlebih dahulu.');
       return;
     }
@@ -1141,9 +1157,49 @@ function NotifikasiContent() {
     setRekapErrorMsg('');
     try {
       const expiryParam = (rekapExpiryDays && rekapExpiryDays >= 1) ? rekapExpiryDays : 7;
+
+      // Jika "Semua Kategori" dipilih, fetch semua tipe secara berurutan dan gabungkan
+      if (rekapFilter.tipe === 'all') {
+        const allTipes = availableRekapTipes; // ['madin', 'quran', 'kegiatan']
+        const allResults: any[] = [];
+        for (const tipe of allTipes) {
+          const params = new URLSearchParams({
+            tipe,
+            target_id: 'all',
+            expiry: String(expiryParam),
+            ...(rekapModeRentang ? {
+              tanggal_dari: rekapFilter.tanggal_dari,
+              tanggal_sampai: rekapFilter.tanggal_sampai,
+            } : {
+              bulan: rekapFilter.bulan,
+              tahun: rekapFilter.tahun,
+            }),
+          });
+          try {
+            const res = await fetch(`/api/rekapitulasi?${params.toString()}`);
+            const json = await res.json();
+            if (json.success && json.data) {
+              // Tandai data dengan tipe-nya supaya bisa dibedakan
+              allResults.push(...json.data.map((d: any) => ({ ...d, _tipe: tipe })));
+            }
+          } catch (_) { /* skip tipe yang gagal */ }
+        }
+        // Deduplikasi berdasarkan murid_id (atau id)
+        const seen = new Set<string>();
+        const deduped = allResults.filter(item => {
+          const key = String(item.id || item.murid_id || item.nama);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setRekapData(deduped);
+        setHasFetchedRekap(true);
+        return;
+      }
+
       const params = new URLSearchParams({
         tipe: rekapFilter.tipe,
-        target_id: rekapFilter.target_id,
+        target_id: rekapFilter.target_id || 'all',
         expiry: String(expiryParam),
         ...(rekapModeRentang ? {
           tanggal_dari: rekapFilter.tanggal_dari,
@@ -1182,8 +1238,11 @@ function NotifikasiContent() {
     const total = Number(item.total || (hadir + izin + sakit + alpha));
     const persentase = total > 0 ? Math.round((hadir / total) * 100) : 0;
 
-    let tipeLabel = rekapFilter.tipe === 'madin' ? 'Madin' : rekapFilter.tipe === 'quran' ? "Al-Qur'an" : 'Kegiatan Asrama';
-    let tempatLabel = rekapOptions.find(o => o.id.toString() === rekapFilter.target_id)?.nama || 'Kelas';
+    const effectiveTipe = item._tipe || rekapFilter.tipe;
+    let tipeLabel = effectiveTipe === 'madin' ? 'Madin' : effectiveTipe === 'quran' ? "Al-Qur'an" : effectiveTipe === 'all' ? 'Semua Kategori' : 'Kegiatan Asrama';
+    let tempatLabel = (rekapFilter.target_id === 'all' || rekapFilter.tipe === 'all')
+      ? (item.kelas_nama || item.nama_kelas || item.nama_kamar || 'Semua Kelas')
+      : (rekapOptions.find(o => o.id.toString() === rekapFilter.target_id)?.nama || 'Kelas');
     
     let periodeLabel = '';
     if (rekapModeRentang) {
@@ -1196,7 +1255,7 @@ function NotifikasiContent() {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.ppmawar.or.id';
     const previewUrl = item.preview_token
       ? `${origin}/rekapitulasi/preview?t=${item.preview_token}`
-      : `${origin}/rekapitulasi/preview?murid_id=${item.id}&tipe=${rekapFilter.tipe}&target_id=${rekapFilter.target_id}&sub_filter=${encodeURIComponent(rekapSubFilter)}`;
+      : `${origin}/rekapitulasi/preview?murid_id=${item.id}&tipe=${effectiveTipe === 'all' ? 'madin' : effectiveTipe}&target_id=${rekapFilter.target_id || 'all'}&sub_filter=${encodeURIComponent(rekapSubFilter)}`;
 
     const text = pesanRekapWaliTemplate
       .replace(/{nama_santri}/g, item.nama || '-')
@@ -1227,6 +1286,7 @@ function NotifikasiContent() {
         return false;
       })
     : muridList.filter(m => {
+        if (tipePesan === 'semua') return true;
         if (tipePesan === 'quran') return m.kelas_quran_id;
         if (tipePesan === 'madin') return m.kelas_madin_id;
         if (tipePesan === 'kamar') return m.kamar_id;

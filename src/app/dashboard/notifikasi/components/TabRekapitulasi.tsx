@@ -149,6 +149,9 @@ export default function TabRekapitulasi({
     }, 120);
   };
 
+  // Apakah mode "Semua Kategori" aktif
+  const isSemuaKategori = rekapFilter.tipe === 'all';
+
   return (
     <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
       {/* Kartu 6 Filter Persis Halaman Rekapitulasi */}
@@ -192,11 +195,18 @@ export default function TabRekapitulasi({
               value={rekapFilter.tipe}
               onChange={(e) => {
                 const newTipe = e.target.value;
-                setRekapFilter(prev => ({ ...prev, tipe: newTipe }));
-                loadRekapOptions(newTipe);
+                // Jika "Semua Kategori", set target_id ke 'all' dan clear options
+                if (newTipe === 'all') {
+                  setRekapFilter(prev => ({ ...prev, tipe: 'all', target_id: 'all' }));
+                  setRekapSubFilter('');
+                } else {
+                  setRekapFilter(prev => ({ ...prev, tipe: newTipe }));
+                  loadRekapOptions(newTipe);
+                }
               }}
               className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer"
             >
+              <option value="all">Semua Kategori</option>
               {availableRekapTipes.includes('madin') && (
                 <option value="madin">Absensi Madin</option>
               )}
@@ -212,43 +222,57 @@ export default function TabRekapitulasi({
           {/* 3. Pilih Kelas / Kamar */}
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">Pilih Kelas / Kamar</label>
-            <select
-              value={rekapFilter.target_id}
-              onChange={(e) => {
-                const newTarget = e.target.value;
-                setRekapFilter(prev => ({ ...prev, target_id: newTarget }));
-                loadRekapSubFilter(rekapFilter.tipe, newTarget);
-              }}
-              disabled={loadingRekapOptions || rekapOptions.length === 0}
-              className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer disabled:opacity-50"
-            >
-              {loadingRekapOptions ? (
-                <option>Memuat kelas...</option>
-              ) : rekapOptions.length === 0 ? (
-                <option>Tidak ada data kelas</option>
-              ) : (
-                rekapOptions.map(opt => (
-                  <option key={opt.id} value={opt.id}>{opt.nama}</option>
-                ))
-              )}
-            </select>
+            {/* Jika "Semua Kategori" dipilih, hanya tampilkan "Semua Kelas" */}
+            {isSemuaKategori ? (
+              <select
+                value="all"
+                disabled
+                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all opacity-70"
+              >
+                <option value="all">Semua Kelas</option>
+              </select>
+            ) : (
+              <select
+                value={rekapFilter.target_id}
+                onChange={(e) => {
+                  const newTarget = e.target.value;
+                  setRekapFilter(prev => ({ ...prev, target_id: newTarget }));
+                  loadRekapSubFilter(rekapFilter.tipe, newTarget);
+                }}
+                disabled={loadingRekapOptions || rekapOptions.length === 0}
+                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loadingRekapOptions ? (
+                  <option>Memuat kelas...</option>
+                ) : rekapOptions.length === 0 ? (
+                  <option>Tidak ada data kelas</option>
+                ) : (
+                  <>
+                    <option value="all">Semua Kelas</option>
+                    {rekapOptions.map(opt => (
+                      <option key={opt.id} value={opt.id}>{opt.nama}</option>
+                    ))}
+                  </>
+                )}
+              </select>
+            )}
           </div>
 
           {/* 4. Sub-filter: Mapel / Majlis / Kegiatan */}
           <div>
             <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">
-              {rekapFilter.tipe === 'quran' ? 'Pilih Majlis' : rekapFilter.tipe === 'madin' ? 'Pilih Mapel' : 'Pilih Kegiatan'}
+              {rekapFilter.tipe === 'quran' ? 'Pilih Majlis' : rekapFilter.tipe === 'madin' ? 'Pilih Mapel' : rekapFilter.tipe === 'all' ? 'Mapel / Kegiatan' : 'Pilih Kegiatan'}
             </label>
             <select
               value={rekapSubFilter}
               onChange={(e) => setRekapSubFilter(e.target.value)}
-              disabled={loadingRekapSubFilter}
+              disabled={loadingRekapSubFilter || isSemuaKategori}
               className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer disabled:opacity-50"
             >
               <option value="">
-                {loadingRekapSubFilter ? 'Memuat...' : rekapFilter.tipe === 'quran' ? 'Semua Majlis' : rekapFilter.tipe === 'madin' ? 'Semua Mapel' : 'Semua Kegiatan'}
+                {loadingRekapSubFilter ? 'Memuat...' : isSemuaKategori ? 'Semua Mapel / Kegiatan' : rekapFilter.tipe === 'quran' ? 'Semua Majlis' : rekapFilter.tipe === 'madin' ? 'Semua Mapel' : 'Semua Kegiatan'}
               </option>
-              {rekapSubFilterOptions.map(opt => (
+              {!isSemuaKategori && rekapSubFilterOptions.map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
@@ -648,7 +672,7 @@ export default function TabRekapitulasi({
                     const isSent = !!sentRekapWaIds[item.id];
                     const previewUrl = item.preview_token
                       ? `/rekapitulasi/preview?t=${item.preview_token}`
-                      : `/rekapitulasi/preview?murid_id=${item.id}&tipe=${rekapFilter.tipe}&target_id=${rekapFilter.target_id}`;
+                      : `/rekapitulasi/preview?murid_id=${item.id}&tipe=${item._tipe || (rekapFilter.tipe === 'all' ? 'madin' : rekapFilter.tipe)}&target_id=${rekapFilter.target_id || 'all'}`;
 
                     return (
                       <tr
@@ -732,7 +756,7 @@ export default function TabRekapitulasi({
                 const isSent = !!sentRekapWaIds[item.id];
                 const previewUrl = item.preview_token
                   ? `/rekapitulasi/preview?t=${item.preview_token}`
-                  : `/rekapitulasi/preview?murid_id=${item.id}&tipe=${rekapFilter.tipe}&target_id=${rekapFilter.target_id}`;
+                  : `/rekapitulasi/preview?murid_id=${item.id}&tipe=${item._tipe || (rekapFilter.tipe === 'all' ? 'madin' : rekapFilter.tipe)}&target_id=${rekapFilter.target_id || 'all'}`;
 
                 return (
                   <div
@@ -786,19 +810,17 @@ export default function TabRekapitulasi({
                         </div>
                       </div>
 
-                      {/* Baris Tombol PDF dan WA Wali - Dibawah Baris No. HP Sama Rata Secara Presisi (50% - 50%) */}
+                      {/* Baris Tombol PDF dan WA Wali */}
                       <div className="grid grid-cols-2 gap-2 w-full pt-0.5">
                         <a
                           href={previewUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200/80 dark:border-slate-600 shadow-2xs"
-                          title="Lihat PDF"
+                          className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors"
                         >
-                          <FileText size={14} className="text-purple-600 dark:text-purple-400" />
+                          <FileText size={13} className="text-purple-600 shrink-0" />
                           <span>Lihat PDF</span>
                         </a>
-
                         {hasWa ? (
                           <a
                             href={waLink}
@@ -808,18 +830,18 @@ export default function TabRekapitulasi({
                               setSentRekapWaIds(prev => ({ ...prev, [item.id]: true }));
                               handleScrollToNextRekap(idx + 1);
                             }}
-                            className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs ${
+                            className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                               isSent
                                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-500'
-                                : 'bg-green-600 hover:bg-green-700 text-white'
+                                : 'bg-green-600 hover:bg-green-700 text-white shadow-sm active:scale-95'
                             }`}
                           >
                             <MessageCircle size={14} />
                             <span>{isSent ? 'Terkirim ✓' : 'WA Wali'}</span>
                           </a>
                         ) : (
-                          <div className="w-full py-2 rounded-xl text-xs font-bold text-gray-400 bg-gray-100/70 dark:bg-gray-800/60 border border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center gap-1 italic">
-                            <span>No WA Kosong</span>
+                          <div className="flex items-center justify-center py-2.5 rounded-xl text-xs text-gray-400 italic bg-gray-50 dark:bg-gray-900">
+                            No WA Kosong
                           </div>
                         )}
                       </div>

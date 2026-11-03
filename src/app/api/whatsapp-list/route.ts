@@ -19,7 +19,7 @@ export async function GET() {
     const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
     const namaAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
 
-    let sql = 'SELECT m.murid_id, m.nama, m.no_wali, m.nama_wali, m.kelas_quran_id, m.kelas_madin_id, m.kamar_id FROM murid m';
+    let sql = 'SELECT m.murid_id, m.nis, m.nama, m.no_wali, m.nama_wali, m.kelas_quran_id, m.kelas_madin_id, m.kamar_id FROM murid m';
     let params: any[] = [];
 
     if (role === 'admin' || role === 'staff') {
