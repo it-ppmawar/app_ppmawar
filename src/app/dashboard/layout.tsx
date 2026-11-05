@@ -1294,14 +1294,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className="flex flex-col items-center group transition-transform duration-300 active:scale-95 hover:scale-105 focus:outline-none cursor-pointer shrink-0 mx-1"
                   aria-label="Menu Absen"
                 >
-                  {/* Wadah Heksagonal Vertikal (Tinggi 66px, Sedikit Meluber dari Bar 62px) */}
+                  {/* Wadah Oktagonal (Tinggi 66px, Sedikit Meluber dari Bar 62px) */}
                   <div className="relative w-[58px] h-[66px] flex items-center justify-center filter drop-shadow-[0_3px_8px_rgba(0,0,0,0.15)]">
-                    {/* 1. Efek Radar Ping Heksagonal (Radar Memancar ke Luar) */}
+                    {/* 1. Efek Radar Ping Oktagonal (Radar Memancar ke Luar) */}
                     {hasActiveAbsen && (
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none animate-ping opacity-75 z-0">
                         <svg viewBox="0 0 58 66" className="w-full h-full overflow-visible">
                           <polygon
-                            points="29,2 56,17 56,49 29,64 2,49 2,17"
+                            points="29,6 48,14 56,33 48,52 29,60 10,52 2,33 10,14"
                             strokeLinejoin="round"
                             strokeWidth="2.5"
                             className="fill-none stroke-emerald-400"
@@ -1310,12 +1310,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </div>
                     )}
 
-                    {/* 2. Efek Outline Heksagonal Berdetak (Pulse Membingkai Tombol) */}
+                    {/* 2. Efek Outline Oktagonal Berdetak (Pulse Membingkai Tombol) */}
                     {hasActiveAbsen && (
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none scale-110 origin-center animate-pulse z-0">
                         <svg viewBox="0 0 58 66" className="w-full h-full overflow-visible">
                           <polygon
-                            points="29,2 56,17 56,49 29,64 2,49 2,17"
+                            points="29,6 48,14 56,33 48,52 29,60 10,52 2,33 10,14"
                             strokeLinejoin="round"
                             strokeWidth="2"
                             className="fill-none stroke-emerald-300 dark:stroke-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.8)]"
@@ -1324,7 +1324,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </div>
                     )}
 
-                    {/* Tombol Utama Heksagonal */}
+                    {/* Tombol Utama Oktagonal */}
                     <svg
                       viewBox="0 0 58 66"
                       className={`w-full h-full overflow-visible transition-all duration-300 relative z-10 ${
@@ -1334,19 +1334,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       }`}
                     >
                       <defs>
-                        <linearGradient id="absenHexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <linearGradient id="absenOctGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                           <stop offset="0%" stopColor="#059669" />
                           <stop offset="50%" stopColor="#10b981" />
                           <stop offset="100%" stopColor="#14b8a6" />
                         </linearGradient>
                       </defs>
                       <polygon
-                        points="29,2 56,17 56,49 29,64 2,49 2,17"
+                        points="29,6 48,14 56,33 48,52 29,60 10,52 2,33 10,14"
                         strokeLinejoin="round"
                         strokeWidth="2.5"
                         className={
                           hasActiveAbsen
-                            ? 'fill-[url(#absenHexGrad)] stroke-emerald-300'
+                            ? 'fill-[url(#absenOctGrad)] stroke-emerald-300'
                             : isActive
                             ? 'fill-green-100 dark:fill-green-950/80 stroke-emerald-500'
                             : 'fill-gray-100 dark:fill-gray-700 stroke-gray-300 dark:stroke-gray-600'
