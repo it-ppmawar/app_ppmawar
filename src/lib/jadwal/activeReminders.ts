@@ -188,19 +188,32 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
     // 5. Buat short token (8 karakter ringkas) secara batch untuk semua pengingat yang perlu dikirimi tautan absensi
     const mergedList = Array.from(mergedMap.values());
     try {
-      const tokenItems = mergedList.map(item => ({
-        payload: {
-          type: 'quick_absen',
-          guru_id: item.guru_id,
-          guru_nama: item.guru_nama,
-          jadwal_id: item.jadwal_id,
-          tipe: item.tipe,
-          date: localISOTime,
-          waktu_tenggang: waktuTenggang
-        },
-        expiresIn: '24h',
-        type: 'quick_absen'
-      }));
+      const tokenItems = mergedList.map(item => {
+        // Sinkronkan masa berlaku token secara fleksibel dengan Waktu Tenggang dari Pengaturan Database
+        // Token aktif hingga batas toleransi berakhir (jam_selesai + waktuTenggang jam)
+        const selesaiSecs = item.jam_selesai ? parseTime(item.jam_selesai) : currentSecs;
+        const windowEndSecs = selesaiSecs + waktuTenggang * 3600;
+        let remainingSecs = windowEndSecs - currentSecs;
+
+        // Minimal masa berlaku adalah waktuTenggang jam penuh dari saat pesan dibuat
+        if (remainingSecs < waktuTenggang * 3600) {
+          remainingSecs = waktuTenggang * 3600;
+        }
+
+        return {
+          payload: {
+            type: 'quick_absen',
+            guru_id: item.guru_id,
+            guru_nama: item.guru_nama,
+            jadwal_id: item.jadwal_id,
+            tipe: item.tipe,
+            date: localISOTime,
+            waktu_tenggang: waktuTenggang
+          },
+          expiresIn: `${Math.ceil(remainingSecs / 3600)}h`,
+          type: 'quick_absen'
+        };
+      });
 
       const shortTokens = await createShortTokensBatch(tokenItems);
       shortTokens.forEach((tok, idx) => {

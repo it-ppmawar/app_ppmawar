@@ -196,7 +196,7 @@ export async function POST(request: Request) {
         waktu_tenggang: waktuTenggang,
         createdAt: Date.now()
       };
-      badalToken = await createShortToken(badalPayload, '24h', 'quick_absen');
+      badalToken = await createShortToken(badalPayload, `${waktuTenggang}h`, 'quick_absen');
       badalUrl = `https://app.ppmawar.or.id/absen/quick?token=${badalToken}`;
     }
 

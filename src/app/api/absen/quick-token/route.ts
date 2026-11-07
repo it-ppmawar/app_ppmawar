@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       quickPayload.badal_nama = badalInfo.nama;
     }
 
-    const quickToken = await createShortToken(quickPayload, '24h', 'quick_absen');
+    const quickToken = await createShortToken(quickPayload, `${waktuTenggang}h`, 'quick_absen');
     const quickUrl = `https://app.ppmawar.or.id/absen/quick?token=${quickToken}`;
     const quickIzinUrl = `${quickUrl}&action=izin`;
 
