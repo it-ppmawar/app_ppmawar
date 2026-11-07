@@ -1950,7 +1950,7 @@ function NotifikasiContent() {
                   </div>
                 </div>
               </div>
-              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1 sm:mt-0 line-clamp-1 sm:line-clamp-none">
+              <p className={`text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1 sm:mt-0 ${isGuruCardOpen ? '' : 'line-clamp-1 sm:line-clamp-none'}`}>
                 Kirim pengingat ke guru/pembina yang belum absen, atau pilih guru secara manual.
               </p>
             </div>

@@ -203,7 +203,7 @@ export default function CardSiaranWaManual({
               </div>
             </div>
           </div>
-          <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1 sm:mt-0 line-clamp-1 sm:line-clamp-none">
+          <p className={`text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1 sm:mt-0 ${isOpen ? '' : 'line-clamp-1 sm:line-clamp-none'}`}>
             Kirim pesan siaran langsung ke aplikasi WhatsApp asli Anda (anti-blokir). Pesan otomatis diisi, Anda hanya perlu klik tombol kirim di aplikasi WA.
           </p>
         </div>

@@ -105,19 +105,19 @@ export async function GET() {
 
     try {
       const [mRows]: any = await pool.execute(
-        'SELECT DISTINCT jadwal_madin_id FROM absensi WHERE tanggal = ? AND jadwal_madin_id IS NOT NULL',
+        'SELECT DISTINCT jadwal_madin_id FROM absensi WHERE tanggal = ? AND jadwal_madin_id IS NOT NULL AND status = "Hadir"',
         [yesterdayGuruStr]
       );
       (mRows || []).forEach((r: any) => taughtMadinSet.add(Number(r.jadwal_madin_id)));
 
       const [qRows]: any = await pool.execute(
-        'SELECT DISTINCT jadwal_quran_id FROM absensi_quran WHERE tanggal = ? AND jadwal_quran_id IS NOT NULL',
+        'SELECT DISTINCT jadwal_quran_id FROM absensi_quran WHERE tanggal = ? AND jadwal_quran_id IS NOT NULL AND status = "Hadir"',
         [yesterdayGuruStr]
       );
       (qRows || []).forEach((r: any) => taughtQuranSet.add(Number(r.jadwal_quran_id)));
 
       const [kRows]: any = await pool.execute(
-        'SELECT DISTINCT kegiatan_id FROM absensi_kegiatan WHERE tanggal = ? AND kegiatan_id IS NOT NULL',
+        'SELECT DISTINCT kegiatan_id FROM absensi_kegiatan WHERE tanggal = ? AND kegiatan_id IS NOT NULL AND status = "Hadir"',
         [yesterdayGuruStr]
       );
       (kRows || []).forEach((r: any) => taughtKegiatanSet.add(Number(r.kegiatan_id)));
@@ -131,25 +131,25 @@ export async function GET() {
       await pool.execute(`
         UPDATE absensi_guru ag
         JOIN jadwal_madin jm ON ag.guru_id = jm.guru_id
-        JOIN absensi a ON a.jadwal_madin_id = jm.jadwal_id AND a.tanggal = ag.tanggal
+        JOIN absensi a ON a.jadwal_madin_id = jm.jadwal_id AND a.tanggal = ag.tanggal AND a.status = 'Hadir'
         SET ag.status = 'Hadir', ag.keterangan = 'Mengajar Kelas (Tersinkronisasi)', ag.is_otomatis = 0, ag.jadwal_madin_id = jm.jadwal_id
         WHERE ag.status = 'Alpha' AND ag.tanggal IN (?, ?)
       `, [yesterdayGuruStr, todayStr]);
 
-      // Masukkan kehadiran guru jika belum ada record sama sekali
+      // Masukkan kehadiran guru jika belum ada record sama sekali dan santri terbukti ada yang Hadir
       await pool.execute(`
         INSERT INTO absensi_guru (guru_id, tanggal, status, keterangan, is_otomatis, waktu_absensi, jadwal_madin_id)
         SELECT DISTINCT jm.guru_id, a.tanggal, 'Hadir', 'Mengajar Kelas (Tersinkronisasi)', 0, '19:30:00', jm.jadwal_id
         FROM absensi a
         JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
         LEFT JOIN absensi_guru ag ON ag.guru_id = jm.guru_id AND ag.tanggal = a.tanggal
-        WHERE a.tanggal IN (?, ?) AND jm.guru_id IS NOT NULL AND jm.guru_id > 0 AND ag.absensi_id IS NULL
+        WHERE a.tanggal IN (?, ?) AND a.status = 'Hadir' AND jm.guru_id IS NOT NULL AND jm.guru_id > 0 AND ag.absensi_id IS NULL
       `, [yesterdayGuruStr, todayStr]);
 
       await pool.execute(`
         UPDATE absensi_guru ag
         JOIN jadwal_quran jq ON ag.guru_id = jq.guru_id
-        JOIN absensi_quran aq ON aq.jadwal_quran_id = jq.id AND aq.tanggal = ag.tanggal
+        JOIN absensi_quran aq ON aq.jadwal_quran_id = jq.id AND aq.tanggal = ag.tanggal AND aq.status = 'Hadir'
         SET ag.status = 'Hadir', ag.keterangan = 'Mengajar Al-Quran (Tersinkronisasi)', ag.is_otomatis = 0, ag.jadwal_quran_id = jq.id
         WHERE ag.status = 'Alpha' AND ag.tanggal IN (?, ?)
       `, [yesterdayGuruStr, todayStr]);
@@ -160,13 +160,13 @@ export async function GET() {
         FROM absensi_quran aq
         JOIN jadwal_quran jq ON aq.jadwal_quran_id = jq.id
         LEFT JOIN absensi_guru ag ON ag.guru_id = jq.guru_id AND ag.tanggal = aq.tanggal
-        WHERE aq.tanggal IN (?, ?) AND jq.guru_id IS NOT NULL AND jq.guru_id > 0 AND ag.absensi_id IS NULL
+        WHERE aq.tanggal IN (?, ?) AND aq.status = 'Hadir' AND jq.guru_id IS NOT NULL AND jq.guru_id > 0 AND ag.absensi_id IS NULL
       `, [yesterdayGuruStr, todayStr]);
 
       await pool.execute(`
         UPDATE absensi_guru ag
         JOIN jadwal_kegiatan jk ON ag.guru_id = jk.guru_id
-        JOIN absensi_kegiatan ak ON ak.kegiatan_id = jk.kegiatan_id AND ak.tanggal = ag.tanggal
+        JOIN absensi_kegiatan ak ON ak.kegiatan_id = jk.kegiatan_id AND ak.tanggal = ag.tanggal AND ak.status = 'Hadir'
         SET ag.status = 'Hadir', ag.keterangan = 'Mendampingi Kegiatan (Tersinkronisasi)', ag.is_otomatis = 0, ag.kegiatan_id = jk.kegiatan_id
         WHERE ag.status = 'Alpha' AND ag.tanggal IN (?, ?)
       `, [yesterdayGuruStr, todayStr]);
@@ -177,7 +177,7 @@ export async function GET() {
         FROM absensi_kegiatan ak
         JOIN jadwal_kegiatan jk ON ak.kegiatan_id = jk.kegiatan_id
         LEFT JOIN absensi_guru ag ON ag.guru_id = jk.guru_id AND ag.tanggal = ak.tanggal
-        WHERE ak.tanggal IN (?, ?) AND jk.guru_id IS NOT NULL AND jk.guru_id > 0 AND ag.absensi_id IS NULL
+        WHERE ak.tanggal IN (?, ?) AND ak.status = 'Hadir' AND jk.guru_id IS NOT NULL AND jk.guru_id > 0 AND ag.absensi_id IS NULL
       `, [yesterdayGuruStr, todayStr]);
     } catch (syncErr) {
       console.warn('auto-heal guru absensi notice:', syncErr);
