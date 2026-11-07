@@ -298,29 +298,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 flex flex-col">
       {/* Header Mobile & Desktop */}
-      <header className="bg-gradient-to-r from-green-900 via-green-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 text-white py-1.5 px-4 shadow-lg sticky top-0 z-50 flex justify-between items-center rounded-b-2xl transition-colors duration-300 relative border-b border-green-700/30">
+      <header className="bg-gradient-to-r from-green-900 via-green-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 text-white py-0.5 px-3 sm:px-4 shadow-lg sticky top-0 z-50 flex justify-between items-center rounded-b-2xl transition-colors duration-300 relative border-b border-green-700/30 min-h-[56px] h-[56px]">
         <Link href="/dashboard" className="flex items-center z-10 hover:opacity-90 transition-opacity" aria-label="Kembali ke Dashboard">
-          <div className="relative w-11 h-11 flex items-center justify-center filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.2)]">
+          <div className="relative w-[46px] h-[52px] flex items-center justify-center filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.25)] shrink-0">
             <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
               <polygon
-                points="50,4 83,17 96,50 83,83 50,96 17,83 4,50 17,17"
+                points="50,1 86,15 99,50 86,85 50,99 14,85 1,50 14,15"
                 strokeLinejoin="round"
-                strokeWidth="5"
+                strokeWidth="3.5"
                 className="fill-white stroke-green-600/40 dark:stroke-emerald-500/50"
               />
             </svg>
             <div 
-              className="relative z-10 w-full h-full flex items-center justify-center p-1.5"
-              style={{ clipPath: 'polygon(50% 4%, 83% 17%, 96% 50%, 83% 83%, 50% 96%, 17% 83%, 4% 50%, 17% 17%)' }}
+              className="relative z-10 w-full h-full flex items-center justify-center p-1"
+              style={{ clipPath: 'polygon(50% 1%, 86% 15%, 99% 50%, 86% 85%, 50% 99%, 14% 85%, 1% 50%, 14% 15%)' }}
             >
-              <img src="/logo.png" alt="Logo" className="h-[88%] w-auto object-contain" />
+              <img src="/logo.png" alt="Logo" className="h-[86%] w-auto object-contain" />
             </div>
           </div>
         </Link>
 
         {/* Tulisan Arab di Tengah Navbar (Selalu tampil, disesuaikan untuk mobile) */}
-        <Link href="/dashboard" className="absolute left-1/2 transform -translate-x-1/2 z-0 text-center flex flex-col items-center justify-center w-[75%] sm:w-auto max-w-sm mt-0.5 hover:opacity-80 transition-opacity" aria-label="Kembali ke Dashboard">
-          <h2 className="text-[clamp(1.4rem,5.5vw,2.5rem)] leading-tight sm:text-2xl lg:text-3xl font-diwani text-green-100/90 dark:text-gray-300 tracking-[0.05em] drop-shadow-md whitespace-nowrap" dir="rtl">
+        <Link href="/dashboard" className="absolute left-1/2 transform -translate-x-1/2 z-0 text-center flex flex-col items-center justify-center w-[60%] sm:w-auto max-w-[215px] sm:max-w-sm mt-0.5 hover:opacity-80 transition-opacity" aria-label="Kembali ke Dashboard">
+          <h2 className="text-[clamp(1.1rem,4.2vw,2.2rem)] leading-tight sm:text-2xl lg:text-3xl font-diwani text-green-100/90 dark:text-gray-300 tracking-[0.05em] drop-shadow-md whitespace-nowrap" dir="rtl">
             المعهد مطالع الأنوار الإسلامي
           </h2>
           <p className="text-[12px] sm:text-sm text-green-400 font-bold tracking-widest mt-1 drop-shadow-sm uppercase" style={{ fontFamily: '"Courier New", Courier, monospace' }}>Salam Mawar</p>
@@ -426,14 +426,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="relative ml-1">
             <button 
               onClick={() => setShowSidebar(true)} 
-              className="relative w-10 h-10 flex items-center justify-center transition-transform active:scale-95 hover:scale-105 focus:outline-none cursor-pointer group z-10"
+              className="relative w-[44px] h-[50px] flex items-center justify-center transition-transform active:scale-95 hover:scale-105 focus:outline-none cursor-pointer group z-10 shrink-0"
               aria-label="Buka Menu"
             >
               <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none transition-all duration-300">
                 <polygon
-                  points="50,4 83,17 96,50 83,83 50,96 17,83 4,50 17,17"
+                  points="50,1 86,15 99,50 86,85 50,99 14,85 1,50 14,15"
                   strokeLinejoin="round"
-                  strokeWidth="5"
+                  strokeWidth="3.5"
                   className="fill-white/15 group-hover:fill-white/25 stroke-white/25 group-hover:stroke-white/40 shadow-xs"
                 />
               </svg>

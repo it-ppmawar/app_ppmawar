@@ -585,24 +585,24 @@ function RekapPreviewContent() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-16">
       {/* Top Floating App Bar (Print hidden) */}
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 shadow-xs rounded-b-2xl print:hidden transition-colors">
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-4 py-1 shadow-xs rounded-b-2xl print:hidden transition-colors min-h-[58px] h-[58px] flex items-center">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
           {/* Pojok Kiri: Logo Pesantren */}
           <div className="flex items-center justify-start shrink-0">
-            <div className="relative w-10 h-10 flex items-center justify-center filter drop-shadow-xs">
+            <div className="relative w-[46px] h-[52px] flex items-center justify-center filter drop-shadow-xs shrink-0">
               <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
                 <polygon
-                  points="50,4 83,17 96,50 83,83 50,96 17,83 4,50 17,17"
+                  points="50,1 86,15 99,50 86,85 50,99 14,85 1,50 14,15"
                   strokeLinejoin="round"
-                  strokeWidth="5"
+                  strokeWidth="3.5"
                   className="fill-white stroke-slate-200 dark:stroke-slate-700/80"
                 />
               </svg>
               <div
-                className="relative z-10 w-full h-full flex items-center justify-center p-1.5"
-                style={{ clipPath: 'polygon(50% 4%, 83% 17%, 96% 50%, 83% 83%, 50% 96%, 17% 83%, 4% 50%, 17% 17%)' }}
+                className="relative z-10 w-full h-full flex items-center justify-center p-1"
+                style={{ clipPath: 'polygon(50% 1%, 86% 15%, 99% 50%, 86% 85%, 50% 99%, 14% 85%, 1% 50%, 14% 15%)' }}
               >
-                <img src="/logo.png" alt="Logo Lembaga" className="h-[88%] w-auto object-contain" />
+                <img src="/logo.png" alt="Logo Lembaga" className="h-[86%] w-auto object-contain" />
               </div>
             </div>
           </div>
@@ -629,15 +629,15 @@ function RekapPreviewContent() {
             <button
               type="button"
               onClick={toggleTheme}
-              className="relative w-10 h-10 flex items-center justify-center transition-transform active:scale-95 hover:scale-105 focus:outline-none cursor-pointer group"
+              className="relative w-[44px] h-[50px] flex items-center justify-center transition-transform active:scale-95 hover:scale-105 focus:outline-none cursor-pointer group shrink-0"
               aria-label="Toggle Mode Gelap/Terang"
               title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
             >
               <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none transition-all duration-300">
                 <polygon
-                  points="50,4 83,17 96,50 83,83 50,96 17,83 4,50 17,17"
+                  points="50,1 86,15 99,50 86,85 50,99 14,85 1,50 14,15"
                   strokeLinejoin="round"
-                  strokeWidth="5"
+                  strokeWidth="3.5"
                   className="fill-slate-100 group-hover:fill-slate-200 dark:fill-slate-800 dark:group-hover:fill-slate-700 stroke-slate-200 dark:stroke-slate-700/80"
                 />
               </svg>
