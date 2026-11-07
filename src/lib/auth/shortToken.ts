@@ -109,25 +109,30 @@ function createCompactStatelessToken(payload: any, expiresIn: string | number): 
  */
 function verifyCompactStatelessToken(token: string): any | null {
   try {
-    const parts = token.split('_');
-    if (parts.length !== 3 || parts[0] !== 's') return null;
-    const payloadB64 = parts[1];
-    const signature = parts[2];
-    
+    if (!token || !token.startsWith('s_') || token.length < 20) return null;
+
+    // Format: s_<payloadB64>_<signature_16_chars>
+    // Signature HMAC-SHA256 (12 bytes base64url) selalu tepat 16 karakter di ujung akhir setelah '_'
+    const lastUnderscore = token.lastIndexOf('_');
+    if (lastUnderscore <= 2) return null;
+
+    const payloadB64 = token.substring(2, lastUnderscore);
+    const signature = token.substring(lastUnderscore + 1);
+
     const hmac = crypto.createHmac('sha256', JWT_SECRET);
     hmac.update(`s_${payloadB64}`);
     const expectedSig = hmac.digest().subarray(0, 12).toString('base64url');
-    
+
     if (signature !== expectedSig) return null;
-    
+
     const compressed = Buffer.from(payloadB64, 'base64url');
     const decompressed = zlib.inflateRawSync(compressed);
     const parsed = JSON.parse(decompressed.toString('utf-8'));
-    
+
     if (parsed.exp && parsed.exp * 1000 < Date.now()) {
       return null; // Expired
     }
-    
+
     return parsed;
   } catch (e) {
     return null;
