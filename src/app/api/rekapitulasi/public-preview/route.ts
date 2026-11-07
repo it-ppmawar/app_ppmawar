@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth/jwt';
+import { resolveToken } from '@/lib/auth/shortToken';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Token presensi diperlukan' }, { status: 400 });
     }
 
-    const payload = verifyToken(token) as any;
+    const payload = await resolveToken(token) as any;
     if (!payload) {
       return NextResponse.json(
         { error: 'Tautan presensi tidak valid atau telah kedaluwarsa.' },

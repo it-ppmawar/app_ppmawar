@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { verifyToken, signToken } from '@/lib/auth/jwt';
+import { verifyToken } from '@/lib/auth/jwt';
+import { createShortToken } from '@/lib/auth/shortToken';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { getActivePendingReminders, ActivePendingReminder } from '@/lib/jadwal/activeReminders';
@@ -234,7 +235,7 @@ export async function POST(request: Request) {
         }
       } catch (_) {}
 
-      const appendRows = (rows: any[], tipe: string) => {
+      const appendRows = async (rows: any[], tipe: string) => {
         for (const row of rows) {
           const itemDay = row.hari || currentDay;
           const itemDateStr = getNextDateForDay(itemDay, row.jam_mulai || '07:00', effectiveLeadTime);
@@ -247,9 +248,9 @@ export async function POST(request: Request) {
             date: itemDateStr,
             waktu_tenggang: dynamicWaktuTenggang
           };
-          const quick_token = signToken(quickPayload, '7d');
+          const quick_token = await createShortToken(quickPayload, '7d', 'quick_absen');
           const quick_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}`;
-          const quick_izin_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}&action=izin`;
+          const quick_izin_url = `${quick_url}&action=izin`;
 
           itemsToSchedule.push({
             guru_nama: row.guru_nama,
@@ -278,7 +279,7 @@ export async function POST(request: Request) {
           WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
         `;
         const [madinRows] = await pool.execute<RowDataPacket[]>(queryMadin);
-        appendRows(madinRows, 'madin');
+        await appendRows(madinRows, 'madin');
       }
 
       if (activeCategories.includes('quran')) {
@@ -291,7 +292,7 @@ export async function POST(request: Request) {
           WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
         `;
         const [quranRows] = await pool.execute<RowDataPacket[]>(queryQuran);
-        appendRows(quranRows, 'quran');
+        await appendRows(quranRows, 'quran');
       }
 
       if (activeCategories.includes('kamar')) {
@@ -304,7 +305,7 @@ export async function POST(request: Request) {
           WHERE g.no_hp IS NOT NULL AND g.no_hp != ''
         `;
         const [kegiatanRows] = await pool.execute<RowDataPacket[]>(queryKegiatan);
-        appendRows(kegiatanRows, 'kamar');
+        await appendRows(kegiatanRows, 'kamar');
       }
     } else if (mode === 'custom_list' && Array.isArray(customItems)) {
       itemsToSchedule = customItems;

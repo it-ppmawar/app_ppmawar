@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
-import { verifyToken } from '@/lib/auth/jwt';
+import { resolveToken } from '@/lib/auth/shortToken';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,13 +13,13 @@ const NAMA_BULAN = [
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const token = searchParams.get('token');
+    const token = searchParams.get('token') || searchParams.get('t');
 
     if (!token) {
       return NextResponse.json({ error: 'Token rekapitulasi Kepala Madin tidak ditemukan' }, { status: 400 });
     }
 
-    const payload = verifyToken(token) as any;
+    const payload = await resolveToken(token) as any;
     if (!payload || payload.type !== 'rekap_kepala_madin') {
       return NextResponse.json({ error: 'Tautan laporan telah kedaluwarsa atau tidak valid' }, { status: 401 });
     }

@@ -44,7 +44,7 @@ const getFotoUrl = (fotoName: string | null, nis?: string) => {
 function QuickAbsenContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get('token');
+  const token = searchParams.get('token') || searchParams.get('t');
   const actionParam = searchParams.get('action');
 
   const [loading, setLoading] = useState(true);
@@ -887,7 +887,7 @@ function QuickAbsenContent() {
   };
 
   const handleCopyBadalToken = async () => {
-    const tokenStr = izinResultData?.badal_token || (izinResultData?.badal_url ? new URL(izinResultData.badal_url).searchParams.get('token') : null);
+    const tokenStr = izinResultData?.badal_token || (izinResultData?.badal_url ? (new URL(izinResultData.badal_url).searchParams.get('token') || new URL(izinResultData.badal_url).searchParams.get('t')) : null);
     if (!tokenStr) return;
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {

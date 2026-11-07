@@ -17,7 +17,7 @@ export interface ActivePendingReminder {
   quick_token?: string;
 }
 
-import { signToken } from '@/lib/auth/jwt';
+import { createShortTokensBatch } from '@/lib/auth/shortToken';
 
 export async function getActivePendingReminders(): Promise<ActivePendingReminder[]> {
   try {
@@ -100,19 +100,6 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
         const windowEnd = selesaiSecs + waktuTenggang * 3600;
 
         if (currentSecs >= windowStart && currentSecs <= windowEnd) {
-          const quickPayload = {
-            type: 'quick_absen',
-            guru_id: row.guru_id,
-            guru_nama: row.guru_nama || 'Tanpa Nama',
-            jadwal_id: Number(row.jadwal_id),
-            tipe,
-            date: localISOTime,
-            waktu_tenggang: waktuTenggang
-          };
-          const quick_token = signToken(quickPayload, `${waktuTenggang}h`);
-          const quick_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}`;
-          const quick_izin_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}&action=izin`;
-
           allActiveSchedules.push({
             jadwal_id: row.jadwal_id,
             tipe,
@@ -124,9 +111,9 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
             guru_nama: row.guru_nama || 'Tanpa Nama',
             guru_whatsapp: row.guru_whatsapp || '',
             hari: row.hari,
-            quick_token,
-            quick_url,
-            quick_izin_url
+            quick_token: '',
+            quick_url: '',
+            quick_izin_url: ''
           });
         }
       }
@@ -198,7 +185,35 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
       }
     }
 
-    return Array.from(mergedMap.values());
+    // 5. Buat short token (8 karakter ringkas) secara batch untuk semua pengingat yang perlu dikirimi tautan absensi
+    const mergedList = Array.from(mergedMap.values());
+    try {
+      const tokenItems = mergedList.map(item => ({
+        payload: {
+          type: 'quick_absen',
+          guru_id: item.guru_id,
+          guru_nama: item.guru_nama,
+          jadwal_id: item.jadwal_id,
+          tipe: item.tipe,
+          date: localISOTime,
+          waktu_tenggang: waktuTenggang
+        },
+        expiresIn: `${waktuTenggang}h`,
+        type: 'quick_absen'
+      }));
+
+      const shortTokens = await createShortTokensBatch(tokenItems);
+      shortTokens.forEach((tok, idx) => {
+        const url = `https://app.ppmawar.or.id/absen/quick?token=${tok}`;
+        mergedList[idx].quick_token = tok;
+        mergedList[idx].quick_url = url;
+        mergedList[idx].quick_izin_url = `${url}&action=izin`;
+      });
+    } catch (tokenErr) {
+      console.warn('Gagal generate short token untuk pengingat aktif, URL dikosongkan:', tokenErr);
+    }
+
+    return mergedList;
   } catch (error) {
     console.error('Error calculating active pending reminders:', error);
     return [];

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { verifyToken, signToken } from '@/lib/auth/jwt';
+import { verifyToken } from '@/lib/auth/jwt';
+import { createShortToken } from '@/lib/auth/shortToken';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
@@ -92,9 +93,9 @@ export async function POST(request: Request) {
       quickPayload.badal_nama = badalInfo.nama;
     }
 
-    const quickToken = signToken(quickPayload, `${waktuTenggang}h`);
+    const quickToken = await createShortToken(quickPayload, `${waktuTenggang}h`, 'quick_absen');
     const quickUrl = `https://app.ppmawar.or.id/absen/quick?token=${quickToken}`;
-    const quickIzinUrl = `https://app.ppmawar.or.id/absen/quick?token=${quickToken}&action=izin`;
+    const quickIzinUrl = `${quickUrl}&action=izin`;
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { verifyToken, signToken } from '@/lib/auth/jwt';
+import { verifyToken } from '@/lib/auth/jwt';
+import { createShortToken } from '@/lib/auth/shortToken';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { 
@@ -159,13 +160,13 @@ export async function POST(request: Request) {
 • Tanpa Keterangan: ${totalAlpha} Sesi`;
 
     // 3. Generate Token Kepala Madin dengan target_wilayah & masa berlaku dinamis
-    const reportToken = signToken({
+    const reportToken = await createShortToken({
       type: 'rekap_kepala_madin',
       bulan,
       tahun,
       target_wilayah: targetWilayah,
       ...(modeRentang ? { tanggal_dari: tanggalDari, tanggal_sampai: tanggalSampai } : {}),
-    }, `${expiryDays}d`);
+    }, `${expiryDays}d`, 'rekap_kepala_madin');
 
     const reportUrl = `https://app.ppmawar.or.id/rekap/kepala-madin?token=${reportToken}`;
 

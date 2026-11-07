@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
-import { verifyToken, signToken } from '@/lib/auth/jwt';
+import { verifyToken } from '@/lib/auth/jwt';
+import { createShortTokensBatch } from '@/lib/auth/shortToken';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -735,39 +736,47 @@ export async function GET(request: Request) {
     }).format(expiryDateObj);
     const durationLabel = `${days} Hari`;
 
-    const formattedRows = rows.map((r: any) => {
-      let preview_token = '';
-      try {
-        const isGuruType = tipe === 'guru' || tipe === 'dewan_guru' || tipe === 'guru_mapel';
-        if (tipe === 'guru_mapel') {
-          preview_token = signToken({
-            tipe: 'guru_mapel',
-            guru_id: r.guru_id,
-            kategori: kategoriParam,
-            bulan: !isRentang ? bulan : undefined,
-            tahun: !isRentang ? tahun : undefined,
-            tanggal_dari: isRentang ? tanggal_dari : undefined,
-            tanggal_sampai: isRentang ? tanggal_sampai : undefined,
-            role: 'guru',
-            purpose: 'rekap_preview'
-          }, expiryDuration);
-        } else {
-          preview_token = signToken({
-            muridId: isGuruType ? undefined : r.id,
-            guruId: isGuruType ? r.id : undefined,
-            guru_id: isGuruType ? r.id : undefined,
-            tipe,
-            target_id: target_id || '',
-            sub_filter: sub_filter || '',
-            bulan: !isRentang ? bulan : undefined,
-            tahun: !isRentang ? tahun : undefined,
-            tanggal_dari: isRentang ? tanggal_dari : undefined,
-            tanggal_sampai: isRentang ? tanggal_sampai : undefined,
-            role: isGuruType ? 'guru' : 'wali_murid',
-            purpose: 'rekap_preview'
-          }, expiryDuration);
-        }
-      } catch (_) {}
+    const isGuruType = tipe === 'guru' || tipe === 'dewan_guru' || tipe === 'guru_mapel';
+
+    // Buat short token (8 karakter) secara batch untuk semua baris sekaligus
+    let previewTokens = [];
+    try {
+      const tokenItems = rows.map((r) => {
+        const payload = tipe === 'guru_mapel'
+          ? {
+              tipe: 'guru_mapel',
+              guru_id: r.guru_id,
+              kategori: kategoriParam,
+              bulan: !isRentang ? bulan : undefined,
+              tahun: !isRentang ? tahun : undefined,
+              tanggal_dari: isRentang ? tanggal_dari : undefined,
+              tanggal_sampai: isRentang ? tanggal_sampai : undefined,
+              role: 'guru',
+              purpose: 'rekap_preview'
+            }
+          : {
+              muridId: isGuruType ? undefined : r.id,
+              guruId: isGuruType ? r.id : undefined,
+              guru_id: isGuruType ? r.id : undefined,
+              tipe,
+              target_id: target_id || '',
+              sub_filter: sub_filter || '',
+              bulan: !isRentang ? bulan : undefined,
+              tahun: !isRentang ? tahun : undefined,
+              tanggal_dari: isRentang ? tanggal_dari : undefined,
+              tanggal_sampai: isRentang ? tanggal_sampai : undefined,
+              role: isGuruType ? 'guru' : 'wali_murid',
+              purpose: 'rekap_preview'
+            };
+        return { payload, expiresIn: expiryDuration, type: 'rekap_preview' };
+      });
+      previewTokens = await createShortTokensBatch(tokenItems);
+    } catch (_) {
+      previewTokens = rows.map(() => '');
+    }
+
+    const formattedRows = rows.map((r, idx) => {
+      const preview_token = previewTokens[idx] || '';
       return {
         ...r,
         no_hp: r.no_hp || r.nama_wali || '',

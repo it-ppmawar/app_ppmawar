@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
-import { verifyToken, signToken } from '@/lib/auth/jwt';
+import { verifyToken } from '@/lib/auth/jwt';
+import { createShortToken } from '@/lib/auth/shortToken';
 import fs from 'fs';
 import path from 'path';
 
@@ -239,7 +240,7 @@ export async function POST(request: Request) {
         waktu_tenggang: waktuTenggang,
         createdAt: Date.now()
       };
-      badalToken = signToken(badalPayload, `${waktuTenggang}h`);
+      badalToken = await createShortToken(badalPayload, `${waktuTenggang}h`, 'quick_absen');
       badalUrl = `https://app.ppmawar.or.id/absen/quick?token=${badalToken}`;
     }
 

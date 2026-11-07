@@ -110,7 +110,7 @@ const svgToDataUrl = (svgId: string): Promise<string | null> => {
 
 function RekapKepalaMadinContent() {
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams.get('token') || searchParams.get('t');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

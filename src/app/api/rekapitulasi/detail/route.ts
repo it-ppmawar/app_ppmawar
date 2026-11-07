@@ -3,6 +3,7 @@ import pool from "@/lib/db";
 import { RowDataPacket } from "mysql2";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth/jwt";
+import { resolveToken } from "@/lib/auth/shortToken";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -18,11 +19,17 @@ export async function GET(request: Request) {
     const cookieStore = await cookies();
     const { searchParams } = new URL(request.url);
     const queryToken = searchParams.get("token") || searchParams.get("t");
-    const token = queryToken || cookieStore.get("token")?.value;
-    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: noCacheHeaders });
+    const cookieToken = cookieStore.get("token")?.value;
 
-    const payload = verifyToken(token) as any;
-    if (!payload) return NextResponse.json({ error: "Token invalid atau telah kedaluwarsa" }, { status: 401, headers: noCacheHeaders });
+    let payload = null;
+    if (queryToken) {
+      payload = await resolveToken(queryToken);
+    }
+    if (!payload && cookieToken) {
+      payload = verifyToken(cookieToken);
+    }
+    if (!payload) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: noCacheHeaders });
+    if (payload.error) return NextResponse.json({ error: "Token invalid atau telah kedaluwarsa" }, { status: 401, headers: noCacheHeaders });
 
     const tipe = payload.tipe || searchParams.get("tipe") || "madin";
     const isGuruTipe = tipe === "guru" || tipe === "dewan_guru";

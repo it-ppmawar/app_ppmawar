@@ -180,27 +180,35 @@ export default function CardSiaranWaManual({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full text-left p-5 sm:p-6 flex items-center justify-between gap-4 hover:bg-gray-50/70 dark:hover:bg-gray-750/70 transition-colors cursor-pointer group"
+        className="w-full text-left p-4 sm:p-6 flex items-center justify-between gap-4 hover:bg-green-50/30 dark:hover:bg-gray-700/40 transition-colors cursor-pointer group"
         aria-label="Buka / Tutup Siaran WhatsApp (Manual)"
       >
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-1">
-            <h3 className="font-bold text-lg sm:text-xl text-gray-800 dark:text-gray-200 flex items-center gap-2">
-              <MessageCircle className="text-green-500 shrink-0" /> Siaran WhatsApp (Manual)
+          <div className="sm:flex sm:items-center sm:gap-2.5 mb-1">
+            <h3 className="font-bold text-base sm:text-xl text-gray-800 dark:text-gray-200 flex items-center gap-2">
+              <MessageCircle className="text-green-500 shrink-0" size={20} /> Siaran WhatsApp (Manual)
             </h3>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider transition-colors ${
-              isOpen 
-                ? 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/50'
-                : 'bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600'
-            }`}>
-              {isOpen ? 'Terbuka' : 'Tertutup'}
-            </span>
+            {/* Baris Badge & Ikon Mobile: sebaris dan ringkas */}
+            <div className="flex items-center justify-between sm:justify-start gap-2 mt-1 sm:mt-0">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider transition-colors ${
+                isOpen 
+                  ? 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/50'
+                  : 'bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600'
+              }`}>
+                {isOpen ? 'Terbuka' : 'Tertutup'}
+              </span>
+              {/* Ikon Buka Kartu Mobile: Lebih kecil & sebaris dengan badge Tertutup */}
+              <div className={`sm:hidden p-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 group-hover:bg-green-100 dark:group-hover:bg-green-900/40 group-hover:text-green-600 dark:group-hover:text-green-400 transition-all duration-200 ${isOpen ? 'rotate-180 bg-green-50 dark:bg-green-900/30 text-green-600' : ''}`}>
+                <ChevronDown size={14} />
+              </div>
+            </div>
           </div>
-          <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm line-clamp-1 sm:line-clamp-none">
+          <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1 sm:mt-0 line-clamp-1 sm:line-clamp-none">
             Kirim pesan siaran langsung ke aplikasi WhatsApp asli Anda (anti-blokir). Pesan otomatis diisi, Anda hanya perlu klik tombol kirim di aplikasi WA.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Ikon Buka Kartu Desktop */}
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           <div className={`p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 group-hover:bg-green-100 dark:group-hover:bg-green-900/40 group-hover:text-green-600 dark:group-hover:text-green-400 transition-all duration-200 ${isOpen ? 'rotate-180 bg-green-50 dark:bg-green-900/30 text-green-600' : ''}`}>
             <ChevronDown size={18} />
           </div>

@@ -3,6 +3,7 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
+import { resolveToken } from '@/lib/auth/shortToken';
 import { logAudit } from '@/lib/audit';
 
 export async function GET(request: Request) {
@@ -604,7 +605,7 @@ export async function POST(request: Request) {
     let badalNama: string | null = null;
 
     if (quick_token) {
-      const qPayload = verifyToken(quick_token) as any;
+      const qPayload = (await resolveToken(quick_token)) as any;
       if (qPayload && qPayload.type === 'quick_absen') {
         if (qPayload.badal_id) {
           badalId = Number(qPayload.badal_id);

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { verifyToken, signToken } from '@/lib/auth/jwt';
+import { signToken } from '@/lib/auth/jwt';
+import { resolveToken, createShortToken } from '@/lib/auth/shortToken';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import fs from 'fs';
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Token tidak ditemukan' }, { status: 400 });
     }
 
-    const payload = verifyToken(token) as any;
+    const payload = await resolveToken(token) as any;
     if (!payload || payload.type !== 'quick_absen') {
       return NextResponse.json({ error: 'Token tidak valid atau sudah kadaluarsa' }, { status: 401 });
     }
@@ -195,7 +196,7 @@ export async function POST(request: Request) {
         waktu_tenggang: waktuTenggang,
         createdAt: Date.now()
       };
-      badalToken = signToken(badalPayload, `${waktuTenggang}h`);
+      badalToken = await createShortToken(badalPayload, `${waktuTenggang}h`, 'quick_absen');
       badalUrl = `https://app.ppmawar.or.id/absen/quick?token=${badalToken}`;
     }
 

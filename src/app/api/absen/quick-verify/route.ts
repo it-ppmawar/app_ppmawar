@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth/jwt';
+import { resolveToken } from '@/lib/auth/shortToken';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Token tidak ditemukan' }, { status: 400 });
     }
 
-    const payload = verifyToken(token);
+    const payload = await resolveToken(token);
     if (!payload || (payload as any).type !== 'quick_absen') {
       let waktuTenggang = 3;
       try {
