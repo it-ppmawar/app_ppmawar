@@ -46,10 +46,16 @@ app.prepare().then(() => {
       const [settingRows] = await conn.execute(
         `SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis 
          WHERE nama_pengaturan IN ('waktu_tenggang_absensi', 'absensi_otomatis_guru',
-         'absensi_otomatis_madin', 'absensi_otomatis_quran', 'absensi_otomatis_kegiatan')`
+         'absensi_otomatis_madin', 'absensi_otomatis_quran', 'absensi_otomatis_kegiatan',
+         'absensi_otomatis_santri', 'absensi_otomatis_santri_madin', 'absensi_otomatis_santri_quran', 'absensi_otomatis_santri_kegiatan', 'mode_libur')`
       );
       const settingsMap = {};
       settingRows.forEach(r => { settingsMap[r.nama_pengaturan] = r.nilai; });
+
+      // Jika Mode Libur aktif, jeda auto-alpha
+      if (settingsMap['mode_libur'] === '1' || settingsMap['mode_libur'] === 'true') {
+        return;
+      }
 
       const waktuTenggangJam = settingsMap['waktu_tenggang_absensi'] && !isNaN(parseFloat(settingsMap['waktu_tenggang_absensi']))
         ? parseFloat(settingsMap['waktu_tenggang_absensi']) : 2;
@@ -59,6 +65,12 @@ app.prepare().then(() => {
       const isMadin        = isGuruMaster && (!settingsMap['absensi_otomatis_madin']    || settingsMap['absensi_otomatis_madin']    === '1');
       const isQuran        = isGuruMaster && (!settingsMap['absensi_otomatis_quran']    || settingsMap['absensi_otomatis_quran']    === '1');
       const isKegiatan     = isGuruMaster && (!settingsMap['absensi_otomatis_kegiatan'] || settingsMap['absensi_otomatis_kegiatan'] === '1');
+
+      // Toggles auto-alpha santri (default: nonaktif jika belum diset atau bernilai 0)
+      const isSantriMaster   = settingsMap['absensi_otomatis_santri'] === '1' || settingsMap['absensi_otomatis_santri'] === 'true';
+      const isSantriMadin    = isSantriMaster && (settingsMap['absensi_otomatis_santri_madin'] === '1' || settingsMap['absensi_otomatis_santri_madin'] === 'true');
+      const isSantriQuran    = isSantriMaster && (settingsMap['absensi_otomatis_santri_quran'] === '1' || settingsMap['absensi_otomatis_santri_quran'] === 'true');
+      const isSantriKegiatan = isSantriMaster && (settingsMap['absensi_otomatis_santri_kegiatan'] === '1' || settingsMap['absensi_otomatis_santri_kegiatan'] === 'true');
 
       const nowObj   = new Date();
       const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(nowObj);
@@ -114,16 +126,18 @@ app.prepare().then(() => {
 
         if (isClassTaught) continue;
 
-        const [santri] = await conn.execute(
-          'SELECT murid_id FROM murid WHERE kelas_madin_id = ? OR kelas_madin_2_id = ?',
-          [jadwal.kelas_madin_id, jadwal.kelas_madin_id]
-        );
-        for (const s of santri) {
-          await conn.execute(
-            'INSERT IGNORE INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, "Alpha", "Otomatis - Tidak Hadir")',
-            [jadwal.jadwal_id, s.murid_id, todayStr]
+        if (isSantriMadin) {
+          const [santri] = await conn.execute(
+            'SELECT murid_id FROM murid WHERE kelas_madin_id = ? OR kelas_madin_2_id = ?',
+            [jadwal.kelas_madin_id, jadwal.kelas_madin_id]
           );
-          totalSantri++;
+          for (const s of santri) {
+            await conn.execute(
+              'INSERT IGNORE INTO absensi (jadwal_madin_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, "Alpha", "Otomatis - Tidak Hadir")',
+              [jadwal.jadwal_id, s.murid_id, todayStr]
+            );
+            totalSantri++;
+          }
         }
       }
 
@@ -165,16 +179,18 @@ app.prepare().then(() => {
 
         if (isClassTaught) continue;
 
-        const [santri] = await conn.execute(
-          'SELECT murid_id FROM murid WHERE kelas_quran_id = ?',
-          [jadwal.kelas_quran_id]
-        );
-        for (const s of santri) {
-          await conn.execute(
-            'INSERT IGNORE INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, "Alpha", "Otomatis - Tidak Hadir")',
-            [jadwal.jadwal_id, s.murid_id, todayStr]
+        if (isSantriQuran) {
+          const [santri] = await conn.execute(
+            'SELECT murid_id FROM murid WHERE kelas_quran_id = ?',
+            [jadwal.kelas_quran_id]
           );
-          totalSantri++;
+          for (const s of santri) {
+            await conn.execute(
+              'INSERT IGNORE INTO absensi_quran (jadwal_quran_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, "Alpha", "Otomatis - Tidak Hadir")',
+              [jadwal.jadwal_id, s.murid_id, todayStr]
+            );
+            totalSantri++;
+          }
         }
       }
 
@@ -207,16 +223,18 @@ app.prepare().then(() => {
         );
         if (existing[0].cnt > 0) continue;
 
-        const [santri] = await conn.execute(
-          'SELECT murid_id FROM murid WHERE kamar_id = ?',
-          [jadwal.kamar_id]
-        );
-        for (const s of santri) {
-          await conn.execute(
-            'INSERT IGNORE INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, "Alpha", "Otomatis - Tidak Hadir")',
-            [jadwal.jadwal_id, s.murid_id, todayStr]
+        if (isSantriKegiatan) {
+          const [santri] = await conn.execute(
+            'SELECT murid_id FROM murid WHERE kamar_id = ?',
+            [jadwal.kamar_id]
           );
-          totalSantri++;
+          for (const s of santri) {
+            await conn.execute(
+              'INSERT IGNORE INTO absensi_kegiatan (kegiatan_id, murid_id, tanggal, status, keterangan) VALUES (?, ?, ?, "Alpha", "Otomatis - Tidak Hadir")',
+              [jadwal.jadwal_id, s.murid_id, todayStr]
+            );
+            totalSantri++;
+          }
         }
       }
 

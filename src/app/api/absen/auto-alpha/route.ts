@@ -38,11 +38,23 @@ export async function POST(request: Request) {
     const [allSettingRows] = await connection.execute<RowDataPacket[]>(
       `SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis 
        WHERE nama_pengaturan IN ('waktu_tenggang_absensi', 'absensi_otomatis_guru', 
-       'absensi_otomatis_madin', 'absensi_otomatis_quran', 'absensi_otomatis_kegiatan')`
+       'absensi_otomatis_madin', 'absensi_otomatis_quran', 'absensi_otomatis_kegiatan',
+       'absensi_otomatis_santri', 'absensi_otomatis_santri_madin', 'absensi_otomatis_santri_quran', 'absensi_otomatis_santri_kegiatan', 'mode_libur')`
     );
     const settingsMap: Record<string, string> = {};
     for (const row of allSettingRows) {
       settingsMap[row.nama_pengaturan] = row.nilai;
+    }
+
+    if (settingsMap['mode_libur'] === '1' || settingsMap['mode_libur'] === 'true') {
+      return NextResponse.json({
+        success: true,
+        message: 'Mode Libur Pondok sedang aktif. Proses pencatatan Alpa otomatis santri dan guru ditangguhkan.',
+        data: [],
+        total: 0,
+        total_santri: 0,
+        total_guru: 0,
+      });
     }
 
     const waktuTenggangJam = settingsMap['waktu_tenggang_absensi'] && !isNaN(parseFloat(settingsMap['waktu_tenggang_absensi']))
@@ -52,10 +64,16 @@ export async function POST(request: Request) {
 
     // Master toggle: apakah auto-alpha guru diaktifkan sama sekali
     const isAutoAlphaGuruMaster = !settingsMap['absensi_otomatis_guru'] || settingsMap['absensi_otomatis_guru'] === '1' || settingsMap['absensi_otomatis_guru'] === 'true';
-    // Per-kategori toggles (default: aktif jika master aktif dan belum pernah diset)
+    // Per-kategori toggles guru (default: aktif jika master aktif dan belum pernah diset)
     const isAutoAlphaMadin = isAutoAlphaGuruMaster && (!settingsMap['absensi_otomatis_madin'] || settingsMap['absensi_otomatis_madin'] === '1' || settingsMap['absensi_otomatis_madin'] === 'true');
     const isAutoAlphaQuran = isAutoAlphaGuruMaster && (!settingsMap['absensi_otomatis_quran'] || settingsMap['absensi_otomatis_quran'] === '1' || settingsMap['absensi_otomatis_quran'] === 'true');
     const isAutoAlphaKegiatan = isAutoAlphaGuruMaster && (!settingsMap['absensi_otomatis_kegiatan'] || settingsMap['absensi_otomatis_kegiatan'] === '1' || settingsMap['absensi_otomatis_kegiatan'] === 'true');
+
+    // Toggles auto-alpha santri (default: nonaktif jika belum diset atau bernilai 0)
+    const isAutoAlphaSantriMaster = settingsMap['absensi_otomatis_santri'] === '1' || settingsMap['absensi_otomatis_santri'] === 'true';
+    const isAutoAlphaSantriMadin = isAutoAlphaSantriMaster && (settingsMap['absensi_otomatis_santri_madin'] === '1' || settingsMap['absensi_otomatis_santri_madin'] === 'true');
+    const isAutoAlphaSantriQuran = isAutoAlphaSantriMaster && (settingsMap['absensi_otomatis_santri_quran'] === '1' || settingsMap['absensi_otomatis_santri_quran'] === 'true');
+    const isAutoAlphaSantriKegiatan = isAutoAlphaSantriMaster && (settingsMap['absensi_otomatis_santri_kegiatan'] === '1' || settingsMap['absensi_otomatis_santri_kegiatan'] === 'true');
 
     const hasil: { tipe: string; jadwal_id: number; nama: string; jumlah_ditandai: number; guru_alpha: boolean }[] = [];
     let totalDitandai = 0;
@@ -116,6 +134,13 @@ export async function POST(request: Request) {
       }
 
       if (isClassTaught) {
+        if (guruMarked) {
+          hasil.push({ tipe: 'Madin', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: 0, guru_alpha: true });
+        }
+        continue;
+      }
+
+      if (!isAutoAlphaSantriMadin) {
         if (guruMarked) {
           hasil.push({ tipe: 'Madin', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: 0, guru_alpha: true });
         }
@@ -199,6 +224,13 @@ export async function POST(request: Request) {
         continue;
       }
 
+      if (!isAutoAlphaSantriQuran) {
+        if (guruMarked) {
+          hasil.push({ tipe: 'Quran', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.mata_pelajaran} (${jadwal.nama_kelas})`, jumlah_ditandai: 0, guru_alpha: true });
+        }
+        continue;
+      }
+
       const [santri] = await connection.execute<RowDataPacket[]>(
         'SELECT murid_id FROM murid WHERE kelas_quran_id = ?',
         [jadwal.kelas_quran_id]
@@ -274,6 +306,13 @@ export async function POST(request: Request) {
         continue;
       }
 
+      if (!isAutoAlphaSantriKegiatan) {
+        if (guruMarked) {
+          hasil.push({ tipe: 'Kegiatan', jadwal_id: jadwal.jadwal_id, nama: `${jadwal.nama_kegiatan} (${jadwal.nama_kamar})`, jumlah_ditandai: 0, guru_alpha: true });
+        }
+        continue;
+      }
+
       const [santri] = await connection.execute<RowDataPacket[]>(
         'SELECT murid_id FROM murid WHERE kamar_id = ?',
         [jadwal.kamar_id]
@@ -321,6 +360,72 @@ export async function POST(request: Request) {
     await connection.rollback();
     console.error('[auto-alpha] Error:', error);
     return NextResponse.json({ error: 'Gagal memproses auto-alpha: ' + error.message }, { status: 500 });
+  } finally {
+    connection.release();
+  }
+}
+
+
+export async function DELETE(request: Request) {
+  const connection = await pool.getConnection();
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const payload = verifyToken(token) as any;
+    if (!payload || !['admin', 'staff', 'pengurus_asrama'].includes(payload.role)) {
+      return NextResponse.json({ error: 'Hanya Admin/Staff yang dapat membersihkan data auto-alpha santri' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const target = searchParams.get('target') || 'all';
+    const tanggalParam = searchParams.get('tanggal');
+
+    const nowObj = new Date();
+    const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(nowObj);
+    const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(yesterdayDate);
+
+    const dates = tanggalParam ? [tanggalParam] : [yesterdayStr, todayStr];
+
+    await connection.beginTransaction();
+    let deletedCount = 0;
+
+    for (const tgl of dates) {
+      if (target === 'all' || target === 'kegiatan') {
+        const [resK]: any = await connection.execute(
+          `DELETE FROM absensi_kegiatan WHERE tanggal = ? AND status = 'Alpha' AND (keterangan LIKE '%Otomatis%' OR keterangan LIKE '%Auto%')`,
+          [tgl]
+        );
+        deletedCount += resK?.affectedRows || 0;
+      }
+      if (target === 'all' || target === 'madin') {
+        const [resM]: any = await connection.execute(
+          `DELETE FROM absensi WHERE tanggal = ? AND status = 'Alpha' AND (keterangan LIKE '%Otomatis%' OR keterangan LIKE '%Auto%')`,
+          [tgl]
+        );
+        deletedCount += resM?.affectedRows || 0;
+      }
+      if (target === 'all' || target === 'quran') {
+        const [resQ]: any = await connection.execute(
+          `DELETE FROM absensi_quran WHERE tanggal = ? AND status = 'Alpha' AND (keterangan LIKE '%Otomatis%' OR keterangan LIKE '%Auto%')`,
+          [tgl]
+        );
+        deletedCount += resQ?.affectedRows || 0;
+      }
+    }
+
+    await connection.commit();
+
+    return NextResponse.json({
+      success: true,
+      message: `Berhasil membersihkan ${deletedCount} data Alpha otomatis santri (${dates.join(', ')}).`,
+      deletedCount
+    });
+  } catch (error: any) {
+    await connection.rollback();
+    return NextResponse.json({ error: 'Gagal membersihkan data: ' + error.message }, { status: 500 });
   } finally {
     connection.release();
   }

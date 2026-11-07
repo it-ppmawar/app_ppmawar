@@ -62,6 +62,10 @@ export async function PUT(request: Request) {
       absensi_otomatis_madin,
       absensi_otomatis_quran,
       absensi_otomatis_kegiatan,
+      absensi_otomatis_santri,
+      absensi_otomatis_santri_madin,
+      absensi_otomatis_santri_quran,
+      absensi_otomatis_santri_kegiatan,
       waktu_tenggang, 
       waktu_mulai, 
       lat_pesantren, 
@@ -153,6 +157,34 @@ export async function PUT(request: Request) {
       await pool.execute(
         'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
         ['absensi_otomatis_kegiatan', absensi_otomatis_kegiatan ? '1' : '0', absensi_otomatis_kegiatan ? '1' : '0']
+      );
+    }
+
+    if (absensi_otomatis_santri !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
+        ['absensi_otomatis_santri', absensi_otomatis_santri ? '1' : '0', absensi_otomatis_santri ? '1' : '0']
+      );
+    }
+
+    if (absensi_otomatis_santri_madin !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
+        ['absensi_otomatis_santri_madin', absensi_otomatis_santri_madin ? '1' : '0', absensi_otomatis_santri_madin ? '1' : '0']
+      );
+    }
+
+    if (absensi_otomatis_santri_quran !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
+        ['absensi_otomatis_santri_quran', absensi_otomatis_santri_quran ? '1' : '0', absensi_otomatis_santri_quran ? '1' : '0']
+      );
+    }
+
+    if (absensi_otomatis_santri_kegiatan !== undefined) {
+      await pool.execute(
+        'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?', 
+        ['absensi_otomatis_santri_kegiatan', absensi_otomatis_santri_kegiatan ? '1' : '0', absensi_otomatis_santri_kegiatan ? '1' : '0']
       );
     }
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone, BookOpen, Users, MapPin, ShieldAlert, Send } from 'lucide-react';
+import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone, BookOpen, Users, MapPin, ShieldAlert, Send, GraduationCap } from 'lucide-react';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -17,6 +17,10 @@ export default function SettingsPage() {
     absensi_otomatis_madin: true,
     absensi_otomatis_quran: false,
     absensi_otomatis_kegiatan: false,
+    absensi_otomatis_santri: false,
+    absensi_otomatis_santri_madin: false,
+    absensi_otomatis_santri_quran: false,
+    absensi_otomatis_santri_kegiatan: false,
     mode_libur: false,
     waktu_tenggang: 2,
     waktu_mulai: 30,
@@ -59,6 +63,33 @@ export default function SettingsPage() {
   const [webhookStatus, setWebhookStatus] = useState<{ is_active?: boolean; webhook_url?: string; last_error?: string } | null>(null);
   const [webhookMsg, setWebhookMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [botInfo, setBotInfo] = useState<{ username?: string; first_name?: string; id?: number } | null>(null);
+
+  // State untuk Pembersihan Alpa Otomatis Santri
+  const [cleaningSantriAlpha, setCleaningSantriAlpha] = useState(false);
+  const [cleanSantriAlphaMsg, setCleanSantriAlphaMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleCleanSantriAlpha = async () => {
+    if (!window.confirm('Bersihkan seluruh catatan Alpha otomatis santri (kemarin & hari ini)?\n\nTindakan ini aman dan hanya menghapus absensi santri yang berstatus "Alpha" dengan keterangan "Otomatis - Tidak Hadir". Data kehadiran nyata santri tidak akan disentuh.')) {
+      return;
+    }
+    setCleaningSantriAlpha(true);
+    setCleanSantriAlphaMsg(null);
+    try {
+      const res = await fetch('/api/absen/auto-alpha?target=all', {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (json.success) {
+        setCleanSantriAlphaMsg({ type: 'success', text: json.message || 'Data Alpha otomatis santri berhasil dibersihkan!' });
+      } else {
+        setCleanSantriAlphaMsg({ type: 'error', text: json.error || 'Gagal membersihkan data.' });
+      }
+    } catch {
+      setCleanSantriAlphaMsg({ type: 'error', text: 'Kesalahan jaringan saat membersihkan data.' });
+    } finally {
+      setCleaningSantriAlpha(false);
+    }
+  };
 
   // State untuk Kontrol Darurat WA Scheduler
   const [cancelingWa, setCancelingWa] = useState(false);
@@ -141,6 +172,10 @@ export default function SettingsPage() {
           absensi_otomatis_madin: json.data.absensi_otomatis_madin !== '0',
           absensi_otomatis_quran: json.data.absensi_otomatis_quran === '1',
           absensi_otomatis_kegiatan: json.data.absensi_otomatis_kegiatan === '1',
+          absensi_otomatis_santri: json.data.absensi_otomatis_santri === '1',
+          absensi_otomatis_santri_madin: json.data.absensi_otomatis_santri_madin === '1',
+          absensi_otomatis_santri_quran: json.data.absensi_otomatis_santri_quran === '1',
+          absensi_otomatis_santri_kegiatan: json.data.absensi_otomatis_santri_kegiatan === '1',
           mode_libur: json.data.mode_libur === '1',
           waktu_tenggang: isNaN(parseInt(json.data.waktu_tenggang_absensi)) ? 2 : parseInt(json.data.waktu_tenggang_absensi),
           waktu_mulai: isNaN(parseInt(json.data.waktu_mulai_absensi)) ? 30 : parseInt(json.data.waktu_mulai_absensi),
@@ -620,12 +655,16 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* 1. Status Auto-Alpha Guru & Pembina */}
           <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <h3 className="font-bold text-gray-800 dark:text-gray-200 text-lg">Status Absensi Otomatis (Master)</h3>
+                <h3 className="font-bold text-gray-800 dark:text-gray-200 text-lg flex items-center gap-2">
+                  <Users size={20} className="text-blue-500" />
+                  Status Auto-Alpha Guru & Pembina (Pengajar)
+                </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-lg">
-                  Jika diaktifkan, sistem akan otomatis mencatat status &quot;Alpha&quot; untuk Guru/Pembina yang memiliki jadwal pada hari sebelumnya (kemarin) namun tidak menekan tombol absensi. Berlaku per-kategori sesuai pilihan di bawah — bukan semua jadwal sekaligus.
+                  Jika diaktifkan, sistem akan otomatis mencatat status &quot;Alpha&quot; untuk Guru/Pembina yang memiliki jadwal pada hari sebelumnya namun belum melakukan presensi setelah melewati waktu toleransi. Berlaku per-kategori sesuai pilihan di bawah.
                 </p>
               </div>
               
@@ -645,15 +684,15 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Perincian Target Kategori Jadwal */}
+            {/* Perincian Target Kategori Jadwal Guru */}
             {settings.absensi_otomatis && (
               <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
                 <div className="space-y-0.5">
                   <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Target Kategori Jadwal Otomatis:
+                    Target Kategori Jadwal Otomatis Guru:
                   </h4>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 text-right">
-                    Pilih kategori yang ingin diberlakukan pencatatan Alpa otomatis
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    Pilih kategori guru yang ingin diberlakukan pencatatan Alpa otomatis
                   </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -715,6 +754,129 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* 2. Status Auto-Alpha Santri & Murid */}
+          <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <h3 className="font-bold text-gray-800 dark:text-gray-200 text-lg flex items-center gap-2">
+                  <GraduationCap size={20} className="text-emerald-500" />
+                  Status Auto-Alpha Santri & Murid (Kehadiran Siswa)
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-lg">
+                  Jika diaktifkan, sistem akan otomatis mencatat status &quot;Alpha&quot; bagi seluruh Santri/Murid pada jadwal yang belum memiliki absensi sama sekali setelah batas waktu toleransi. Jika dinonaktifkan, santri <strong>tidak akan otomatis dialpakan</strong> meskipun guru/pembina belum mengisi absen.
+                </p>
+              </div>
+              
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                <label className="relative inline-flex items-center cursor-pointer scale-125 origin-right">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={settings.absensi_otomatis_santri}
+                    onChange={(e) => setSettings({ ...settings, absensi_otomatis_santri: e.target.checked })}
+                  />
+                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 dark:peer-focus:ring-emerald-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                </label>
+                <span className={`font-black text-sm ${settings.absensi_otomatis_santri ? 'text-emerald-600' : 'text-gray-400'}`}>
+                  {settings.absensi_otomatis_santri ? 'AKTIF' : 'NONAKTIF'}
+                </span>
+              </div>
+            </div>
+
+            {/* Perincian Target Kategori Jadwal Santri */}
+            {settings.absensi_otomatis_santri && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Target Kategori Jadwal Otomatis Santri:
+                  </h4>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    Pilih kategori santri yang ingin diberlakukan pencatatan Alpa otomatis
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* 1. Santri Madin */}
+                  <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_santri_madin ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+                    <div>
+                      <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                        <BookOpen size={14} className="text-indigo-600 dark:text-indigo-400" /> Santri Madin
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Madrasah Diniyah</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer"
+                        checked={settings.absensi_otomatis_santri_madin}
+                        onChange={(e) => setSettings({ ...settings, absensi_otomatis_santri_madin: e.target.checked })}
+                      />
+                      <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                    </label>
+                  </div>
+
+                  {/* 2. Santri Qur'an */}
+                  <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_santri_quran ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+                    <div>
+                      <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                        <BookOpen size={14} className="text-emerald-600 dark:text-emerald-400" /> Santri Qur'an
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Kelas Al-Qur'an</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer"
+                        checked={settings.absensi_otomatis_santri_quran}
+                        onChange={(e) => setSettings({ ...settings, absensi_otomatis_santri_quran: e.target.checked })}
+                      />
+                      <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+
+                  {/* 3. Santri Kegiatan Asrama */}
+                  <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_santri_kegiatan ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+                    <div>
+                      <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                        <Users size={14} className="text-amber-600 dark:text-amber-400" /> Santri Kegiatan Asrama
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Kegiatan Asrama / Kamar</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer"
+                        checked={settings.absensi_otomatis_santri_kegiatan}
+                        onChange={(e) => setSettings({ ...settings, absensi_otomatis_santri_kegiatan: e.target.checked })}
+                      />
+                      <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-amber-600"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Opsi Pembersihan Data Alpa Otomatis Santri */}
+            <div className="pt-3 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Terdapat data santri yang terlanjur terisi Alpha otomatis kemarin? Anda dapat mereset/membersihkannya dengan satu klik.
+              </div>
+              <button
+                type="button"
+                onClick={handleCleanSantriAlpha}
+                disabled={cleaningSantriAlpha}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50 transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
+              >
+                {cleaningSantriAlpha ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                Bersihkan Alpha Otomatis Santri
+              </button>
+            </div>
+            {cleanSantriAlphaMsg && (
+              <p className={`text-xs font-medium ${cleanSantriAlphaMsg.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {cleanSantriAlphaMsg.text}
+              </p>
             )}
           </div>
 
