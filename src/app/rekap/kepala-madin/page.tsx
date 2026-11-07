@@ -365,10 +365,10 @@ function RekapKepalaMadinContent() {
                 />
               </svg>
               <div
-                className="relative z-10 w-full h-full flex items-center justify-center p-2 pt-2.5"
+                className="relative z-10 w-full h-full flex items-center justify-center p-1.5 pt-1.5"
                 style={{ clipPath: 'polygon(50% 1%, 86% 15%, 99% 50%, 86% 85%, 50% 99%, 14% 85%, 1% 50%, 14% 15%)' }}
               >
-                <img src="/logo.png" alt="Logo Lembaga" className="h-[72%] w-auto object-contain translate-y-[1.5px]" />
+                <img src="/logo.png" alt="Logo Lembaga" className="h-[82%] w-auto object-contain translate-y-[1px]" />
               </div>
             </div>
           </div>
