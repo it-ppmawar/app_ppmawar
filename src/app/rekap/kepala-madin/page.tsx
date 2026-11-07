@@ -355,8 +355,21 @@ function RekapKepalaMadinContent() {
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
           {/* Pojok Kiri: Logo Pesantren */}
           <div className="flex items-center justify-start shrink-0">
-            <div className="bg-white rounded-xl flex items-center justify-center shadow-xs h-9 px-1.5 py-0.5 border border-slate-200 dark:border-slate-700/60">
-              <img src="/logo.png" alt="Logo Lembaga" className="h-full w-auto object-contain" />
+            <div className="relative w-10 h-10 flex items-center justify-center filter drop-shadow-xs">
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
+                <polygon
+                  points="50,4 83,17 96,50 83,83 50,96 17,83 4,50 17,17"
+                  strokeLinejoin="round"
+                  strokeWidth="5"
+                  className="fill-white stroke-slate-200 dark:stroke-slate-700/80"
+                />
+              </svg>
+              <div
+                className="relative z-10 w-full h-full flex items-center justify-center p-1.5"
+                style={{ clipPath: 'polygon(50% 4%, 83% 17%, 96% 50%, 83% 83%, 50% 96%, 17% 83%, 4% 50%, 17% 17%)' }}
+              >
+                <img src="/logo.png" alt="Logo Lembaga" className="h-[88%] w-auto object-contain" />
+              </div>
             </div>
           </div>
 
@@ -376,15 +389,25 @@ function RekapKepalaMadinContent() {
           </div>
 
           {/* Pojok Kanan: Fitur Mode Gelap / Terang */}
-          <div className="w-8 flex items-center justify-end shrink-0">
+          <div className="w-10 flex items-center justify-end shrink-0">
             <button
               type="button"
               onClick={toggleTheme}
-              className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-300 dark:hover:text-white transition-colors border border-slate-200 dark:border-slate-700/60 shadow-xs cursor-pointer"
+              className="relative w-10 h-10 flex items-center justify-center transition-transform active:scale-95 hover:scale-105 focus:outline-none cursor-pointer group"
               aria-label="Toggle Mode Gelap/Terang"
               title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
             >
-              {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-600" />}
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none transition-all duration-300">
+                <polygon
+                  points="50,4 83,17 96,50 83,83 50,96 17,83 4,50 17,17"
+                  strokeLinejoin="round"
+                  strokeWidth="5"
+                  className="fill-slate-100 group-hover:fill-slate-200 dark:fill-slate-800 dark:group-hover:fill-slate-700 stroke-slate-200 dark:stroke-slate-700/80"
+                />
+              </svg>
+              <span className="relative z-10">
+                {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-600 dark:text-indigo-400" />}
+              </span>
             </button>
           </div>
         </div>

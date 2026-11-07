@@ -299,9 +299,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 flex flex-col">
       {/* Header Mobile & Desktop */}
       <header className="bg-gradient-to-r from-green-900 via-green-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 text-white py-1.5 px-4 shadow-lg sticky top-0 z-50 flex justify-between items-center rounded-b-2xl transition-colors duration-300 relative border-b border-green-700/30">
-        <Link href="/dashboard" className="flex items-center gap-3 z-10 hover:opacity-80 transition-opacity" aria-label="Kembali ke Dashboard">
-          <div className="bg-white rounded-xl flex items-center justify-center shadow-inner h-11 px-2 py-1">
-            <img src="/logo.png" alt="Logo" className="h-full w-auto object-contain" />
+        <Link href="/dashboard" className="flex items-center z-10 hover:opacity-90 transition-opacity" aria-label="Kembali ke Dashboard">
+          <div className="relative w-11 h-11 flex items-center justify-center filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.2)]">
+            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
+              <polygon
+                points="50,4 83,17 96,50 83,83 50,96 17,83 4,50 17,17"
+                strokeLinejoin="round"
+                strokeWidth="5"
+                className="fill-white stroke-green-600/40 dark:stroke-emerald-500/50"
+              />
+            </svg>
+            <div 
+              className="relative z-10 w-full h-full flex items-center justify-center p-1.5"
+              style={{ clipPath: 'polygon(50% 4%, 83% 17%, 96% 50%, 83% 83%, 50% 96%, 17% 83%, 4% 50%, 17% 17%)' }}
+            >
+              <img src="/logo.png" alt="Logo" className="h-[88%] w-auto object-contain" />
+            </div>
           </div>
         </Link>
 
@@ -319,11 +332,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="relative hidden sm:block">
               <button 
                 onClick={() => setShowNotif(!showNotif)} 
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors relative"
+                className="relative w-10 h-10 flex items-center justify-center transition-transform active:scale-95 hover:scale-105 focus:outline-none cursor-pointer group"
                 aria-label="Notifikasi Jadwal"
               >
-                <Bell size={20} />
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-green-800 dark:border-gray-800 animate-pulse"></span>
+                <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none transition-all duration-300">
+                  <polygon
+                    points="50,4 83,17 96,50 83,83 50,96 17,83 4,50 17,17"
+                    strokeLinejoin="round"
+                    strokeWidth="5"
+                    className="fill-white/15 group-hover:fill-white/25 stroke-white/25 group-hover:stroke-white/40"
+                  />
+                </svg>
+                <Bell size={19} className="relative z-10 text-white" />
+                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-green-800 dark:border-gray-800 animate-pulse z-20"></span>
               </button>
 
               {/* Dropdown Notifikasi */}
@@ -386,23 +407,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Tombol Mode Gelap (Sembunyikan di HP) */}
           <button 
             onClick={toggleTheme} 
-            className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors hidden sm:block"
+            className="relative w-10 h-10 items-center justify-center transition-transform active:scale-95 hover:scale-105 focus:outline-none cursor-pointer group hidden sm:flex"
             aria-label="Toggle Dark Mode"
           >
-            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none transition-all duration-300">
+              <polygon
+                points="50,4 83,17 96,50 83,83 50,96 17,83 4,50 17,17"
+                strokeLinejoin="round"
+                strokeWidth="5"
+                className="fill-white/15 group-hover:fill-white/25 stroke-white/25 group-hover:stroke-white/40"
+              />
+            </svg>
+            <span className="relative z-10 text-white">
+              {isDark ? <Sun size={19} /> : <Moon size={19} />}
+            </span>
           </button>
           {/* Tombol Sidebar Menu */}
           <div className="relative ml-1">
             <button 
               onClick={() => setShowSidebar(true)} 
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors relative z-10"
+              className="relative w-10 h-10 flex items-center justify-center transition-transform active:scale-95 hover:scale-105 focus:outline-none cursor-pointer group z-10"
               aria-label="Buka Menu"
             >
-              <Menu size={20} />
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none transition-all duration-300">
+                <polygon
+                  points="50,4 83,17 96,50 83,83 50,96 17,83 4,50 17,17"
+                  strokeLinejoin="round"
+                  strokeWidth="5"
+                  className="fill-white/15 group-hover:fill-white/25 stroke-white/25 group-hover:stroke-white/40 shadow-xs"
+                />
+              </svg>
+              <Menu size={20} className="relative z-10 text-white" />
               {(activeSchedule || ((user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0)) && (
                 <>
-                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border border-green-800 dark:border-gray-800 sm:hidden z-10"></span>
-                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping opacity-75 sm:hidden"></span>
+                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border border-green-800 dark:border-gray-800 sm:hidden z-20"></span>
+                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping opacity-75 sm:hidden z-10"></span>
                 </>
               )}
             </button>
