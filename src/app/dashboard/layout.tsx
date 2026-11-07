@@ -43,11 +43,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const hasActiveAbsen = !!activeSchedule || ((user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0);
 
   let navItems = [
-    { name: 'Beranda', href: '/dashboard', icon: Home },
     { name: 'Jadwal', href: '/dashboard/jadwal', icon: CalendarDays },
     ...(user?.role !== 'wali_murid' && user?.role !== 'wali_alumni' && user?.role !== 'tamu' ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
+    ...(user?.role === 'wali_murid' ? [{ name: 'Tagihan', href: '/dashboard/tagihan', icon: CreditCard }] : []),
     ...(user?.role !== 'tamu' && user?.role !== 'wali_murid' && user?.role !== 'wali_alumni' ? [{ name: 'Notifikasi', href: '/dashboard/notifikasi', icon: Bell }] : []),
-    { name: 'Profil', href: '/dashboard/profil', icon: User },
   ];
 
   const userRoleLower = (user?.role || '').toLowerCase();
@@ -55,10 +54,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const showKeb = userRoleLower.includes('kebersihan') || userRoleLower === 'petugas_umum' || userRoleLower === 'petugas';
     const showInv = userRoleLower.includes('inventaris') || userRoleLower.includes('sarpras') || userRoleLower === 'petugas_umum' || userRoleLower === 'petugas';
     navItems = [
-      { name: 'Beranda', href: '/dashboard', icon: Home },
       ...(showKeb ? [{ name: 'Kebersihan', href: '/dashboard/kebersihan', icon: Trash2 }] : []),
       ...(showInv ? [{ name: 'Inventaris', href: '/dashboard/inventaris', icon: Archive }] : []),
-      { name: 'Profil', href: '/dashboard/profil', icon: User },
     ];
   }
 
@@ -452,11 +449,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       )}
                     </div>
 
-                    <div className="flex-1 min-w-0 px-1 text-center">
-                      <p className="font-bold text-[13px] sm:text-sm leading-snug capitalize break-words">
+                    <Link
+                      href="/dashboard/profil"
+                      onClick={() => setShowSidebar(false)}
+                      className="flex-1 min-w-0 px-1 text-center group hover:opacity-90 transition-opacity cursor-pointer"
+                      title="Lihat & Kelola Profil Saya"
+                    >
+                      <p className="font-bold text-[13px] sm:text-sm leading-snug capitalize break-words group-hover:underline">
                         {userName || 'Memuat...'}
                       </p>
-                    </div>
+                    </Link>
 
                     {/* Baris Atas Kanan: hanya tombol Tutup (X) */}
                     <div className="flex items-center flex-shrink-0">
@@ -725,6 +727,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <li>
                   <Link href="/dashboard" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 font-medium'}`}>
                     <Home size={18} /> <span className="text-sm">Dashboard</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/dashboard/profil" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/profil' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 font-medium'}`}>
+                    <User size={18} /> <span className="text-sm">Profil Saya</span>
                   </Link>
                 </li>
                 {/* Khusus Petugas Kebersihan / Kebersihan Umum / Petugas Umum */}
@@ -1278,9 +1285,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {children}
       </main>
 
-      {/* Navigasi Bawah (Mobile App Style) — Bilah Solid Utuh & Tombol Heksagonal Presisi */}
+      {/* Navigasi Bawah (Mobile App Style) — Bilah Solid Utuh & Tombol Oktagonal Presisi */}
       <nav className="fixed bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_15px_rgba(0,0,0,0.3)] z-50 rounded-t-3xl pb-safe transition-colors duration-300">
-        <div className="flex justify-around items-center h-[62px] px-2 sm:px-4">
+        <div className="flex justify-around items-center h-[62px] px-4 sm:px-8 max-w-md mx-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isAbsen = item.name === 'Absen';
@@ -1388,7 +1395,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.name}
                 href={item.href}
-                className="flex-1 min-w-0 max-w-[64px] flex flex-col items-center justify-center gap-0.5 group transition-all duration-300 py-1"
+                className="flex-1 min-w-0 max-w-[80px] flex flex-col items-center justify-center gap-0.5 group transition-all duration-300 py-1"
               >
                 <div
                   className={`p-1 sm:p-1.5 rounded-xl transition-all duration-300 ${
