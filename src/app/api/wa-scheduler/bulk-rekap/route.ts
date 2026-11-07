@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { verifyToken, signToken } from '@/lib/auth/jwt';
+import { verifyToken } from '@/lib/auth/jwt';
+import { createShortToken } from '@/lib/auth/shortToken';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { 
@@ -279,15 +280,16 @@ export async function POST(request: Request) {
         const kelasStr = kelasList.join(', ') || '-';
         const katStr = katList.join(', ') || 'Madrasah Diniyah';
 
-        // Buat JWT Token khusus rekap guru dengan masa berlaku dinamis
-        const rekapToken = signToken({
+        // Buat Token ringkas khusus rekap guru (8 karakter) dengan masa berlaku dinamis & idempoten
+        const rekapRefKey = `rekap_guru_${g.guru_id}_${modeRentang ? `${tanggalDari}_${tanggalSampai}` : `${bulan}_${tahun}`}`;
+        const rekapToken = await createShortToken({
           type: 'rekap_guru',
           guru_id: g.guru_id,
           ...(modeRentang
             ? { tanggal_dari: tanggalDari, tanggal_sampai: tanggalSampai }
             : { bulan, tahun }),
           categories,
-        }, `${expiryDays}d`);
+        }, `${expiryDays}d`, 'rekap_guru', rekapRefKey);
 
         const quickUrl = `https://app.ppmawar.or.id/rekap/guru?token=${rekapToken}`;
 

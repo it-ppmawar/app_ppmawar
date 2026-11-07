@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
-import { verifyToken } from '@/lib/auth/jwt';
+import { resolveToken } from '@/lib/auth/shortToken';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Token rekapitulasi tidak ditemukan' }, { status: 400 });
     }
 
-    const payload = verifyToken(token) as any;
+    const payload = await resolveToken(token) as any;
     if (!payload || !payload.guru_id) {
       return NextResponse.json({ error: 'Tautan rekapitulasi telah kedaluwarsa atau tidak valid' }, { status: 401 });
     }

@@ -248,7 +248,8 @@ export async function POST(request: Request) {
             date: itemDateStr,
             waktu_tenggang: dynamicWaktuTenggang
           };
-          const quick_token = await createShortToken(quickPayload, '7d', 'quick_absen');
+          const refKey = `quick_${row.guru_id}_${row.jadwal_id}_${tipe}_${itemDateStr}`;
+          const quick_token = await createShortToken(quickPayload, `${dynamicWaktuTenggang}h`, 'quick_absen', refKey);
           const quick_url = `https://app.ppmawar.or.id/absen/quick?token=${quick_token}`;
           const quick_izin_url = `${quick_url}&action=izin`;
 

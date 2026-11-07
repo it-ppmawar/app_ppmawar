@@ -12,7 +12,7 @@ let tableEnsured = false;
 async function ensureTable() {
   if (tableEnsured) return;
   try {
-    // Buat tabel dasar terlebih dahulu
+    // 1. Buat tabel dasar jika belum ada sama sekali
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS app_short_tokens (
         token VARCHAR(32) NOT NULL PRIMARY KEY,
@@ -25,17 +25,17 @@ async function ensureTable() {
         INDEX idx_ref_key (ref_key)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
-    // Migrasi: tambah kolom ref_key jika tabel sudah ada tapi belum punya kolom ini
+    // 2. Migrasi aman untuk MySQL tanpa syntax IF NOT EXISTS yang rawan error di versi MySQL tertentu
     try {
       await pool.execute(
-        'ALTER TABLE app_short_tokens ADD COLUMN IF NOT EXISTS ref_key VARCHAR(255) DEFAULT NULL'
+        'ALTER TABLE app_short_tokens ADD COLUMN ref_key VARCHAR(255) DEFAULT NULL'
       );
-    } catch (_) { /* kolom sudah ada atau DB tidak mendukung IF NOT EXISTS */ }
+    } catch (_) { /* kolom sudah ada (ER_DUP_FIELDNAME) */ }
     try {
       await pool.execute(
-        'ALTER TABLE app_short_tokens ADD INDEX IF NOT EXISTS idx_ref_key (ref_key)'
+        'ALTER TABLE app_short_tokens ADD INDEX idx_ref_key (ref_key)'
       );
-    } catch (_) { /* index sudah ada */ }
+    } catch (_) { /* index sudah ada (ER_DUP_KEYNAME) */ }
     tableEnsured = true;
   } catch (err) {
     // If table creation fails (e.g. offline dev without local DB), allow fallback
@@ -156,29 +156,34 @@ export async function createShortToken(
 
     // ── Idempotency: jika ref_key diberikan & token aktif sudah ada, kembalikan token lama ──
     if (refKey) {
-      const [existingRows] = await pool.execute<RowDataPacket[]>(
-        'SELECT token, payload, expires_at FROM app_short_tokens WHERE ref_key = ? LIMIT 1',
-        [refKey]
-      );
-      if (existingRows && existingRows.length > 0) {
-        const existing = existingRows[0];
-        let existingExpiry = 0;
-        try {
-          const ep = typeof existing.payload === 'string' ? JSON.parse(existing.payload) : existing.payload;
-          if (ep?.exp) existingExpiry = ep.exp * 1000;
-        } catch (_) {}
-        if (!existingExpiry && existing.expires_at instanceof Date) {
-          existingExpiry = Math.max(
-            Date.UTC(existing.expires_at.getFullYear(), existing.expires_at.getMonth(), existing.expires_at.getDate(), existing.expires_at.getHours(), existing.expires_at.getMinutes(), existing.expires_at.getSeconds()),
-            existing.expires_at.getTime()
-          );
+      try {
+        const [existingRows] = await pool.execute<RowDataPacket[]>(
+          'SELECT token, payload, expires_at FROM app_short_tokens WHERE ref_key = ? LIMIT 1',
+          [refKey]
+        );
+        if (existingRows && existingRows.length > 0) {
+          const existing = existingRows[0];
+          let existingExpiry = 0;
+          try {
+            const ep = typeof existing.payload === 'string' ? JSON.parse(existing.payload) : existing.payload;
+            if (ep?.exp) existingExpiry = ep.exp * 1000;
+          } catch (_) {}
+          if (!existingExpiry && existing.expires_at instanceof Date) {
+            existingExpiry = Math.max(
+              Date.UTC(existing.expires_at.getFullYear(), existing.expires_at.getMonth(), existing.expires_at.getDate(), existing.expires_at.getHours(), existing.expires_at.getMinutes(), existing.expires_at.getSeconds()),
+              existing.expires_at.getTime()
+            );
+          }
+          // Kembalikan token lama jika masih valid (belum expired + 15 menit grace)
+          if (existingExpiry > 0 && existingExpiry + 15 * 60 * 1000 > Date.now()) {
+            return existing.token as string;
+          }
+          // Jika expired, hapus dulu agar bisa insert ulang dengan ref_key yang sama
+          await pool.execute('DELETE FROM app_short_tokens WHERE ref_key = ?', [refKey]).catch(() => {});
         }
-        // Kembalikan token lama jika masih valid (belum expired + 15 menit grace)
-        if (existingExpiry > 0 && existingExpiry + 15 * 60 * 1000 > Date.now()) {
-          return existing.token as string;
-        }
-        // Jika expired, hapus dulu agar bisa insert ulang dengan ref_key yang sama
-        await pool.execute('DELETE FROM app_short_tokens WHERE ref_key = ?', [refKey]).catch(() => {});
+      } catch (refErr: any) {
+        // Kolom ref_key mungkin belum ada (tabel lama) — abaikan idempotency
+        console.warn('[shortToken] ref_key single lookup gagal:', refErr?.message);
       }
     }
 
@@ -187,10 +192,23 @@ export async function createShortToken(
     // Cek kemungkinan duplikasi (sangat kecil kemungkinannya)
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        await pool.execute(
-          'INSERT INTO app_short_tokens (token, type, payload, expires_at, ref_key) VALUES (?, ?, ?, ?, ?)',
-          [token, type, JSON.stringify(payloadWithExp), expiryStr, refKey || null]
-        );
+        // Coba insert dengan ref_key
+        try {
+          await pool.execute(
+            'INSERT INTO app_short_tokens (token, type, payload, expires_at, ref_key) VALUES (?, ?, ?, ?, ?)',
+            [token, type, JSON.stringify(payloadWithExp), expiryStr, refKey || null]
+          );
+        } catch (insertWithRefErr: any) {
+          if (insertWithRefErr.code === 'ER_DUP_ENTRY') {
+            token = generateRandomCode(8);
+            continue;
+          }
+          // Jika kolom ref_key belum ada di tabel, fallback insert 4 kolom standar
+          await pool.execute(
+            'INSERT INTO app_short_tokens (token, type, payload, expires_at) VALUES (?, ?, ?, ?)',
+            [token, type, JSON.stringify(payloadWithExp), expiryStr]
+          );
+        }
         
         // Pembersihan background (peluang 5%)
         if (Math.random() < 0.05) {
@@ -230,39 +248,46 @@ export async function createShortTokensBatch(
     const refKeys = items.map(it => it.refKey).filter(Boolean) as string[];
     const existingRefMap = new Map<string, string>(); // refKey → token
     if (refKeys.length > 0) {
-      const refPlaceholders = refKeys.map(() => '?').join(',');
-      const [existingRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT token, ref_key, payload, expires_at FROM app_short_tokens WHERE ref_key IN (${refPlaceholders})`,
-        refKeys
-      );
-      for (const row of existingRows) {
-        let expiry = 0;
-        try {
-          const ep = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
-          if (ep?.exp) expiry = ep.exp * 1000;
-        } catch (_) {}
-        if (!expiry && row.expires_at instanceof Date) {
-          expiry = Math.max(
-            Date.UTC(row.expires_at.getFullYear(), row.expires_at.getMonth(), row.expires_at.getDate(), row.expires_at.getHours(), row.expires_at.getMinutes(), row.expires_at.getSeconds()),
-            row.expires_at.getTime()
-          );
+      try {
+        const refPlaceholders = refKeys.map(() => '?').join(',');
+        const [existingRows] = await pool.execute<RowDataPacket[]>(
+          `SELECT token, ref_key, payload, expires_at FROM app_short_tokens WHERE ref_key IN (${refPlaceholders})`,
+          refKeys
+        );
+        for (const row of existingRows) {
+          let expiry = 0;
+          try {
+            const ep = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
+            if (ep?.exp) expiry = ep.exp * 1000;
+          } catch (_) {}
+          if (!expiry && row.expires_at instanceof Date) {
+            expiry = Math.max(
+              Date.UTC(row.expires_at.getFullYear(), row.expires_at.getMonth(), row.expires_at.getDate(), row.expires_at.getHours(), row.expires_at.getMinutes(), row.expires_at.getSeconds()),
+              row.expires_at.getTime()
+            );
+          }
+          // Simpan hanya jika masih aktif
+          if (expiry > 0 && expiry + 15 * 60 * 1000 > Date.now()) {
+            existingRefMap.set(row.ref_key as string, row.token as string);
+          }
         }
-        // Simpan hanya jika masih aktif
-        if (expiry > 0 && expiry + 15 * 60 * 1000 > Date.now()) {
-          existingRefMap.set(row.ref_key as string, row.token as string);
+        // Hapus expired ref_key agar tidak konflik saat re-insert
+        const expiredRefKeys = refKeys.filter(k => !existingRefMap.has(k));
+        if (expiredRefKeys.length > 0) {
+          const ep2 = expiredRefKeys.map(() => '?').join(',');
+          await pool.execute(`DELETE FROM app_short_tokens WHERE ref_key IN (${ep2})`, expiredRefKeys).catch(() => {});
         }
-      }
-      // Hapus expired ref_key agar tidak konflik saat re-insert
-      const expiredRefKeys = refKeys.filter(k => !existingRefMap.has(k));
-      if (expiredRefKeys.length > 0) {
-        const ep2 = expiredRefKeys.map(() => '?').join(',');
-        await pool.execute(`DELETE FROM app_short_tokens WHERE ref_key IN (${ep2})`, expiredRefKeys).catch(() => {});
+      } catch (refErr: any) {
+        // Kolom ref_key mungkin belum ada (tabel lama sebelum migrasi) — abaikan idempotency, buat token baru
+        console.warn('[shortToken] ref_key lookup gagal (mungkin kolom belum ada):', refErr?.message);
       }
     }
 
     const tokens: string[] = [];
     const values: any[] = [];
+    const values4: any[] = [];
     const placeholders: string[] = [];
+    const placeholders4: string[] = [];
 
     for (const item of items) {
       // Jika token lama masih valid untuk ref_key ini, gunakan token lama
@@ -280,11 +305,21 @@ export async function createShortTokensBatch(
 
       placeholders.push('(?, ?, ?, ?, ?)');
       values.push(token, item.type || '', JSON.stringify(payloadWithExp), expiryStr, item.refKey || null);
+
+      placeholders4.push('(?, ?, ?, ?)');
+      values4.push(token, item.type || '', JSON.stringify(payloadWithExp), expiryStr);
     }
 
     if (placeholders.length > 0) {
-      const query = `INSERT INTO app_short_tokens (token, type, payload, expires_at, ref_key) VALUES ${placeholders.join(', ')}`;
-      await pool.execute(query, values);
+      try {
+        const query = `INSERT INTO app_short_tokens (token, type, payload, expires_at, ref_key) VALUES ${placeholders.join(', ')}`;
+        await pool.execute(query, values);
+      } catch (batchErr: any) {
+        console.warn('[shortToken] Batch insert dengan ref_key gagal, fallback 4 kolom:', batchErr?.message);
+        // Fallback: coba batch insert 4 kolom standar tanpa ref_key
+        const fallbackQuery = `INSERT INTO app_short_tokens (token, type, payload, expires_at) VALUES ${placeholders4.join(', ')}`;
+        await pool.execute(fallbackQuery, values4);
+      }
     }
 
     // Pembersihan background berkala

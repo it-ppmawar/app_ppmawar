@@ -44,7 +44,7 @@ const getFotoUrl = (fotoName: string | null) => {
 
 function RekapGuruContent() {
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams.get('token') || searchParams.get('t');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
