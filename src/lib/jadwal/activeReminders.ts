@@ -200,6 +200,10 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
           remainingSecs = waktuTenggang * 3600;
         }
 
+        // ref_key: kunci idempoten agar token tidak berubah selama window aktif
+        // Format: quick_{guru_id}_{jadwal_id}_{tipe}_{date}
+        const refKey = `quick_${item.guru_id}_${item.jadwal_id}_${item.tipe}_${localISOTime}`;
+
         return {
           payload: {
             type: 'quick_absen',
@@ -211,7 +215,8 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
             waktu_tenggang: waktuTenggang
           },
           expiresIn: `${Math.ceil(remainingSecs / 3600)}h`,
-          type: 'quick_absen'
+          type: 'quick_absen',
+          refKey
         };
       });
 
