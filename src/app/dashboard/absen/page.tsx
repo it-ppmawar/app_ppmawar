@@ -206,26 +206,18 @@ export default function InputAbsenPage() {
       </div>
 
       {/* ====== PINTASAN SCAN ABSENSI ====== */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-1.5 shadow-sm border border-gray-100 dark:border-gray-700 flex gap-1.5">
         <Link
           href="/dashboard/scan-absen?mode=qr"
-          className="flex flex-col items-center justify-center text-center p-4 sm:p-5 bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white rounded-2xl shadow-md transition-all active:scale-95 group"
+          className="flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all text-white bg-green-600 hover:bg-green-700 shadow-sm active:scale-95"
         >
-          <div className="bg-white/20 p-3 rounded-2xl mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <QrCode size={28} />
-          </div>
-          <p className="font-extrabold text-sm sm:text-base leading-tight">Scan QR Kartu</p>
-          <p className="text-green-200 text-xs mt-1">Absensi via barcode</p>
+          <QrCode size={16} /> Scan QR Kartu
         </Link>
         <Link
           href="/dashboard/scan-absen?mode=face"
-          className="flex flex-col items-center justify-center text-center p-4 sm:p-5 bg-gradient-to-br from-violet-600 to-indigo-700 hover:from-violet-700 hover:to-indigo-800 text-white rounded-2xl shadow-md transition-all active:scale-95 group"
+          className="flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-sm active:scale-95"
         >
-          <div className="bg-white/20 p-3 rounded-2xl mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Brain size={28} />
-          </div>
-          <p className="font-extrabold text-sm sm:text-base leading-tight">Scan Wajah AI</p>
-          <p className="text-violet-200 text-xs mt-1">Face recognition</p>
+          <Brain size={16} /> Scan Wajah AI
         </Link>
       </div>
 
