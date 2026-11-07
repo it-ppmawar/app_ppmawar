@@ -55,6 +55,21 @@ function parseExpiryMs(expiresIn: string | number): number {
   }
 }
 
+function formatWibDateTime(date: Date): string {
+  // Format YYYY-MM-DD HH:mm:ss sesuai zona waktu Asia/Jakarta (WIB) untuk MySQL DATETIME
+  const parts = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(date);
+  return parts.replace('T', ' ');
+}
+
 /**
  * Buat compact stateless signed token jika database tidak tersedia (fallback).
  * Format: s_<base64url_compressed_json>_<base64url_hmac_12bytes>
@@ -115,8 +130,11 @@ export async function createShortToken(
   type: string = ''
 ): Promise<string> {
   const expiryMs = parseExpiryMs(expiresIn);
+  const expTimestamp = Math.floor((Date.now() + expiryMs) / 1000);
+  const payloadWithExp = { ...(payload || {}), exp: expTimestamp };
+
   const expiryDate = new Date(Date.now() + expiryMs);
-  const expiryStr = expiryDate.toISOString().slice(0, 19).replace('T', ' ');
+  const expiryStr = formatWibDateTime(expiryDate);
 
   try {
     await ensureTable();
@@ -127,7 +145,7 @@ export async function createShortToken(
       try {
         await pool.execute(
           'INSERT INTO app_short_tokens (token, type, payload, expires_at) VALUES (?, ?, ?, ?)',
-          [token, type, JSON.stringify(payload), expiryStr]
+          [token, type, JSON.stringify(payloadWithExp), expiryStr]
         );
         
         // Pembersihan background (peluang 5%)
@@ -171,11 +189,13 @@ export async function createShortTokensBatch(
       const token = generateRandomCode(8);
       tokens.push(token);
       const expiryMs = parseExpiryMs(item.expiresIn || '7d');
+      const expTimestamp = Math.floor((Date.now() + expiryMs) / 1000);
+      const payloadWithExp = { ...(item.payload || {}), exp: expTimestamp };
       const expiryDate = new Date(Date.now() + expiryMs);
-      const expiryStr = expiryDate.toISOString().slice(0, 19).replace('T', ' ');
+      const expiryStr = formatWibDateTime(expiryDate);
 
       placeholders.push('(?, ?, ?, ?)');
-      values.push(token, item.type || '', JSON.stringify(item.payload), expiryStr);
+      values.push(token, item.type || '', JSON.stringify(payloadWithExp), expiryStr);
     }
 
     const query = `INSERT INTO app_short_tokens (token, type, payload, expires_at) VALUES ${placeholders.join(', ')}`;
@@ -224,10 +244,6 @@ export async function resolveToken(tokenStr: string | null | undefined): Promise
 
     if (rows && rows.length > 0) {
       const row = rows[0];
-      const expiryTime = new Date(row.expires_at).getTime();
-      if (expiryTime < Date.now()) {
-        return null; // Token kedaluwarsa
-      }
 
       let parsedPayload: any = {};
       try {
@@ -236,8 +252,43 @@ export async function resolveToken(tokenStr: string | null | undefined): Promise
         parsedPayload = {};
       }
 
-      // Pastikan properti exp disertakan agar kompatibel dengan kode pengecekan exp
-      if (!parsedPayload.exp) {
+      // Hitung expiryTime (dalam millisecond epoch)
+      let expiryTime = 0;
+      if (parsedPayload && typeof parsedPayload.exp === 'number' && parsedPayload.exp > 0) {
+        // Prioritas 1: payload.exp (epoch seconds murni tanpa ketergantungan timezone)
+        expiryTime = parsedPayload.exp * 1000;
+      } else if (row.expires_at) {
+        // Prioritas 2: row.expires_at dari MySQL
+        if (row.expires_at instanceof Date) {
+          // mysql2 mengonstruksi local Date dari nilai YYYY-MM-DD HH:mm:ss.
+          // Untuk backward-compatibility token yang sebelumnya tersimpan via toISOString (UTC),
+          // kita bandingkan interpretasi UTC vs Local dan ambil nilai yang lebih besar agar tidak prematur kadaluarsa.
+          const asUtc = Date.UTC(
+            row.expires_at.getFullYear(),
+            row.expires_at.getMonth(),
+            row.expires_at.getDate(),
+            row.expires_at.getHours(),
+            row.expires_at.getMinutes(),
+            row.expires_at.getSeconds()
+          );
+          const asLocal = row.expires_at.getTime();
+          expiryTime = Math.max(asUtc, asLocal);
+        } else {
+          const str = String(row.expires_at).trim();
+          const cleanStr = str.replace(' ', 'T');
+          const asUtc = new Date(cleanStr.endsWith('Z') ? cleanStr : `${cleanStr}Z`).getTime();
+          const asLocal = new Date(cleanStr).getTime();
+          expiryTime = Math.max(isNaN(asUtc) ? 0 : asUtc, isNaN(asLocal) ? 0 : asLocal);
+        }
+      }
+
+      // Berikan grace period 15 menit agar toleran terhadap sedikit pergeseran jam
+      if (expiryTime > 0 && expiryTime + 15 * 60 * 1000 < Date.now()) {
+        return null; // Token kedaluwarsa
+      }
+
+      // Pastikan properti exp disertakan agar kompatibel dengan kode yang membaca payload.exp
+      if (!parsedPayload.exp && expiryTime > 0) {
         parsedPayload.exp = Math.floor(expiryTime / 1000);
       }
 

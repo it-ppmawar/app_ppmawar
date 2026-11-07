@@ -198,7 +198,7 @@ export async function getActivePendingReminders(): Promise<ActivePendingReminder
           date: localISOTime,
           waktu_tenggang: waktuTenggang
         },
-        expiresIn: `${waktuTenggang}h`,
+        expiresIn: '24h',
         type: 'quick_absen'
       }));
 
