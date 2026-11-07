@@ -361,10 +361,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           href="/dashboard/notifikasi?remind=true" 
                           onClick={() => {
                             setShowNotif(false);
-                            if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard/notifikasi')) {
-                              const el = document.getElementById('tab-pilihan-pengingat') || document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
-                              if (el) {
-                                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            if (typeof window !== 'undefined') {
+                              window.dispatchEvent(new CustomEvent('open-guru-reminders'));
+                              if (window.location.pathname.includes('/dashboard/notifikasi')) {
+                                const el = document.getElementById('tab-pilihan-pengingat') || document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
+                                if (el) {
+                                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }
                               }
                             }
                           }} 
@@ -664,9 +667,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           href="/dashboard/notifikasi?remind=true"
                           onClick={() => {
                             setShowSidebar(false);
-                            if (typeof window !== 'undefined' && window.location.pathname.includes('/dashboard/notifikasi')) {
-                              const el = document.getElementById('tab-pilihan-pengingat') || document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
-                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            if (typeof window !== 'undefined') {
+                              window.dispatchEvent(new CustomEvent('open-guru-reminders'));
+                              if (window.location.pathname.includes('/dashboard/notifikasi')) {
+                                const el = document.getElementById('tab-pilihan-pengingat') || document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
+                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              }
                             }
                           }}
                           className="block w-full text-center bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold py-2 rounded-xl transition-colors shadow-sm"
@@ -1287,7 +1293,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Navigasi Bawah (Mobile App Style) — Bilah Solid Utuh & Tombol Oktagonal Presisi */}
       <nav className="fixed bottom-0 w-full bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_15px_rgba(0,0,0,0.3)] z-50 rounded-t-3xl pb-safe transition-colors duration-300">
-        <div className="flex justify-around items-center h-[62px] px-4 sm:px-8 max-w-md mx-auto">
+        <div className="flex justify-evenly items-center h-[62px] w-full px-2 sm:px-6">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isAbsen = item.name === 'Absen';
@@ -1395,7 +1401,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.name}
                 href={item.href}
-                className="flex-1 min-w-0 max-w-[80px] flex flex-col items-center justify-center gap-0.5 group transition-all duration-300 py-1"
+                className="flex flex-col items-center justify-center gap-0.5 group transition-all duration-300 py-1 px-2"
               >
                 <div
                   className={`p-1 sm:p-1.5 rounded-xl transition-all duration-300 ${

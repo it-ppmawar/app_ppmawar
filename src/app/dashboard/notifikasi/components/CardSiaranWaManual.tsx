@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { MessageCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { MessageCircle, ChevronDown } from 'lucide-react';
 import TabRekapitulasi, { RekapFilterState } from './TabRekapitulasi';
 import TabHarian from './TabHarian';
 
@@ -172,16 +172,46 @@ export default function CardSiaranWaManual({
   getWaLink,
   markAsSent,
 }: CardSiaranWaManualProps) {
-  return (
-    <div id="siaran-wa-manual" className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 overflow-hidden">
-      <h3 className="font-bold text-xl text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
-        <MessageCircle className="text-green-500" /> Siaran WhatsApp (Manual)
-      </h3>
-      <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
-        Kirim pesan siaran langsung ke aplikasi WhatsApp asli Anda (anti-blokir). Pesan otomatis diisi, Anda hanya perlu klik tombol kirim di aplikasi WA.
-      </p>
+  const [isOpen, setIsOpen] = useState(false);
 
-      {/* Mode Selector for Siaran WA Manual */}
+  return (
+    <div id="siaran-wa-manual" className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-300">
+      {/* Header Kartu — Dapat dibuka dan ditutup (default ditutup) */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full text-left p-5 sm:p-6 flex items-center justify-between gap-4 hover:bg-gray-50/70 dark:hover:bg-gray-750/70 transition-colors cursor-pointer group"
+        aria-label="Buka / Tutup Siaran WhatsApp (Manual)"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <h3 className="font-bold text-lg sm:text-xl text-gray-800 dark:text-gray-200 flex items-center gap-2">
+              <MessageCircle className="text-green-500 shrink-0" /> Siaran WhatsApp (Manual)
+            </h3>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider transition-colors ${
+              isOpen 
+                ? 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/50'
+                : 'bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600'
+            }`}>
+              {isOpen ? 'Terbuka' : 'Tertutup'}
+            </span>
+          </div>
+          <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm line-clamp-1 sm:line-clamp-none">
+            Kirim pesan siaran langsung ke aplikasi WhatsApp asli Anda (anti-blokir). Pesan otomatis diisi, Anda hanya perlu klik tombol kirim di aplikasi WA.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className={`p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 group-hover:bg-green-100 dark:group-hover:bg-green-900/40 group-hover:text-green-600 dark:group-hover:text-green-400 transition-all duration-200 ${isOpen ? 'rotate-180 bg-green-50 dark:bg-green-900/30 text-green-600' : ''}`}>
+            <ChevronDown size={18} />
+          </div>
+        </div>
+      </button>
+
+      {/* Konten Kartu — Muncul jika dibuka */}
+      {isOpen && (
+        <div className="p-5 sm:p-6 pt-0 border-t border-gray-100 dark:border-gray-700/60 animate-[fadeIn_0.2s_ease-out]">
+          <div className="pt-5">
+            {/* Mode Selector for Siaran WA Manual */}
       {(role === 'admin' || role === 'staff' || role === 'guru') && (
         <div className="flex flex-wrap bg-gray-50 dark:bg-gray-900/50 p-1 rounded-xl border border-gray-150/50 dark:border-gray-700/50 mb-6 gap-1">
           <button
@@ -327,6 +357,9 @@ export default function CardSiaranWaManual({
           getWaLink={getWaLink}
           markAsSent={markAsSent}
         />
+      )}
+          </div>
+        </div>
       )}
     </div>
   );

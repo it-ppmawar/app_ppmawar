@@ -122,6 +122,7 @@ function NotifikasiContent() {
   const [sentBillingIds, setSentBillingIds] = useState<Record<string, boolean>>({});
 
   const isRemindParam = searchParams.get('remind') === 'true';
+  const [isGuruCardOpen, setIsGuruCardOpen] = useState(false);
   const [activeReminders, setActiveReminders] = useState<any[]>([]);
   const [loadingReminders, setLoadingReminders] = useState(false);
   const [sentReminderIds, setSentReminderIds] = useState<Record<string, boolean>>({});
@@ -692,9 +693,24 @@ function NotifikasiContent() {
     }
   }, [searchParams]);
 
+  // Listener event pintasan pengingat guru dari sidebar / navbar
+  useEffect(() => {
+    const handleOpen = () => {
+      setIsGuruCardOpen(true);
+      setGuruCardTab('auto');
+      setTimeout(() => {
+        const el = document.getElementById('tab-pilihan-pengingat') || document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    };
+    window.addEventListener('open-guru-reminders', handleOpen);
+    return () => window.removeEventListener('open-guru-reminders', handleOpen);
+  }, []);
+
   // Scroll to reminder section if param remind=true and role is loaded
   useEffect(() => {
     if (isRemindParam && (role === 'admin' || role === 'staff')) {
+      setIsGuruCardOpen(true);
       setGuruCardTab('auto');
       const performScroll = () => {
         const el = document.getElementById('tab-pilihan-pengingat') || document.getElementById('daftar-pengingat-guru') || document.getElementById('pengingat-guru-aktif');
@@ -703,8 +719,8 @@ function NotifikasiContent() {
         }
       };
 
-      const timer1 = setTimeout(performScroll, 500);
-      const timer2 = setTimeout(performScroll, 900);
+      const timer1 = setTimeout(performScroll, 300);
+      const timer2 = setTimeout(performScroll, 700);
       return () => {
         clearTimeout(timer1);
         clearTimeout(timer2);
@@ -1886,29 +1902,59 @@ function NotifikasiContent() {
 
 {/* ===== KARTU TERPADU: Siaran WA Guru & Staff (Admin/Staff Only) ===== */}
       {(role === 'admin' || role === 'staff') && (
-        <div id="pengingat-guru-aktif" className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mt-6 animate-[fadeIn_0.3s_ease-out]">
+        <div id="pengingat-guru-aktif" className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mt-6 transition-all duration-300 animate-[fadeIn_0.3s_ease-out]">
 
-          {/* Header Kartu */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex-1">
-              <h3 className="font-bold text-xl text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <Users className="text-blue-500" /> Siaran WA Guru & Staff
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
+          {/* Header Kartu — Dapat dibuka dan ditutup (default ditutup) */}
+          <div
+            onClick={() => setIsGuruCardOpen(!isGuruCardOpen)}
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 hover:bg-gray-50/70 dark:hover:bg-gray-750/70 transition-colors cursor-pointer group select-none"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <h3 className="font-bold text-lg sm:text-xl text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                  <Users className="text-blue-500 shrink-0" /> Siaran WA Guru & Staff
+                </h3>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider transition-colors ${
+                  isGuruCardOpen 
+                    ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50'
+                    : 'bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600'
+                }`}>
+                  {isGuruCardOpen ? 'Terbuka' : 'Tertutup'}
+                </span>
+                {activeReminders.length > 0 && (
+                  <span className="bg-amber-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full animate-pulse shadow-xs">
+                    {activeReminders.length} Belum Absen
+                  </span>
+                )}
+              </div>
+              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm line-clamp-1 sm:line-clamp-none">
                 Kirim pengingat ke guru/pembina yang belum absen, atau pilih guru secara manual.
               </p>
             </div>
-            <button
-              onClick={fetchActiveReminders}
-              disabled={loadingReminders}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-xl transition-colors border border-gray-200 dark:border-gray-600 self-center mx-auto sm:self-auto sm:mx-0 shrink-0 shadow-sm"
-            >
-              <RefreshCw size={12} className={loadingReminders ? 'animate-spin' : ''} />
-              Segarkan Data
-            </button>
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fetchActiveReminders();
+                }}
+                disabled={loadingReminders}
+                className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-xl transition-colors border border-gray-200 dark:border-gray-600 shadow-sm"
+                title="Segarkan data jadwal aktif"
+              >
+                <RefreshCw size={12} className={loadingReminders ? 'animate-spin' : ''} />
+                <span className="hidden sm:inline">Segarkan Data</span>
+              </button>
+              <div className={`p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-all duration-200 ${isGuruCardOpen ? 'rotate-180 bg-blue-50 dark:bg-blue-900/30 text-blue-600' : ''}`}>
+                <ChevronDown size={18} />
+              </div>
+            </div>
           </div>
 
-          {/* Tab Switcher: Dikelompokkan Rapi Berdasarkan Jenis Fitur */}
+          {/* Konten Kartu — Muncul jika dibuka */}
+          {isGuruCardOpen && (
+            <div className="border-t border-gray-100 dark:border-gray-700/60 animate-[fadeIn_0.2s_ease-out]">
+              {/* Tab Switcher: Dikelompokkan Rapi Berdasarkan Jenis Fitur */}
           <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700/60">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Kelompok 1: Pengingat */}
@@ -2895,6 +2941,8 @@ function NotifikasiContent() {
                   )}
                 </div>
               </div>
+            </div>
+          )}
             </div>
           )}
         </div>
