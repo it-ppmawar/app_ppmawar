@@ -321,7 +321,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Tulisan Arab di Tengah Navbar (Selalu tampil, disesuaikan untuk mobile) */}
         <Link href="/dashboard" className="absolute left-1/2 transform -translate-x-1/2 z-0 text-center flex flex-col items-center justify-center w-[72%] sm:w-auto max-w-[260px] sm:max-w-sm mt-0.5 hover:opacity-80 transition-opacity" aria-label="Kembali ke Dashboard">
-          <h2 className="text-[clamp(1.3rem,5vw,2.2rem)] leading-tight sm:text-2xl lg:text-3xl font-diwani text-green-100/90 dark:text-gray-300 tracking-[0.05em] drop-shadow-md whitespace-nowrap" dir="rtl">
+          <h2 className="text-[clamp(1.5rem,5.6vw,2.4rem)] leading-tight sm:text-2xl lg:text-3xl font-diwani text-green-100/90 dark:text-gray-300 tracking-[0.05em] drop-shadow-md whitespace-nowrap" dir="rtl">
             المعهد مطالع الأنوار الإسلامي
           </h2>
           <p className="text-[12px] sm:text-sm text-green-400 font-bold tracking-widest mt-0.5 drop-shadow-sm uppercase" style={{ fontFamily: '"Courier New", Courier, monospace' }}>Salam Mawar</p>

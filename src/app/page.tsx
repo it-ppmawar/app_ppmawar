@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [webAuthnSupported, setWebAuthnSupported] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -181,7 +182,20 @@ export default function LoginPage() {
               className="relative z-10 w-full h-full flex items-center justify-center p-3 pt-3.5 sm:p-4 sm:pt-4.5"
               style={{ clipPath: 'polygon(50% 1%, 86% 15%, 99% 50%, 86% 85%, 50% 99%, 14% 85%, 1% 50%, 14% 15%)' }}
             >
-              <img src="/logo.png" alt="Logo PPMA" className="h-[82%] w-auto object-contain translate-y-[2px] drop-shadow-sm" />
+              {/* Skeleton shimmer — tampil saat logo belum selesai dimuat */}
+              {!logoLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-[82%] w-[82%] rounded-full bg-gradient-to-r from-white/20 via-white/50 to-white/20 animate-pulse" />
+                </div>
+              )}
+              <img
+                src="/logo.png"
+                alt="Logo PPMA"
+                fetchPriority="high"
+                decoding="async"
+                onLoad={() => setLogoLoaded(true)}
+                className={`h-[82%] w-auto object-contain translate-y-[2px] drop-shadow-sm transition-opacity duration-500 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
+              />
             </div>
           </div>
           {/* Salam Mawar — baris terpendek (puncak piramid) */}
