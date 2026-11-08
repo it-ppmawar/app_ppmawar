@@ -18,6 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarAvatar, setSidebarAvatar] = useState<string | null>(null);
   const [showAvatarFull, setShowAvatarFull] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
   
   // State accordion grup menu sidebar (default SEMUANYA TERTUTUP sesuai permintaan user)
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
@@ -314,7 +315,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className="relative z-10 w-full h-full flex items-center justify-center p-1.5 pt-1.5"
               style={{ clipPath: 'polygon(50% 1%, 86% 15%, 99% 50%, 86% 85%, 50% 99%, 14% 85%, 1% 50%, 14% 15%)' }}
             >
-              <img src="/logo.png" alt="Logo" className="h-[82%] w-auto object-contain translate-y-[1px]" />
+              {/* Skeleton shimmer — tampil saat logo belum selesai dimuat */}
+              {!logoLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="h-[75%] w-[75%] rounded-full bg-green-200/50 animate-pulse" />
+                </div>
+              )}
+              <img
+                src="/logo.png"
+                alt="Logo"
+                fetchPriority="high"
+                decoding="async"
+                onLoad={() => setLogoLoaded(true)}
+                className={`h-[82%] w-auto object-contain translate-y-[1px] transition-opacity duration-500 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
+              />
             </div>
           </div>
         </Link>
