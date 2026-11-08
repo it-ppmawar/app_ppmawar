@@ -42,14 +42,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const hasActiveAbsen = !!activeSchedule || ((user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0);
 
+  const userRoleLower = (user?.role || '').toLowerCase();
+  const isWali = userRoleLower === 'wali_murid' || userRoleLower === 'wali_alumni';
+  const isTamu = userRoleLower === 'tamu';
+
   let navItems = [
     { name: 'Jadwal', href: '/dashboard/jadwal', icon: CalendarDays },
-    ...(user?.role !== 'wali_murid' && user?.role !== 'wali_alumni' && user?.role !== 'tamu' ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
-    ...(user?.role === 'wali_murid' ? [{ name: 'Tagihan', href: '/dashboard/tagihan', icon: CreditCard }] : []),
-    ...(user?.role !== 'tamu' && user?.role !== 'wali_murid' && user?.role !== 'wali_alumni' ? [{ name: 'Notifikasi', href: '/dashboard/notifikasi', icon: Bell }] : []),
+    ...(!isWali && !isTamu ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
+    ...(isWali ? [{ name: 'Tagihan', href: '/dashboard/billing', icon: CreditCard }] : []),
+    ...(!isTamu && !isWali ? [{ name: 'Notifikasi', href: '/dashboard/notifikasi', icon: Bell }] : []),
   ];
 
-  const userRoleLower = (user?.role || '').toLowerCase();
   if (userRoleLower.includes('petugas')) {
     const showKeb = userRoleLower.includes('kebersihan') || userRoleLower === 'petugas_umum' || userRoleLower === 'petugas';
     const showInv = userRoleLower.includes('inventaris') || userRoleLower.includes('sarpras') || userRoleLower === 'petugas_umum' || userRoleLower === 'petugas';
@@ -58,8 +61,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ...(showInv ? [{ name: 'Inventaris', href: '/dashboard/inventaris', icon: Archive }] : []),
     ];
   }
-
-  const isTamu = user?.role === 'tamu';
 
   useEffect(() => {
     const triggerDeviceNotification = (schedule: any, force = false) => {

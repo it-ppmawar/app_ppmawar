@@ -31,6 +31,11 @@ const nextConfig: NextConfig = {
         destination: '/',
         permanent: false,
       },
+      {
+        source: '/dashboard/tagihan',
+        destination: '/dashboard/billing',
+        permanent: false,
+      },
     ];
   },
   async headers() {

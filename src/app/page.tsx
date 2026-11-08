@@ -167,8 +167,22 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md bg-white/10 backdrop-blur-lg rounded-3xl p-5 sm:p-8 shadow-2xl border border-white/20 animate-[fadeIn_0.6s_ease-out]">
         <div className="flex flex-col items-center justify-center text-center mb-6 sm:mb-8 w-full px-1">
-          <div className="bg-white rounded-[2rem] flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-xl h-24 w-24 sm:h-32 sm:w-32 md:h-36 md:w-36 p-3 sm:p-4 md:p-5 animate-[slideDown_0.8s_ease-out]">
-            <img src="/logo.png" alt="Logo PPMA" className="h-[85%] w-[85%] object-contain drop-shadow-md" />
+          {/* Wadah Oktagonal Logo Lembaga — Serasi dengan Topbar & Tombol Absen Bottombar */}
+          <div className="relative w-28 h-32 sm:w-36 sm:h-40 md:w-40 md:h-44 flex items-center justify-center mx-auto mb-4 sm:mb-6 filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.3)] animate-[slideDown_0.8s_ease-out] shrink-0">
+            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
+              <polygon
+                points="50,1 86,15 99,50 86,85 50,99 14,85 1,50 14,15"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                className="fill-white stroke-green-600/30"
+              />
+            </svg>
+            <div 
+              className="relative z-10 w-full h-full flex items-center justify-center p-3 pt-3.5 sm:p-4 sm:pt-4.5"
+              style={{ clipPath: 'polygon(50% 1%, 86% 15%, 99% 50%, 86% 85%, 50% 99%, 14% 85%, 1% 50%, 14% 15%)' }}
+            >
+              <img src="/logo.png" alt="Logo PPMA" className="h-[82%] w-auto object-contain translate-y-[2px] drop-shadow-sm" />
+            </div>
           </div>
           {/* Salam Mawar — baris terpendek (puncak piramid) */}
           <h1
