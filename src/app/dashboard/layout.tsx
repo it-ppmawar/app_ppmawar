@@ -319,11 +319,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </Link>
 
         {/* Tulisan Arab di Tengah Navbar (Selalu tampil, disesuaikan untuk mobile) */}
-        <Link href="/dashboard" className="absolute left-1/2 transform -translate-x-1/2 z-0 text-center flex flex-col items-center justify-center w-[60%] sm:w-auto max-w-[215px] sm:max-w-sm mt-0.5 hover:opacity-80 transition-opacity" aria-label="Kembali ke Dashboard">
-          <h2 className="text-[clamp(1.1rem,4.2vw,2.2rem)] leading-tight sm:text-2xl lg:text-3xl font-diwani text-green-100/90 dark:text-gray-300 tracking-[0.05em] drop-shadow-md whitespace-nowrap" dir="rtl">
+        <Link href="/dashboard" className="absolute left-1/2 transform -translate-x-1/2 z-0 text-center flex flex-col items-center justify-center w-[72%] sm:w-auto max-w-[260px] sm:max-w-sm mt-0.5 hover:opacity-80 transition-opacity" aria-label="Kembali ke Dashboard">
+          <h2 className="text-[clamp(1.3rem,5vw,2.2rem)] leading-tight sm:text-2xl lg:text-3xl font-diwani text-green-100/90 dark:text-gray-300 tracking-[0.05em] drop-shadow-md whitespace-nowrap" dir="rtl">
             المعهد مطالع الأنوار الإسلامي
           </h2>
-          <p className="text-[12px] sm:text-sm text-green-400 font-bold tracking-widest mt-1 drop-shadow-sm uppercase" style={{ fontFamily: '"Courier New", Courier, monospace' }}>Salam Mawar</p>
+          <p className="text-[12px] sm:text-sm text-green-400 font-bold tracking-widest mt-0.5 drop-shadow-sm uppercase" style={{ fontFamily: '"Courier New", Courier, monospace' }}>Salam Mawar</p>
         </Link>
 
         <div className="flex items-center gap-2 relative z-10">
@@ -437,7 +437,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className="fill-white/15 group-hover:fill-white/25 stroke-white/25 group-hover:stroke-white/40 shadow-xs"
                 />
               </svg>
-              <Menu size={20} className="relative z-10 text-white" />
+              <Menu size={24} strokeWidth={2.4} className="relative z-10 text-white" />
               {(activeSchedule || ((user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0)) && (
                 <>
                   <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border border-green-800 dark:border-gray-800 sm:hidden z-20"></span>

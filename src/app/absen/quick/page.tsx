@@ -1259,7 +1259,7 @@ function QuickAbsenContent() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200 pb-28">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-4 py-1 shadow-xs rounded-b-2xl transition-colors min-h-[58px] h-[58px] flex items-center">
-        <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
+        <div className="w-full max-w-2xl mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center justify-start shrink-0">
             <div className="relative w-[46px] h-[52px] flex items-center justify-center filter drop-shadow-xs shrink-0">
               <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
@@ -1291,7 +1291,7 @@ function QuickAbsenContent() {
               {guru_nama}
             </p>
           </div>
-          <div className="w-10 flex items-center justify-end shrink-0">
+          <div className="flex items-center justify-end shrink-0">
             {/* Tombol Mode Gelap / Terang di Pojok Kanan Atas */}
             <button
               type="button"
@@ -1309,7 +1309,7 @@ function QuickAbsenContent() {
                 />
               </svg>
               <span className="relative z-10">
-                {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-600 dark:text-indigo-400" />}
+                {isDark ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} className="text-indigo-600 dark:text-indigo-400" />}
               </span>
             </button>
           </div>
