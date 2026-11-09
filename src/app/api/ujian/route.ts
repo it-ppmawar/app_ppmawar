@@ -28,17 +28,18 @@ export async function GET(request: Request) {
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
     const { role, guruId, muridId, userId } = payload;
+    const userRoleLower = (role || '').toLowerCase();
     const { searchParams } = new URL(request.url);
     const filterKelas = searchParams.get('kelas_id');
     const filterMapel = searchParams.get('mapel');
     const semester = searchParams.get('semester') || '1';
     const tahunAjaran = searchParams.get('tahun_ajaran') || '2025/2026';
 
-    const isWaliOrSantri = role === 'wali_murid' || role === 'santri';
+    const isWaliOrSantri = userRoleLower === 'wali_murid' || userRoleLower === 'santri';
 
     if (isWaliOrSantri) {
       if (!muridId) {
-        return NextResponse.json({ success: true, exams: [] });
+        return NextResponse.json({ success: true, role: userRoleLower, exams: [] });
       }
 
       // Ambil data santri untuk tahu kelas madinnya
@@ -89,12 +90,24 @@ export async function GET(request: Request) {
     let whereClause = '1=1';
     let params: any[] = [];
 
-    if (role === 'guru') {
-      if (guruId) {
-        whereClause = `(u.guru_id = ? OR u.mata_pelajaran IN (SELECT DISTINCT mata_pelajaran FROM jadwal_madin WHERE guru_id = ?))`;
-        params.push(guruId, guruId);
-      } else {
-        whereClause = '0=1';
+    if (userRoleLower === 'guru') {
+      let activeGuruId = guruId;
+      if (!activeGuruId && userId) {
+        try {
+          const [gRows] = await pool.execute<RowDataPacket[]>(
+            'SELECT guru_id FROM guru WHERE user_id = ? LIMIT 1',
+            [userId]
+          );
+          if (gRows.length > 0) activeGuruId = gRows[0].guru_id;
+        } catch (e) {}
+      }
+
+      if (activeGuruId) {
+        whereClause = `(u.guru_id = ? OR u.created_by = ? OR u.mata_pelajaran IN (SELECT DISTINCT mata_pelajaran FROM jadwal_madin WHERE guru_id = ?))`;
+        params.push(activeGuruId, userId || 0, activeGuruId);
+      } else if (userId) {
+        whereClause = `(u.created_by = ?)`;
+        params.push(userId);
       }
     }
 
@@ -110,7 +123,7 @@ export async function GET(request: Request) {
     const [exams] = await pool.execute<RowDataPacket[]>(
       `SELECT u.*,
               km.nama_kelas,
-              g.nama_guru,
+              g.nama as nama_guru,
               COALESCE(s.token_ujian, '') as token_ujian,
               COALESCE(s.wajib_token, 1) as wajib_token,
               COALESCE(s.wajib_geofence, 1) as wajib_geofence,
@@ -129,7 +142,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      role,
+      role: userRoleLower,
       exams,
     });
   } catch (error: any) {
@@ -150,7 +163,9 @@ export async function POST(request: Request) {
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
     const { role, guruId, userId } = payload;
-    if (role === 'wali_murid' || role === 'santri' || role === 'tamu') {
+    const userRoleLower = (role || '').toLowerCase();
+    const canManageUjian = ['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRoleLower);
+    if (!canManageUjian) {
       return NextResponse.json({ error: 'Hanya Pengajar / Admin yang dapat membuat ujian.' }, { status: 403 });
     }
 
@@ -263,8 +278,9 @@ export async function PUT(request: Request) {
     const payload = verifyToken(token) as any;
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
-    const { role } = payload;
-    if (role === 'wali_murid' || role === 'santri' || role === 'tamu') {
+    const userRoleLower = (payload.role || '').toLowerCase();
+    const canManageUjian = ['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRoleLower);
+    if (!canManageUjian) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -336,7 +352,11 @@ export async function DELETE(request: Request) {
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = verifyToken(token) as any;
-    if (!payload || !['admin', 'staff', 'guru'].includes(payload.role)) {
+    if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
+
+    const userRoleLower = (payload.role || '').toLowerCase();
+    const canManageUjian = ['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRoleLower);
+    if (!canManageUjian) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

@@ -86,7 +86,9 @@ export async function POST(request: Request) {
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = verifyToken(token) as any;
-    if (!payload || !['admin', 'staff', 'guru'].includes(payload.role)) {
+    const userRoleLower = (payload?.role || '').toLowerCase();
+    const canManageSesi = ['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRoleLower);
+    if (!payload || !canManageSesi) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

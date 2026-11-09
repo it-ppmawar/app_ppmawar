@@ -169,7 +169,8 @@ export default function UjianCBTPage() {
     }
   };
 
-  const isPengajarOrAdmin = ['admin', 'staff', 'guru'].includes(role);
+  const userRoleLower = (role || '').toLowerCase();
+  const isPengajarOrAdmin = ['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRoleLower);
 
   // 1. Load Data Ujian
   const fetchExams = async () => {
@@ -179,7 +180,7 @@ export default function UjianCBTPage() {
       const data = await res.json();
       if (data.success) {
         setExams(data.exams || []);
-        setRole(data.role || 'santri');
+        if (data.role) setRole(data.role.toLowerCase());
         if (data.santri) setSantriInfo(data.santri);
       }
     } catch (err) {
@@ -187,6 +188,16 @@ export default function UjianCBTPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      const data = await res.json();
+      if (data.success && data.user?.role) {
+        setRole(data.user.role.toLowerCase());
+      }
+    } catch (e) {}
   };
 
   const fetchKelas = async () => {
@@ -200,6 +211,7 @@ export default function UjianCBTPage() {
   };
 
   useEffect(() => {
+    fetchCurrentUser();
     fetchExams();
     fetchKelas();
   }, []);
@@ -978,11 +990,12 @@ export default function UjianCBTPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Dropdown & Tombol Refresh: Rata Tengah pada HP */}
+        <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
           <select
             value={filterJenis}
             onChange={(e) => setFilterJenis(e.target.value)}
-            className="px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:outline-none"
+            className="flex-1 sm:flex-initial max-w-[260px] px-3.5 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:outline-none text-center sm:text-left"
           >
             <option value="ALL">Semua Jenis Ujian</option>
             <option value="harian">Ulangan Harian</option>
@@ -993,11 +1006,43 @@ export default function UjianCBTPage() {
           <button
             onClick={fetchExams}
             disabled={loading}
-            className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-            title="Refresh Data"
+            className="p-2 shrink-0 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+            title="Muat Ulang / Refresh"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
+
+          {isPengajarOrAdmin && (
+            <button
+              onClick={() => {
+                setEditingExam(null);
+                setFormExam({
+                  judul: '',
+                  deskripsi: '',
+                  mata_pelajaran: '',
+                  kitab: '',
+                  kelas_madin_id: '',
+                  semester: '1',
+                  tahun_ajaran: '2025/2026',
+                  jenis_ujian: 'harian',
+                  durasi_menit: 45,
+                  passing_grade: 70,
+                  acak_soal: 1,
+                  acak_opsi: 1,
+                  wajib_token: 1,
+                  wajib_geofence: 1,
+                  max_radius_meter: 200,
+                  quizb_id: '',
+                });
+                setShowCreateModal(true);
+              }}
+              className="sm:hidden px-3 py-2 shrink-0 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1"
+              title="Buat Ujian Baru"
+            >
+              <Plus size={14} />
+              <span>Buat</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1008,13 +1053,55 @@ export default function UjianCBTPage() {
           <p className="font-bold text-sm">Memuat data ujian...</p>
         </div>
       ) : filteredExams.length === 0 ? (
-        <div className="p-16 text-center text-gray-400 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 space-y-2">
-          <AlertCircle size={32} className="mx-auto text-gray-300" />
-          <p className="font-bold text-sm text-gray-600 dark:text-gray-300">Belum ada ujian yang tersedia saat ini.</p>
-          <p className="text-xs text-gray-400 max-w-md mx-auto">
-            Ujian yang dijadwalkan oleh asatidz untuk kelas Anda akan muncul di sini.
-          </p>
-        </div>
+        isPengajarOrAdmin ? (
+          <div className="p-12 sm:p-16 text-center text-gray-400 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center shadow-xs">
+              <BookOpen size={28} />
+            </div>
+            <div>
+              <p className="font-extrabold text-base text-gray-800 dark:text-gray-200">Belum Ada Paket Ujian CBT</p>
+              <p className="text-xs text-gray-400 max-w-md mx-auto mt-1">
+                Sebagai Pengajar / Asatidz / Admin, Anda dapat mulai membuat paket soal ujian, mengatur token sesi, dan radius geofence.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingExam(null);
+                setFormExam({
+                  judul: '',
+                  deskripsi: '',
+                  mata_pelajaran: '',
+                  kitab: '',
+                  kelas_madin_id: '',
+                  semester: '1',
+                  tahun_ajaran: '2025/2026',
+                  jenis_ujian: 'harian',
+                  durasi_menit: 45,
+                  passing_grade: 70,
+                  acak_soal: 1,
+                  acak_opsi: 1,
+                  wajib_token: 1,
+                  wajib_geofence: 1,
+                  max_radius_meter: 200,
+                  quizb_id: '',
+                });
+                setShowCreateModal(true);
+              }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-md transition-all"
+            >
+              <Plus size={16} />
+              <span>➕ Buat Paket Ujian Pertama</span>
+            </button>
+          </div>
+        ) : (
+          <div className="p-16 text-center text-gray-400 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 space-y-2">
+            <AlertCircle size={32} className="mx-auto text-gray-300" />
+            <p className="font-bold text-sm text-gray-600 dark:text-gray-300">Belum ada ujian yang tersedia saat ini.</p>
+            <p className="text-xs text-gray-400 max-w-md mx-auto">
+              Ujian yang dijadwalkan oleh asatidz untuk kelas Anda akan muncul di sini.
+            </p>
+          </div>
+        )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredExams.map((exam) => {

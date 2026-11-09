@@ -23,7 +23,8 @@ export async function GET(request: Request) {
 
     if (!ujianId) return NextResponse.json({ error: 'ujian_id diperlukan.' }, { status: 400 });
 
-    const isGuruOrAdmin = ['admin', 'staff', 'guru'].includes(payload.role);
+    const userRoleLower = (payload.role || '').toLowerCase();
+    const isGuruOrAdmin = ['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRoleLower);
 
     let query = '';
     if (isGuruOrAdmin) {
@@ -54,7 +55,9 @@ export async function POST(request: Request) {
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = verifyToken(token) as any;
-    if (!payload || !['admin', 'staff', 'guru'].includes(payload.role)) {
+    const userRoleLower = (payload.role || '').toLowerCase();
+    const canManageSoal = ['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRoleLower);
+    if (!payload || !canManageSoal) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -145,7 +148,9 @@ export async function PUT(request: Request) {
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = verifyToken(token) as any;
-    if (!payload || !['admin', 'staff', 'guru'].includes(payload.role)) {
+    const userRoleLower = (payload.role || '').toLowerCase();
+    const canManageSoal = ['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRoleLower);
+    if (!payload || !canManageSoal) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -199,7 +204,9 @@ export async function DELETE(request: Request) {
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = verifyToken(token) as any;
-    if (!payload || !['admin', 'staff', 'guru'].includes(payload.role)) {
+    const userRoleLower = (payload.role || '').toLowerCase();
+    const canManageSoal = ['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRoleLower);
+    if (!payload || !canManageSoal) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
