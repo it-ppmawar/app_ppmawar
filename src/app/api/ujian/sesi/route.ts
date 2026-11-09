@@ -48,7 +48,30 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, message: 'Sesi ujian belum dibuat.' });
     }
 
-    return NextResponse.json({ success: true, sesi: rows[0] });
+    // Ambil default koordinat pesantren dari pengaturan_absensi_otomatis
+    let defaultPesantren = {
+      lat: -7.0359924,
+      lng: 112.3507981,
+      radius: 200,
+    };
+    try {
+      const [settings] = await pool.execute<RowDataPacket[]>(
+        "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('lat_pesantren', 'lng_pesantren', 'radius_absen')"
+      );
+      settings.forEach((r: any) => {
+        if (r.nama_pengaturan === 'lat_pesantren' && r.nilai) defaultPesantren.lat = parseFloat(r.nilai);
+        if (r.nama_pengaturan === 'lng_pesantren' && r.nilai) defaultPesantren.lng = parseFloat(r.nilai);
+        if (r.nama_pengaturan === 'radius_absen' && r.nilai) defaultPesantren.radius = parseFloat(r.nilai);
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    return NextResponse.json({
+      success: true,
+      sesi: rows[0],
+      default_pesantren: defaultPesantren,
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -104,7 +127,32 @@ export async function POST(request: Request) {
       });
     }
 
-    // 3. Update Pengaturan Keamanan Sesi (Geofence & Wajib Token)
+    // 3. Update Geofence & Koordinat Acuan (Pengawas / Pesantren)
+    if (action === 'update_geofence') {
+      const { lat_target, lng_target, max_radius_meter, wajib_geofence } = body;
+      await pool.execute(
+        `UPDATE ujian_sesi_pengawas SET
+          lat_target = ?,
+          lng_target = ?,
+          max_radius_meter = ?,
+          wajib_geofence = ?,
+          updated_at = CURRENT_TIMESTAMP
+         WHERE ujian_id = ?`,
+        [
+          lat_target !== undefined && lat_target !== null && lat_target !== '' ? lat_target : null,
+          lng_target !== undefined && lng_target !== null && lng_target !== '' ? lng_target : null,
+          max_radius_meter ? Number(max_radius_meter) : 200,
+          wajib_geofence !== undefined ? (wajib_geofence ? 1 : 0) : 1,
+          ujian_id,
+        ]
+      );
+      return NextResponse.json({
+        success: true,
+        message: 'Titik acuan & batas radius ujian berhasil diperbarui!',
+      });
+    }
+
+    // 4. Update Pengaturan Keamanan Sesi Umum
     const { wajib_token, wajib_geofence, max_radius_meter, lat_target, lng_target } = body;
     await pool.execute(
       `UPDATE ujian_sesi_pengawas SET

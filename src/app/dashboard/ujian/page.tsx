@@ -117,6 +117,10 @@ export default function UjianCBTPage() {
   const [selectedExamForSesi, setSelectedExamForSesi] = useState<ExamItem | null>(null);
   const [sesiData, setSesiData] = useState<any>(null);
   const [loadingSesi, setLoadingSesi] = useState(false);
+  const [geofenceRadius, setGeofenceRadius] = useState<number>(100);
+  const [geofenceLoading, setGeofenceLoading] = useState(false);
+  const [geofenceMsg, setGeofenceMsg] = useState('');
+  const [defaultPesantrenCoords, setDefaultPesantrenCoords] = useState<any>(null);
 
   // State Pelaksanaan Ujian (CBT Exam Player)
   const [activeExam, setActiveExam] = useState<ExamItem | null>(null);
@@ -407,16 +411,116 @@ export default function UjianCBTPage() {
     setSelectedExamForSesi(exam);
     setShowSesiModal(true);
     setLoadingSesi(true);
+    setGeofenceMsg('');
     try {
       const res = await fetch(`/api/ujian/sesi?ujian_id=${exam.id}`);
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.sesi) {
         setSesiData(data.sesi);
+        if (data.default_pesantren) setDefaultPesantrenCoords(data.default_pesantren);
+        if (data.sesi.max_radius_meter) setGeofenceRadius(Number(data.sesi.max_radius_meter));
       }
     } catch (e) {
     } finally {
       setLoadingSesi(false);
     }
+  };
+
+  const handleLockPengawasLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      alert('Perangkat Anda tidak mendukung fitur GPS Geolocation.');
+      return;
+    }
+    setGeofenceLoading(true);
+    setGeofenceMsg('');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        try {
+          const res = await fetch('/api/ujian/sesi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ujian_id: selectedExamForSesi!.id,
+              action: 'update_geofence',
+              lat_target: lat,
+              lng_target: lng,
+              max_radius_meter: geofenceRadius,
+              wajib_geofence: 1,
+            }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            setGeofenceMsg('✅ Titik acuan berhasil dikunci pada koordinat perangkat pengawas saat ini!');
+            openSesiPengawas(selectedExamForSesi!);
+            fetchExams();
+          } else {
+            setGeofenceMsg('❌ Gagal: ' + (data.error || 'Terjadi kesalahan'));
+          }
+        } catch (err: any) {
+          setGeofenceMsg('❌ Gagal menghubungi server: ' + err.message);
+        } finally {
+          setGeofenceLoading(false);
+        }
+      },
+      (err) => {
+        setGeofenceLoading(false);
+        setGeofenceMsg('❌ Gagal membaca GPS pengawas: ' + err.message + '. Pastikan izin akses lokasi diizinkan di browser.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  const handleResetToPesantren = async () => {
+    if (!selectedExamForSesi) return;
+    setGeofenceLoading(true);
+    setGeofenceMsg('');
+    try {
+      const res = await fetch('/api/ujian/sesi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ujian_id: selectedExamForSesi.id,
+          action: 'update_geofence',
+          lat_target: null,
+          lng_target: null,
+          max_radius_meter: geofenceRadius,
+          wajib_geofence: 1,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGeofenceMsg('✅ Titik acuan direset kembali mengikuti Pusat Pesantren dari Pengaturan Absensi.');
+        openSesiPengawas(selectedExamForSesi);
+        fetchExams();
+      }
+    } catch (err: any) {
+      setGeofenceMsg('❌ Gagal: ' + err.message);
+    } finally {
+      setGeofenceLoading(false);
+    }
+  };
+
+  const handleSaveRadiusOnly = async (newRadius: number) => {
+    if (!selectedExamForSesi) return;
+    setGeofenceRadius(newRadius);
+    try {
+      await fetch('/api/ujian/sesi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ujian_id: selectedExamForSesi.id,
+          action: 'update_geofence',
+          lat_target: sesiData?.lat_target || null,
+          lng_target: sesiData?.lng_target || null,
+          max_radius_meter: newRadius,
+          wajib_geofence: sesiData?.wajib_geofence ?? 1,
+        }),
+      });
+      setGeofenceMsg(`✅ Batas radius diubah menjadi ${newRadius} meter.`);
+      openSesiPengawas(selectedExamForSesi);
+    } catch (e) {}
   };
 
   const handleGenerateNewToken = async () => {
@@ -1601,7 +1705,7 @@ export default function UjianCBTPage() {
       {/* ========================================================================= */}
       {showSesiModal && selectedExamForSesi && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-md p-6 space-y-5">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-lg p-6 space-y-5 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 flex items-center justify-center font-bold">
@@ -1670,15 +1774,103 @@ export default function UjianCBTPage() {
                   </button>
                 </div>
 
-                {/* Validasi Geofence Info */}
-                <div className="text-xs text-gray-500 space-y-1 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
-                  <div className="flex items-center justify-between font-semibold">
-                    <span>Radius Geofence:</span>
-                    <span className="text-emerald-600 font-bold">{sesiData.max_radius_meter} Meter</span>
+                {/* Panel Kontrol Geofence & Jarak Maksimal */}
+                <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-gray-800 dark:text-gray-200">
+                      <MapPin size={14} className="text-emerald-500" />
+                      <span>Titik Acuan &amp; Jarak Maksimal (Anti-Joki)</span>
+                    </div>
+                    {sesiData.lat_target ? (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                        📍 Lokasi Pengawas
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
+                        🏢 Pusat Pesantren
+                      </span>
+                    )}
                   </div>
-                  <p className="text-[11px] text-gray-400">
-                    Santri yang berada di luar radius madrasah otomatis ditolak oleh sistem.
-                  </p>
+
+                  {/* Keterangan Koordinat */}
+                  <div className="text-[11px] text-gray-500 bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/60">
+                    {sesiData.lat_target ? (
+                      <div>
+                        <strong className="text-emerald-600 dark:text-emerald-400 block">Terkunci pada Ruang Ujian Pengawas:</strong>
+                        <span className="font-mono text-[10px] text-gray-400">
+                          Lat: {Number(sesiData.lat_target).toFixed(6)}, Lng: {Number(sesiData.lng_target).toFixed(6)}
+                        </span>
+                      </div>
+                    ) : (
+                      <div>
+                        <strong className="text-blue-600 dark:text-blue-400 block">Mengikuti Halaman Pengaturan (Pusat Pesantren):</strong>
+                        <span className="font-mono text-[10px] text-gray-400">
+                          Lat: {defaultPesantrenCoords?.lat || -7.035992}, Lng: {defaultPesantrenCoords?.lng || 112.350798}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tombol Aksi GPS Pengawas */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={geofenceLoading}
+                      onClick={handleLockPengawasLocation}
+                      className="px-2.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1 transition-all disabled:opacity-50"
+                      title="Kunci titik acuan agar santri harus berada dekat perangkat Anda di kelas"
+                    >
+                      {geofenceLoading ? <RefreshCw size={12} className="animate-spin" /> : <MapPin size={12} />}
+                      <span>{geofenceLoading ? 'Mendeteksi...' : 'Kunci GPS Pengawas'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={geofenceLoading || !sesiData.lat_target}
+                      onClick={handleResetToPesantren}
+                      className="px-2.5 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 text-gray-700 dark:text-gray-200 font-bold text-xs flex items-center justify-center gap-1 transition-all disabled:opacity-40"
+                      title="Kembalikan titik acuan ke pusat pesantren dari halaman pengaturan"
+                    >
+                      <RefreshCw size={12} />
+                      <span>Reset ke Pesantren</span>
+                    </button>
+                  </div>
+
+                  {/* Pengaturan Batas Jarak Radius */}
+                  <div className="pt-2 border-t border-gray-200/60 dark:border-gray-700/60 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-gray-700 dark:text-gray-300">Batas Jarak Maksimal:</span>
+                      <strong className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">{geofenceRadius} Meter</strong>
+                    </div>
+
+                    {/* Tombol Pilihan Jarak Cepat */}
+                    <div className="grid grid-cols-4 gap-1.5 text-center">
+                      {[30, 50, 100, 200].map((rad) => (
+                        <button
+                          key={rad}
+                          type="button"
+                          onClick={() => handleSaveRadiusOnly(rad)}
+                          className={`py-1 rounded-lg text-[11px] font-bold transition-all ${
+                            geofenceRadius === rad
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 border border-gray-200 dark:border-gray-700'
+                          }`}
+                        >
+                          {rad}m {rad === 30 || rad === 50 ? '(Kelas)' : rad === 100 ? '(Gedung)' : '(Area)'}
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="text-[10px] text-gray-400">
+                      Santri dengan jarak lebih dari {geofenceRadius} meter dari {sesiData.lat_target ? 'perangkat Anda' : 'pusat madrasah'} akan otomatis ditolak saat membuka ujian.
+                    </p>
+                  </div>
+
+                  {geofenceMsg && (
+                    <div className="text-[11px] p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 animate-[fadeIn_0.2s]">
+                      {geofenceMsg}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : null}

@@ -167,10 +167,16 @@ export async function POST(request: Request) {
           distanceMeters = calculateDistanceMeters(userLat, userLng, centerLat, centerLng);
 
           if (distanceMeters > allowedRadius) {
+            const isPengawasLoc = !!exam.lat_target && !!exam.lng_target;
+            const pesanTolak = isPengawasLoc
+              ? `Akses Ditolak: Perangkat Anda terdeteksi berjarak ${distanceMeters} meter dari pengawas di ruang ujian (Batas maksimal ${allowedRadius} meter). Ujian wajib dikerjakan di dalam ruang kelas bersama pengawas.`
+              : `Akses Ditolak: Perangkat Anda terdeteksi berada ${distanceMeters} meter dari area pesantren (Maksimal radius ${allowedRadius} meter). Ujian resmi hanya boleh dikerjakan di area madrasah/pesantren di bawah pengawasan asatidz.`;
+
             return NextResponse.json({
-              error: `Akses Ditolak: Perangkat Anda terdeteksi berada ${distanceMeters} meter dari madrasah (Maksimal radius ${allowedRadius} meter). Ujian resmi hanya boleh dikerjakan di area madrasah/pesantren di bawah pengawasan asatidz.`,
+              error: pesanTolak,
               distance: distanceMeters,
               allowedRadius,
+              is_pengawas_target: isPengawasLoc,
             }, { status: 403 });
           }
         }
