@@ -66,6 +66,8 @@ export default function UjianCBTPage() {
   const [exams, setExams] = useState<ExamItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [kelasList, setKelasList] = useState<any[]>([]);
+  const [mapelList, setMapelList] = useState<{ id: number; mata_pelajaran: string; kitab?: string }[]>([]);
+  const [isCustomMapelInput, setIsCustomMapelInput] = useState(false);
 
   // Filter
   const [searchQ, setSearchQ] = useState('');
@@ -200,6 +202,19 @@ export default function UjianCBTPage() {
     } catch (e) {}
   };
 
+  const fetchMapelList = async (targetKelasId?: string | number) => {
+    try {
+      const url = targetKelasId ? `/api/ujian/mapel?kelas_id=${targetKelasId}` : '/api/ujian/mapel';
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.mapel)) {
+        setMapelList(data.mapel);
+      }
+    } catch (e) {
+      console.error('Failed to fetch mapel list', e);
+    }
+  };
+
   const fetchKelas = async () => {
     try {
       const res = await fetch('/api/kelas');
@@ -214,6 +229,7 @@ export default function UjianCBTPage() {
     fetchCurrentUser();
     fetchExams();
     fetchKelas();
+    fetchMapelList();
   }, []);
 
   // 2. Pre-Check: Deteksi GPS Perangkat Santri
@@ -923,10 +939,10 @@ export default function UjianCBTPage() {
 
           {/* Action Tabs untuk Guru / Admin */}
           {isPengajarOrAdmin && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-2.5 w-full md:w-auto pt-3 md:pt-0">
               <button
                 onClick={() => setActiveTab('daftar')}
-                className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+                className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all text-center ${
                   activeTab === 'daftar'
                     ? 'bg-emerald-500 text-white shadow-md'
                     : 'bg-white/10 text-emerald-100 hover:bg-white/20'
@@ -936,7 +952,7 @@ export default function UjianCBTPage() {
               </button>
               <button
                 onClick={() => setActiveTab('kelola')}
-                className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+                className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all text-center ${
                   activeTab === 'kelola'
                     ? 'bg-emerald-500 text-white shadow-md'
                     : 'bg-white/10 text-emerald-100 hover:bg-white/20'
@@ -947,6 +963,7 @@ export default function UjianCBTPage() {
               <button
                 onClick={() => {
                   setEditingExam(null);
+                  setIsCustomMapelInput(false);
                   setFormExam({
                     judul: '',
                     deskripsi: '',
@@ -967,7 +984,7 @@ export default function UjianCBTPage() {
                   });
                   setShowCreateModal(true);
                 }}
-                className="px-4 py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center gap-1.5"
+                className="px-4 py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 active:scale-95 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5"
               >
                 <Plus size={16} />
                 <span>Buat Ujian Baru</span>
@@ -1016,6 +1033,7 @@ export default function UjianCBTPage() {
             <button
               onClick={() => {
                 setEditingExam(null);
+                setIsCustomMapelInput(false);
                 setFormExam({
                   judul: '',
                   deskripsi: '',
@@ -1067,6 +1085,7 @@ export default function UjianCBTPage() {
             <button
               onClick={() => {
                 setEditingExam(null);
+                setIsCustomMapelInput(false);
                 setFormExam({
                   judul: '',
                   deskripsi: '',
@@ -1255,6 +1274,8 @@ export default function UjianCBTPage() {
                           <button
                             onClick={() => {
                               setEditingExam(exam);
+                              const isCustom = exam.mata_pelajaran && !mapelList.some((m) => m.mata_pelajaran.toLowerCase() === exam.mata_pelajaran.toLowerCase());
+                              setIsCustomMapelInput(!!isCustom);
                               setFormExam({
                                 judul: exam.judul,
                                 deskripsi: exam.deskripsi || '',
@@ -1430,17 +1451,59 @@ export default function UjianCBTPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Mata Pelajaran <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formExam.mata_pelajaran}
-                    onChange={(e) => setFormExam({ ...formExam, mata_pelajaran: e.target.value })}
-                    placeholder="Contoh: Fiqih"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                      Mata Pelajaran <span className="text-rose-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomMapelInput(!isCustomMapelInput);
+                        if (!isCustomMapelInput) {
+                          setFormExam((prev: any) => ({ ...prev, mata_pelajaran: '', kitab: '' }));
+                        }
+                      }}
+                      className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+                    >
+                      {isCustomMapelInput ? '📋 Pilih dari Kurikulum' : '✏️ Ketik Mapel Khusus'}
+                    </button>
+                  </div>
+
+                  {isCustomMapelInput ? (
+                    <input
+                      type="text"
+                      required
+                      value={formExam.mata_pelajaran}
+                      onChange={(e) => setFormExam({ ...formExam, mata_pelajaran: e.target.value })}
+                      placeholder="Ketik mata pelajaran khusus..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  ) : (
+                    <select
+                      required
+                      value={formExam.mata_pelajaran}
+                      onChange={(e) => {
+                        const selectedVal = e.target.value;
+                        const matchedItem = mapelList.find((m) => m.mata_pelajaran === selectedVal);
+                        setFormExam((prev: any) => ({
+                          ...prev,
+                          mata_pelajaran: selectedVal,
+                          kitab: matchedItem?.kitab || prev.kitab || '',
+                        }));
+                      }}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold text-gray-800 dark:text-gray-200 text-xs sm:text-sm"
+                    >
+                      <option value="">-- Pilih Mata Pelajaran --</option>
+                      {formExam.mata_pelajaran && !mapelList.some((m) => m.mata_pelajaran === formExam.mata_pelajaran) && (
+                        <option value={formExam.mata_pelajaran}>{formExam.mata_pelajaran} (Tersimpan)</option>
+                      )}
+                      {mapelList.map((m, idx) => (
+                        <option key={`${m.mata_pelajaran}-${idx}`} value={m.mata_pelajaran}>
+                          {m.mata_pelajaran} {m.kitab ? `(${m.kitab})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>
@@ -1464,7 +1527,11 @@ export default function UjianCBTPage() {
                   </label>
                   <select
                     value={formExam.kelas_madin_id}
-                    onChange={(e) => setFormExam({ ...formExam, kelas_madin_id: e.target.value })}
+                    onChange={(e) => {
+                      const newKelas = e.target.value;
+                      setFormExam({ ...formExam, kelas_madin_id: newKelas });
+                      fetchMapelList(newKelas);
+                    }}
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs"
                   >
                     <option value="">Semua Kelas</option>
