@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
+import QuizBModal from './QuizBModal';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, Printer, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
@@ -87,6 +88,38 @@ export default function PenilaianRaportPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('no');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Modal Integrasi QuizB
+  const [showQuizBModal, setShowQuizBModal] = useState(false);
+
+  const handleApplyQuizBScores = (appliedList: Array<{ murid_id: number; skor: number; targetField: 'harian' | 'uts' | 'uas'; quizTitle: string }>) => {
+    setScores(prev => {
+      const next = { ...prev };
+      appliedList.forEach(item => {
+        const existing = next[item.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+        const valStr = String(item.skor);
+        const updated = { ...existing };
+
+        if (item.targetField === 'harian') updated.harian = valStr;
+        else if (item.targetField === 'uts') updated.uts = valStr;
+        else if (item.targetField === 'uas') updated.uas = valStr;
+
+        const h = item.targetField === 'harian' ? item.skor : (parseFloat(updated.harian) || 0);
+        const u = item.targetField === 'uts' ? item.skor : (parseFloat(updated.uts) || 0);
+        const a = item.targetField === 'uas' ? item.skor : (parseFloat(updated.uas) || 0);
+
+        const autoFinal = Math.round((h * 0.3 + u * 0.3 + a * 0.4) * 100) / 100;
+        updated.akhir = String(autoFinal);
+        updated.predikat = calcPredikat(autoFinal);
+
+        const note = `QuizB: ${item.quizTitle} (${item.skor})`;
+        updated.catatan = updated.catatan ? `${updated.catatan}; ${note}` : note;
+
+        next[item.murid_id] = updated;
+      });
+      return next;
+    });
+  };
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -862,9 +895,21 @@ export default function PenilaianRaportPage() {
               </div>
 
               {isLegerMode ? (
-                <div className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 rounded-xl text-xs font-bold shadow-2xs">
-                  <Sparkles size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                  <span>Pilih mapel tertentu untuk input / edit nilai</span>
+                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2.5 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowQuizBModal(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all"
+                    title="Tarik nilai otomatis dari quizb.my.id"
+                  >
+                    <Sparkles size={15} className="text-emerald-200 animate-pulse" />
+                    <span>🎮 Tarik Nilai QuizB</span>
+                  </button>
+
+                  <div className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 rounded-xl text-xs font-bold shadow-2xs">
+                    <Sparkles size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>Pilih mapel tertentu untuk input / edit nilai</span>
+                  </div>
                 </div>
               ) : isTamu ? (
                 <div className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-xl text-xs font-bold shadow-2xs">
@@ -872,14 +917,26 @@ export default function PenilaianRaportPage() {
                   <span>Mode Tamu — hanya lihat data</span>
                 </div>
               ) : (
-                <button
-                  onClick={handleSaveScores}
-                  disabled={savingScores || muridList.length === 0}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all shrink-0"
-                >
-                  {savingScores ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-                  <span>{savingScores ? 'Menyimpan...' : 'Simpan Semua Nilai'}</span>
-                </button>
+                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2.5 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowQuizBModal(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all"
+                    title="Tarik nilai otomatis dari quizb.my.id"
+                  >
+                    <Sparkles size={15} className="text-emerald-200 animate-pulse" />
+                    <span>🎮 Tarik Nilai QuizB</span>
+                  </button>
+
+                  <button
+                    onClick={handleSaveScores}
+                    disabled={savingScores || muridList.length === 0}
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-95 disabled:opacity-50 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all shrink-0"
+                  >
+                    {savingScores ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+                    <span>{savingScores ? 'Menyimpan...' : 'Simpan Semua Nilai'}</span>
+                  </button>
+                </div>
               )}
             </div>
 
@@ -1955,6 +2012,18 @@ export default function PenilaianRaportPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Integrasi QuizB */}
+      <QuizBModal
+        isOpen={showQuizBModal}
+        onClose={() => setShowQuizBModal(false)}
+        selectedKelas={selectedKelas}
+        selectedMapel={selectedMapel}
+        semester={semester}
+        tahunAjaran={tahunAjaran}
+        muridList={muridList}
+        onApplyScores={handleApplyQuizBScores}
+      />
     </div>
   );
 }
