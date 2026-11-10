@@ -7,7 +7,7 @@ import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, Printer, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
   ShieldCheck, AlertTriangle, FileText, ChevronRight, ChevronDown, Sparkles, Download,
-  Edit3, ArrowUpDown, ArrowUp, ArrowDown, X
+  Edit3, ArrowUpDown, ArrowUp, ArrowDown, X, Trash2
 } from 'lucide-react';
 
 // ====== Avatar Lokal & URL Foto Santri (Persis Halaman Data Murid) ======
@@ -91,6 +91,158 @@ export default function PenilaianRaportPage() {
 
   // Modal Integrasi QuizB
   const [showQuizBModal, setShowQuizBModal] = useState(false);
+
+  // Trigger Reload Data Nilai
+  const [reloadTrigger, setReloadTrigger] = useState(0);
+  const refreshScores = () => setReloadTrigger(prev => prev + 1);
+
+  // Modal Edit & Hapus Nilai Santri (untuk mengelola atau menghapus hasil uji coba / evaluasi)
+  const [editModalSantri, setEditModalSantri] = useState<any>(null);
+  const [editModalScores, setEditModalScores] = useState<any[]>([]);
+  const [loadingEditModal, setLoadingEditModal] = useState(false);
+  const [savingEditModal, setSavingEditModal] = useState(false);
+  const [modalFeedback, setModalFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleOpenEditModal = async (santri: any) => {
+    setEditModalSantri(santri);
+    setLoadingEditModal(true);
+    setModalFeedback(null);
+    try {
+      const res = await fetch(`/api/penilaian/raport?murid_id=${santri.murid_id}&semester=${semester}&tahun_ajaran=${tahunAjaran}&t=${Date.now()}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.nilai)) {
+        setEditModalScores(data.nilai);
+      } else {
+        setEditModalScores([]);
+      }
+    } catch (err) {
+      console.error('Error fetching student scores for edit modal:', err);
+      setEditModalScores([]);
+    } finally {
+      setLoadingEditModal(false);
+    }
+  };
+
+  const handleQuickResetScore = async (santri: any) => {
+    const targetDesc = !isLegerMode && selectedMapel ? `mata pelajaran "${selectedMapel}"` : 'seluruh mata pelajaran';
+    if (!window.confirm(`Hapus/reset nilai percobaan untuk santri "${santri.nama}" pada ${targetDesc}?`)) {
+      return;
+    }
+
+    try {
+      setSavingScores(true);
+      const url = `/api/penilaian/save?murid_id=${santri.murid_id}&semester=${semester}&tahun_ajaran=${tahunAjaran}${!isLegerMode && selectedMapel ? `&mapel=${encodeURIComponent(selectedMapel)}` : ''}`;
+      const res = await fetch(url, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setSaveSuccessMsg(`Nilai percobaan santri "${santri.nama}" berhasil dihapus.`);
+        setTimeout(() => setSaveSuccessMsg(''), 4000);
+        refreshScores();
+      } else {
+        alert(data.error || 'Gagal menghapus nilai santri');
+      }
+    } catch (err: any) {
+      alert(`Terjadi kesalahan: ${err.message}`);
+    } finally {
+      setSavingScores(false);
+    }
+  };
+
+  const handleDeleteMapelScoreInModal = async (scoreItem: any) => {
+    if (!editModalSantri) return;
+    if (!window.confirm(`Hapus nilai mata pelajaran "${scoreItem.mata_pelajaran}" untuk ${editModalSantri.nama}?`)) return;
+
+    try {
+      setSavingEditModal(true);
+      const url = `/api/penilaian/save?id=${scoreItem.id}&murid_id=${editModalSantri.murid_id}&mapel=${encodeURIComponent(scoreItem.mata_pelajaran)}&semester=${semester}&tahun_ajaran=${tahunAjaran}`;
+      const res = await fetch(url, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setEditModalScores(prev => prev.filter(item => item.id !== scoreItem.id));
+        setModalFeedback({ type: 'success', message: `Nilai ${scoreItem.mata_pelajaran} berhasil dihapus.` });
+        refreshScores();
+      } else {
+        setModalFeedback({ type: 'error', message: data.error || 'Gagal menghapus nilai mapel' });
+      }
+    } catch (err: any) {
+      setModalFeedback({ type: 'error', message: err.message });
+    } finally {
+      setSavingEditModal(false);
+    }
+  };
+
+  const handleDeleteAllScoresInModal = async () => {
+    if (!editModalSantri) return;
+    if (!window.confirm(`PERINGATAN: Anda akan menghapus SELURUH nilai percobaan santri "${editModalSantri.nama}" pada Semester ${semester} (${tahunAjaran}) ini. Lanjutkan?`)) return;
+
+    try {
+      setSavingEditModal(true);
+      const url = `/api/penilaian/save?murid_id=${editModalSantri.murid_id}&semester=${semester}&tahun_ajaran=${tahunAjaran}`;
+      const res = await fetch(url, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setEditModalScores([]);
+        setModalFeedback({ type: 'success', message: 'Seluruh nilai percobaan santri ini berhasil dibersihkan.' });
+        refreshScores();
+        setTimeout(() => {
+          setEditModalSantri(null);
+        }, 1200);
+      } else {
+        setModalFeedback({ type: 'error', message: data.error || 'Gagal menghapus nilai' });
+      }
+    } catch (err: any) {
+      setModalFeedback({ type: 'error', message: err.message });
+    } finally {
+      setSavingEditModal(false);
+    }
+  };
+
+  const handleUpdateScoreInModal = async (scoreItem: any) => {
+    if (!editModalSantri) return;
+    try {
+      setSavingEditModal(true);
+      const harian = scoreItem.nilai_harian !== null && scoreItem.nilai_harian !== '' ? Number(scoreItem.nilai_harian) : null;
+      const uts = scoreItem.nilai_uts !== null && scoreItem.nilai_uts !== '' ? Number(scoreItem.nilai_uts) : null;
+      const uas = scoreItem.nilai_uas !== null && scoreItem.nilai_uas !== '' ? Number(scoreItem.nilai_uas) : null;
+      const akhir = scoreItem.nilai_akhir !== null && scoreItem.nilai_akhir !== '' ? Number(scoreItem.nilai_akhir) : null;
+
+      const payload = {
+        kelas_id: editModalSantri.kelas_madin_id || selectedKelas || 'SEMUA',
+        mata_pelajaran: scoreItem.mata_pelajaran,
+        semester,
+        tahun_ajaran: tahunAjaran,
+        scores: [
+          {
+            murid_id: editModalSantri.murid_id,
+            kelas_madin_id: editModalSantri.kelas_madin_id,
+            nilai_harian: harian,
+            nilai_uts: uts,
+            nilai_uas: uas,
+            nilai_akhir: akhir,
+            predikat: scoreItem.predikat,
+            catatan: scoreItem.catatan,
+          }
+        ]
+      };
+
+      const res = await fetch('/api/penilaian/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setModalFeedback({ type: 'success', message: `Nilai ${scoreItem.mata_pelajaran} berhasil disimpan.` });
+        refreshScores();
+      } else {
+        setModalFeedback({ type: 'error', message: data.error || 'Gagal menyimpan nilai' });
+      }
+    } catch (err: any) {
+      setModalFeedback({ type: 'error', message: err.message });
+    } finally {
+      setSavingEditModal(false);
+    }
+  };
 
   const handleApplyQuizBScores = (appliedList: Array<{ murid_id: number; skor: number; targetField: 'harian' | 'uts' | 'uas'; quizTitle: string }>) => {
     setScores(prev => {
@@ -478,7 +630,7 @@ export default function PenilaianRaportPage() {
     };
 
     fetchMuridDanNilai();
-  }, [selectedKelas, selectedMapel, semester, tahunAjaran]);
+  }, [selectedKelas, selectedMapel, semester, tahunAjaran, reloadTrigger]);
 
   // 2b. Animasi Progress Bar saat loadingMurid (seperti billing page)
   useEffect(() => {
@@ -902,7 +1054,6 @@ export default function PenilaianRaportPage() {
                     className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all"
                     title="Tarik nilai otomatis dari quizb.my.id"
                   >
-                    <Sparkles size={15} className="text-emerald-200 animate-pulse" />
                     <span>🎮 Tarik Nilai QuizB</span>
                   </button>
 
@@ -924,7 +1075,6 @@ export default function PenilaianRaportPage() {
                     className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all"
                     title="Tarik nilai otomatis dari quizb.my.id"
                   >
-                    <Sparkles size={15} className="text-emerald-200 animate-pulse" />
                     <span>🎮 Tarik Nilai QuizB</span>
                   </button>
 
@@ -1230,12 +1380,17 @@ export default function PenilaianRaportPage() {
                             )}
                           </div>
                         </th>
+
+                        {/* Kolom Aksi (Edit & Hapus Nilai Percobaan) */}
+                        <th className="py-3.5 px-3 w-28 text-center select-none text-gray-700 dark:text-gray-300 font-bold">
+                          Aksi
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                       {filteredAndSortedMurid.length === 0 ? (
                         <tr>
-                          <td colSpan={11} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                          <td colSpan={12} className="py-10 text-center text-gray-500 dark:text-gray-400">
                             <AlertCircle size={24} className="mx-auto text-amber-500 mb-2" />
                             <p className="font-semibold text-xs sm:text-sm">Tidak ditemukan data santri yang cocok dengan &quot;{searchQuery}&quot;</p>
                             <button
@@ -1440,6 +1595,32 @@ export default function PenilaianRaportPage() {
                               </td>
                             </>
                           )}
+
+                          {/* Kolom Aksi (Edit & Hapus Nilai Percobaan) */}
+                          <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(m)}
+                                className="p-1.5 text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 rounded-lg border border-amber-200 dark:border-amber-800/60 transition-all text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
+                                title="Edit / Kelola Nilai Santri Ini"
+                              >
+                                <Edit3 size={13} />
+                                <span className="hidden sm:inline">Edit</span>
+                              </button>
+                              {((isLegerMode && (m.total_mapel_dinilai || 0) > 0) || (!isLegerMode && (cur.harian !== '' || cur.uts !== '' || cur.uas !== '' || cur.akhir !== ''))) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickResetScore(m)}
+                                  className="p-1.5 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 rounded-lg border border-rose-200 dark:border-rose-800/60 transition-all text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
+                                  title="Hapus Nilai / Reset Hasil Percobaan"
+                                >
+                                  <Trash2 size={13} />
+                                  <span className="hidden sm:inline">Hapus</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       );
                     }))}
@@ -2025,6 +2206,277 @@ export default function PenilaianRaportPage() {
         userRole={userRole}
         onApplyScores={handleApplyQuizBScores}
       />
+
+      {/* MODAL EDIT & HAPUS NILAI SANTRI (HASIL PERCOBAAN / EVALUASI) */}
+      {editModalSantri && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+            {/* Header Modal */}
+            <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-transparent to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full overflow-hidden relative border border-gray-200 dark:border-gray-700 shadow-2xs shrink-0">
+                  {getFotoUrl(editModalSantri.foto) ? (
+                    <img
+                      src={getFotoUrl(editModalSantri.foto)!}
+                      alt={editModalSantri.nama}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-full h-full flex items-center justify-center text-white text-xs font-bold"
+                      style={{ backgroundColor: getAvatarColor(editModalSantri.nama) }}
+                    >
+                      {getInitials(editModalSantri.nama)}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-gray-800 dark:text-gray-100 flex items-center gap-2 flex-wrap">
+                    <span>{editModalSantri.nama}</span>
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                      NIS: {editModalSantri.nis || '-'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Kelola &amp; Hapus Nilai • Semester {semester} • TA {tahunAjaran}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditModalSantri(null)}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Feedback Message */}
+            {modalFeedback && (
+              <div className={`px-5 py-2.5 text-xs font-bold flex items-center justify-between ${
+                modalFeedback.type === 'success'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-b border-emerald-200 dark:border-emerald-800/40'
+                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-b border-rose-200 dark:border-rose-800/40'
+              }`}>
+                <span>{modalFeedback.message}</span>
+                <button type="button" onClick={() => setModalFeedback(null)} className="text-xs opacity-70 hover:opacity-100">✕</button>
+              </div>
+            )}
+
+            {/* Isi Modal (Scrollable) */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+              {loadingEditModal ? (
+                <div className="py-12 text-center text-gray-500">
+                  <RefreshCw size={28} className="animate-spin mx-auto text-amber-500 mb-2" />
+                  <p className="text-xs font-bold">Memuat rincian nilai santri...</p>
+                </div>
+              ) : editModalScores.length === 0 ? (
+                <div className="py-10 text-center text-gray-500 dark:text-gray-400">
+                  <AlertCircle size={32} className="mx-auto text-amber-500 mb-2" />
+                  <p className="font-bold text-sm">Belum Ada Nilai Tersimpan</p>
+                  <p className="text-xs text-gray-400 mt-1">Santri ini belum memiliki riwayat nilai pada semester {semester} ({tahunAjaran}).</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-xs font-bold text-gray-600 dark:text-gray-300">
+                      Daftar Mata Pelajaran ({editModalScores.length} Mapel Dinilai):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleDeleteAllScoresInModal}
+                      disabled={savingEditModal}
+                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-2xs"
+                    >
+                      <Trash2 size={13} />
+                      <span>Hapus Semua Nilai Santri Ini</span>
+                    </button>
+                  </div>
+
+                  {editModalScores.map((score, sIdx) => (
+                    <div
+                      key={score.id || sIdx}
+                      className="p-3.5 bg-gray-50 dark:bg-gray-900/60 rounded-2xl border border-gray-200/80 dark:border-gray-700 space-y-3"
+                    >
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-sm text-gray-800 dark:text-gray-100">
+                            📚 {score.mata_pelajaran}
+                          </span>
+                          {score.kitab && (
+                            <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40">
+                              📖 {score.kitab}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateScoreInModal(score)}
+                            disabled={savingEditModal}
+                            className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1 shadow-2xs transition-all"
+                            title="Simpan perubahan nilai mapel ini"
+                          >
+                            <Save size={12} />
+                            <span>Simpan</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMapelScoreInModal(score)}
+                            disabled={savingEditModal}
+                            className="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 dark:bg-rose-950/60 dark:hover:bg-rose-900/70 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 rounded-lg text-xs font-bold inline-flex items-center gap-1 shadow-2xs transition-all"
+                            title="Hapus nilai mapel ini"
+                          >
+                            <Trash2 size={12} />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Baris Input Nilai */}
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Harian (30%)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="any"
+                            value={score.nilai_harian ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditModalScores(prev => prev.map((item, idx) => {
+                                if (idx !== sIdx) return item;
+                                const h = parseFloat(val) || 0;
+                                const u = parseFloat(item.nilai_uts) || 0;
+                                const a = parseFloat(item.nilai_uas) || 0;
+                                const akhir = Math.round((h * 0.3 + u * 0.3 + a * 0.4) * 100) / 100;
+                                return {
+                                  ...item,
+                                  nilai_harian: val,
+                                  nilai_akhir: akhir,
+                                  predikat: calcPredikat(akhir),
+                                };
+                              }));
+                            }}
+                            className="w-full text-center py-1.5 px-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-amber-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">UTS (30%)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="any"
+                            value={score.nilai_uts ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditModalScores(prev => prev.map((item, idx) => {
+                                if (idx !== sIdx) return item;
+                                const h = parseFloat(item.nilai_harian) || 0;
+                                const u = parseFloat(val) || 0;
+                                const a = parseFloat(item.nilai_uas) || 0;
+                                const akhir = Math.round((h * 0.3 + u * 0.3 + a * 0.4) * 100) / 100;
+                                return {
+                                  ...item,
+                                  nilai_uts: val,
+                                  nilai_akhir: akhir,
+                                  predikat: calcPredikat(akhir),
+                                };
+                              }));
+                            }}
+                            className="w-full text-center py-1.5 px-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-amber-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">UAS (40%)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="any"
+                            value={score.nilai_uas ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditModalScores(prev => prev.map((item, idx) => {
+                                if (idx !== sIdx) return item;
+                                const h = parseFloat(item.nilai_harian) || 0;
+                                const u = parseFloat(item.nilai_uts) || 0;
+                                const a = parseFloat(val) || 0;
+                                const akhir = Math.round((h * 0.3 + u * 0.3 + a * 0.4) * 100) / 100;
+                                return {
+                                  ...item,
+                                  nilai_uas: val,
+                                  nilai_akhir: akhir,
+                                  predikat: calcPredikat(akhir),
+                                };
+                              }));
+                            }}
+                            className="w-full text-center py-1.5 px-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-amber-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase mb-1">Akhir</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="any"
+                            value={score.nilai_akhir ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditModalScores(prev => prev.map((item, idx) => {
+                                if (idx !== sIdx) return item;
+                                return {
+                                  ...item,
+                                  nilai_akhir: val,
+                                  predikat: val ? calcPredikat(parseFloat(val) || 0) : '-',
+                                };
+                              }));
+                            }}
+                            className="w-full text-center py-1.5 px-2 bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-300 dark:border-amber-700 text-xs font-black text-amber-900 dark:text-amber-200 focus:ring-2 focus:ring-amber-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Predikat</label>
+                          <input
+                            type="text"
+                            value={score.predikat || '-'}
+                            onChange={(e) => {
+                              const val = e.target.value.toUpperCase();
+                              setEditModalScores(prev => prev.map((item, idx) => idx === sIdx ? { ...item, predikat: val } : item));
+                            }}
+                            className="w-full text-center py-1.5 px-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-black text-gray-800 dark:text-gray-100"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer Modal */}
+            <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 flex items-center justify-between">
+              <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                💡 Menghapus nilai di sini akan langsung membersihkan data uji coba dari raport &amp; leger.
+              </span>
+              <button
+                type="button"
+                onClick={() => setEditModalSantri(null)}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-all"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

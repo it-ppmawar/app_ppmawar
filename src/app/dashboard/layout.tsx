@@ -38,6 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   
   const [activeSchedule, setActiveSchedule] = useState<any>(null);
   const [pendingRemindersCount, setPendingRemindersCount] = useState<number>(0);
+  const [hasActiveExam, setHasActiveExam] = useState(false);
   const [pwaInstallable, setPwaInstallable] = useState(false);
   const [userSchedules, setUserSchedules] = useState<any[]>([]);
 
@@ -49,9 +50,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   let navItems = [
     { name: 'Jadwal', href: '/dashboard/jadwal', icon: CalendarDays },
-    ...(!isWali && !isTamu ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
-    ...(isWali ? [{ name: 'Tagihan', href: '/dashboard/billing', icon: CreditCard }] : []),
+    ...(!isWali && !isTamu && userRoleLower !== 'santri' ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
     ...(isWali || userRoleLower === 'santri' ? [{ name: 'Ujian CBT', href: '/dashboard/ujian', icon: Sparkles }] : []),
+    ...(isWali ? [{ name: 'Tagihan', href: '/dashboard/billing', icon: CreditCard }] : []),
     ...(!isTamu && !isWali ? [{ name: 'Notifikasi', href: '/dashboard/notifikasi', icon: Bell }] : []),
   ];
 
@@ -120,6 +121,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
       })
       .catch(console.error);
+
+    // Fetch Status Ujian Aktif (untuk wali murid & santri)
+    fetch(`/api/ujian?t=${Date.now()}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.exams)) {
+          const hasOpen = data.exams.some((e: any) => e.status_sesi === 'buka');
+          setHasActiveExam(hasOpen);
+        } else {
+          setHasActiveExam(false);
+        }
+      })
+      .catch(() => setHasActiveExam(false));
   }, [pathname]);
 
   useEffect(() => {
@@ -1357,20 +1371,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {navItems.map((item) => {
             const Icon = item.icon;
             const isAbsen = item.name === 'Absen';
-            const isActive = isAbsen ? pathname.startsWith('/dashboard/absen') : pathname === item.href;
+            const isUjianCBT = item.name === 'Ujian CBT';
+            const isOctagonal = isAbsen || (isUjianCBT && (isWali || userRoleLower === 'santri'));
+            const isPulsing = isAbsen ? hasActiveAbsen : (isUjianCBT && hasActiveExam);
+            const isActive = isAbsen
+              ? pathname.startsWith('/dashboard/absen')
+              : isUjianCBT
+              ? pathname.startsWith('/dashboard/ujian')
+              : pathname === item.href;
 
-            if (isAbsen) {
+            if (isOctagonal) {
               return (
                 <Link
                   key={item.name}
                   href={item.href}
                   className="flex flex-col items-center group transition-transform duration-300 active:scale-95 hover:scale-105 focus:outline-none cursor-pointer shrink-0 mx-1"
-                  aria-label="Menu Absen"
+                  aria-label={`Menu ${item.name}`}
                 >
                   {/* Wadah Oktagonal (Tinggi 66px, Sedikit Meluber dari Bar 62px) */}
                   <div className="relative w-[58px] h-[66px] flex items-center justify-center filter drop-shadow-[0_3px_8px_rgba(0,0,0,0.15)]">
                     {/* 1. Efek Radar Ping Oktagonal (Radar Memancar ke Luar) */}
-                    {hasActiveAbsen && (
+                    {isPulsing && (
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none animate-ping opacity-75 z-0">
                         <svg viewBox="0 0 58 66" className="w-full h-full overflow-visible">
                           <polygon
@@ -1384,7 +1405,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     )}
 
                     {/* 2. Efek Outline Oktagonal Berdetak (Pulse Membingkai Tombol) */}
-                    {hasActiveAbsen && (
+                    {isPulsing && (
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none scale-110 origin-center animate-pulse z-0">
                         <svg viewBox="0 0 58 66" className="w-full h-full overflow-visible">
                           <polygon
@@ -1401,7 +1422,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <svg
                       viewBox="0 0 58 66"
                       className={`w-full h-full overflow-visible transition-all duration-300 relative z-10 ${
-                        hasActiveAbsen
+                        isPulsing
                           ? 'drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]'
                           : ''
                       }`}
@@ -1418,7 +1439,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         strokeLinejoin="round"
                         strokeWidth="2.5"
                         className={
-                          hasActiveAbsen
+                          isPulsing
                             ? 'fill-[url(#absenOctGrad)] stroke-emerald-300'
                             : isActive
                             ? 'fill-green-100 dark:fill-green-950/80 stroke-emerald-500'
@@ -1427,13 +1448,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       />
                     </svg>
 
-                    {/* Konten Ikon & Teks di Dalam Heksagonal */}
+                    {/* Konten Ikon & Teks di Dalam Oktagonal */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 pointer-events-none z-20">
                       <Icon
                         size={20}
                         strokeWidth={2.5}
                         className={
-                          hasActiveAbsen
+                          isPulsing
                             ? 'text-white drop-shadow-sm'
                             : isActive
                             ? 'text-green-700 dark:text-green-400'
@@ -1442,7 +1463,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       />
                       <span
                         className={`text-[8.5px] font-bold leading-none tracking-tight ${
-                          hasActiveAbsen
+                          isPulsing
                             ? 'text-white drop-shadow-sm'
                             : isActive
                             ? 'text-green-700 dark:text-green-400'

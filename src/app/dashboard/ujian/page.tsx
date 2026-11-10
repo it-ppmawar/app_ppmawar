@@ -2177,22 +2177,45 @@ export default function UjianCBTPage() {
                 <>
                   {/* Statistik Ringkas */}
                   {hasilStatistik && (
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-3 text-center">
-                        <div className="text-2xl font-black text-blue-700 dark:text-blue-300">{hasilStatistik.total_peserta}</div>
-                        <div className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold mt-0.5">Total Peserta</div>
+                    <div className="space-y-2.5">
+                      {/* Baris 1: Persentase Lulus Memenuhi Ruang Kanan-Kiri Penuh */}
+                      <div className="bg-emerald-50/90 dark:bg-emerald-950/40 rounded-xl p-3 text-center border border-emerald-200/60 dark:border-emerald-800/50 w-full shadow-2xs">
+                        <div className="text-2xl sm:text-3xl font-black text-emerald-700 dark:text-emerald-300">
+                          {hasilStatistik.persentase_lulus}%
+                        </div>
+                        <div className="text-xs text-emerald-700 dark:text-emerald-400 font-bold mt-0.5">
+                          Persentase Lulus
+                        </div>
                       </div>
-                      <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3 text-center">
-                        <div className="text-2xl font-black text-emerald-700 dark:text-emerald-300">{hasilStatistik.persentase_lulus}%</div>
-                        <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">Persentase Lulus</div>
-                      </div>
-                      <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3 text-center">
-                        <div className="text-2xl font-black text-amber-700 dark:text-amber-300">{hasilStatistik.rata_rata_skor}</div>
-                        <div className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">Rata-rata Nilai</div>
-                      </div>
-                      <div className="bg-rose-50 dark:bg-rose-950/30 rounded-xl p-3 text-center">
-                        <div className="text-2xl font-black text-rose-700 dark:text-rose-300">{hasilStatistik.total_tidak_lulus}</div>
-                        <div className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold mt-0.5">Tidak Lulus</div>
+
+                      {/* Baris 2: Total Peserta, Rata-rata Nilai, Tidak Lulus (3 Kolom Berdampingan) */}
+                      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                        <div className="bg-blue-50/80 dark:bg-blue-950/30 rounded-xl p-2.5 sm:p-3 text-center border border-blue-100 dark:border-blue-900/30 shadow-2xs">
+                          <div className="text-xl sm:text-2xl font-black text-blue-700 dark:text-blue-300">
+                            {hasilStatistik.total_peserta}
+                          </div>
+                          <div className="text-[10px] sm:text-[11px] text-blue-600 dark:text-blue-400 font-semibold mt-0.5">
+                            Total Peserta
+                          </div>
+                        </div>
+
+                        <div className="bg-amber-50/80 dark:bg-amber-950/30 rounded-xl p-2.5 sm:p-3 text-center border border-amber-100 dark:border-amber-900/30 shadow-2xs">
+                          <div className="text-xl sm:text-2xl font-black text-amber-700 dark:text-amber-300">
+                            {hasilStatistik.rata_rata_skor}
+                          </div>
+                          <div className="text-[10px] sm:text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
+                            Rata-rata Nilai
+                          </div>
+                        </div>
+
+                        <div className="bg-rose-50/80 dark:bg-rose-950/30 rounded-xl p-2.5 sm:p-3 text-center border border-rose-100 dark:border-rose-900/30 shadow-2xs">
+                          <div className="text-xl sm:text-2xl font-black text-rose-700 dark:text-rose-300">
+                            {hasilStatistik.total_tidak_lulus}
+                          </div>
+                          <div className="text-[10px] sm:text-[11px] text-rose-600 dark:text-rose-400 font-semibold mt-0.5">
+                            Tidak Lulus
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

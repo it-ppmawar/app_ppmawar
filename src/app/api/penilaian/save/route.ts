@@ -104,3 +104,55 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    await ensurePenilaianDB();
+
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const payload = verifyToken(token) as any;
+    if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
+
+    const roleLower = (payload.role || '').toLowerCase();
+    if (!['admin', 'staff', 'guru'].includes(roleLower)) {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const muridId = searchParams.get('murid_id');
+    const mapel = searchParams.get('mapel');
+    const semester = searchParams.get('semester') || '1';
+    const tahunAjaran = searchParams.get('tahun_ajaran') || '2025/2026';
+
+    if (id) {
+      await pool.execute('DELETE FROM nilai_santri WHERE id = ?', [id]);
+      return NextResponse.json({ success: true, message: 'Nilai berhasil dihapus' });
+    }
+
+    if (!muridId) {
+      return NextResponse.json({ error: 'Parameter murid_id atau id diperlukan' }, { status: 400 });
+    }
+
+    if (mapel && mapel !== 'SEMUA' && mapel !== 'Semua Mapel') {
+      await pool.execute(
+        'DELETE FROM nilai_santri WHERE murid_id = ? AND mata_pelajaran = ? AND semester = ? AND tahun_ajaran = ?',
+        [muridId, mapel, semester, tahunAjaran]
+      );
+      return NextResponse.json({ success: true, message: `Nilai mapel ${mapel} berhasil dihapus` });
+    } else {
+      // Hapus seluruh nilai santri tersebut untuk semester & tahun ajaran ini
+      await pool.execute(
+        'DELETE FROM nilai_santri WHERE murid_id = ? AND semester = ? AND tahun_ajaran = ?',
+        [muridId, semester, tahunAjaran]
+      );
+      return NextResponse.json({ success: true, message: 'Seluruh nilai santri pada semester ini berhasil dihapus/direset' });
+    }
+  } catch (error: any) {
+    console.error('Error in DELETE /api/penilaian/save:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
