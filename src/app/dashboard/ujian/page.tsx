@@ -202,7 +202,7 @@ export default function UjianCBTPage() {
     } catch (e) {}
   };
 
-  const fetchMapelList = async (targetKelasId?: string | number) => {
+  const fetchMapelList = async (targetKelasId?: string | number | null) => {
     try {
       const url = targetKelasId ? `/api/ujian/mapel?kelas_id=${targetKelasId}` : '/api/ujian/mapel';
       const res = await fetch(url);
@@ -215,20 +215,51 @@ export default function UjianCBTPage() {
     }
   };
 
-  const fetchKelas = async () => {
+  const fetchKelasList = async (targetMapel?: string | null) => {
     try {
-      const res = await fetch('/api/kelas');
+      const url = targetMapel && targetMapel.trim() !== ''
+        ? `/api/ujian/kelas?mata_pelajaran=${encodeURIComponent(targetMapel.trim())}`
+        : '/api/ujian/kelas';
+      const res = await fetch(url);
       const data = await res.json();
-      if (data.success && data.data) {
-        setKelasList(data.data);
+      if (data.success && Array.isArray(data.kelas)) {
+        setKelasList(data.kelas);
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to fetch kelas list', e);
+    }
+  };
+
+  const openCreateModal = () => {
+    setEditingExam(null);
+    setIsCustomMapelInput(false);
+    setFormExam({
+      judul: '',
+      deskripsi: '',
+      mata_pelajaran: '',
+      kitab: '',
+      kelas_madin_id: '',
+      semester: '1',
+      tahun_ajaran: '2025/2026',
+      jenis_ujian: 'harian',
+      durasi_menit: 45,
+      passing_grade: 70,
+      acak_soal: 1,
+      acak_opsi: 1,
+      wajib_token: 1,
+      wajib_geofence: 1,
+      max_radius_meter: 200,
+      quizb_id: '',
+    });
+    fetchKelasList();
+    fetchMapelList();
+    setShowCreateModal(true);
   };
 
   useEffect(() => {
     fetchCurrentUser();
     fetchExams();
-    fetchKelas();
+    fetchKelasList();
     fetchMapelList();
   }, []);
 
@@ -961,29 +992,7 @@ export default function UjianCBTPage() {
                 ⚙️ Kelola Ujian &amp; Bank Soal
               </button>
               <button
-                onClick={() => {
-                  setEditingExam(null);
-                  setIsCustomMapelInput(false);
-                  setFormExam({
-                    judul: '',
-                    deskripsi: '',
-                    mata_pelajaran: '',
-                    kitab: '',
-                    kelas_madin_id: '',
-                    semester: '1',
-                    tahun_ajaran: '2025/2026',
-                    jenis_ujian: 'harian',
-                    durasi_menit: 45,
-                    passing_grade: 70,
-                    acak_soal: 1,
-                    acak_opsi: 1,
-                    wajib_token: 1,
-                    wajib_geofence: 1,
-                    max_radius_meter: 200,
-                    quizb_id: '',
-                  });
-                  setShowCreateModal(true);
-                }}
+                onClick={openCreateModal}
                 className="px-4 py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 active:scale-95 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5"
               >
                 <Plus size={16} />
@@ -1031,29 +1040,7 @@ export default function UjianCBTPage() {
 
           {isPengajarOrAdmin && (
             <button
-              onClick={() => {
-                setEditingExam(null);
-                setIsCustomMapelInput(false);
-                setFormExam({
-                  judul: '',
-                  deskripsi: '',
-                  mata_pelajaran: '',
-                  kitab: '',
-                  kelas_madin_id: '',
-                  semester: '1',
-                  tahun_ajaran: '2025/2026',
-                  jenis_ujian: 'harian',
-                  durasi_menit: 45,
-                  passing_grade: 70,
-                  acak_soal: 1,
-                  acak_opsi: 1,
-                  wajib_token: 1,
-                  wajib_geofence: 1,
-                  max_radius_meter: 200,
-                  quizb_id: '',
-                });
-                setShowCreateModal(true);
-              }}
+              onClick={openCreateModal}
               className="sm:hidden px-3 py-2 shrink-0 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1"
               title="Buat Ujian Baru"
             >
@@ -1083,33 +1070,11 @@ export default function UjianCBTPage() {
               </p>
             </div>
             <button
-              onClick={() => {
-                setEditingExam(null);
-                setIsCustomMapelInput(false);
-                setFormExam({
-                  judul: '',
-                  deskripsi: '',
-                  mata_pelajaran: '',
-                  kitab: '',
-                  kelas_madin_id: '',
-                  semester: '1',
-                  tahun_ajaran: '2025/2026',
-                  jenis_ujian: 'harian',
-                  durasi_menit: 45,
-                  passing_grade: 70,
-                  acak_soal: 1,
-                  acak_opsi: 1,
-                  wajib_token: 1,
-                  wajib_geofence: 1,
-                  max_radius_meter: 200,
-                  quizb_id: '',
-                });
-                setShowCreateModal(true);
-              }}
+              onClick={openCreateModal}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-md transition-all"
             >
               <Plus size={16} />
-              <span>➕ Buat Paket Ujian Pertama</span>
+              <span>Buat Paket Ujian Pertama</span>
             </button>
           </div>
         ) : (
@@ -1294,6 +1259,8 @@ export default function UjianCBTPage() {
                                 max_radius_meter: exam.max_radius_meter,
                                 quizb_id: exam.quizb_id || '',
                               });
+                              fetchKelasList(exam.mata_pelajaran);
+                              fetchMapelList(exam.kelas_madin_id);
                               setShowCreateModal(true);
                             }}
                             className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -1458,9 +1425,11 @@ export default function UjianCBTPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setIsCustomMapelInput(!isCustomMapelInput);
-                        if (!isCustomMapelInput) {
+                        const nextState = !isCustomMapelInput;
+                        setIsCustomMapelInput(nextState);
+                        if (!nextState) {
                           setFormExam((prev: any) => ({ ...prev, mata_pelajaran: '', kitab: '' }));
+                          fetchKelasList();
                         }
                       }}
                       className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
@@ -1474,7 +1443,11 @@ export default function UjianCBTPage() {
                       type="text"
                       required
                       value={formExam.mata_pelajaran}
-                      onChange={(e) => setFormExam({ ...formExam, mata_pelajaran: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormExam({ ...formExam, mata_pelajaran: val });
+                        fetchKelasList(val);
+                      }}
                       placeholder="Ketik mata pelajaran khusus..."
                       className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
@@ -1490,6 +1463,7 @@ export default function UjianCBTPage() {
                           mata_pelajaran: selectedVal,
                           kitab: matchedItem?.kitab || prev.kitab || '',
                         }));
+                        fetchKelasList(selectedVal);
                       }}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold text-gray-800 dark:text-gray-200 text-xs sm:text-sm"
                     >
@@ -1523,18 +1497,25 @@ export default function UjianCBTPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Target Kelas
+                    Target Kelas {formExam.mata_pelajaran ? <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">(Terkait Mapel)</span> : ''}
                   </label>
                   <select
                     value={formExam.kelas_madin_id}
                     onChange={(e) => {
                       const newKelas = e.target.value;
                       setFormExam({ ...formExam, kelas_madin_id: newKelas });
-                      fetchMapelList(newKelas);
+                      if (!formExam.mata_pelajaran) {
+                        fetchMapelList(newKelas);
+                      }
                     }}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs"
+                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-800 dark:text-gray-200"
                   >
-                    <option value="">Semua Kelas</option>
+                    <option value="">
+                      {formExam.mata_pelajaran ? 'Semua Kelas (Mapel Terkait)' : 'Semua Kelas'}
+                    </option>
+                    {formExam.kelas_madin_id && !kelasList.some((k) => String(k.kelas_id) === String(formExam.kelas_madin_id)) && (
+                      <option value={formExam.kelas_madin_id}>Kelas Terpilih (ID: {formExam.kelas_madin_id})</option>
+                    )}
                     {kelasList.map((k) => (
                       <option key={k.kelas_id} value={k.kelas_id}>
                         {k.nama_kelas}
