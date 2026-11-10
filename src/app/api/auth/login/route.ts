@@ -47,15 +47,15 @@ export async function POST(request: Request) {
     // - Jika tanpa NIP : '2026' + guru_id (contoh: 2026130 untuk guru_id 130)
     // - Jika dengan NIP: '2026' + NIP atau NIP langsung
     // =========================================================================
-    let [users] = [] as any;
+    let users: RowDataPacket[] = [];
     let matchingGuru: any = null;
 
     if (cleanUsername.startsWith('2026')) {
       const candidateId = cleanUsername.slice(4);
       if (/^\d+$/.test(candidateId)) {
         const [guruRows] = await pool.execute<RowDataPacket[]>(
-          'SELECT * FROM guru WHERE guru_id = ? OR nip = ? OR CONCAT("2026", nip) = ? LIMIT 1',
-          [candidateId, cleanUsername, cleanUsername]
+          'SELECT * FROM guru WHERE guru_id = ? OR nip = ? OR nip = ? OR CONCAT("2026", nip) = ? LIMIT 1',
+          [candidateId, candidateId, cleanUsername, cleanUsername]
         );
         if (guruRows.length > 0) {
           matchingGuru = guruRows[0];
@@ -64,8 +64,8 @@ export async function POST(request: Request) {
     } else {
       // Cek apakah username adalah NIP guru
       const [guruRows] = await pool.execute<RowDataPacket[]>(
-        'SELECT * FROM guru WHERE nip = ? LIMIT 1',
-        [cleanUsername]
+        'SELECT * FROM guru WHERE nip = ? OR CONCAT("2026", nip) = ? LIMIT 1',
+        [cleanUsername, cleanUsername]
       );
       if (guruRows.length > 0) {
         matchingGuru = guruRows[0];
@@ -77,9 +77,9 @@ export async function POST(request: Request) {
       const [guruUsers] = await pool.execute<RowDataPacket[]>(
         `SELECT u.*, NULL as nama_asrama, NULL as santri_nis, NULL as santri_nama, NULL as santri_id
          FROM users u
-         WHERE (u.id = ? OR u.username = ?) AND u.role != 'wali_murid'
+         WHERE (u.id = ? OR u.username = ? OR (u.role = 'guru' AND u.nip = ?)) AND u.role != 'wali_murid'
          LIMIT 1`,
-        [matchingGuru.user_id || 0, cleanUsername]
+        [matchingGuru.user_id || 0, cleanUsername, matchingGuru.nip || '---']
       );
 
       if (guruUsers.length > 0) {
@@ -100,7 +100,8 @@ export async function POST(request: Request) {
 
         // Auto-provision akun guru jika kredensial default cocok
         const defaultPassword = cleanUsername;
-        if (cleanPassword === defaultPassword) {
+        const altDefaultPassword = (matchingGuru.nip && matchingGuru.nip.trim() !== '') ? `2026${matchingGuru.nip.trim()}` : `2026${matchingGuru.guru_id}`;
+        if (cleanPassword === defaultPassword || cleanPassword === altDefaultPassword) {
           const hashed = await bcrypt.hash(cleanPassword, 10);
           const [ins] = await pool.execute<any>(
             `INSERT INTO users (username, password, role, nama, nip) VALUES (?, ?, 'guru', ?, ?)`,
