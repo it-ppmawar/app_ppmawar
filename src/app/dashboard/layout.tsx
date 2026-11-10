@@ -894,6 +894,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </Link>
                       </li>
                       <li>
+                        <Link href="/dashboard/ujian" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/ujian') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
+                          <Sparkles size={18} /> <span className="text-sm">Ujian CBT Santri</span>
+                        </Link>
+                      </li>
+                      <li>
                         <Link href="/dashboard/jadwal-alumni" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/jadwal-alumni' ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-bold' : 'hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 font-bold'}`}>
                           <CalendarDays size={18} /> <span className="text-sm">Jadwal Alumni</span>
                         </Link>
@@ -1026,11 +1031,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <Award size={18} /> <span className="text-sm">Penilaian &amp; Raport</span>
                               </Link>
                             </li>
-                            <li>
-                              <Link href="/dashboard/ujian" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/ujian') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
-                                <Sparkles size={18} /> <span className="text-sm">Ujian CBT Santri</span>
-                              </Link>
-                            </li>
                           </>
                         )}
                       </>
@@ -1119,14 +1119,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           <li>
                             <Link href="/dashboard/billing" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/dashboard/billing' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 font-bold' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 font-bold'}`}>
                               <CreditCard size={18} /> <span className="text-sm">Info Tagihan</span>
-                            </Link>
-                          </li>
-                        )}
-                        {/* Ujian CBT untuk wali_murid & santri */}
-                        {(isWali || userRoleLower === 'santri') && (
-                          <li>
-                            <Link href="/dashboard/ujian" onClick={() => setShowSidebar(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${pathname.startsWith('/dashboard/ujian') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-bold'}`}>
-                              <Sparkles size={18} /> <span className="text-sm">Ujian CBT Santri</span>
                             </Link>
                           </li>
                         )}
