@@ -106,18 +106,21 @@ export async function GET(request: Request) {
         cbtSql += ' WHERE u.guru_id = ?';
         cbtParams.push(guruId);
       }
-      cbtSql += ' GROUP BY u.id ORDER BY u.id DESC LIMIT 50';
+      cbtSql += ' GROUP BY u.id ORDER BY total_peserta DESC, u.id DESC LIMIT 50';
 
       const [cbtRows] = await pool.execute<RowDataPacket[]>(cbtSql, cbtParams);
-      cbtExams = (cbtRows as any[]).map((row: any) => ({
-        id: `cbt_${row.id}`,
-        cbt_id: row.id,
-        title: `[CBT PPMAWAR] ${row.judul}${row.total_peserta > 0 ? ` (${row.total_peserta} Santri)` : ''}`,
-        category: row.mata_pelajaran || '',
-        total_peserta: Number(row.total_peserta || 0),
-        quizb_id: row.quizb_id || '',
-        is_internal_cbt: true,
-      }));
+      cbtExams = (cbtRows as any[]).map((row: any) => {
+        const pesertaCount = Number(row.total_peserta || 0);
+        return {
+          id: `cbt_${row.id}`,
+          cbt_id: row.id,
+          title: `[CBT PPMAWAR] ${row.judul} (${pesertaCount > 0 ? `✅ ${pesertaCount} Santri Sudah Ujian` : 'Belum Ada Santri / 0 Peserta'})`,
+          category: row.mata_pelajaran || '',
+          total_peserta: pesertaCount,
+          quizb_id: row.quizb_id || '',
+          is_internal_cbt: true,
+        };
+      });
     } catch (cbtErr) {
       console.warn('Gagal ambil data ujian CBT internal:', cbtErr);
     }
@@ -194,13 +197,12 @@ export async function POST(request: Request) {
     } = body;
 
     let incomingScores = scores_raw;
+    let matchedExamIds: number[] = [];
+    const cleanQuizIdStr = quiz_id ? String(quiz_id).trim() : '';
 
     // Jika scores_raw kosong tetapi quiz_id diberikan:
     // 1. Cek dulu apakah quiz_id adalah Ujian CBT Internal PPMAWAR (cbt_X) atau id / quizb_id yang ditautkan di ujian_madin
     if ((!incomingScores || incomingScores.length === 0) && quiz_id) {
-      let matchedExamIds: number[] = [];
-      const cleanQuizIdStr = String(quiz_id).trim();
-
       if (cleanQuizIdStr.startsWith('cbt_')) {
         const parsedId = parseInt(cleanQuizIdStr.replace('cbt_', ''), 10);
         if (!isNaN(parsedId)) matchedExamIds.push(parsedId);
@@ -272,7 +274,11 @@ export async function POST(request: Request) {
     }
 
     if (!Array.isArray(incomingScores) || incomingScores.length === 0) {
-      return NextResponse.json({ error: 'Tidak ada data peserta/nilai yang ditemukan untuk kuis ini.' }, { status: 400 });
+      const isCbtExam = cleanQuizIdStr.startsWith('cbt_') || matchedExamIds.length > 0;
+      const errorMsg = isCbtExam
+        ? `Paket ujian CBT ini (${quiz_title || cleanQuizIdStr}) belum memiliki santri yang menyelesaikan ujian (0 Peserta). Silakan pilih paket ujian yang sudah dikerjakan santri (seperti 'ulangan 1').`
+        : 'Tidak ada data peserta/nilai yang ditemukan untuk kuis ini.';
+      return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
 
     // Ambil santri (bisa dibatasi berdasarkan kelas jika dipilih, atau semua)
@@ -285,11 +291,13 @@ export async function POST(request: Request) {
 
     const [muridRows] = await pool.execute<RowDataPacket[]>(sqlMurid, paramsMurid);
 
+    const idMap = new Map<number, any>();
     const nisMap = new Map<string, any>();
     const exactNameMap = new Map<string, any>();
     const cleanNameMap = new Map<string, any>();
 
     for (const m of muridRows) {
+      idMap.set(Number(m.murid_id), m);
       if (m.nis) nisMap.set(String(m.nis).trim(), m);
       if (m.nama) {
         exactNameMap.set(m.nama.trim().toLowerCase(), m);
@@ -311,7 +319,14 @@ export async function POST(request: Request) {
       let foundMurid: any = null;
       let matchMethod = '';
 
-      if (itemNis && nisMap.has(itemNis)) {
+      // 1. Cek langsung dari ID Santri jika ada (CBT internal PPMAWAR)
+      if (item.murid_id && idMap.has(Number(item.murid_id))) {
+        foundMurid = idMap.get(Number(item.murid_id));
+        matchMethod = 'ID Santri CBT';
+      }
+
+      // 2. Cek berdasarkan NIS
+      if (!foundMurid && itemNis && nisMap.has(itemNis)) {
         foundMurid = nisMap.get(itemNis);
         matchMethod = 'NIS';
       }

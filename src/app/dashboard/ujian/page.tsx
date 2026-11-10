@@ -1020,7 +1020,7 @@ export default function UjianCBTPage() {
               </button>
             )}
 
-            {isPengajarOrAdmin && mainTab === 'kelola' && (
+            {isPengajarOrAdmin && (
               <button
                 onClick={openCreateModal}
                 className="px-4 py-3 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5"

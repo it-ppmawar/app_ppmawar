@@ -124,12 +124,19 @@ export default function QuizBModal({
 
         if (listToPick.length > 0) {
           const isSpecific = selectedMapel && !['semua', 'semua mapel', 'all'].includes(selectedMapel.toLowerCase());
-          const matched = isSpecific
-            ? listToPick.find((q: any) => matchQuizWithMapels(q, [selectedMapel]))
-            : null;
-          setSelectedQuizId(String((matched || listToPick[0]).id));
+          const matchedList = isSpecific
+            ? listToPick.filter((q: any) => matchQuizWithMapels(q, [selectedMapel]))
+            : listToPick;
+
+          const candidates = matchedList.length > 0 ? matchedList : listToPick;
+          // Prioritaskan kuis / paket ujian yang sudah memiliki santri yang mengerjakan (total_peserta > 0)
+          const withScores = candidates.filter((q: any) => (q.total_peserta || 0) > 0);
+          const chosen = withScores.length > 0 ? withScores[0] : candidates[0];
+          setSelectedQuizId(String(chosen.id));
         } else if (data.quizzes && data.quizzes.length > 0) {
-          setSelectedQuizId(String(data.quizzes[0].id));
+          const withScores = data.quizzes.filter((q: any) => (q.total_peserta || 0) > 0);
+          const chosen = withScores.length > 0 ? withScores[0] : data.quizzes[0];
+          setSelectedQuizId(String(chosen.id));
         }
       }
     } catch (err: any) {
