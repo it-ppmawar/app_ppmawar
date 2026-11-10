@@ -84,7 +84,8 @@ export default function QuizBModal({
         setRecentLogs(data.recent_logs || []);
         if (data.quizzes && data.quizzes.length > 0) {
           // Auto-pilih kuis pertama yang cocok dengan mapel aktif, atau kuis pertama
-          const mapelLower = (selectedMapel || '').toLowerCase();
+          const isSpecific = selectedMapel && !['semua', 'semua mapel', 'all'].includes(selectedMapel.toLowerCase());
+          const mapelLower = isSpecific ? selectedMapel.toLowerCase() : '';
           const matched = mapelLower
             ? data.quizzes.find((q: any) =>
                 (q.title || '').toLowerCase().includes(mapelLower) ||
@@ -413,24 +414,27 @@ export default function QuizBModal({
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
                       Pilih Kuis dari QuizB
                     </label>
-                    {selectedMapel && (
+                    {selectedMapel && !['semua', 'semua mapel', 'all'].includes(selectedMapel.toLowerCase()) ? (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
                         🎯 Filter: {selectedMapel}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                        📋 Semua Mapel
                       </span>
                     )}
                   </div>
                   {quizzes.length > 0 ? (() => {
-                    // Filter kuis berdasarkan mapel aktif + search query
-                    const mapelLower = (selectedMapel || '').toLowerCase();
+                    const isSpecific = selectedMapel && !['semua', 'semua mapel', 'all'].includes(selectedMapel.toLowerCase());
+                    const mapelLower = isSpecific ? selectedMapel.toLowerCase() : '';
                     const searchLower = quizSearchQuery.toLowerCase();
-                    const mapelFilteredQuizzes = mapelLower
+                    const mapelFilteredQuizzes = isSpecific
                       ? quizzes.filter((q) =>
                           (q.title || '').toLowerCase().includes(mapelLower) ||
                           (q.category || '').toLowerCase().includes(mapelLower)
                         )
                       : quizzes;
-                    // Tampilkan: yang terkait mapel dulu, sisanya di bawah (jika filter kosong semua tampil)
-                    const relatedQuizzes = mapelLower
+                    const relatedQuizzes = isSpecific
                       ? mapelFilteredQuizzes.filter((q) =>
                           !searchLower || (q.title || '').toLowerCase().includes(searchLower)
                         )
@@ -439,7 +443,7 @@ export default function QuizBModal({
                           (q.title || '').toLowerCase().includes(searchLower) ||
                           (q.category || '').toLowerCase().includes(searchLower)
                         );
-                    const otherQuizzes = mapelLower
+                    const otherQuizzes = isSpecific
                       ? quizzes
                           .filter((q) => !mapelFilteredQuizzes.includes(q))
                           .filter((q) =>
@@ -452,7 +456,7 @@ export default function QuizBModal({
                         {/* Search bar untuk filter tambahan */}
                         <input
                           type="text"
-                          placeholder={`Cari kuis${selectedMapel ? ` ${selectedMapel}` : ''}...`}
+                          placeholder={isSpecific ? `Cari kuis ${selectedMapel}...` : 'Cari judul kuis di QuizB...'}
                           value={quizSearchQuery}
                           onChange={(e) => setQuizSearchQuery(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs placeholder-gray-400"
@@ -463,7 +467,7 @@ export default function QuizBModal({
                           className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
                         >
                           {relatedQuizzes.length > 0 && (
-                            <optgroup label={selectedMapel ? `✅ Terkait ${selectedMapel}` : '📋 Semua Kuis'}>
+                            <optgroup label={isSpecific ? `✅ Terkait ${selectedMapel}` : '📋 Daftar Semua Kuis'}>
                               {relatedQuizzes.map((q) => (
                                 <option key={q.id} value={q.id}>
                                   {q.title} {q.category ? `(${q.category})` : ''} — ID #{q.id}
@@ -484,9 +488,9 @@ export default function QuizBModal({
                             <option disabled value="">Tidak ada kuis yang cocok dengan pencarian</option>
                           )}
                         </select>
-                        {selectedMapel && mapelFilteredQuizzes.length === 0 && (
+                        {isSpecific && mapelFilteredQuizzes.length === 0 && (
                           <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
-                            ⚠️ Belum ada kuis QuizB yang cocok untuk mapel {selectedMapel}. Pilih dari daftar kuis lain di bawah.
+                            ⚠️ Belum ada kuis QuizB yang cocok untuk mapel {selectedMapel}. Pilih dari daftar kuis lain di atas.
                           </p>
                         )}
                       </div>
