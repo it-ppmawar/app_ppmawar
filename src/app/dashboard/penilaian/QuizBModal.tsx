@@ -57,6 +57,9 @@ export default function QuizBModal({
   // State Riwayat
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
 
+  // Filter kuis berdasarkan mapel yang sedang aktif
+  const [quizSearchQuery, setQuizSearchQuery] = useState('');
+
   // Notifikasi Berhasil
   const [successToast, setSuccessToast] = useState('');
 
@@ -80,7 +83,15 @@ export default function QuizBModal({
         setQuizzes(data.quizzes || []);
         setRecentLogs(data.recent_logs || []);
         if (data.quizzes && data.quizzes.length > 0) {
-          setSelectedQuizId(String(data.quizzes[0].id));
+          // Auto-pilih kuis pertama yang cocok dengan mapel aktif, atau kuis pertama
+          const mapelLower = (selectedMapel || '').toLowerCase();
+          const matched = mapelLower
+            ? data.quizzes.find((q: any) =>
+                (q.title || '').toLowerCase().includes(mapelLower) ||
+                (q.category || '').toLowerCase().includes(mapelLower)
+              )
+            : null;
+          setSelectedQuizId(String((matched || data.quizzes[0]).id));
         }
       }
     } catch (err: any) {
@@ -251,8 +262,8 @@ export default function QuizBModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
-      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pb-20 sm:pb-5 bg-black/60 backdrop-blur-xs overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh] my-auto">
         
         {/* Header Modal */}
         <div className="p-4 sm:p-6 bg-gradient-to-r from-emerald-700 via-teal-800 to-emerald-950 text-white flex items-center justify-between shrink-0 relative overflow-hidden">
@@ -398,22 +409,89 @@ export default function QuizBModal({
               {/* Form Pemilihan Kuis */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    Pilih Kuis dari QuizB
-                  </label>
-                  {quizzes.length > 0 ? (
-                    <select
-                      value={selectedQuizId}
-                      onChange={(e) => setSelectedQuizId(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
-                    >
-                      {quizzes.map((q) => (
-                        <option key={q.id} value={q.id}>
-                          {q.title} {q.category ? `(${q.category})` : ''} — ID #{q.id}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                      Pilih Kuis dari QuizB
+                    </label>
+                    {selectedMapel && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                        🎯 Filter: {selectedMapel}
+                      </span>
+                    )}
+                  </div>
+                  {quizzes.length > 0 ? (() => {
+                    // Filter kuis berdasarkan mapel aktif + search query
+                    const mapelLower = (selectedMapel || '').toLowerCase();
+                    const searchLower = quizSearchQuery.toLowerCase();
+                    const mapelFilteredQuizzes = mapelLower
+                      ? quizzes.filter((q) =>
+                          (q.title || '').toLowerCase().includes(mapelLower) ||
+                          (q.category || '').toLowerCase().includes(mapelLower)
+                        )
+                      : quizzes;
+                    // Tampilkan: yang terkait mapel dulu, sisanya di bawah (jika filter kosong semua tampil)
+                    const relatedQuizzes = mapelLower
+                      ? mapelFilteredQuizzes.filter((q) =>
+                          !searchLower || (q.title || '').toLowerCase().includes(searchLower)
+                        )
+                      : quizzes.filter((q) =>
+                          !searchLower ||
+                          (q.title || '').toLowerCase().includes(searchLower) ||
+                          (q.category || '').toLowerCase().includes(searchLower)
+                        );
+                    const otherQuizzes = mapelLower
+                      ? quizzes
+                          .filter((q) => !mapelFilteredQuizzes.includes(q))
+                          .filter((q) =>
+                            !searchLower || (q.title || '').toLowerCase().includes(searchLower)
+                          )
+                      : [];
+
+                    return (
+                      <div className="space-y-1.5">
+                        {/* Search bar untuk filter tambahan */}
+                        <input
+                          type="text"
+                          placeholder={`Cari kuis${selectedMapel ? ` ${selectedMapel}` : ''}...`}
+                          value={quizSearchQuery}
+                          onChange={(e) => setQuizSearchQuery(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs placeholder-gray-400"
+                        />
+                        <select
+                          value={selectedQuizId}
+                          onChange={(e) => setSelectedQuizId(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                        >
+                          {relatedQuizzes.length > 0 && (
+                            <optgroup label={selectedMapel ? `✅ Terkait ${selectedMapel}` : '📋 Semua Kuis'}>
+                              {relatedQuizzes.map((q) => (
+                                <option key={q.id} value={q.id}>
+                                  {q.title} {q.category ? `(${q.category})` : ''} — ID #{q.id}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          {otherQuizzes.length > 0 && (
+                            <optgroup label="📂 Kuis Mapel Lain">
+                              {otherQuizzes.map((q) => (
+                                <option key={q.id} value={q.id}>
+                                  {q.title} {q.category ? `(${q.category})` : ''} — ID #{q.id}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          {relatedQuizzes.length === 0 && otherQuizzes.length === 0 && (
+                            <option disabled value="">Tidak ada kuis yang cocok dengan pencarian</option>
+                          )}
+                        </select>
+                        {selectedMapel && mapelFilteredQuizzes.length === 0 && (
+                          <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
+                            ⚠️ Belum ada kuis QuizB yang cocok untuk mapel {selectedMapel}. Pilih dari daftar kuis lain di bawah.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })() : (
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
