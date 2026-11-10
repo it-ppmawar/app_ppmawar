@@ -3,19 +3,10 @@
  * =========================================================================
  * API SSO QUIZB — LOGIN OTOMATIS SANTRI DARI PPMAWAR
  * =========================================================================
- * Letakkan file ini di direktori public_html domain quizb.my.id
  * File ini memvalidasi token HMAC dari PPMAWAR, mengautentikasi sesi santri,
  * dan mengarahkannya langsung ke soal ujian tanpa perlu login manual.
  * =========================================================================
  */
-
-if (file_exists(__DIR__ . '/up.quizb.my.id/config/db.php')) {
-    require_once __DIR__ . '/up.quizb.my.id/config/db.php';
-    require_once __DIR__ . '/up.quizb.my.id/includes/auth.php';
-} else {
-    require_once __DIR__ . '/config/db.php';
-    require_once __DIR__ . '/includes/auth.php';
-}
 
 $SECRET_KEY = 'ppmawar-quizb-2026-secret';
 
@@ -43,8 +34,39 @@ if (!hash_equals($expectedSig, $sig)) {
     die("Akses Ditolak: Tanda tangan digital SSO tidak valid.");
 }
 
+// Koneksi Database Mandiri / Auto-Detect
+$dbHost = 'localhost';
+$dbName = 'quic1934_upgrade';
+$dbUser = 'quic1934_zenhkm';
+$dbPass = '03Maret1990';
+
+$configPaths = [
+    __DIR__ . '/config/db.php',
+    __DIR__ . '/../config/db.php',
+    __DIR__ . '/up.quizb.my.id/config/db.php',
+];
+
+foreach ($configPaths as $cfgFile) {
+    if (file_exists($cfgFile)) {
+        $content = file_get_contents($cfgFile);
+        if (preg_match("/['\"]?DB_HOST['\"]?\s*,\s*['\"]([^'\"]+)['\"]/i", $content, $m)) $dbHost = $m[1];
+        if (preg_match("/['\"]?DB_NAME['\"]?\s*,\s*['\"]([^'\"]+)['\"]/i", $content, $m)) $dbName = $m[1];
+        if (preg_match("/['\"]?DB_USER['\"]?\s*,\s*['\"]([^'\"]+)['\"]/i", $content, $m)) $dbUser = $m[1];
+        if (preg_match("/['\"]?DB_PASS(?:WORD)?['\"]?\s*,\s*['\"]([^'\"]+)['\"]/i", $content, $m)) $dbPass = $m[1];
+        break;
+    }
+}
+
+try {
+    $db = new PDO("mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4", $dbUser, $dbPass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+} catch (Exception $e) {
+    die("Gagal terhubung ke database QuizB: " . $e->getMessage());
+}
+
 // Cari atau buat akun santri di database QuizB
-$db = DB::getInstance();
 $emailSantri = (!empty($nis) ? $nis : preg_replace('/[^a-zA-Z0-9]/', '', strtolower($nama))) . '@santri.ppmawar.or.id';
 
 $stmt = $db->prepare("SELECT id, name, role FROM users WHERE email = ? LIMIT 1");
@@ -61,8 +83,12 @@ if (!$user) {
     $user = ['id' => $userId, 'name' => $nama, 'role' => 'user'];
 }
 
-// Aktifkan sesi QuizB
-startSecureSession();
+// Inisialisasi Sesi QuizB (QUIZB_SESSION)
+if (session_status() === PHP_SESSION_NONE) {
+    session_name('QUIZB_SESSION');
+    session_start();
+}
+
 $_SESSION['user_id'] = (int)$user['id'];
 $_SESSION['user_name'] = $user['name'];
 $_SESSION['user_role'] = $user['role'];
