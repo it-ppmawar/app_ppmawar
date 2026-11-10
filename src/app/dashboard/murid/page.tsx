@@ -1254,7 +1254,7 @@ export default function DataMuridPage() {
 
       {/* Modal View Detail */}
       {isDetailModalOpen && viewingMurid && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[80vh] mb-16 overflow-hidden">
             <div className="bg-blue-600 dark:bg-blue-900 p-5 text-white flex justify-between items-start shrink-0">
               <div className="flex gap-4 items-center">
@@ -1357,7 +1357,7 @@ export default function DataMuridPage() {
 
       {/* Modal Edit Murid */}
       {isEditModalOpen && editingMurid && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[85vh] mb-10 overflow-hidden">
             <div className="bg-indigo-600 dark:bg-indigo-900 p-5 text-white shrink-0">
               <h2 className="text-xl font-bold flex items-center gap-2">
@@ -1930,7 +1930,7 @@ export default function DataMuridPage() {
 
       {/* ─── Modal Tambah Santri Baru ──────────────────────────────────────── */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pb-24 sm:pb-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)} />
           <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
@@ -1950,7 +1950,7 @@ export default function DataMuridPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleAddSantri} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <form onSubmit={handleAddSantri} className="p-6 space-y-4 max-h-[65vh] sm:max-h-[70vh] overflow-y-auto">
               {/* Nama */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">
