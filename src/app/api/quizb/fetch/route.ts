@@ -87,6 +87,41 @@ export async function GET(request: Request) {
     let bridgeConnected = false;
     let bridgeMessage = '';
 
+    // Ambil juga daftar paket Ujian CBT internal PPMAWAR yang sudah dibuat
+    let cbtExams: any[] = [];
+    try {
+      let cbtSql = `
+        SELECT 
+          u.id, 
+          u.judul, 
+          u.mata_pelajaran, 
+          u.quizb_id, 
+          u.jenis_ujian,
+          COUNT(h.id) as total_peserta
+        FROM ujian_madin u
+        LEFT JOIN ujian_hasil_santri h ON u.id = h.ujian_id
+      `;
+      const cbtParams: any[] = [];
+      if (roleLower === 'guru' && guruId) {
+        cbtSql += ' WHERE u.guru_id = ?';
+        cbtParams.push(guruId);
+      }
+      cbtSql += ' GROUP BY u.id ORDER BY u.id DESC LIMIT 50';
+
+      const [cbtRows] = await pool.execute<RowDataPacket[]>(cbtSql, cbtParams);
+      cbtExams = (cbtRows as any[]).map((row: any) => ({
+        id: `cbt_${row.id}`,
+        cbt_id: row.id,
+        title: `[CBT PPMAWAR] ${row.judul}${row.total_peserta > 0 ? ` (${row.total_peserta} Santri)` : ''}`,
+        category: row.mata_pelajaran || '',
+        total_peserta: Number(row.total_peserta || 0),
+        quizb_id: row.quizb_id || '',
+        is_internal_cbt: true,
+      }));
+    } catch (cbtErr) {
+      console.warn('Gagal ambil data ujian CBT internal:', cbtErr);
+    }
+
     try {
       const targetUrl = new URL(bridgeUrl);
       targetUrl.searchParams.set('action', 'list_quizzes');
@@ -104,16 +139,20 @@ export async function GET(request: Request) {
       if (resp.ok) {
         const data = await resp.json();
         if (data && (Array.isArray(data) || Array.isArray(data.quizzes))) {
-          quizzes = Array.isArray(data) ? data : data.quizzes;
+          const remoteQuizzes = Array.isArray(data) ? data : data.quizzes;
+          quizzes = [...cbtExams, ...remoteQuizzes];
           bridgeConnected = true;
           bridgeMessage = 'Terhubung dengan QuizB di Rumahweb.';
         } else if (data && data.error) {
+          quizzes = cbtExams;
           bridgeMessage = `QuizB Bridge merespon error: ${data.error}`;
         }
       } else {
+        quizzes = cbtExams;
         bridgeMessage = `QuizB Bridge mengembalikan HTTP status ${resp.status}`;
       }
     } catch (fetchErr: any) {
+      quizzes = cbtExams;
       bridgeMessage = fetchErr.name === 'AbortError' 
         ? 'Koneksi ke QuizB timeout (lebih dari 6 detik).' 
         : `Belum dapat terhubung ke ${bridgeUrl} (${fetchErr.message}). File bridge belum di-upload ke cPanel Rumahweb atau URL belum sesuai.`;
@@ -156,34 +195,80 @@ export async function POST(request: Request) {
 
     let incomingScores = scores_raw;
 
-    // Jika scores_raw kosong tetapi quiz_id diberikan, coba fetch dari Bridge di Rumahweb
+    // Jika scores_raw kosong tetapi quiz_id diberikan:
+    // 1. Cek dulu apakah quiz_id adalah Ujian CBT Internal PPMAWAR (cbt_X) atau id / quizb_id yang ditautkan di ujian_madin
     if ((!incomingScores || incomingScores.length === 0) && quiz_id) {
-      let bridgeUrl = 'https://quizb.my.id/quizb_bridge.php';
-      let secretKey = 'ppmawar-quizb-2026-secret';
+      let matchedExamIds: number[] = [];
+      const cleanQuizIdStr = String(quiz_id).trim();
 
-      const [rows] = await pool.execute<RowDataPacket[]>(
-        "SELECT setting_key, setting_value FROM quizb_settings WHERE setting_key IN ('bridge_url', 'secret_key')"
-      );
-      rows.forEach((r: any) => {
-        if (r.setting_key === 'bridge_url' && r.setting_value) bridgeUrl = r.setting_value;
-        if (r.setting_key === 'secret_key' && r.setting_value) secretKey = r.setting_value;
-      });
-
-      const targetUrl = new URL(bridgeUrl);
-      targetUrl.searchParams.set('action', 'get_results');
-      targetUrl.searchParams.set('quiz_id', String(quiz_id));
-      targetUrl.searchParams.set('secret', secretKey);
-
-      const resp = await fetch(targetUrl.toString(), {
-        headers: { 'Accept': 'application/json' },
-      });
-
-      if (!resp.ok) {
-        return NextResponse.json({ error: `Gagal mengambil data dari QuizB (HTTP ${resp.status})` }, { status: 400 });
+      if (cleanQuizIdStr.startsWith('cbt_')) {
+        const parsedId = parseInt(cleanQuizIdStr.replace('cbt_', ''), 10);
+        if (!isNaN(parsedId)) matchedExamIds.push(parsedId);
+      } else {
+        try {
+          const [matchedExams] = await pool.execute<RowDataPacket[]>(
+            'SELECT id FROM ujian_madin WHERE id = ? OR quizb_id = ?',
+            [cleanQuizIdStr, cleanQuizIdStr]
+          );
+          (matchedExams as any[]).forEach((e: any) => {
+            if (e.id) matchedExamIds.push(e.id);
+          });
+        } catch (e) {
+          // ignore
+        }
       }
 
-      const data = await resp.json();
-      incomingScores = Array.isArray(data) ? data : (data.results || data.scores || []);
+      // Jika ada ujian CBT internal yang cocok, ambil hasilnya langsung dari ujian_hasil_santri
+      if (matchedExamIds.length > 0) {
+        try {
+          const placeholders = matchedExamIds.map(() => '?').join(',');
+          const [cbtScores] = await pool.execute<RowDataPacket[]>(
+            `SELECT 
+               h.murid_id, 
+               h.skor_akhir as skor, 
+               m.nama, 
+               m.nis
+             FROM ujian_hasil_santri h
+             JOIN murid m ON h.murid_id = m.murid_id
+             WHERE h.ujian_id IN (${placeholders})`,
+            matchedExamIds
+          );
+
+          if ((cbtScores as any[]).length > 0) {
+            incomingScores = cbtScores;
+          }
+        } catch (dbErr) {
+          console.warn('Gagal ambil skor dari ujian_hasil_santri:', dbErr);
+        }
+      }
+
+      // 2. Jika di internal CBT tidak ada, baru fetch dari Bridge di Rumahweb
+      if (!incomingScores || incomingScores.length === 0) {
+        let bridgeUrl = 'https://quizb.my.id/quizb_bridge.php';
+        let secretKey = 'ppmawar-quizb-2026-secret';
+
+        const [rows] = await pool.execute<RowDataPacket[]>(
+          "SELECT setting_key, setting_value FROM quizb_settings WHERE setting_key IN ('bridge_url', 'secret_key')"
+        );
+        rows.forEach((r: any) => {
+          if (r.setting_key === 'bridge_url' && r.setting_value) bridgeUrl = r.setting_value;
+          if (r.setting_key === 'secret_key' && r.setting_value) secretKey = r.setting_value;
+        });
+
+        const targetUrl = new URL(bridgeUrl);
+        targetUrl.searchParams.set('action', 'get_results');
+        targetUrl.searchParams.set('quiz_id', String(quiz_id));
+        targetUrl.searchParams.set('secret', secretKey);
+
+        const resp = await fetch(targetUrl.toString(), {
+          headers: { 'Accept': 'application/json' },
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          incomingScores = Array.isArray(data) ? data : (data.results || data.scores || []);
+        }
+      }
     }
 
     if (!Array.isArray(incomingScores) || incomingScores.length === 0) {
