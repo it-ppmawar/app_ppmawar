@@ -72,7 +72,6 @@ export default function UjianCBTPage() {
   // Filter
   const [searchQ, setSearchQ] = useState('');
   const [filterJenis, setFilterJenis] = useState('ALL');
-  const [activeTab, setActiveTab] = useState<'daftar' | 'kelola'>('daftar');
 
   // Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -684,7 +683,7 @@ export default function UjianCBTPage() {
     const answeredCount = Object.keys(userAnswers).length;
 
     return (
-      <div className="fixed inset-0 z-50 bg-gray-100 dark:bg-gray-950 flex flex-col overflow-hidden animate-[fadeIn_0.2s_ease-out]">
+      <div className="fixed inset-0 z-[90] bg-gray-100 dark:bg-gray-950 flex flex-col overflow-hidden animate-[fadeIn_0.2s_ease-out]">
         {/* Top Header Exam Bar */}
         <header className="bg-emerald-800 text-white p-3 sm:p-4 flex items-center justify-between shadow-md shrink-0">
           <div className="flex items-center gap-3">
@@ -968,35 +967,15 @@ export default function UjianCBTPage() {
             )}
           </div>
 
-          {/* Action Tabs untuk Guru / Admin */}
+          {/* Action Button untuk Guru / Admin */}
           {isPengajarOrAdmin && (
-            <div className="flex flex-wrap items-center justify-center md:justify-end gap-2.5 w-full md:w-auto pt-3 md:pt-0">
-              <button
-                onClick={() => setActiveTab('daftar')}
-                className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all text-center ${
-                  activeTab === 'daftar'
-                    ? 'bg-emerald-500 text-white shadow-md'
-                    : 'bg-white/10 text-emerald-100 hover:bg-white/20'
-                }`}
-              >
-                Daftar Ujian
-              </button>
-              <button
-                onClick={() => setActiveTab('kelola')}
-                className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all text-center ${
-                  activeTab === 'kelola'
-                    ? 'bg-emerald-500 text-white shadow-md'
-                    : 'bg-white/10 text-emerald-100 hover:bg-white/20'
-                }`}
-              >
-                ⚙️ Kelola Ujian &amp; Bank Soal
-              </button>
+            <div className="flex items-center justify-center md:justify-end w-full md:w-auto pt-3 md:pt-0">
               <button
                 onClick={openCreateModal}
-                className="px-4 py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 active:scale-95 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto px-6 py-3 bg-white text-emerald-900 hover:bg-emerald-50 active:scale-95 rounded-2xl font-black text-xs sm:text-sm shadow-xl transition-all flex items-center justify-center gap-2"
               >
-                <Plus size={16} />
-                <span>Buat Ujian Baru</span>
+                <Plus size={18} className="text-emerald-700" />
+                <span>Buat Ujian / Kuis Baru</span>
               </button>
             </div>
           )}
@@ -1037,17 +1016,6 @@ export default function UjianCBTPage() {
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
-
-          {isPengajarOrAdmin && (
-            <button
-              onClick={openCreateModal}
-              className="sm:hidden px-3 py-2 shrink-0 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1"
-              title="Buat Ujian Baru"
-            >
-              <Plus size={14} />
-              <span>Buat</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -1290,8 +1258,8 @@ export default function UjianCBTPage() {
       {/* MODAL 1: PRE-CHECK UJIAN (TOKEN KELAS & GPS GEOFENCE)                      */}
       {/* ========================================================================= */}
       {examStep === 'pre_check' && activeExam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-md overflow-hidden p-6 space-y-5">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 pb-20 sm:pb-4 bg-black/70 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-md overflow-hidden p-6 space-y-5 max-h-[85vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center font-bold">
@@ -1387,9 +1355,9 @@ export default function UjianCBTPage() {
       {/* MODAL 2: BUAT / EDIT UJIAN                                               */}
       {/* ========================================================================= */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-xl overflow-hidden p-6 space-y-4 my-8">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pb-20 sm:pb-5 bg-black/70 backdrop-blur-xs overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-xl max-h-[85vh] flex flex-col overflow-hidden my-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 p-5 sm:p-6 pb-4 shrink-0">
               <h3 className="font-extrabold text-base text-gray-900 dark:text-gray-100">
                 {editingExam ? 'Edit Data Ujian' : 'Buat Ujian / Kuis CBT Baru'}
               </h3>
@@ -1401,20 +1369,21 @@ export default function UjianCBTPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveExam} className="space-y-4 text-xs sm:text-sm">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Judul Ujian <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formExam.judul}
-                  onChange={(e) => setFormExam({ ...formExam, judul: e.target.value })}
-                  placeholder="Contoh: UTS Fiqih Ibadah Semester Ganjil"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
+            <form onSubmit={handleSaveExam} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-5 sm:p-6 space-y-4 text-xs sm:text-sm overflow-y-auto flex-1">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Judul Ujian <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formExam.judul}
+                    onChange={(e) => setFormExam({ ...formExam, judul: e.target.value })}
+                    placeholder="Contoh: UTS Fiqih Ibadah Semester Ganjil"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -1582,8 +1551,9 @@ export default function UjianCBTPage() {
                   />
                 </div>
               </div>
+              </div>{/* end scrollable body */}
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
+              <div className="flex justify-end gap-2 p-4 sm:p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
@@ -1593,7 +1563,7 @@ export default function UjianCBTPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md"
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold shadow-md transition-all"
                 >
                   {editingExam ? 'Simpan Perubahan' : 'Buat Ujian'}
                 </button>
@@ -1607,8 +1577,8 @@ export default function UjianCBTPage() {
       {/* MODAL 3: BANK SOAL & KELOLA SOAL PILIHAN GANDA                             */}
       {/* ========================================================================= */}
       {showSoalModal && selectedExamForSoal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden my-6">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pb-20 sm:pb-5 bg-black/70 backdrop-blur-xs overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden my-auto">
             <div className="p-4 sm:p-5 bg-emerald-800 text-white flex items-center justify-between shrink-0">
               <div>
                 <h3 className="font-extrabold text-base text-white">
@@ -1730,7 +1700,7 @@ export default function UjianCBTPage() {
                     />
                   </div>
 
-                  <div className="sm:col-span-2 flex items-end justify-end gap-2">
+                  <div className="col-span-2 sm:col-span-2 flex items-center justify-center sm:justify-end gap-2 pt-2 sm:pt-0">
                     {editingQuestion && (
                       <button
                         type="button"
@@ -1748,16 +1718,17 @@ export default function UjianCBTPage() {
                             pembahasan: '',
                           });
                         }}
-                        className="px-3 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold"
+                        className="px-4 py-2.5 rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold transition-all text-center"
                       >
                         Batal Edit
                       </button>
                     )}
                     <button
                       type="submit"
-                      className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs"
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md transition-all text-center flex items-center justify-center gap-1.5"
                     >
-                      {editingQuestion ? 'Simpan Soal' : 'Tambahkan Soal'}
+                      <Plus size={14} />
+                      <span>{editingQuestion ? 'Simpan Soal' : 'Tambahkan Soal'}</span>
                     </button>
                   </div>
                 </div>
@@ -1839,8 +1810,8 @@ export default function UjianCBTPage() {
       {/* MODAL 4: KELOLA TOKEN & SESI PENGAWAS (ANTI JOKI)                          */}
       {/* ========================================================================= */}
       {showSesiModal && selectedExamForSesi && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-lg p-6 space-y-5 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pb-20 sm:pb-5 bg-black/70 backdrop-blur-xs overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-lg p-5 sm:p-6 space-y-4 max-h-[85vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 flex items-center justify-center font-bold">
@@ -1911,34 +1882,54 @@ export default function UjianCBTPage() {
 
                 {/* Panel Kontrol Geofence & Jarak Maksimal */}
                 <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 font-bold text-xs text-gray-800 dark:text-gray-200">
-                      <MapPin size={14} className="text-emerald-500" />
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-1 border-b border-gray-200/50 dark:border-gray-700/50">
+                    <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-gray-800 dark:text-gray-200">
+                      <MapPin size={15} className="text-emerald-500 shrink-0" />
                       <span>Titik Acuan &amp; Jarak Maksimal (Anti-Joki)</span>
                     </div>
-                    {sesiData.lat_target ? (
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
-                        📍 Lokasi Pengawas
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
-                        🏢 Pusat Pesantren
-                      </span>
-                    )}
+                    <div>
+                      {sesiData.lat_target ? (
+                        <button
+                          type="button"
+                          onClick={handleResetToPesantren}
+                          title="Klik untuk ubah / reset ke Pusat Pesantren"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/70 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-300 dark:border-emerald-700 transition-colors"
+                        >
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>📍 Lokasi Pengawas (Terkunci)</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleLockPengawasLocation}
+                          title="Klik untuk kunci lokasi GPS pengawas saat ini"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 hover:bg-blue-200 dark:bg-blue-950/70 dark:hover:bg-blue-900 text-blue-800 dark:text-blue-300 text-[11px] font-bold border border-blue-300 dark:border-blue-700 transition-colors"
+                        >
+                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                          <span>🏢 Pusat Pesantren (Default)</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Keterangan Koordinat */}
                   <div className="text-[11px] text-gray-500 bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/60">
                     {sesiData.lat_target ? (
                       <div>
-                        <strong className="text-emerald-600 dark:text-emerald-400 block">Terkunci pada Ruang Ujian Pengawas:</strong>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <strong className="text-emerald-600 dark:text-emerald-400">Terkunci pada Ruang Ujian Pengawas:</strong>
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md">GPS Pengawas Aktif</span>
+                        </div>
                         <span className="font-mono text-[10px] text-gray-400">
                           Lat: {Number(sesiData.lat_target).toFixed(6)}, Lng: {Number(sesiData.lng_target).toFixed(6)}
                         </span>
                       </div>
                     ) : (
                       <div>
-                        <strong className="text-blue-600 dark:text-blue-400 block">Mengikuti Halaman Pengaturan (Pusat Pesantren):</strong>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <strong className="text-blue-600 dark:text-blue-400">Mengikuti Halaman Pengaturan (Pusat Pesantren):</strong>
+                          <span className="text-[10px] text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md">Pesantren Default</span>
+                        </div>
                         <span className="font-mono text-[10px] text-gray-400">
                           Lat: {defaultPesantrenCoords?.lat || -7.035992}, Lng: {defaultPesantrenCoords?.lng || 112.350798}
                         </span>
@@ -1952,10 +1943,14 @@ export default function UjianCBTPage() {
                       type="button"
                       disabled={geofenceLoading}
                       onClick={handleLockPengawasLocation}
-                      className="px-2.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1 transition-all disabled:opacity-50"
+                      className={`px-3 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 ${
+                        sesiData.lat_target
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md ring-2 ring-emerald-400/30'
+                      }`}
                       title="Kunci titik acuan agar santri harus berada dekat perangkat Anda di kelas"
                     >
-                      {geofenceLoading ? <RefreshCw size={12} className="animate-spin" /> : <MapPin size={12} />}
+                      {geofenceLoading ? <RefreshCw size={13} className="animate-spin" /> : <MapPin size={13} />}
                       <span>{geofenceLoading ? 'Mendeteksi...' : 'Kunci GPS Pengawas'}</span>
                     </button>
 
@@ -1963,10 +1958,14 @@ export default function UjianCBTPage() {
                       type="button"
                       disabled={geofenceLoading || !sesiData.lat_target}
                       onClick={handleResetToPesantren}
-                      className="px-2.5 py-2 rounded-xl bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 text-gray-700 dark:text-gray-200 font-bold text-xs flex items-center justify-center gap-1 transition-all disabled:opacity-40"
+                      className={`px-3 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-40 ${
+                        !sesiData.lat_target
+                          ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700'
+                          : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 text-gray-700 dark:text-gray-200 shadow-xs'
+                      }`}
                       title="Kembalikan titik acuan ke pusat pesantren dari halaman pengaturan"
                     >
-                      <RefreshCw size={12} />
+                      <RefreshCw size={13} />
                       <span>Reset ke Pesantren</span>
                     </button>
                   </div>
@@ -2017,8 +2016,8 @@ export default function UjianCBTPage() {
       {/* MODAL 5: QUIZB EMBED / SSO MIRROR MODAL                                   */}
       {/* ========================================================================= */}
       {ssoUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-700 w-full max-w-5xl h-[92vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pb-20 sm:pb-5 bg-black/80 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-700 w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden my-auto">
             <div className="p-3 px-5 bg-emerald-800 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Sparkles size={18} className="text-emerald-300" />
@@ -2045,8 +2044,8 @@ export default function UjianCBTPage() {
       {/* MODAL 6: LIHAT HASIL PESERTA UJIAN (Guru/Admin)                        */}
       {/* ====================================================================== */}
       {showHasilModal && selectedExamForHasil && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3" onClick={() => setShowHasilModal(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 pb-20 sm:pb-5" onClick={() => setShowHasilModal(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col my-auto" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-800">
               <div>
