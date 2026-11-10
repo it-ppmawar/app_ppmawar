@@ -51,7 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   let navItems = [
     { name: 'Jadwal', href: '/dashboard/jadwal', icon: CalendarDays },
     ...(!isWali && !isTamu && userRoleLower !== 'santri' ? [{ name: 'Absen', href: '/dashboard/absen', icon: ClipboardCheck }] : []),
-    ...(isWali || userRoleLower === 'santri' ? [{ name: 'Ujian CBT', href: '/dashboard/ujian', icon: Sparkles }] : []),
+    ...(isWali || userRoleLower === 'santri' ? [{ name: 'Ujian', href: '/dashboard/ujian', icon: Sparkles }] : []),
     ...(isWali ? [{ name: 'Tagihan', href: '/dashboard/billing', icon: CreditCard }] : []),
     ...(!isTamu && !isWali ? [{ name: 'Notifikasi', href: '/dashboard/notifikasi', icon: Bell }] : []),
   ];
@@ -1371,12 +1371,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {navItems.map((item) => {
             const Icon = item.icon;
             const isAbsen = item.name === 'Absen';
-            const isUjianCBT = item.name === 'Ujian CBT';
-            const isOctagonal = isAbsen || (isUjianCBT && (isWali || userRoleLower === 'santri'));
-            const isPulsing = isAbsen ? hasActiveAbsen : (isUjianCBT && hasActiveExam);
+            const isUjian = item.name === 'Ujian' || item.name === 'Ujian CBT';
+            const isOctagonal = isAbsen || (isUjian && (isWali || userRoleLower === 'santri'));
+            const isPulsing = isAbsen ? hasActiveAbsen : (isUjian && hasActiveExam);
             const isActive = isAbsen
               ? pathname.startsWith('/dashboard/absen')
-              : isUjianCBT
+              : isUjian
               ? pathname.startsWith('/dashboard/ujian')
               : pathname === item.href;
 

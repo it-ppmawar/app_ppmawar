@@ -76,6 +76,7 @@ export default function PenilaianRaportPage() {
   // Role Pengguna & Mode Tamu
   const [userRole, setUserRole] = useState<string>('guru');
   const isTamu = userRole === 'tamu';
+  const isWaliOrSantri = userRole === 'wali_murid' || userRole === 'wali_alumni' || userRole === 'santri';
 
   // State Tabel Input Nilai
   const [muridList, setMuridList] = useState<any[]>([]);
@@ -503,11 +504,20 @@ export default function PenilaianRaportPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 0. Fetch Role Pengguna (untuk mode tamu)
+  // 0. Fetch Role Pengguna (untuk mode tamu & wali)
   useEffect(() => {
     fetch('/api/auth/me')
       .then(r => r.json())
-      .then(d => { if (d.success && d.user) setUserRole(d.user.role); })
+      .then(d => {
+        if (d.success && d.user) {
+          setUserRole(d.user.role);
+          // Wali murid & santri langsung arahkan ke tab Raport
+          const role = (d.user.role || '').toLowerCase();
+          if (role === 'wali_murid' || role === 'wali_alumni' || role === 'santri') {
+            setActiveTab('raport');
+          }
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -826,38 +836,47 @@ export default function PenilaianRaportPage() {
             </p>
           </div>
 
-          {/* Switcher Tab Symmetris & Rata Tengah Presisi di HP */}
-          <div className="w-full sm:w-auto max-w-md mx-auto md:mx-0 grid grid-cols-2 gap-2 bg-black/35 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0">
-            <button
-              onClick={() => setActiveTab('input')}
-              className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all w-full text-center ${
-                activeTab === 'input'
-                  ? 'bg-amber-500 text-white shadow-md'
-                  : 'text-amber-200/80 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <ClipboardCheck size={16} />
-              <span>Input &amp; Leger Nilai</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('raport')}
-              className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all w-full text-center ${
-                activeTab === 'raport'
-                  ? 'bg-amber-500 text-white shadow-md'
-                  : 'text-amber-200/80 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <GraduationCap size={16} />
-              <span>Raport Santri</span>
-            </button>
-          </div>
+          {/* Switcher Tab: Hanya tampilkan tab Input untuk non-wali */}
+          {isWaliOrSantri ? (
+            <div className="w-full sm:w-auto max-w-md mx-auto md:mx-0 flex bg-black/35 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0">
+              <div className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm w-full text-center bg-amber-500 text-white shadow-md">
+                <GraduationCap size={16} />
+                <span>Raport Santri</span>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full sm:w-auto max-w-md mx-auto md:mx-0 grid grid-cols-2 gap-2 bg-black/35 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0">
+              <button
+                onClick={() => setActiveTab('input')}
+                className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all w-full text-center ${
+                  activeTab === 'input'
+                    ? 'bg-amber-500 text-white shadow-md'
+                    : 'text-amber-200/80 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <ClipboardCheck size={16} />
+                <span>Input &amp; Leger Nilai</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('raport')}
+                className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all w-full text-center ${
+                  activeTab === 'raport'
+                    ? 'bg-amber-500 text-white shadow-md'
+                    : 'text-amber-200/80 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <GraduationCap size={16} />
+                <span>Raport Santri</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: INPUT NILAI & LEGER KELAS                                          */}
+      {/* TAB 1: INPUT NILAI & LEGER KELAS (HANYA UNTUK GURU / ADMIN / STAF)       */}
       {/* ========================================================================= */}
-      {activeTab === 'input' && (
+      {!isWaliOrSantri && activeTab === 'input' && (
         <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
           {/* Petunjuk Penggunaan — Collapsible, dipindah ke atas filter */}
           <div className="bg-amber-50/60 dark:bg-amber-950/20 rounded-2xl border border-amber-200/60 dark:border-amber-800/40 overflow-hidden">
@@ -893,7 +912,7 @@ export default function PenilaianRaportPage() {
               <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 <Filter size={14} className="text-amber-600 dark:text-amber-400" /> Filter Kelas &amp; Mata Pelajaran
               </div>
-              {!isTamu && (
+              {!isTamu && !isWaliOrSantri && (
                 <button
                   type="button"
                   onClick={handleToggleCustomMapel}
@@ -1046,7 +1065,12 @@ export default function PenilaianRaportPage() {
                 </p>
               </div>
 
-              {isLegerMode ? (
+              {isWaliOrSantri ? (
+                <div className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 rounded-xl text-xs font-bold shadow-2xs">
+                  <GraduationCap size={14} className="shrink-0" />
+                  <span>Mode Santri / Wali — Akses Hanya Lihat</span>
+                </div>
+              ) : isLegerMode ? (
                 <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2.5 w-full sm:w-auto">
                   <button
                     type="button"
@@ -1598,28 +1622,32 @@ export default function PenilaianRaportPage() {
 
                           {/* Kolom Aksi (Edit & Hapus Nilai Percobaan) */}
                           <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditModal(m)}
-                                className="p-1.5 text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 rounded-lg border border-amber-200 dark:border-amber-800/60 transition-all text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
-                                title="Edit / Kelola Nilai Santri Ini"
-                              >
-                                <Edit3 size={13} />
-                                <span className="hidden sm:inline">Edit</span>
-                              </button>
-                              {((isLegerMode && (m.total_mapel_dinilai || 0) > 0) || (!isLegerMode && (cur.harian !== '' || cur.uts !== '' || cur.uas !== '' || cur.akhir !== ''))) && (
+                            {isWaliOrSantri || isTamu ? (
+                              <span className="text-[11px] text-gray-400 italic">Lihat Saja</span>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1.5">
                                 <button
                                   type="button"
-                                  onClick={() => handleQuickResetScore(m)}
-                                  className="p-1.5 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 rounded-lg border border-rose-200 dark:border-rose-800/60 transition-all text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
-                                  title="Hapus Nilai / Reset Hasil Percobaan"
+                                  onClick={() => handleOpenEditModal(m)}
+                                  className="p-1.5 text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 rounded-lg border border-amber-200 dark:border-amber-800/60 transition-all text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
+                                  title="Edit / Kelola Nilai Santri Ini"
                                 >
-                                  <Trash2 size={13} />
-                                  <span className="hidden sm:inline">Hapus</span>
+                                  <Edit3 size={13} />
+                                  <span className="hidden sm:inline">Edit</span>
                                 </button>
-                              )}
-                            </div>
+                                {((isLegerMode && (m.total_mapel_dinilai || 0) > 0) || (!isLegerMode && (cur.harian !== '' || cur.uts !== '' || cur.uas !== '' || cur.akhir !== ''))) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickResetScore(m)}
+                                    className="p-1.5 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 rounded-lg border border-rose-200 dark:border-rose-800/60 transition-all text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
+                                    title="Hapus Nilai / Reset Hasil Percobaan"
+                                  >
+                                    <Trash2 size={13} />
+                                    <span className="hidden sm:inline">Hapus</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
@@ -1636,7 +1664,7 @@ export default function PenilaianRaportPage() {
       {/* ========================================================================= */}
       {/* TAB 2: RAPORT SANTRI & CETAK RESMI                                        */}
       {/* ========================================================================= */}
-      {activeTab === 'raport' && (
+      {(isWaliOrSantri || activeTab === 'raport') && (
         <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
           {/* Header Kontrol Raport: Format Presisi HP (Pilih Santri di Atas Full-Width, Kelas & Semester Berdampingan 50%-50%, Tombol Print Rata Tengah) */}
           <div className="print:hidden bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
