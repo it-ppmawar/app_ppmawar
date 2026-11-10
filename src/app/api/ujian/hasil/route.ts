@@ -57,9 +57,9 @@ export async function GET(request: Request) {
     if (isSantriRole) {
       if (!muridId) return NextResponse.json({ error: 'Data santri tidak ditemukan.' }, { status: 400 });
       const [hasilSantri] = await pool.execute<RowDataPacket[]>(
-        `SELECT h.*, m.nama_lengkap, m.nis
+        `SELECT h.*, m.nama AS nama_lengkap, m.nis
          FROM ujian_hasil_santri h
-         LEFT JOIN murid m ON h.murid_id = m.id
+         LEFT JOIN murid m ON h.murid_id = m.murid_id
          WHERE h.ujian_id = ? AND h.murid_id = ?
          LIMIT 1`,
         [ujian_id, muridId]
@@ -88,12 +88,12 @@ export async function GET(request: Request) {
          h.lokasi_lng,
          h.ip_address,
          h.device_info,
-         m.nama_lengkap,
+         m.nama AS nama_lengkap,
          m.nis,
          k.nama_kelas
        FROM ujian_hasil_santri h
-       LEFT JOIN murid m ON h.murid_id = m.id
-       LEFT JOIN kelas_madin k ON m.kelas_madin_id = k.id
+       LEFT JOIN murid m ON h.murid_id = m.murid_id
+       LEFT JOIN kelas_madin k ON m.kelas_madin_id = k.kelas_id
        WHERE h.ujian_id = ?
        ORDER BY h.skor_akhir DESC, h.waktu_selesai ASC`,
       [ujian_id]

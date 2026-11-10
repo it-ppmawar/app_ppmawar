@@ -2022,6 +2022,7 @@ export default function PenilaianRaportPage() {
         semester={semester}
         tahunAjaran={tahunAjaran}
         muridList={muridList}
+        userRole={userRole}
         onApplyScores={handleApplyQuizBScores}
       />
     </div>

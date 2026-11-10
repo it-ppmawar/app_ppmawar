@@ -26,6 +26,35 @@ export async function GET(request: Request) {
     const payload = verifyToken(token) as any;
     if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
 
+    const { role, guruId } = payload;
+    const roleLower = (role || '').toLowerCase();
+
+    // Ambil daftar mapel yang diizinkan user berdasarkan RBAC dari jadwal_madin & jadwal_quran
+    let allowedMapel: string[] = [];
+    try {
+      if (roleLower === 'guru' && guruId) {
+        const [mapelRows] = await pool.execute<RowDataPacket[]>(
+          'SELECT DISTINCT mata_pelajaran FROM jadwal_madin WHERE guru_id = ? AND mata_pelajaran IS NOT NULL AND mata_pelajaran != ""',
+          [guruId]
+        );
+        allowedMapel = (mapelRows as any[]).map((r: any) => (r.mata_pelajaran || '').toLowerCase().trim()).filter(Boolean);
+      } else {
+        // Untuk admin / staff / role lain: ambil seluruh mapel yang ada di PPMAWAR (bukan semua kuis dari QuizB)
+        const [allMadin] = await pool.execute<RowDataPacket[]>(
+          'SELECT DISTINCT mata_pelajaran FROM jadwal_madin WHERE mata_pelajaran IS NOT NULL AND mata_pelajaran != ""'
+        );
+        const [allQuran] = await pool.execute<RowDataPacket[]>(
+          'SELECT DISTINCT mata_pelajaran FROM jadwal_quran WHERE mata_pelajaran IS NOT NULL AND mata_pelajaran != ""'
+        );
+        const combined = new Set<string>();
+        (allMadin as any[]).forEach((r: any) => { if (r.mata_pelajaran) combined.add(r.mata_pelajaran.toLowerCase().trim()); });
+        (allQuran as any[]).forEach((r: any) => { if (r.mata_pelajaran) combined.add(r.mata_pelajaran.toLowerCase().trim()); });
+        allowedMapel = Array.from(combined);
+      }
+    } catch (e) {
+      // ignore, biarkan tanpa filter jika query gagal
+    }
+
     // Ambil setting bridge
     let bridgeUrl = 'https://quizb.my.id/quizb_bridge.php';
     let secretKey = 'ppmawar-quizb-2026-secret';
@@ -96,6 +125,7 @@ export async function GET(request: Request) {
       bridge_message: bridgeMessage,
       bridge_url: bridgeUrl,
       quizzes,
+      allowed_mapel: allowedMapel,
       recent_logs: recentLogs,
     });
   } catch (error: any) {

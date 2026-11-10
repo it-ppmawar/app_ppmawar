@@ -15,7 +15,32 @@ interface QuizBModalProps {
   semester: string;
   tahunAjaran: string;
   muridList: any[];
+  userRole?: string;
   onApplyScores: (appliedList: Array<{ murid_id: number; skor: number; targetField: 'harian' | 'uts' | 'uas'; quizTitle: string }>) => void;
+}
+
+function matchQuizWithMapels(quiz: any, mapelList: string[]): boolean {
+  if (!mapelList || mapelList.length === 0) return true;
+  const qTitle = (quiz.title || '').toLowerCase();
+  const qCat = (quiz.category || '').toLowerCase();
+
+  return mapelList.some((mp) => {
+    const mpLower = mp.toLowerCase().trim();
+    if (!mpLower) return false;
+
+    // 1. Cek langsung substring di title atau category (dua arah)
+    if (qTitle.includes(mpLower) || qCat.includes(mpLower) || (qCat && mpLower.includes(qCat))) {
+      return true;
+    }
+
+    // 2. Tokenisasi kata kunci (misal: "NAHWU — Al-Ajurrumiyyah / Imriti" -> "nahwu", "ajurrumiyyah", "imriti")
+    const words = mpLower
+      .split(/[\s\-\—\/\\(),]+/)
+      .map((w) => w.trim())
+      .filter((w) => w.length >= 3 && !['dan', 'atau', 'bab', 'jilid', 'kelas', 'mak', 'mts', 'madin'].includes(w));
+
+    return words.some((word) => qTitle.includes(word) || qCat.includes(word) || (qCat && word.includes(qCat)));
+  });
 }
 
 export default function QuizBModal({
@@ -26,6 +51,7 @@ export default function QuizBModal({
   semester,
   tahunAjaran,
   muridList,
+  userRole,
   onApplyScores,
 }: QuizBModalProps) {
   const [activeTab, setActiveTab] = useState<'fetch' | 'manual' | 'config' | 'logs'>('fetch');
@@ -59,6 +85,8 @@ export default function QuizBModal({
 
   // Filter kuis berdasarkan mapel yang sedang aktif
   const [quizSearchQuery, setQuizSearchQuery] = useState('');
+  // Daftar mapel yang diizinkan user (RBAC dari jadwal_madin) — kosong = semua boleh (admin/staff)
+  const [allowedMapel, setAllowedMapel] = useState<string[]>([]);
 
   // Notifikasi Berhasil
   const [successToast, setSuccessToast] = useState('');
@@ -66,10 +94,13 @@ export default function QuizBModal({
   // 1. Load Data Awal saat Modal Dibuka
   useEffect(() => {
     if (isOpen) {
+      if (!['admin', 'staff'].includes((userRole || '').toLowerCase()) && activeTab === 'config') {
+        setActiveTab('fetch');
+      }
       loadInitialData();
       loadSettings();
     }
-  }, [isOpen]);
+  }, [isOpen, userRole]);
 
   const loadInitialData = async () => {
     setLoadingFetch(true);
@@ -82,17 +113,23 @@ export default function QuizBModal({
         setBridgeUrl(data.bridge_url || '');
         setQuizzes(data.quizzes || []);
         setRecentLogs(data.recent_logs || []);
-        if (data.quizzes && data.quizzes.length > 0) {
-          // Auto-pilih kuis pertama yang cocok dengan mapel aktif, atau kuis pertama
+        
+        // Simpan daftar mapel yang diizinkan berdasarkan RBAC
+        const serverAllowed: string[] = Array.isArray(data.allowed_mapel) ? data.allowed_mapel : [];
+        setAllowedMapel(serverAllowed);
+
+        const listToPick = serverAllowed.length > 0
+          ? (data.quizzes || []).filter((q: any) => matchQuizWithMapels(q, serverAllowed))
+          : (data.quizzes || []);
+
+        if (listToPick.length > 0) {
           const isSpecific = selectedMapel && !['semua', 'semua mapel', 'all'].includes(selectedMapel.toLowerCase());
-          const mapelLower = isSpecific ? selectedMapel.toLowerCase() : '';
-          const matched = mapelLower
-            ? data.quizzes.find((q: any) =>
-                (q.title || '').toLowerCase().includes(mapelLower) ||
-                (q.category || '').toLowerCase().includes(mapelLower)
-              )
+          const matched = isSpecific
+            ? listToPick.find((q: any) => matchQuizWithMapels(q, [selectedMapel]))
             : null;
-          setSelectedQuizId(String((matched || data.quizzes[0]).id));
+          setSelectedQuizId(String((matched || listToPick[0]).id));
+        } else if (data.quizzes && data.quizzes.length > 0) {
+          setSelectedQuizId(String(data.quizzes[0].id));
         }
       }
     } catch (err: any) {
@@ -321,17 +358,20 @@ export default function QuizBModal({
             <span>Tempel / Input Cepat</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('config')}
-            className={`px-4 py-2.5 rounded-t-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 border-b-2 ${
-              activeTab === 'config'
-                ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 border-emerald-600'
-                : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border-transparent'
-            }`}
-          >
-            <Settings size={15} />
-            <span>Webhook &amp; Bridge PHP</span>
-          </button>
+          {/* Tab Webhook & Bridge hanya tampil untuk admin / staff */}
+          {['admin', 'staff'].includes((userRole || '').toLowerCase()) && (
+            <button
+              onClick={() => setActiveTab('config')}
+              className={`px-4 py-2.5 rounded-t-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shrink-0 border-b-2 ${
+                activeTab === 'config'
+                  ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 border-emerald-600'
+                  : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 border-transparent'
+              }`}
+            >
+              <Settings size={15} />
+              <span>Webhook &amp; Bridge PHP</span>
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab('logs')}
@@ -425,29 +465,33 @@ export default function QuizBModal({
                     )}
                   </div>
                   {quizzes.length > 0 ? (() => {
-                    const isSpecific = selectedMapel && !['semua', 'semua mapel', 'all'].includes(selectedMapel.toLowerCase());
-                    const mapelLower = isSpecific ? selectedMapel.toLowerCase() : '';
-                    const searchLower = quizSearchQuery.toLowerCase();
-                    const mapelFilteredQuizzes = isSpecific
-                      ? quizzes.filter((q) =>
-                          (q.title || '').toLowerCase().includes(mapelLower) ||
-                          (q.category || '').toLowerCase().includes(mapelLower)
-                        )
+                    // Filter RBAC: Hanya kuis yang cocok dengan mapel yang diizinkan (role guru: mapel yang diampu, role admin: mapel yang ada di PPMAWAR)
+                    const rbacFilteredQuizzes = allowedMapel.length > 0
+                      ? quizzes.filter((q) => matchQuizWithMapels(q, allowedMapel))
                       : quizzes;
-                    const relatedQuizzes = isSpecific
-                      ? mapelFilteredQuizzes.filter((q) =>
-                          !searchLower || (q.title || '').toLowerCase().includes(searchLower)
-                        )
-                      : quizzes.filter((q) =>
-                          !searchLower ||
-                          (q.title || '').toLowerCase().includes(searchLower) ||
-                          (q.category || '').toLowerCase().includes(searchLower)
-                        );
+
+                    const isSpecific = selectedMapel && !['semua', 'semua mapel', 'all'].includes(selectedMapel.toLowerCase());
+                    const searchLower = quizSearchQuery.toLowerCase();
+
+                    // Kuis yang cocok langsung dengan mapel yang sedang aktif dipilih di halaman rapor
+                    const mapelFilteredQuizzes = isSpecific
+                      ? rbacFilteredQuizzes.filter((q) => matchQuizWithMapels(q, [selectedMapel]))
+                      : rbacFilteredQuizzes;
+
+                    const relatedQuizzes = (isSpecific ? mapelFilteredQuizzes : rbacFilteredQuizzes).filter((q) =>
+                      !searchLower ||
+                      (q.title || '').toLowerCase().includes(searchLower) ||
+                      (q.category || '').toLowerCase().includes(searchLower)
+                    );
+
+                    // Kuis mapel lain HANYA dari kuis yang diizinkan oleh RBAC (bukan kuis asing dari luar mapel pesantren)
                     const otherQuizzes = isSpecific
-                      ? quizzes
+                      ? rbacFilteredQuizzes
                           .filter((q) => !mapelFilteredQuizzes.includes(q))
                           .filter((q) =>
-                            !searchLower || (q.title || '').toLowerCase().includes(searchLower)
+                            !searchLower ||
+                            (q.title || '').toLowerCase().includes(searchLower) ||
+                            (q.category || '').toLowerCase().includes(searchLower)
                           )
                       : [];
 
@@ -467,7 +511,7 @@ export default function QuizBModal({
                           className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
                         >
                           {relatedQuizzes.length > 0 && (
-                            <optgroup label={isSpecific ? `✅ Terkait ${selectedMapel}` : '📋 Daftar Semua Kuis'}>
+                            <optgroup label={isSpecific ? `✅ Terkait ${selectedMapel}` : '📋 Kuis Terkait Mapel PPMAWAR'}>
                               {relatedQuizzes.map((q) => (
                                 <option key={q.id} value={q.id}>
                                   {q.title} {q.category ? `(${q.category})` : ''} — ID #{q.id}
@@ -476,7 +520,7 @@ export default function QuizBModal({
                             </optgroup>
                           )}
                           {otherQuizzes.length > 0 && (
-                            <optgroup label="📂 Kuis Mapel Lain">
+                            <optgroup label={userRole === 'guru' ? '📂 Kuis Mapel Anda Lainnya' : '📂 Kuis Mapel PPMAWAR Lainnya'}>
                               {otherQuizzes.map((q) => (
                                 <option key={q.id} value={q.id}>
                                   {q.title} {q.category ? `(${q.category})` : ''} — ID #{q.id}
@@ -485,12 +529,18 @@ export default function QuizBModal({
                             </optgroup>
                           )}
                           {relatedQuizzes.length === 0 && otherQuizzes.length === 0 && (
-                            <option disabled value="">Tidak ada kuis yang cocok dengan pencarian</option>
+                            <option disabled value="">
+                              {isSpecific
+                                ? `Tidak ada kuis QuizB untuk mapel ${selectedMapel}`
+                                : 'Tidak ada kuis QuizB yang terkait dengan mata pelajaran'}
+                            </option>
                           )}
                         </select>
                         {isSpecific && mapelFilteredQuizzes.length === 0 && (
                           <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
-                            ⚠️ Belum ada kuis QuizB yang cocok untuk mapel {selectedMapel}. Pilih dari daftar kuis lain di atas.
+                            {otherQuizzes.length > 0
+                              ? `⚠️ Belum ada kuis QuizB yang cocok untuk mapel ${selectedMapel}. Pilih dari daftar kuis mapel Anda di atas.`
+                              : `⚠️ Belum ada kuis QuizB yang sesuai dengan mata pelajaran ${selectedMapel}.`}
                           </p>
                         )}
                       </div>
