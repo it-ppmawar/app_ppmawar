@@ -1631,7 +1631,7 @@ export default function UjianCBTPage() {
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             onClick={() => openSoalManager(exam)}
-                            className="px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                            className="px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-800/70 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-transparent dark:border-blue-700/40"
                           >
                             <BookOpen size={13} />
                             <span>Bank Soal ({exam.total_soal || 0})</span>
@@ -1639,7 +1639,7 @@ export default function UjianCBTPage() {
 
                           <button
                             onClick={() => openSesiPengawas(exam)}
-                            className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                            className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/50 text-amber-700 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-800/70 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-transparent dark:border-amber-700/40"
                           >
                             <Key size={13} />
                             <span>Token &amp; Sesi</span>
@@ -1653,7 +1653,7 @@ export default function UjianCBTPage() {
                             setShowHasilModal(true);
                             fetchHasilPeserta(exam);
                           }}
-                          className="w-full px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                          className="w-full px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-800/70 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-transparent dark:border-emerald-700/40"
                         >
                           <Award size={13} />
                           <span>Lihat Hasil Peserta ({exam.total_peserta || 0} Santri)</span>
@@ -2921,27 +2921,18 @@ export default function UjianCBTPage() {
                       <MapPin size={15} className="text-emerald-500 shrink-0" />
                       <span>Titik Acuan &amp; Jarak Maksimal (Anti-Joki)</span>
                     </div>
+                    {/* Badge status lokasi — tampilan saja, tidak bisa diklik */}
                     <div className="flex justify-center w-full">
                       {sesiData.lat_target ? (
-                        <button
-                          type="button"
-                          onClick={handleResetToPesantren}
-                          title="Klik untuk ubah / reset ke Pusat Pesantren"
-                          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/70 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-300 dark:border-emerald-700 transition-colors shadow-2xs"
-                        >
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-300 dark:border-emerald-700 shadow-2xs select-none cursor-default">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
                           <span>📍 Lokasi Pengawas (Terkunci)</span>
-                        </button>
+                        </div>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={handleLockPengawasLocation}
-                          title="Klik untuk kunci lokasi GPS pengawas saat ini"
-                          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-100 hover:bg-blue-200 dark:bg-blue-950/70 dark:hover:bg-blue-900 text-blue-800 dark:text-blue-300 text-[11px] font-bold border border-blue-300 dark:border-blue-700 transition-colors shadow-2xs"
-                        >
-                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 text-[11px] font-bold border border-blue-300 dark:border-blue-700 shadow-2xs select-none cursor-default">
+                          <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
                           <span>🏢 Pusat Pesantren (Default)</span>
-                        </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -2971,33 +2962,35 @@ export default function UjianCBTPage() {
                     )}
                   </div>
 
-                  {/* Tombol Aksi GPS Pengawas */}
+                  {/* Tombol Aksi GPS Pengawas — saling mengunci (mutual exclusive) */}
                   <div className="grid grid-cols-2 gap-2">
+                    {/* Tombol Kunci GPS Pengawas: aktif/menonjol ketika lat_target BELUM dikunci (belum ada GPS custom) */}
                     <button
                       type="button"
-                      disabled={geofenceLoading}
+                      disabled={geofenceLoading || !!sesiData.lat_target}
                       onClick={handleLockPengawasLocation}
-                      className={`px-3 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 ${
+                      className={`px-3 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
                         sesiData.lat_target
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                          ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-50'
                           : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md ring-2 ring-emerald-400/30'
                       }`}
-                      title="Kunci titik acuan agar santri harus berada dekat perangkat Anda di kelas"
+                      title={sesiData.lat_target ? 'GPS Pengawas sudah dikunci. Reset ke Pesantren untuk mengubah.' : 'Kunci titik acuan ke lokasi GPS Anda saat ini'}
                     >
-                      {geofenceLoading ? <RefreshCw size={13} className="animate-spin" /> : <MapPin size={13} />}
-                      <span>{geofenceLoading ? 'Mendeteksi...' : 'Kunci GPS Pengawas'}</span>
+                      {geofenceLoading && !sesiData.lat_target ? <RefreshCw size={13} className="animate-spin" /> : <MapPin size={13} />}
+                      <span>{geofenceLoading && !sesiData.lat_target ? 'Mendeteksi...' : 'Kunci GPS Pengawas'}</span>
                     </button>
 
+                    {/* Tombol Reset ke Pesantren: aktif/menonjol ketika lat_target SUDAH ada (GPS custom aktif) */}
                     <button
                       type="button"
                       disabled={geofenceLoading || !sesiData.lat_target}
                       onClick={handleResetToPesantren}
-                      className={`px-3 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-40 ${
+                      className={`px-3 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
                         !sesiData.lat_target
-                          ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200 dark:border-gray-700'
-                          : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 text-gray-700 dark:text-gray-200 shadow-xs'
+                          ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-50'
+                          : 'bg-rose-500 hover:bg-rose-600 text-white shadow-md ring-2 ring-rose-400/30'
                       }`}
-                      title="Kembalikan titik acuan ke pusat pesantren dari halaman pengaturan"
+                      title={!sesiData.lat_target ? 'Tidak ada GPS Pengawas yang dikunci.' : 'Kembalikan ke titik acuan Pusat Pesantren (hapus GPS pengawas)'}
                     >
                       <RefreshCw size={13} />
                       <span>Reset ke Pesantren</span>
