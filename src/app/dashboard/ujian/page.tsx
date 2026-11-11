@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Sparkles, Award, Clock, CheckCircle, AlertCircle, AlertTriangle,
   ShieldCheck, MapPin, Key, RefreshCw, Play, Plus, Trash2, Edit3,
-  BookOpen, User, FileText, ChevronRight, ChevronLeft, Flag, X,
+  BookOpen, User, FileText, ChevronRight, ChevronLeft, ChevronDown, Flag, X,
   ExternalLink, Lock, Unlock, HelpCircle, Check, ArrowRight,
   Filter, Search, Layers, Radio, Settings
 } from 'lucide-react';
@@ -119,6 +119,8 @@ export default function UjianCBTPage() {
   const [showQuizBImportModal, setShowQuizBImportModal] = useState(false);
   const [quizBModalId, setQuizBModalId] = useState('');
   const [quizBModalSearch, setQuizBModalSearch] = useState('');
+  const [showQuizBDropdownList, setShowQuizBDropdownList] = useState(false);
+  const quizBDropdownRef = useRef<HTMLDivElement>(null);
   const [quizBModalQuestions, setQuizBModalQuestions] = useState<any[]>([]);
   const [loadingQuizBModalQuestions, setLoadingQuizBModalQuestions] = useState(false);
   const [importingQuizBPaket, setImportingQuizBPaket] = useState(false);
@@ -297,6 +299,14 @@ export default function UjianCBTPage() {
     fetchKelasList();
     fetchMapelList();
     loadQuizzesForImport();
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (quizBDropdownRef.current && !quizBDropdownRef.current.contains(e.target as Node)) {
+        setShowQuizBDropdownList(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // 2. Pre-Check: Deteksi GPS Perangkat Santri
@@ -1249,20 +1259,25 @@ export default function UjianCBTPage() {
             )}
           </div>
 
-          {/* Tab Menu Utama: "Daftar Ujian" & "Kelola Ujian & Bank Soal" */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center md:justify-end gap-2.5 w-full md:w-auto pt-2 md:pt-0">
+          {/* Menu Tombol Header: Tersusun Rapi 2 Baris pada Layar PC / Tablet */}
+          <div className={`w-full md:w-auto pt-2 md:pt-0 ${
+            isPengajarOrAdmin
+              ? 'grid grid-cols-1 sm:grid-cols-2 gap-2 md:w-[440px] lg:w-[460px]'
+              : 'flex justify-end'
+          }`}>
+            {/* Tombol 1: Daftar Ujian */}
             <button
               type="button"
               onClick={() => setMainTab('daftar')}
-              className={`px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-sm ${
+              className={`px-3.5 py-2 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2.5 shadow-sm min-h-[46px] ${
                 mainTab === 'daftar'
                   ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
                   : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
               }`}
             >
-              <Play size={16} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700' : 'text-emerald-300'} />
-              <div className="flex flex-col items-start leading-tight text-left">
-                <span className="font-extrabold">Daftar Ujian</span>
+              <Play size={15} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
+              <div className="flex flex-col items-start leading-tight text-left min-w-0">
+                <span className="font-extrabold truncate">Daftar Ujian</span>
                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full mt-0.5 ${
                   mainTab === 'daftar' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
                 }`}>
@@ -1271,19 +1286,20 @@ export default function UjianCBTPage() {
               </div>
             </button>
 
+            {/* Tombol 2: Kelola Ujian & Bank Soal */}
             {isPengajarOrAdmin && (
               <button
                 type="button"
                 onClick={() => setMainTab('kelola')}
-                className={`px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-sm ${
+                className={`px-3.5 py-2 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2.5 shadow-sm min-h-[46px] ${
                   mainTab === 'kelola'
                     ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
                     : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
                 }`}
               >
-                <Settings size={16} className={mainTab === 'kelola' ? 'text-emerald-700' : 'text-emerald-300'} />
-                <div className="flex flex-col items-start leading-tight text-left">
-                  <span className="font-extrabold">Kelola Ujian &amp; Bank Soal</span>
+                <Settings size={15} className={mainTab === 'kelola' ? 'text-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
+                <div className="flex flex-col items-start leading-tight text-left min-w-0">
+                  <span className="font-extrabold truncate">Kelola Ujian &amp; Bank Soal</span>
                   <span className={`text-[10px] font-black px-2 py-0.5 rounded-full mt-0.5 ${
                     mainTab === 'kelola' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
                   }`}>
@@ -1293,31 +1309,28 @@ export default function UjianCBTPage() {
               </button>
             )}
 
+            {/* Tombol 3: Buat Ujian Baru */}
             {isPengajarOrAdmin && (
               <button
+                type="button"
                 onClick={openCreateModal}
-                className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
+                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center sm:justify-start gap-2 min-h-[46px]"
               >
-                <Plus size={16} />
-                <div className="flex flex-col items-start leading-tight text-left">
-                  <span className="font-extrabold">Buat Ujian Baru</span>
-                  <span className="text-[10px] font-medium text-emerald-100 mt-0.5">+ Tambah Paket</span>
-                </div>
+                <Plus size={16} className="shrink-0" />
+                <span className="font-extrabold truncate">Buat Ujian Baru</span>
               </button>
             )}
 
+            {/* Tombol 4: Impor dari QuizB */}
             {isPengajarOrAdmin && (
               <button
                 type="button"
                 onClick={openQuizBImportModal}
-                className="px-4 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 border border-teal-400/40"
+                className="px-3.5 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center sm:justify-start gap-2 border border-teal-400/40 min-h-[46px]"
                 title="Impor kuis dan butir soal dari QuizB langsung menjadi paket ujian CBT"
               >
-                <Sparkles size={16} className="text-yellow-300" />
-                <div className="flex flex-col items-start leading-tight text-left">
-                  <span className="font-extrabold flex items-center gap-1">🎮 Impor dari QuizB</span>
-                  <span className="text-[10px] font-medium text-emerald-100 mt-0.5">Tarik Bank Soal</span>
-                </div>
+                <Sparkles size={15} className="text-yellow-300 shrink-0" />
+                <span className="font-extrabold truncate">Impor dari QuizB</span>
               </button>
             )}
           </div>
@@ -1414,7 +1427,7 @@ export default function UjianCBTPage() {
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-md transition-all border border-teal-400/30"
               >
                 <Sparkles size={16} className="text-yellow-300" />
-                <span>🎮 Impor Paket Soal dari QuizB</span>
+                <span>Impor dari QuizB</span>
               </button>
             </div>
           </div>
@@ -2060,42 +2073,136 @@ export default function UjianCBTPage() {
                     </button>
                   </div>
 
-                  {/* Filter Search */}
-                  <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      value={quizBModalSearch}
-                      onChange={(e) => setQuizBModalSearch(e.target.value)}
-                      placeholder="Cari judul kuis QuizB (misal: Alfiyah, Nahwu, Fiqh)..."
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs focus:ring-2 focus:ring-teal-500 outline-none"
-                    />
-                  </div>
+                  {/* Combobox Searchable Dropdown Terpadu: 1 Kolom Saja */}
+                  <div className="relative" ref={quizBDropdownRef}>
+                    <div
+                      onClick={() => setShowQuizBDropdownList(true)}
+                      className={`w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-800 border transition-all flex items-center gap-2 cursor-pointer ${
+                        showQuizBDropdownList
+                          ? 'border-teal-500 ring-2 ring-teal-500/20 shadow-sm'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-teal-400'
+                      }`}
+                    >
+                      <Search size={15} className="text-gray-400 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder="-- Cari atau Pilih Kuis dari QuizB (misal: Alfiyah, Nahwu) --"
+                        value={
+                          showQuizBDropdownList
+                            ? quizBModalSearch
+                            : (quizImportList.find((q: any) => String(q.id) === String(quizBModalId))
+                                ? `ID #${quizBModalId} • ${quizImportList.find((q: any) => String(q.id) === String(quizBModalId))?.title}${quizImportList.find((q: any) => String(q.id) === String(quizBModalId))?.category ? ` (${quizImportList.find((q: any) => String(q.id) === String(quizBModalId))?.category})` : ''}`
+                                : '')
+                        }
+                        onChange={(e) => {
+                          setQuizBModalSearch(e.target.value);
+                          setShowQuizBDropdownList(true);
+                        }}
+                        onFocus={() => setShowQuizBDropdownList(true)}
+                        className="w-full bg-transparent outline-none text-xs sm:text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 font-medium cursor-text min-w-0"
+                        autoComplete="off"
+                      />
+                      {quizBModalId && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectQuizForImportModal('');
+                            setQuizBModalSearch('');
+                          }}
+                          className="text-gray-400 hover:text-rose-500 shrink-0 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          title="Hapus pilihan kuis"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                      <ChevronDown
+                        size={15}
+                        className={`text-gray-400 shrink-0 transition-transform ${
+                          showQuizBDropdownList ? 'rotate-180 text-teal-600' : ''
+                        }`}
+                      />
+                    </div>
 
-                  {/* Dropdown Kuis */}
-                  <select
-                    value={quizBModalId}
-                    onChange={(e) => handleSelectQuizForImportModal(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-semibold focus:ring-2 focus:ring-teal-500 outline-none"
-                  >
-                    <option value="">-- Klik untuk Memilih Kuis dari QuizB --</option>
-                    {quizImportList
-                      .filter((q: any) => !String(q.id).startsWith('cbt_'))
-                      .filter((q: any) => {
-                        if (!quizBModalSearch.trim()) return true;
-                        const s = quizBModalSearch.toLowerCase();
-                        return (
-                          (q.title || '').toLowerCase().includes(s) ||
-                          (q.category || '').toLowerCase().includes(s) ||
-                          String(q.id).includes(s)
-                        );
-                      })
-                      .map((q: any) => (
-                        <option key={q.id} value={String(q.id)}>
-                          ID #{q.id} &bull; {q.title} {q.category ? `(${q.category})` : ''}
-                        </option>
-                      ))}
-                  </select>
+                    {/* Dropdown Menu Floating Options */}
+                    {showQuizBDropdownList && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-64 overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700/60 animate-[fadeIn_0.1s_ease-out]">
+                        <button
+                          type="button"
+                          onMouseDown={() => {
+                            handleSelectQuizForImportModal('');
+                            setQuizBModalSearch('');
+                            setShowQuizBDropdownList(false);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-xs text-gray-400 italic hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                        >
+                          -- Kosongkan Pilihan --
+                        </button>
+
+                        {quizImportList
+                          .filter((q: any) => !String(q.id).startsWith('cbt_'))
+                          .filter((q: any) => {
+                            if (!quizBModalSearch.trim()) return true;
+                            const s = quizBModalSearch.toLowerCase();
+                            return (
+                              (q.title || '').toLowerCase().includes(s) ||
+                              (q.category || '').toLowerCase().includes(s) ||
+                              String(q.id).includes(s)
+                            );
+                          })
+                          .map((q: any) => {
+                            const isSelected = String(quizBModalId) === String(q.id);
+                            return (
+                              <button
+                                key={q.id}
+                                type="button"
+                                onMouseDown={() => {
+                                  handleSelectQuizForImportModal(String(q.id));
+                                  setQuizBModalSearch('');
+                                  setShowQuizBDropdownList(false);
+                                }}
+                                className={`w-full text-left px-3.5 py-2.5 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 font-bold'
+                                    : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                }`}
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 shrink-0">
+                                      #{q.id}
+                                    </span>
+                                    <span className="font-bold truncate">{q.title}</span>
+                                  </div>
+                                  {q.category && (
+                                    <p className="text-[10px] text-gray-400 mt-0.5 pl-6">
+                                      Kategori: {q.category}
+                                    </p>
+                                  )}
+                                </div>
+                                {isSelected && <Check size={16} className="text-teal-600 dark:text-teal-400 shrink-0" />}
+                              </button>
+                            );
+                          })}
+
+                        {quizImportList
+                          .filter((q: any) => !String(q.id).startsWith('cbt_'))
+                          .filter((q: any) => {
+                            if (!quizBModalSearch.trim()) return true;
+                            const s = quizBModalSearch.toLowerCase();
+                            return (
+                              (q.title || '').toLowerCase().includes(s) ||
+                              (q.category || '').toLowerCase().includes(s) ||
+                              String(q.id).includes(s)
+                            );
+                          }).length === 0 && (
+                          <div className="p-4 text-xs text-gray-400 italic text-center">
+                            Kuis tidak ditemukan di platform QuizB
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Status Fetch Questions */}
                   {loadingQuizBModalQuestions ? (
