@@ -1,34 +1,21 @@
 import pool from '@/lib/db';
-import { RowDataPacket } from 'mysql2';
 
 let isUjianDbEnsured = false;
 
-async function addColumnIfNotExists(table: string, column: string, definition: string) {
+async function addColumn(table: string, column: string, definition: string) {
   try {
-    const [cols] = await pool.execute<RowDataPacket[]>(
-      `SHOW COLUMNS FROM \`${table}\` LIKE ?`,
-      [column]
-    );
-    if (cols.length === 0) {
-      await pool.execute(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
-    }
+    await pool.execute(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
   } catch (e: any) {
-    // Ignore duplicate or syntax warnings gracefully
-    console.error(`[ensureUjianDB] Note on column ${column} in ${table}:`, e.message);
-  }
-}
-
-async function modifyColumnIfExists(table: string, column: string, definition: string) {
-  try {
-    const [cols] = await pool.execute<RowDataPacket[]>(
-      `SHOW COLUMNS FROM \`${table}\` LIKE ?`,
-      [column]
-    );
-    if (cols.length > 0) {
+    // Error 1060: Duplicate column name — sudah ada, abaikan
+    if (e.errno === 1060 || e.code === 'ER_DUP_FIELDNAME') {
+      return;
+    }
+    // Jika tipe data perlu disesuaikan, jalankan MODIFY
+    try {
       await pool.execute(`ALTER TABLE \`${table}\` MODIFY COLUMN \`${column}\` ${definition}`);
+    } catch {
+      // ignore
     }
-  } catch (e: any) {
-    console.error(`[ensureUjianDB] Note modifying column ${column} in ${table}:`, e.message);
   }
 }
 
@@ -68,9 +55,11 @@ export async function ensureUjianDB() {
     `);
 
     // Migrasi kolom baru ujian_madin jika tabel sudah ada
-    await addColumnIfNotExists('ujian_madin', 'anti_curang', 'TINYINT(1) NOT NULL DEFAULT 1');
-    await addColumnIfNotExists('ujian_madin', 'max_pelanggaran', 'INT NOT NULL DEFAULT 3');
-    await addColumnIfNotExists('ujian_madin', 'wajib_fullscreen', 'TINYINT(1) NOT NULL DEFAULT 1');
+    await addColumn('ujian_madin', 'anti_curang', 'TINYINT(1) NOT NULL DEFAULT 1');
+    await addColumn('ujian_madin', 'max_pelanggaran', 'INT NOT NULL DEFAULT 3');
+    await addColumn('ujian_madin', 'wajib_fullscreen', 'TINYINT(1) NOT NULL DEFAULT 1');
+    await addColumn('ujian_madin', 'quizb_id', 'VARCHAR(50) NULL');
+    await addColumn('ujian_madin', 'quizb_embed_url', 'VARCHAR(255) NULL');
 
     // 2. Tabel Soal (Pilihan Ganda & Essay)
     await pool.execute(`
@@ -96,15 +85,17 @@ export async function ensureUjianDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Migrasi kolom baru ujian_soal jika tabel sudah ada
-    await addColumnIfNotExists('ujian_soal', 'tipe_soal', "ENUM('pilihan_ganda', 'essay') NOT NULL DEFAULT 'pilihan_ganda'");
-    await addColumnIfNotExists('ujian_soal', 'rubrik_kata_kunci', 'TEXT NULL');
-    await modifyColumnIfExists('ujian_soal', 'opsi_a', 'TEXT NULL');
-    await modifyColumnIfExists('ujian_soal', 'opsi_b', 'TEXT NULL');
-    await modifyColumnIfExists('ujian_soal', 'opsi_c', 'TEXT NULL');
-    await modifyColumnIfExists('ujian_soal', 'kunci_jawaban', 'LONGTEXT NULL');
+    // Migrasi kolom baru ujian_soal jika tabel sudah ada sebelumnya
+    await addColumn('ujian_soal', 'tipe_soal', "ENUM('pilihan_ganda', 'essay') NOT NULL DEFAULT 'pilihan_ganda'");
+    await addColumn('ujian_soal', 'rubrik_kata_kunci', 'TEXT NULL');
+    await addColumn('ujian_soal', 'bobot_nilai', 'DECIMAL(5,2) NOT NULL DEFAULT 10.00');
+    await addColumn('ujian_soal', 'pembahasan', 'TEXT NULL');
+    try { await pool.execute('ALTER TABLE `ujian_soal` MODIFY COLUMN `opsi_a` TEXT NULL'); } catch {}
+    try { await pool.execute('ALTER TABLE `ujian_soal` MODIFY COLUMN `opsi_b` TEXT NULL'); } catch {}
+    try { await pool.execute('ALTER TABLE `ujian_soal` MODIFY COLUMN `opsi_c` TEXT NULL'); } catch {}
+    try { await pool.execute('ALTER TABLE `ujian_soal` MODIFY COLUMN `kunci_jawaban` LONGTEXT NULL'); } catch {}
 
-    // 3. Tabel Sesi Pengawas, Token Ujian, & Validasi Jarak Geofencing
+    // 3. Tabel Sesi Pengawas & Token Ujian
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS ujian_sesi_pengawas (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -125,7 +116,7 @@ export async function ensureUjianDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // 4. Tabel Hasil Ujian Santri & Riwayat Pengerjaan
+    // 4. Tabel Hasil Ujian Santri
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS ujian_hasil_santri (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -162,15 +153,15 @@ export async function ensureUjianDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Migrasi kolom baru ujian_hasil_santri
-    await addColumnIfNotExists('ujian_hasil_santri', 'nilai_pg', 'DECIMAL(5,2) NOT NULL DEFAULT 0.00');
-    await addColumnIfNotExists('ujian_hasil_santri', 'nilai_essay', 'DECIMAL(5,2) NOT NULL DEFAULT 0.00');
-    await addColumnIfNotExists('ujian_hasil_santri', 'status_koreksi', "ENUM('selesai', 'menunggu_koreksi') NOT NULL DEFAULT 'selesai'");
-    await addColumnIfNotExists('ujian_hasil_santri', 'jumlah_pelanggaran', 'INT NOT NULL DEFAULT 0');
-    await addColumnIfNotExists('ujian_hasil_santri', 'is_disqualified', 'TINYINT(1) NOT NULL DEFAULT 0');
-    await addColumnIfNotExists('ujian_hasil_santri', 'log_pelanggaran', 'JSON NULL');
+    // Migrasi kolom baru ujian_hasil_santri jika tabel sudah ada sebelumnya
+    await addColumn('ujian_hasil_santri', 'nilai_pg', 'DECIMAL(5,2) NOT NULL DEFAULT 0.00');
+    await addColumn('ujian_hasil_santri', 'nilai_essay', 'DECIMAL(5,2) NOT NULL DEFAULT 0.00');
+    await addColumn('ujian_hasil_santri', 'status_koreksi', "ENUM('selesai', 'menunggu_koreksi') NOT NULL DEFAULT 'selesai'");
+    await addColumn('ujian_hasil_santri', 'jumlah_pelanggaran', 'INT NOT NULL DEFAULT 0');
+    await addColumn('ujian_hasil_santri', 'is_disqualified', 'TINYINT(1) NOT NULL DEFAULT 0');
+    await addColumn('ujian_hasil_santri', 'log_pelanggaran', 'JSON NULL');
 
-    // 5. Tabel Khusus Jawaban & Koreksi Essay (dengan AI Assist)
+    // 5. Tabel Khusus Jawaban & Koreksi Essay (dengan Asisten AI)
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS ujian_essay_jawaban (
         id INT AUTO_INCREMENT PRIMARY KEY,

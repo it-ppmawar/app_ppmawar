@@ -697,6 +697,15 @@ export async function GET() {
       results.push('❌ Status column migration error: ' + e.message);
     }
 
+    // Pastikan seluruh tabel dan kolom ujian & essay AI termigrasi
+    try {
+      const { ensureUjianDB } = await import('@/lib/ensureUjianDB');
+      await ensureUjianDB();
+      results.push('✅ ensureUjianDB executed successfully');
+    } catch (uErr: any) {
+      results.push('❌ ensureUjianDB error: ' + uErr.message);
+    }
+
     return NextResponse.json({ success: true, results });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
