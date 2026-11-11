@@ -173,6 +173,10 @@ export default function UjianCBTPage() {
   const [showViolationModal, setShowViolationModal] = useState(false);
   const [violationModalMsg, setViolationModalMsg] = useState('');
   const [violationLogs, setViolationLogs] = useState<Array<{ time: string; reason: string }>>([]);
+  const [showFsToast, setShowFsToast] = useState(false);
+  const userAnswersRef = useRef<Record<string, string>>({});
+  const lastViolationTimeRef = useRef<number>(0);
+  const isViolationModalOpenRef = useRef<boolean>(false);
 
   // State Modal Koreksi Essay & Asisten AI
   const [showEssayModal, setShowEssayModal] = useState(false);
@@ -211,6 +215,22 @@ export default function UjianCBTPage() {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [submittingExam, setSubmittingExam] = useState(false);
   const [examResult, setExamResult] = useState<any>(null);
+
+  // Sinkronkan ref jawaban & modal pelanggaran untuk mencegah stale closure & spam strikes
+  useEffect(() => {
+    userAnswersRef.current = userAnswers;
+  }, [userAnswers]);
+
+  useEffect(() => {
+    isViolationModalOpenRef.current = showViolationModal;
+  }, [showViolationModal]);
+
+  useEffect(() => {
+    if (showFsToast) {
+      const timer = setTimeout(() => setShowFsToast(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showFsToast]);
 
   // SSO Embed Modal
   const [ssoUrl, setSsoUrl] = useState<string | null>(null);
@@ -392,15 +412,23 @@ export default function UjianCBTPage() {
 
       const data = await res.json();
       if (data.success) {
+        if (data.exam) {
+          setActiveExam((prev: any) => ({ ...prev, ...data.exam }));
+        }
         setExamQuestions(data.soal || []);
-        setSecondsLeft((activeExam.durasi_menit || 45) * 60);
+        setSecondsLeft(((data.exam?.durasi_menit || activeExam.durasi_menit) || 45) * 60);
         setCurrentQIndex(0);
         setUserAnswers({});
+        userAnswersRef.current = {};
         setFlaggedQuestions(new Set());
         setViolationCount(0);
         setIsDisqualified(false);
         setViolationLogs([]);
         setShowViolationModal(false);
+        isViolationModalOpenRef.current = false;
+        // Grace period 4 detik saat awal masuk ujian agar inisialisasi fullscreen/animasi tidak dihitung pelanggaran
+        lastViolationTimeRef.current = Date.now() + 4000;
+        setShowFsToast(true);
         setExamStep('in_progress');
 
         // Minta Fullscreen jika diwajibkan
@@ -449,10 +477,20 @@ export default function UjianCBTPage() {
     if (!isAntiCurang) return;
 
     const handleViolation = (reason: string) => {
+      const now = Date.now();
+      // Jangan re-trigger jika modal peringatan sedang aktif di depan santri
+      if (isViolationModalOpenRef.current) return;
+      // Debounce: Jarak minimal 3500ms (3.5 detik) antar insiden pelanggaran
+      // agar kombinasi event (fullscreenchange + window blur + visibilitychange) dalam 1 aksi keluar
+      // hanya dihitung sebagai 1 KALI PELANGGARAN!
+      if (now - lastViolationTimeRef.current < 3500) return;
+      lastViolationTimeRef.current = now;
+      isViolationModalOpenRef.current = true;
+
       setViolationCount((prev) => {
         const newCount = prev + 1;
-        const now = new Date().toLocaleTimeString('id-ID');
-        const logEntry = { time: now, reason };
+        const nowStr = new Date().toLocaleTimeString('id-ID');
+        const logEntry = { time: nowStr, reason };
         setViolationLogs((logs) => [...logs, logEntry]);
 
         if (newCount >= maxViolations) {
@@ -522,13 +560,14 @@ export default function UjianCBTPage() {
     setSubmittingExam(true);
     try {
       const durationSeconds = (activeExam.durasi_menit * 60) - secondsLeft;
+      const currentAnswers = userAnswersRef.current || userAnswers;
       const res = await fetch('/api/ujian/kerjakan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'submit',
           ujian_id: activeExam.id,
-          answers: userAnswers,
+          answers: currentAnswers,
           durasi_detik: Math.max(durationSeconds, 1),
           token_dipakai: tokenInput,
           user_lat: gpsCoords?.lat || null,
@@ -1284,53 +1323,55 @@ export default function UjianCBTPage() {
     return (
       <div className="fixed inset-0 z-[90] bg-gray-100 dark:bg-gray-950 flex flex-col overflow-hidden animate-[fadeIn_0.2s_ease-out]">
         {/* Top Header Exam Bar */}
-        <header className="bg-emerald-800 text-white p-3 sm:p-4 flex items-center justify-between shadow-md shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center font-black">
-              {currentQIndex + 1}
-            </div>
-            <div>
-              <h2 className="text-xs sm:text-sm font-extrabold line-clamp-1">{activeExam.judul}</h2>
-              <p className="text-[11px] text-emerald-200">
-                {activeExam.mata_pelajaran} &bull; Soal {currentQIndex + 1} dari {examQuestions.length}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Indikator Anti-Curang / Proctoring */}
+        <header className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between shadow-lg rounded-b-2xl sm:rounded-b-3xl shrink-0 border-b border-emerald-700/40">
+          {/* Sisi Kiri: Badge Diawasi di atas, lalu No & Judul di bawahnya */}
+          <div className="flex flex-col items-start gap-1 min-w-0">
             {activeExam.anti_curang ? (
               <div
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-[11px] sm:text-xs shadow-inner ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold text-[10px] sm:text-[11px] shadow-xs ${
                   violationCount > 0
                     ? 'bg-rose-600 text-white animate-pulse'
-                    : 'bg-black/30 text-emerald-200 border border-white/10'
+                    : 'bg-black/25 text-emerald-100 border border-white/15'
                 }`}
                 title="Sistem Proctoring Anti Pindah Layar Aktif"
               >
-                <ShieldCheck size={14} className={violationCount > 0 ? 'text-white' : 'text-emerald-300'} />
+                <ShieldCheck size={12} className={violationCount > 0 ? 'text-white' : 'text-emerald-300'} />
                 <span>Diawasi ({violationCount}/{activeExam.max_pelanggaran || 3}x)</span>
               </div>
             ) : null}
 
-            {/* Timer Countdown */}
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/15 flex items-center justify-center font-black text-xs sm:text-sm shrink-0 border border-white/10 shadow-xs">
+                {currentQIndex + 1}
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-xs sm:text-sm font-extrabold truncate max-w-[150px] sm:max-w-xs">{activeExam.judul}</h2>
+                <p className="text-[10px] sm:text-[11px] text-emerald-200 truncate max-w-[150px] sm:max-w-xs">
+                  {activeExam.mata_pelajaran} &bull; Soal {currentQIndex + 1} dari {examQuestions.length}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Sisi Kanan: Badge Waktu Mundur di atas, lalu Tombol Selesai di bawahnya */}
+          <div className="flex flex-col items-end gap-1 shrink-0">
             <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl font-mono font-bold text-xs sm:text-sm shadow-inner ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono font-bold text-[10px] sm:text-xs shadow-xs ${
                 secondsLeft <= 300
                   ? 'bg-rose-500 text-white animate-pulse'
-                  : 'bg-black/30 text-emerald-200 border border-white/10'
+                  : 'bg-black/25 text-emerald-100 border border-white/15'
               }`}
             >
-              <Clock size={16} />
+              <Clock size={12} />
               <span>{formatTimer(secondsLeft)}</span>
             </div>
 
             <button
               onClick={() => handleSubmitExam(false, false)}
               disabled={submittingExam}
-              className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+              className="px-3.5 sm:px-4 py-1 sm:py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5"
             >
-              <CheckCircle size={15} />
+              <CheckCircle size={14} />
               <span>{submittingExam ? 'Mengirim...' : 'Selesai'}</span>
             </button>
           </div>
@@ -1341,21 +1382,22 @@ export default function UjianCBTPage() {
           {curQ ? (
             <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 sm:p-7 shadow-sm border border-gray-200 dark:border-gray-700 space-y-6 flex-1 flex flex-col justify-between">
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Butir Soal No. {currentQIndex + 1}
-                    </span>
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3 gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     {curQ.tipe_soal === 'essay' ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                        ESSAY / URAIAN
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 tracking-wider">
+                        ESSAY
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 tracking-wider">
                         PILIHAN GANDA
                       </span>
                     )}
+                    <span className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      NO. {currentQIndex + 1}
+                    </span>
                   </div>
+
                   <button
                     onClick={() => {
                       const next = new Set(flaggedQuestions);
@@ -1363,13 +1405,13 @@ export default function UjianCBTPage() {
                       else next.add(curQ.id);
                       setFlaggedQuestions(next);
                     }}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                    className={`px-2.5 sm:px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
                       flaggedQuestions.has(curQ.id)
-                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
                         : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
                     }`}
                   >
-                    <Flag size={13} />
+                    <Flag size={13} className={flaggedQuestions.has(curQ.id) ? 'fill-amber-500 text-amber-600' : ''} />
                     <span>{flaggedQuestions.has(curQ.id) ? 'Ragu-ragu (Ditandai)' : 'Ragu-ragu'}</span>
                   </button>
                 </div>
@@ -1539,6 +1581,9 @@ export default function UjianCBTPage() {
                 <button
                   onClick={() => {
                     setShowViolationModal(false);
+                    isViolationModalOpenRef.current = false;
+                    // Grace period 2 detik setelah santri klik kembali agar transisi fullscreen tidak langsung trigger strike lagi
+                    lastViolationTimeRef.current = Date.now() + 2000;
                     if (activeExam?.wajib_fullscreen && document.documentElement.requestFullscreen) {
                       document.documentElement.requestFullscreen().catch(() => {});
                     }
@@ -1549,6 +1594,25 @@ export default function UjianCBTPage() {
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Toast Notifikasi Layar Penuh (Dapat ditutup / pudar otomatis) */}
+        {showFsToast && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[95] max-w-sm w-[90%] bg-gray-900/95 dark:bg-black/95 text-white text-xs px-4 py-2.5 rounded-2xl shadow-2xl backdrop-blur-md border border-white/10 flex items-center justify-between gap-3 animate-[fadeIn_0.2s_ease-out] transition-opacity duration-500">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base shrink-0">🛡️</span>
+              <p className="leading-snug text-[11px] text-gray-200">
+                Mode Layar Penuh Aktif: Harap tetap di layar ujian agar tidak terkena peringatan pelanggaran.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowFsToast(false)}
+              className="p-1 text-gray-400 hover:text-white rounded-lg transition-colors shrink-0"
+              title="Tutup pemberitahuan"
+            >
+              <X size={15} />
+            </button>
           </div>
         )}
       </div>
@@ -2447,7 +2511,7 @@ export default function UjianCBTPage() {
                 </div>
 
                 {/* Pengaturan Keamanan & Anti Pindah Layar */}
-                <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 space-y-3">
+                <div className="col-span-1 sm:col-span-2 w-full p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 space-y-3">
                   <div className="flex items-center gap-2 font-bold text-xs text-amber-900 dark:text-amber-200">
                     <ShieldCheck size={16} className="text-amber-600 dark:text-amber-400" />
                     <span>Keamanan Ujian &amp; Anti Pindah Layar (Proctoring)</span>
@@ -2476,14 +2540,14 @@ export default function UjianCBTPage() {
                   </div>
 
                   {formExam.anti_curang ? (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1 border-t border-amber-200/50 dark:border-amber-800/40">
-                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                    <div className="pt-2 border-t border-amber-200/50 dark:border-amber-800/40 space-y-1.5">
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
                         Batas Toleransi Pelanggaran:
                       </label>
                       <select
                         value={formExam.max_pelanggaran || 3}
                         onChange={(e) => setFormExam({ ...formExam, max_pelanggaran: Number(e.target.value) })}
-                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-xs font-bold text-amber-700 dark:text-amber-300"
+                        className="w-full sm:w-auto min-w-[260px] px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-xs font-bold text-amber-700 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                       >
                         <option value="1">1x (Sangat Ketat - Langsung Diskualifikasi)</option>
                         <option value="2">2x Pelanggaran</option>
@@ -4071,7 +4135,7 @@ export default function UjianCBTPage() {
                   className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm font-black shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   <CheckCircle size={16} />
-                  <span>{savingGrades ? 'Menyimpan...' : '💾 Simpan Nilai & Sinkronkan Raport'}</span>
+                  <span>{savingGrades ? 'Menyimpan...' : 'Simpan Nilai & Sinkronkan Raport'}</span>
                 </button>
               </div>
             </div>
