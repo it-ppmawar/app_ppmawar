@@ -1191,6 +1191,8 @@ export default function AbsenGuruPage() {
               {filteredKbmCards.map((card, idx) => {
                 const sc = STATUS_COLOR[card.status || 'default'] || STATUS_COLOR.default;
                 const hc = TIPE_HEADER[card.tipe] || 'bg-gray-500';
+                const sudahAbsen: boolean = !!card.sudah_absen;
+                const statusWaktu: string = card.status_waktu || 'menunggu';
 
                 return (
                   <div
@@ -1219,9 +1221,38 @@ export default function AbsenGuruPage() {
                       <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium line-clamp-1">
                         {card.mata_pelajaran || '—'}
                       </div>
+
+                      {/* Badge status waktu */}
+                      <div className="flex items-center gap-1">
+                        {statusWaktu === 'aktif' && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+                            AKTIF
+                          </span>
+                        )}
+                        {statusWaktu === 'selesai' && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                            ✓ SELESAI
+                          </span>
+                        )}
+                        {statusWaktu === 'menunggu' && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                            ⏳ MENUNGGU
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="px-2.5 pb-2.5">
+                    <div className="px-2.5 pb-2.5 space-y-1">
+                      {/* Badge absen santri */}
+                      <span className={`block text-center text-[10px] px-2 py-0.5 rounded-xl font-bold border ${
+                        sudahAbsen
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                          : 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800'
+                      }`}>
+                        {sudahAbsen ? '✅ Absen Terisi' : '📋 Belum Diisi'}
+                      </span>
+                      {/* Badge status guru */}
                       <span className={`block text-center text-[10px] px-2 py-0.5 rounded-xl font-bold border ${sc}`}>
                         {card.status || 'Belum Absen'}
                       </span>

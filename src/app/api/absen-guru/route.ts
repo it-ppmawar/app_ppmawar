@@ -104,6 +104,63 @@ export async function GET(request: Request) {
       ...(jadwalKegiatan as any[]),
     ];
 
+    // ─── Batch query sudah_absen santri ────────────────────────────────────
+    const madinIds = (jadwalMadin as any[]).map((j: any) => j.jadwal_id).filter(Boolean);
+    const quranIds = (jadwalQuran as any[]).map((j: any) => j.jadwal_id).filter(Boolean);
+    const kegiatanIds = (jadwalKegiatan as any[]).map((j: any) => j.jadwal_id).filter(Boolean);
+
+    const sudahAbsenMadinSet = new Set<number>();
+    const sudahAbsenQuranSet = new Set<number>();
+    const sudahAbsenKegiatanSet = new Set<number>();
+
+    if (madinIds.length > 0) {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT jadwal_madin_id FROM absensi WHERE jadwal_madin_id IN (${madinIds.map(() => '?').join(',')}) AND tanggal = ? GROUP BY jadwal_madin_id`,
+        [...madinIds, targetDate]
+      );
+      (rows as any[]).forEach((r: any) => sudahAbsenMadinSet.add(r.jadwal_madin_id));
+    }
+    if (quranIds.length > 0) {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT jadwal_quran_id FROM absensi_quran WHERE jadwal_quran_id IN (${quranIds.map(() => '?').join(',')}) AND tanggal = ? GROUP BY jadwal_quran_id`,
+        [...quranIds, targetDate]
+      );
+      (rows as any[]).forEach((r: any) => sudahAbsenQuranSet.add(r.jadwal_quran_id));
+    }
+    if (kegiatanIds.length > 0) {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT kegiatan_id FROM absensi_kegiatan WHERE kegiatan_id IN (${kegiatanIds.map(() => '?').join(',')}) AND tanggal = ? GROUP BY kegiatan_id`,
+        [...kegiatanIds, targetDate]
+      );
+      (rows as any[]).forEach((r: any) => sudahAbsenKegiatanSet.add(r.kegiatan_id));
+    }
+
+    // ─── Helper: hitung status waktu ───────────────────────────────────────
+    const now = new Date();
+    // Gunakan waktu WIB (UTC+7)
+    const currentSecs = (now.getUTCHours() + 7) % 24 * 3600 + now.getUTCMinutes() * 60 + now.getUTCSeconds();
+
+    const getStatusWaktu = (jamMulai: string, jamSelesai: string): 'aktif' | 'menunggu' | 'selesai' => {
+      const toSecs = (t: string) => {
+        const parts = (t || '00:00').split(':');
+        return parseInt(parts[0]) * 3600 + parseInt(parts[1] || '0') * 60;
+      };
+      const mulaiSecs = toSecs(jamMulai);
+      const selesaiSecs = toSecs(jamSelesai);
+      const windowStart = mulaiSecs - 30 * 60;   // 30 menit sebelum mulai
+      const windowEnd = selesaiSecs + 3 * 3600;   // 3 jam setelah selesai
+      if (currentSecs > windowEnd) return 'selesai';
+      if (currentSecs >= windowStart) return 'aktif';
+      return 'menunggu';
+    };
+
+    const getSudahAbsen = (tipe: string, jadwalId: number): boolean => {
+      if (tipe === 'madin') return sudahAbsenMadinSet.has(jadwalId);
+      if (tipe === 'quran') return sudahAbsenQuranSet.has(jadwalId);
+      if (tipe === 'kegiatan') return sudahAbsenKegiatanSet.has(jadwalId);
+      return false;
+    };
+
     const guruMap = (guruRows as any[]).map((guru: any) => {
       const jadwalGuru = allJadwal.filter((j: any) => j.guru_id === guru.guru_id);
       const absensiGuru = (absensiRows as any[]).filter((a: any) => a.guru_id === guru.guru_id);
@@ -125,6 +182,8 @@ export async function GET(request: Request) {
           nama_asrama: j.nama_asrama || null,
           status: match?.status || null,
           keterangan: match?.keterangan || null,
+          sudah_absen: getSudahAbsen(j.tipe, j.jadwal_id),
+          status_waktu: getStatusWaktu(j.jam_mulai, j.jam_selesai),
         };
       });
 
@@ -173,6 +232,8 @@ export async function GET(request: Request) {
         guru_nama: guru?.nama || 'Belum Ditugaskan',
         guru_foto: guru?.foto || null,
         guru_nip: guru?.nip || '',
+        sudah_absen: sudahAbsenKegiatanSet.has(j.jadwal_id),
+        status_waktu: getStatusWaktu(j.jam_mulai, j.jam_selesai),
       };
     });
 
