@@ -353,9 +353,42 @@ switch ($action) {
             $stmt = $pdo->prepare($sql);
             $stmt->execute($queryParams);
             
+            // Cek apakah ada tabel opsi terpisah (misal: 'options')
+            $hasOptionsTable = false;
+            $optionsMap = [];
+            foreach (['options', 'quiz_options', 'question_options', 'pilihan_jawaban'] as $optTbl) {
+                try {
+                    $pdo->query("SELECT 1 FROM `{$optTbl}` LIMIT 1");
+                    $hasOptionsTable = true;
+                    
+                    // Ambil deskripsi kolom tabel opsi
+                    $optColStmt = $pdo->query("DESCRIBE `{$optTbl}`");
+                    $optCols = [];
+                    while ($oc = $optColStmt->fetch()) {
+                        $optCols[] = strtolower($oc['Field']);
+                    }
+                    
+                    $optQIdCol = in_array('question_id', $optCols) ? 'question_id' : (in_array('id_soal', $optCols) ? 'id_soal' : (in_array('soal_id', $optCols) ? 'soal_id' : 'question_id'));
+                    $optTextCol = in_array('option_text', $optCols) ? 'option_text' : (in_array('title', $optCols) ? 'title' : (in_array('option', $optCols) ? 'option' : (in_array('text', $optCols) ? 'text' : 'title')));
+                    $optCorrectCol = in_array('is_correct', $optCols) ? 'is_correct' : (in_array('correct', $optCols) ? 'correct' : (in_array('is_right', $optCols) ? 'is_right' : 'is_correct'));
+                    
+                    $optStmt = $pdo->query("SELECT * FROM `{$optTbl}` ORDER BY id ASC");
+                    while ($optRow = $optStmt->fetch()) {
+                        $qIdVal = $optRow[$optQIdCol] ?? null;
+                        if ($qIdVal !== null) {
+                            $optionsMap[$qIdVal][] = [
+                                'text' => $optRow[$optTextCol] ?? '',
+                                'is_correct' => !empty($optRow[$optCorrectCol]) && (string)$optRow[$optCorrectCol] !== '0',
+                            ];
+                        }
+                    }
+                    break;
+                } catch (Exception $ex) {}
+            }
+
             $questions = [];
             while ($row = $stmt->fetch()) {
-                // Ekstraksi opsi A, B, C, D, E
+                // Ekstraksi opsi A, B, C, D, E (dari kolom tabel soal atau dari tabel opsi terpisah)
                 $opsiA = $row['option_a'] ?? $row['opsi_a'] ?? $row['choice_a'] ?? $row['a'] ?? '';
                 $opsiB = $row['option_b'] ?? $row['opsi_b'] ?? $row['choice_b'] ?? $row['b'] ?? '';
                 $opsiC = $row['option_c'] ?? $row['opsi_c'] ?? $row['choice_c'] ?? $row['c'] ?? '';
@@ -364,6 +397,25 @@ switch ($action) {
 
                 // Ekstraksi kunci
                 $kunci = $row['correct_answer'] ?? $row['correct_option'] ?? $row['answer'] ?? $row['kunci'] ?? $row['kunci_jawaban'] ?? 'A';
+
+                // Jika ada tabel opsi terpisah dan data opsi ditemukan untuk soal ini
+                $rowId = $row['id'] ?? null;
+                if ($rowId && !empty($optionsMap[$rowId])) {
+                    $opts = $optionsMap[$rowId];
+                    if (isset($opts[0])) $opsiA = $opts[0]['text'];
+                    if (isset($opts[1])) $opsiB = $opts[1]['text'];
+                    if (isset($opts[2])) $opsiC = $opts[2]['text'];
+                    if (isset($opts[3])) $opsiD = $opts[3]['text'];
+                    if (isset($opts[4])) $opsiE = $opts[4]['text'];
+
+                    $letters = ['A', 'B', 'C', 'D', 'E'];
+                    foreach ($opts as $idx => $optItem) {
+                        if ($optItem['is_correct'] && isset($letters[$idx])) {
+                            $kunci = $letters[$idx];
+                            break;
+                        }
+                    }
+                }
                 
                 // Normalisasi kunci: jika kunci berupa teks yang sama dengan opsi, ubah ke huruf A/B/C/D
                 if (strlen($kunci) > 1) {

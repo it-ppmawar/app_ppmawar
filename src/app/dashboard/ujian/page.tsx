@@ -122,6 +122,7 @@ export default function UjianCBTPage() {
   const [showQuizBDropdownList, setShowQuizBDropdownList] = useState(false);
   const quizBDropdownRef = useRef<HTMLDivElement>(null);
   const [quizBModalQuestions, setQuizBModalQuestions] = useState<any[]>([]);
+  const [quizBModalError, setQuizBModalError] = useState('');
   const [loadingQuizBModalQuestions, setLoadingQuizBModalQuestions] = useState(false);
   const [importingQuizBPaket, setImportingQuizBPaket] = useState(false);
   const [quizBModalForm, setQuizBModalForm] = useState<any>({
@@ -544,7 +545,9 @@ export default function UjianCBTPage() {
     loadQuizzesForImport();
     setQuizBModalId('');
     setQuizBModalSearch('');
+    setShowQuizBDropdownList(false);
     setQuizBModalQuestions([]);
+    setQuizBModalError('');
     setQuizBModalForm({
       judul: '',
       mata_pelajaran: mapelList[0]?.mata_pelajaran || '',
@@ -561,6 +564,7 @@ export default function UjianCBTPage() {
 
   const handleSelectQuizForImportModal = async (quizId: string) => {
     setQuizBModalId(quizId);
+    setQuizBModalError('');
     if (!quizId) {
       setQuizBModalQuestions([]);
       return;
@@ -581,9 +585,16 @@ export default function UjianCBTPage() {
     try {
       const res = await fetch(`/api/quizb/fetch?action=get_questions&quiz_id=${encodeURIComponent(quizId)}`);
       const data = await res.json();
-      setQuizBModalQuestions(data.questions || []);
-    } catch {
+      if (data.success) {
+        setQuizBModalQuestions(data.questions || []);
+        setQuizBModalError('');
+      } else {
+        setQuizBModalQuestions([]);
+        setQuizBModalError(data.error || 'Gagal memuat butir soal.');
+      }
+    } catch (err: any) {
       setQuizBModalQuestions([]);
+      setQuizBModalError(err.message || 'Gagal menghubungi server.');
     } finally {
       setLoadingQuizBModalQuestions(false);
     }
@@ -1259,25 +1270,21 @@ export default function UjianCBTPage() {
             )}
           </div>
 
-          {/* Menu Tombol Header: Tersusun Rapi 2 Baris pada Layar PC / Tablet */}
-          <div className={`w-full md:w-auto pt-2 md:pt-0 ${
-            isPengajarOrAdmin
-              ? 'grid grid-cols-1 sm:grid-cols-2 gap-2 md:w-[440px] lg:w-[460px]'
-              : 'flex justify-end'
-          }`}>
+          {/* Menu Tombol Header: Tersusun Rapi & Lapang (Hanya 2 Tombol Tab di Hero) */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-start md:justify-end gap-3 w-full md:w-auto pt-2 md:pt-0">
             {/* Tombol 1: Daftar Ujian */}
             <button
               type="button"
               onClick={() => setMainTab('daftar')}
-              className={`px-3.5 py-2 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2.5 shadow-sm min-h-[46px] ${
+              className={`px-4 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-3 shadow-sm min-h-[48px] ${
                 mainTab === 'daftar'
                   ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
                   : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
               }`}
             >
-              <Play size={15} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
+              <Play size={16} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
               <div className="flex flex-col items-start leading-tight text-left min-w-0">
-                <span className="font-extrabold truncate">Daftar Ujian</span>
+                <span className="font-extrabold whitespace-nowrap">Daftar Ujian</span>
                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full mt-0.5 ${
                   mainTab === 'daftar' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
                 }`}>
@@ -1291,15 +1298,15 @@ export default function UjianCBTPage() {
               <button
                 type="button"
                 onClick={() => setMainTab('kelola')}
-                className={`px-3.5 py-2 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2.5 shadow-sm min-h-[46px] ${
+                className={`px-4 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-3 shadow-sm min-h-[48px] ${
                   mainTab === 'kelola'
                     ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
                     : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
                 }`}
               >
-                <Settings size={15} className={mainTab === 'kelola' ? 'text-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
+                <Settings size={16} className={mainTab === 'kelola' ? 'text-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
                 <div className="flex flex-col items-start leading-tight text-left min-w-0">
-                  <span className="font-extrabold truncate">Kelola Ujian &amp; Bank Soal</span>
+                  <span className="font-extrabold whitespace-nowrap">Kelola Ujian &amp; Bank Soal</span>
                   <span className={`text-[10px] font-black px-2 py-0.5 rounded-full mt-0.5 ${
                     mainTab === 'kelola' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
                   }`}>
@@ -1308,54 +1315,29 @@ export default function UjianCBTPage() {
                 </div>
               </button>
             )}
-
-            {/* Tombol 3: Buat Ujian Baru */}
-            {isPengajarOrAdmin && (
-              <button
-                type="button"
-                onClick={openCreateModal}
-                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center sm:justify-start gap-2 min-h-[46px]"
-              >
-                <Plus size={16} className="shrink-0" />
-                <span className="font-extrabold truncate">Buat Ujian Baru</span>
-              </button>
-            )}
-
-            {/* Tombol 4: Impor dari QuizB */}
-            {isPengajarOrAdmin && (
-              <button
-                type="button"
-                onClick={openQuizBImportModal}
-                className="px-3.5 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center sm:justify-start gap-2 border border-teal-400/40 min-h-[46px]"
-                title="Impor kuis dan butir soal dari QuizB langsung menjadi paket ujian CBT"
-              >
-                <Sparkles size={15} className="text-yellow-300 shrink-0" />
-                <span className="font-extrabold truncate">Impor dari QuizB</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Toolbar Filter & Pencarian */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:max-w-md">
+      {/* Toolbar Filter & Pencarian: Termasuk Tombol Buat Ujian & Impor dari QuizB */}
+      <div className="bg-white dark:bg-gray-800 p-3.5 sm:p-4 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        <div className="relative w-full lg:max-w-sm xl:max-w-md">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="Cari ujian, mata pelajaran, atau kitab..."
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
-        {/* Dropdown & Tombol Refresh: Rata Tengah pada HP */}
-        <div className="flex items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
+        {/* Dropdown, Refresh, & Tombol Aksi di Toolbar Pencarian */}
+        <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2.5 w-full lg:w-auto">
           <select
             value={filterJenis}
             onChange={(e) => setFilterJenis(e.target.value)}
-            className="flex-1 sm:flex-initial max-w-[260px] px-3.5 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:outline-none text-center sm:text-left"
+            className="px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:outline-none"
           >
             <option value="ALL">Semua Jenis Ujian</option>
             <option value="harian">Ulangan Harian</option>
@@ -1366,11 +1348,34 @@ export default function UjianCBTPage() {
           <button
             onClick={fetchExams}
             disabled={loading}
-            className="p-2 shrink-0 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+            className="p-2.5 shrink-0 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
             title="Muat Ulang / Refresh"
           >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
+
+          {isPengajarOrAdmin && (
+            <>
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <Plus size={16} className="shrink-0" />
+                <span className="whitespace-nowrap">Buat Ujian Baru</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={openQuizBImportModal}
+                className="px-3.5 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all flex items-center gap-1.5 border border-teal-400/30"
+                title="Impor kuis dan butir soal dari QuizB langsung menjadi paket ujian CBT"
+              >
+                <Sparkles size={15} className="text-yellow-300 shrink-0" />
+                <span className="whitespace-nowrap">Impor dari QuizB</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1960,7 +1965,7 @@ export default function UjianCBTPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
-                      🎮 Hubungkan / Impor Kuis QuizB
+                      Tautkan Kuis QuizB (Opsional)
                     </label>
                     {formExam.quizb_id && (
                       <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
@@ -2038,7 +2043,7 @@ export default function UjianCBTPage() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base text-white">
-                    🎮 Impor Paket Ujian dari QuizB
+                    Impor Paket Ujian dari QuizB
                   </h3>
                   <p className="text-xs text-emerald-100/80">
                     Tarik butir soal dari quizb.my.id langsung menjadi paket ujian CBT santri PPMAWAR.
@@ -2209,6 +2214,19 @@ export default function UjianCBTPage() {
                     <div className="p-3 bg-white dark:bg-gray-800 rounded-xl flex items-center gap-2 text-xs text-gray-500">
                       <RefreshCw size={14} className="animate-spin text-teal-600" />
                       <span>Sedang mengambil butir soal dari QuizB...</span>
+                    </div>
+                  ) : quizBModalError ? (
+                    <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl space-y-1.5 text-xs text-amber-900 dark:text-amber-200">
+                      <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
+                        <AlertTriangle size={15} className="text-amber-600 shrink-0" />
+                        <span>Pemberitahuan Integrasi QuizB:</span>
+                      </div>
+                      <p className="leading-relaxed font-medium">
+                        {quizBModalError}
+                      </p>
+                      <p className="text-[11px] text-amber-800/80 dark:text-amber-400">
+                        💡 <strong>Solusi:</strong> Salin file terbaru <code>public/quizb_bridge.php</code> yang ada di aplikasi ini ke cPanel File Manager <code>quizb.my.id</code> agar aksi penarikan butir soal aktif.
+                      </p>
                     </div>
                   ) : quizBModalId && quizBModalQuestions.length > 0 ? (
                     <div className="p-3 bg-emerald-100/70 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl space-y-1.5">
@@ -2613,7 +2631,7 @@ export default function UjianCBTPage() {
               <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200 dark:border-emerald-800/40 p-4 space-y-3">
                 <h4 className="font-bold text-sm text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
                   <Sparkles size={15} />
-                  🎮 Impor Soal dari QuizB
+                  Impor Soal dari QuizB
                 </h4>
 
                 {/* Dropdown pilih kuis QuizB */}

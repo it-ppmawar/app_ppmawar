@@ -121,6 +121,17 @@ export async function GET(request: Request) {
 
         if (resp.ok) {
           const data = await resp.json();
+          if (data.status === 'error') {
+            const isUnknownAction = (data.message || '').includes('tidak dikenal') || (data.message || '').includes('get_questions');
+            return NextResponse.json({
+              success: false,
+              error: isUnknownAction
+                ? 'File quizb_bridge.php di cPanel hosting quizb.my.id belum diperbarui dengan versi terbaru. Harap salin file public/quizb_bridge.php ke cPanel quizb.my.id.'
+                : (data.message || 'Gagal memuat butir soal dari QuizB.'),
+              questions: [],
+              needs_bridge_update: isUnknownAction,
+            });
+          }
           return NextResponse.json({
             success: true,
             quiz_id: quizId,
@@ -129,10 +140,24 @@ export async function GET(request: Request) {
             message: data.message || '',
           });
         } else {
+          let errDetail = `HTTP ${resp.status}`;
+          let isUnknownAction = false;
+          try {
+            const errData = await resp.json();
+            if (errData.message) {
+              errDetail = errData.message;
+              if (errData.message.includes('tidak dikenal') || errData.message.includes('get_questions')) {
+                isUnknownAction = true;
+              }
+            }
+          } catch {}
           return NextResponse.json({
             success: false,
-            error: `QuizB Bridge merespon HTTP ${resp.status}`,
+            error: isUnknownAction
+              ? 'File quizb_bridge.php di cPanel hosting quizb.my.id belum diperbarui dengan versi terbaru. Harap salin file public/quizb_bridge.php ke cPanel quizb.my.id.'
+              : `QuizB Bridge merespon: ${errDetail}`,
             questions: [],
+            needs_bridge_update: isUnknownAction,
           }, { status: resp.status });
         }
       } catch (err: any) {
