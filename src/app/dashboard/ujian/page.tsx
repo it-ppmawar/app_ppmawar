@@ -104,6 +104,8 @@ export default function UjianCBTPage() {
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuestionItem | null>(null);
+  const formEditSoalRef = useRef<HTMLFormElement>(null);
+  const modalSoalBodyRef = useRef<HTMLDivElement>(null);
 
   // State Import Soal dari QuizB
   const [quizImportSearch, setQuizImportSearch] = useState('');
@@ -448,6 +450,18 @@ export default function UjianCBTPage() {
     setSelectedExamForSoal(exam);
     setShowSoalModal(true);
     setLoadingQuestions(true);
+    setEditingQuestion(null);
+    setFormQuestion({
+      pertanyaan: '',
+      opsi_a: '',
+      opsi_b: '',
+      opsi_c: '',
+      opsi_d: '',
+      opsi_e: '',
+      kunci_jawaban: 'A',
+      bobot_nilai: 10,
+      pembahasan: '',
+    });
     // Reset state import soal
     setQuizImportId('');
     setQuizImportSearch('');
@@ -466,6 +480,34 @@ export default function UjianCBTPage() {
     } finally {
       setLoadingQuestions(false);
     }
+  };
+
+  const handleStartEditQuestion = (q: QuestionItem, index: number) => {
+    const questionWithNumber = {
+      ...q,
+      nomor_urut: q.nomor_urut || index + 1,
+    };
+    setEditingQuestion(questionWithNumber);
+    setFormQuestion({
+      pertanyaan: q.pertanyaan,
+      opsi_a: q.opsi_a,
+      opsi_b: q.opsi_b,
+      opsi_c: q.opsi_c,
+      opsi_d: q.opsi_d || '',
+      opsi_e: q.opsi_e || '',
+      kunci_jawaban: q.kunci_jawaban || 'A',
+      bobot_nilai: q.bobot_nilai,
+      pembahasan: q.pembahasan || '',
+    });
+
+    // Autoscroll ke kolom edit soal secara mulus
+    setTimeout(() => {
+      if (formEditSoalRef.current) {
+        formEditSoalRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (modalSoalBodyRef.current) {
+        modalSoalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 50);
   };
 
   // Fungsi load daftar kuis QuizB untuk panel import soal
@@ -1321,60 +1363,65 @@ export default function UjianCBTPage() {
 
       {/* Toolbar Filter & Pencarian: Termasuk Tombol Buat Ujian & Impor dari QuizB */}
       <div className="bg-white dark:bg-gray-800 p-3.5 sm:p-4 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        {/* Kolom Pencarian: Rata Tengah pada HP */}
         <div className="relative w-full lg:max-w-sm xl:max-w-md">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hidden sm:block" />
           <input
             type="text"
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="Cari ujian, mata pelajaran, atau kitab..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full px-4 sm:pl-10 sm:pr-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm text-center sm:text-left placeholder:text-center sm:placeholder:text-left focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
         {/* Dropdown, Refresh, & Tombol Aksi di Toolbar Pencarian */}
-        <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2.5 w-full lg:w-auto">
-          <select
-            value={filterJenis}
-            onChange={(e) => setFilterJenis(e.target.value)}
-            className="px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:outline-none"
-          >
-            <option value="ALL">Semua Jenis Ujian</option>
-            <option value="harian">Ulangan Harian</option>
-            <option value="uts">Ujian Tengah Semester (UTS)</option>
-            <option value="uas">Ujian Akhir Semester (UAS)</option>
-          </select>
+        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center lg:justify-end gap-2.5 w-full lg:w-auto">
+          {/* Baris Dropdown & Tombol Refresh: Rata Tengah */}
+          <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
+            <select
+              value={filterJenis}
+              onChange={(e) => setFilterJenis(e.target.value)}
+              className="flex-1 sm:flex-initial max-w-[260px] sm:max-w-none px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 focus:outline-none text-center sm:text-left"
+            >
+              <option value="ALL">Semua Jenis Ujian</option>
+              <option value="harian">Ulangan Harian</option>
+              <option value="uts">Ujian Tengah Semester (UTS)</option>
+              <option value="uas">Ujian Akhir Semester (UAS)</option>
+            </select>
 
-          <button
-            onClick={fetchExams}
-            disabled={loading}
-            className="p-2.5 shrink-0 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
-            title="Muat Ulang / Refresh"
-          >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-          </button>
+            <button
+              onClick={fetchExams}
+              disabled={loading}
+              className="p-2.5 shrink-0 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+              title="Muat Ulang / Refresh"
+            >
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
 
+          {/* Tombol Buat Ujian & Impor dari QuizB: Berdampingan dalam 1 Baris pada HP */}
           {isPengajarOrAdmin && (
-            <>
+            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={openCreateModal}
-                className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all flex items-center gap-1.5"
+                className="w-full px-3 sm:px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-1.5"
               >
-                <Plus size={16} className="shrink-0" />
-                <span className="whitespace-nowrap">Buat Ujian Baru</span>
+                <Plus size={15} className="shrink-0" />
+                <span className="whitespace-nowrap truncate">Buat Ujian Baru</span>
               </button>
 
               <button
                 type="button"
                 onClick={openQuizBImportModal}
-                className="px-3.5 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all flex items-center gap-1.5 border border-teal-400/30"
+                className="w-full px-3 sm:px-4 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all flex items-center justify-center gap-1.5 border border-teal-400/30"
                 title="Impor kuis dan butir soal dari QuizB langsung menjadi paket ujian CBT"
               >
                 <Sparkles size={15} className="text-yellow-300 shrink-0" />
-                <span className="whitespace-nowrap">Impor dari QuizB</span>
+                <span className="whitespace-nowrap truncate">Impor dari QuizB</span>
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -2421,12 +2468,39 @@ export default function UjianCBTPage() {
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto flex-1 space-y-6">
+            <div ref={modalSoalBodyRef} className="p-5 overflow-y-auto flex-1 space-y-6">
               {/* Form Tambah / Edit Soal */}
-              <form onSubmit={handleSaveQuestion} className="bg-gray-50 dark:bg-gray-900/60 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
-                <h4 className="font-bold text-xs sm:text-sm text-gray-800 dark:text-gray-200">
-                  {editingQuestion ? 'Edit Soal' : '➕ Tambah Butir Soal Baru'}
-                </h4>
+              <form
+                ref={formEditSoalRef}
+                onSubmit={handleSaveQuestion}
+                className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                  editingQuestion
+                    ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700/60 ring-2 ring-amber-400/30'
+                    : 'bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-gray-200/60 dark:border-gray-700/60">
+                  <h4 className="font-bold text-xs sm:text-sm text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                    {editingQuestion ? (
+                      <>
+                        <Edit3 size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>
+                          Edit Soal <span className="text-amber-700 dark:text-amber-300 font-extrabold underline decoration-amber-400">No. {editingQuestion.nomor_urut}</span>
+                        </span>
+                      </>
+                    ) : (
+                      <span>➕ Tambah Butir Soal Baru</span>
+                    )}
+                  </h4>
+
+                  {editingQuestion && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
+                        Sedang Mengedit Soal #{editingQuestion.nomor_urut}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
@@ -2550,10 +2624,14 @@ export default function UjianCBTPage() {
                     )}
                     <button
                       type="submit"
-                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md transition-all text-center flex items-center justify-center gap-1.5"
+                      className={`w-full sm:w-auto px-6 py-2.5 rounded-xl active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md transition-all text-center flex items-center justify-center gap-1.5 ${
+                        editingQuestion
+                          ? 'bg-amber-600 hover:bg-amber-700'
+                          : 'bg-emerald-600 hover:bg-emerald-700'
+                      }`}
                     >
-                      <Plus size={14} />
-                      <span>{editingQuestion ? 'Simpan Soal' : 'Tambahkan Soal'}</span>
+                      {editingQuestion ? <Check size={14} /> : <Plus size={14} />}
+                      <span>{editingQuestion ? `Simpan Soal No. ${editingQuestion.nomor_urut}` : 'Tambahkan Soal'}</span>
                     </button>
                   </div>
                 </div>
@@ -2573,34 +2651,31 @@ export default function UjianCBTPage() {
                   questions.map((q, idx) => (
                     <div
                       key={q.id}
-                      className="p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 space-y-2 text-xs"
+                      className={`p-4 rounded-2xl border space-y-2 text-xs transition-all ${
+                        editingQuestion?.id === q.id
+                          ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-400 dark:border-amber-600 ring-2 ring-amber-400/20'
+                          : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700'
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <span className="font-bold text-emerald-600">No. {idx + 1}</span>
                         <div className="flex items-center gap-1.5">
                           <button
-                            onClick={() => {
-                              setEditingQuestion(q);
-                              setFormQuestion({
-                                pertanyaan: q.pertanyaan,
-                                opsi_a: q.opsi_a,
-                                opsi_b: q.opsi_b,
-                                opsi_c: q.opsi_c,
-                                opsi_d: q.opsi_d || '',
-                                opsi_e: q.opsi_e || '',
-                                kunci_jawaban: q.kunci_jawaban || 'A',
-                                bobot_nilai: q.bobot_nilai,
-                                pembahasan: q.pembahasan || '',
-                              });
-                            }}
-                            className="p-1 rounded text-gray-500 hover:bg-gray-100"
-                            title="Edit"
+                            type="button"
+                            onClick={() => handleStartEditQuestion(q, idx)}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              editingQuestion?.id === q.id
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 ring-1 ring-amber-400'
+                                : 'text-gray-500 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-800'
+                            }`}
+                            title={`Edit Soal No. ${idx + 1}`}
                           >
                             <Edit3 size={14} />
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleDeleteQuestion(q.id)}
-                            className="p-1 rounded text-rose-500 hover:bg-rose-50"
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                             title="Hapus"
                           >
                             <Trash2 size={14} />
