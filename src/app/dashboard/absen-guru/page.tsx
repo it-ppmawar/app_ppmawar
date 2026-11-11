@@ -637,27 +637,27 @@ export default function AbsenGuruPage() {
             <div className="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-teal-200/60 dark:border-teal-900/40 w-full sm:w-auto sm:flex sm:flex-wrap">
               <button
                 onClick={() => handleExportData('pdf', true)}
-                className="w-full sm:w-auto flex items-center justify-center gap-1.5 py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs text-center truncate cursor-pointer"
+                className="w-full sm:w-auto py-2 px-2.5 sm:px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer text-center truncate"
                 title="Preview PDF"
               >
-                <FileText size={13} className="shrink-0" />
+                <FileText size={14} className="shrink-0" />
                 <span className="truncate">Preview PDF</span>
               </button>
               <button
                 onClick={() => handleExportData('pdf', false)}
-                className="w-full sm:w-auto flex items-center justify-center gap-1.5 py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs text-center truncate cursor-pointer"
-                title="Download PDF"
+                className="w-full sm:w-auto py-2 px-2.5 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer text-center truncate"
+                title="Unduh PDF"
               >
-                <Download size={13} className="shrink-0" />
+                <Download size={14} className="shrink-0" />
                 <span className="truncate">Unduh PDF</span>
               </button>
               <button
                 onClick={() => handleExportData('excel')}
-                className="w-full sm:w-auto flex items-center justify-center gap-1.5 py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs text-center truncate cursor-pointer"
-                title="Download Excel"
+                className="w-full sm:w-auto py-2 px-2.5 sm:px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer text-center truncate"
+                title="Unduh Excel"
               >
-                <ExternalLink size={13} className="shrink-0" />
-                <span className="truncate">Unduh Excel</span>
+                <Download size={14} className="shrink-0" />
+                <span className="truncate">Excel</span>
               </button>
             </div>
           </div>
@@ -934,33 +934,7 @@ export default function AbsenGuruPage() {
                 )}
               </div>
 
-              {/* Ekspor Dokumen Laporan Presensi */}
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  onClick={() => handleExportDewanGuru('pdf', true)}
-                  className="flex-1 sm:flex-initial py-2 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 dark:text-purple-300 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                  title="Preview PDF Presensi Dewan Guru"
-                >
-                  <FileText size={14} />
-                  <span>Preview PDF</span>
-                </button>
-                <button
-                  onClick={() => handleExportDewanGuru('pdf', false)}
-                  className="flex-1 sm:flex-initial py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                  title="Unduh File PDF Presensi Dewan Guru"
-                >
-                  <Download size={14} />
-                  <span>Unduh PDF</span>
-                </button>
-                <button
-                  onClick={() => handleExportDewanGuru('excel', false)}
-                  className="flex-1 sm:flex-initial py-2 px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                  title="Unduh File Excel Presensi Dewan Guru"
-                >
-                  <Download size={14} />
-                  <span>Excel</span>
-                </button>
-              </div>
+
 
               {/* Set Massal 4 Tombol */}
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
