@@ -28,11 +28,11 @@ export async function GET(request: Request) {
 
     let query = '';
     if (isGuruOrAdmin) {
-      // Tampilkan dengan kunci jawaban untuk pengajar / admin
+      // Tampilkan dengan kunci jawaban & rubrik untuk pengajar / admin
       query = 'SELECT * FROM ujian_soal WHERE ujian_id = ? ORDER BY nomor_urut ASC, id ASC';
     } else {
-      // Untuk santri: sembunyikan kunci_jawaban & pembahasan
-      query = `SELECT id, ujian_id, nomor_urut, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, bobot_nilai 
+      // Untuk santri: sembunyikan kunci_jawaban, pembahasan, & rubrik AI
+      query = `SELECT id, ujian_id, tipe_soal, nomor_urut, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, bobot_nilai 
                FROM ujian_soal 
                WHERE ujian_id = ? 
                ORDER BY nomor_urut ASC, id ASC`;
@@ -68,22 +68,27 @@ export async function POST(request: Request) {
       const ujianId = Number(body.ujian_id);
       let count = 0;
       for (const s of body.soal_list) {
-        if (!s.pertanyaan || !s.opsi_a || !s.opsi_b) continue;
+        if (!s.pertanyaan) continue;
+        const tipe = s.tipe_soal === 'essay' ? 'essay' : 'pilihan_ganda';
+        if (tipe === 'pilihan_ganda' && (!s.opsi_a || !s.opsi_b)) continue;
+
         await pool.execute(
           `INSERT INTO ujian_soal 
-            (ujian_id, nomor_urut, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, kunci_jawaban, bobot_nilai, pembahasan)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (ujian_id, tipe_soal, nomor_urut, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, kunci_jawaban, rubrik_kata_kunci, bobot_nilai, pembahasan)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             ujianId,
+            tipe,
             s.nomor_urut || (count + 1),
             s.pertanyaan.trim(),
             s.gambar || null,
-            s.opsi_a.trim(),
-            s.opsi_b.trim(),
-            s.opsi_c ? s.opsi_c.trim() : '',
+            s.opsi_a ? s.opsi_a.trim() : null,
+            s.opsi_b ? s.opsi_b.trim() : null,
+            s.opsi_c ? s.opsi_c.trim() : null,
             s.opsi_d ? s.opsi_d.trim() : null,
             s.opsi_e ? s.opsi_e.trim() : null,
-            (s.kunci_jawaban || 'A').toUpperCase().trim(),
+            s.kunci_jawaban ? s.kunci_jawaban.trim() : (tipe === 'pilihan_ganda' ? 'A' : null),
+            s.rubrik_kata_kunci ? s.rubrik_kata_kunci.trim() : null,
             Number(s.bobot_nilai) || 10,
             s.pembahasan || null,
           ]
@@ -96,6 +101,7 @@ export async function POST(request: Request) {
     // Single Insert
     const {
       ujian_id,
+      tipe_soal = 'pilihan_ganda',
       nomor_urut = 1,
       pertanyaan,
       gambar = null,
@@ -104,30 +110,39 @@ export async function POST(request: Request) {
       opsi_c,
       opsi_d = null,
       opsi_e = null,
-      kunci_jawaban = 'A',
+      kunci_jawaban = '',
+      rubrik_kata_kunci = null,
       bobot_nilai = 10,
       pembahasan = null,
     } = body;
 
-    if (!ujian_id || !pertanyaan || !opsi_a || !opsi_b) {
-      return NextResponse.json({ error: 'ujian_id, pertanyaan, opsi A, dan opsi B wajib diisi.' }, { status: 400 });
+    const normalizedTipe = tipe_soal === 'essay' ? 'essay' : 'pilihan_ganda';
+
+    if (!ujian_id || !pertanyaan) {
+      return NextResponse.json({ error: 'ujian_id dan pertanyaan wajib diisi.' }, { status: 400 });
+    }
+
+    if (normalizedTipe === 'pilihan_ganda' && (!opsi_a || !opsi_b)) {
+      return NextResponse.json({ error: 'Untuk soal pilihan ganda, Opsi A dan Opsi B wajib diisi.' }, { status: 400 });
     }
 
     const [res] = await pool.execute<ResultSetHeader>(
       `INSERT INTO ujian_soal 
-        (ujian_id, nomor_urut, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, kunci_jawaban, bobot_nilai, pembahasan)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (ujian_id, tipe_soal, nomor_urut, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, kunci_jawaban, rubrik_kata_kunci, bobot_nilai, pembahasan)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         Number(ujian_id),
+        normalizedTipe,
         Number(nomor_urut) || 1,
         pertanyaan.trim(),
         gambar,
-        opsi_a.trim(),
-        opsi_b.trim(),
-        opsi_c ? opsi_c.trim() : '',
+        opsi_a ? opsi_a.trim() : null,
+        opsi_b ? opsi_b.trim() : null,
+        opsi_c ? opsi_c.trim() : null,
         opsi_d ? opsi_d.trim() : null,
         opsi_e ? opsi_e.trim() : null,
-        (kunci_jawaban || 'A').toUpperCase().trim(),
+        kunci_jawaban ? kunci_jawaban.trim() : (normalizedTipe === 'pilihan_ganda' ? 'A' : null),
+        rubrik_kata_kunci ? rubrik_kata_kunci.trim() : null,
         Number(bobot_nilai) || 10,
         pembahasan ? pembahasan.trim() : null,
       ]
@@ -155,36 +170,55 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { id, nomor_urut, pertanyaan, gambar, opsi_a, opsi_b, opsi_c, opsi_d, opsi_e, kunci_jawaban, bobot_nilai, pembahasan } = body;
+    const {
+      id,
+      tipe_soal,
+      nomor_urut,
+      pertanyaan,
+      gambar,
+      opsi_a,
+      opsi_b,
+      opsi_c,
+      opsi_d,
+      opsi_e,
+      kunci_jawaban,
+      rubrik_kata_kunci,
+      bobot_nilai,
+      pembahasan
+    } = body;
 
     if (!id) return NextResponse.json({ error: 'ID Soal diperlukan.' }, { status: 400 });
 
     await pool.execute(
       `UPDATE ujian_soal SET
+        tipe_soal = COALESCE(?, tipe_soal),
         nomor_urut = COALESCE(?, nomor_urut),
         pertanyaan = COALESCE(?, pertanyaan),
         gambar = ?,
-        opsi_a = COALESCE(?, opsi_a),
-        opsi_b = COALESCE(?, opsi_b),
-        opsi_c = COALESCE(?, opsi_c),
+        opsi_a = ?,
+        opsi_b = ?,
+        opsi_c = ?,
         opsi_d = ?,
         opsi_e = ?,
         kunci_jawaban = COALESCE(?, kunci_jawaban),
+        rubrik_kata_kunci = ?,
         bobot_nilai = COALESCE(?, bobot_nilai),
         pembahasan = ?
        WHERE id = ?`,
       [
+        tipe_soal || null,
         nomor_urut || null,
         pertanyaan || null,
         gambar || null,
-        opsi_a || null,
-        opsi_b || null,
-        opsi_c || null,
-        opsi_d || null,
-        opsi_e || null,
-        kunci_jawaban ? kunci_jawaban.toUpperCase() : null,
+        opsi_a !== undefined ? opsi_a : null,
+        opsi_b !== undefined ? opsi_b : null,
+        opsi_c !== undefined ? opsi_c : null,
+        opsi_d !== undefined ? opsi_d : null,
+        opsi_e !== undefined ? opsi_e : null,
+        kunci_jawaban !== undefined ? kunci_jawaban : null,
+        rubrik_kata_kunci !== undefined ? rubrik_kata_kunci : null,
         bobot_nilai || null,
-        pembahasan || null,
+        pembahasan !== undefined ? pembahasan : null,
         id,
       ]
     );

@@ -183,6 +183,9 @@ export async function POST(request: Request) {
       passing_grade = 70,
       acak_soal = 1,
       acak_opsi = 1,
+      anti_curang = 1,
+      max_pelanggaran = 3,
+      wajib_fullscreen = 1,
       wajib_token = 1,
       wajib_geofence = 1,
       max_radius_meter = 200,
@@ -198,8 +201,8 @@ export async function POST(request: Request) {
 
     const [insertResult] = await pool.execute<ResultSetHeader>(
       `INSERT INTO ujian_madin 
-        (judul, deskripsi, mata_pelajaran, kitab, kelas_madin_id, semester, tahun_ajaran, jenis_ujian, durasi_menit, passing_grade, acak_soal, acak_opsi, quizb_id, quizb_embed_url, guru_id, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (judul, deskripsi, mata_pelajaran, kitab, kelas_madin_id, semester, tahun_ajaran, jenis_ujian, durasi_menit, passing_grade, acak_soal, acak_opsi, anti_curang, max_pelanggaran, wajib_fullscreen, quizb_id, quizb_embed_url, guru_id, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         judul.trim(),
         deskripsi ? deskripsi.trim() : null,
@@ -213,6 +216,9 @@ export async function POST(request: Request) {
         Number(passing_grade) || 70,
         acak_soal ? 1 : 0,
         acak_opsi ? 1 : 0,
+        anti_curang ? 1 : 0,
+        Number(max_pelanggaran) || 3,
+        wajib_fullscreen ? 1 : 0,
         quizb_id ? String(quizb_id) : null,
         quizb_embed_url ? String(quizb_embed_url) : null,
         targetGuruId,
@@ -307,6 +313,9 @@ export async function PUT(request: Request) {
       passing_grade,
       acak_soal,
       acak_opsi,
+      anti_curang,
+      max_pelanggaran,
+      wajib_fullscreen,
     } = body;
 
     await pool.execute(
@@ -320,7 +329,10 @@ export async function PUT(request: Request) {
         durasi_menit = COALESCE(?, durasi_menit),
         passing_grade = COALESCE(?, passing_grade),
         acak_soal = COALESCE(?, acak_soal),
-        acak_opsi = COALESCE(?, acak_opsi)
+        acak_opsi = COALESCE(?, acak_opsi),
+        anti_curang = COALESCE(?, anti_curang),
+        max_pelanggaran = COALESCE(?, max_pelanggaran),
+        wajib_fullscreen = COALESCE(?, wajib_fullscreen)
        WHERE id = ?`,
       [
         judul || null,
@@ -333,6 +345,9 @@ export async function PUT(request: Request) {
         passing_grade ? Number(passing_grade) : null,
         acak_soal !== undefined ? (acak_soal ? 1 : 0) : null,
         acak_opsi !== undefined ? (acak_opsi ? 1 : 0) : null,
+        anti_curang !== undefined ? (anti_curang ? 1 : 0) : null,
+        max_pelanggaran !== undefined ? Number(max_pelanggaran) : null,
+        wajib_fullscreen !== undefined ? (wajib_fullscreen ? 1 : 0) : null,
         id,
       ]
     );
@@ -367,6 +382,8 @@ export async function DELETE(request: Request) {
     await pool.execute('DELETE FROM ujian_madin WHERE id = ?', [id]);
     await pool.execute('DELETE FROM ujian_soal WHERE ujian_id = ?', [id]);
     await pool.execute('DELETE FROM ujian_sesi_pengawas WHERE ujian_id = ?', [id]);
+    await pool.execute('DELETE FROM ujian_essay_jawaban WHERE ujian_id = ?', [id]);
+    await pool.execute('DELETE FROM ujian_hasil_santri WHERE ujian_id = ?', [id]);
 
     return NextResponse.json({ success: true, message: 'Ujian beserta soal berhasil dihapus.' });
   } catch (error: any) {

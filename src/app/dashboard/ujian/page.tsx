@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
@@ -25,6 +25,9 @@ interface ExamItem {
   passing_grade: number;
   acak_soal: number;
   acak_opsi: number;
+  anti_curang?: number;
+  max_pelanggaran?: number;
+  wajib_fullscreen?: number;
   is_active: number;
   quizb_id: string | null;
   quizb_embed_url: string | null;
@@ -41,12 +44,14 @@ interface ExamItem {
   jumlah_benar?: number | null;
   jumlah_salah?: number | null;
   status_lulus?: number | null;
+  status_koreksi?: 'selesai' | 'menunggu_koreksi';
   waktu_selesai?: string | null;
 }
 
 interface QuestionItem {
   id: number;
   ujian_id: number;
+  tipe_soal?: 'pilihan_ganda' | 'essay';
   nomor_urut: number;
   pertanyaan: string;
   gambar?: string | null;
@@ -56,6 +61,7 @@ interface QuestionItem {
   opsi_d?: string | null;
   opsi_e?: string | null;
   kunci_jawaban?: string;
+  rubrik_kata_kunci?: string | null;
   bobot_nilai: number;
   pembahasan?: string | null;
 }
@@ -92,6 +98,9 @@ export default function UjianCBTPage() {
     passing_grade: 70,
     acak_soal: 1,
     acak_opsi: 1,
+    anti_curang: 1,
+    max_pelanggaran: 3,
+    wajib_fullscreen: 1,
     wajib_token: 1,
     wajib_geofence: 1,
     max_radius_meter: 200,
@@ -141,6 +150,7 @@ export default function UjianCBTPage() {
   // Checkbox auto import di Modal Buat Ujian Biasa
   const [autoImportQuestionsOnCreate, setAutoImportQuestionsOnCreate] = useState(true);
   const [formQuestion, setFormQuestion] = useState<any>({
+    tipe_soal: 'pilihan_ganda',
     pertanyaan: '',
     opsi_a: '',
     opsi_b: '',
@@ -148,9 +158,30 @@ export default function UjianCBTPage() {
     opsi_d: '',
     opsi_e: '',
     kunci_jawaban: 'A',
+    rubrik_kata_kunci: '',
     bobot_nilai: 10,
     pembahasan: '',
   });
+
+  // State Template & Import Soal Excel
+  const excelFileInputRef = useRef<HTMLInputElement>(null);
+  const [importingExcelSoal, setImportingExcelSoal] = useState(false);
+
+  // State Anti-Pindah Layar & Proctoring Pelanggaran
+  const [violationCount, setViolationCount] = useState(0);
+  const [isDisqualified, setIsDisqualified] = useState(false);
+  const [showViolationModal, setShowViolationModal] = useState(false);
+  const [violationModalMsg, setViolationModalMsg] = useState('');
+  const [violationLogs, setViolationLogs] = useState<Array<{ time: string; reason: string }>>([]);
+
+  // State Modal Koreksi Essay & Asisten AI
+  const [showEssayModal, setShowEssayModal] = useState(false);
+  const [selectedExamForEssay, setSelectedExamForEssay] = useState<ExamItem | null>(null);
+  const [essayStudentAnswers, setEssayStudentAnswers] = useState<any[]>([]);
+  const [loadingEssayAnswers, setLoadingEssayAnswers] = useState(false);
+  const [runningAiGrading, setRunningAiGrading] = useState(false);
+  const [savingGrades, setSavingGrades] = useState(false);
+  const [essayGradesDraft, setEssayGradesDraft] = useState<Record<number, { skor_final: number; catatan_guru: string }>>({});
 
   // Modal Sesi & Token Pengawas
   const [showSesiModal, setShowSesiModal] = useState(false);
@@ -361,7 +392,20 @@ export default function UjianCBTPage() {
         setCurrentQIndex(0);
         setUserAnswers({});
         setFlaggedQuestions(new Set());
+        setViolationCount(0);
+        setIsDisqualified(false);
+        setViolationLogs([]);
+        setShowViolationModal(false);
         setExamStep('in_progress');
+
+        // Minta Fullscreen jika diwajibkan
+        if (data.exam?.wajib_fullscreen && document.documentElement.requestFullscreen) {
+          try {
+            await document.documentElement.requestFullscreen();
+          } catch (fsErr) {
+            // Browser mungkin membatasi jika belum interaksi gesture
+          }
+        }
       } else {
         setPreCheckError(data.error || 'Validasi ujian gagal.');
       }
@@ -380,7 +424,7 @@ export default function UjianCBTPage() {
         setSecondsLeft((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
-            handleSubmitExam(true); // Auto submit saat waktu habis
+            handleSubmitExam(true, false); // Auto submit saat waktu habis
             return 0;
           }
           return prev - 1;
@@ -390,8 +434,81 @@ export default function UjianCBTPage() {
     return () => clearInterval(timer);
   }, [examStep, secondsLeft]);
 
+  // 4B. Anti-Pindah Layar & Proctoring Pelanggaran Ujian
+  useEffect(() => {
+    if (examStep !== 'in_progress' || !activeExam) return;
+
+    const isAntiCurang = activeExam.anti_curang !== 0;
+    const maxViolations = Number(activeExam.max_pelanggaran) || 3;
+
+    if (!isAntiCurang) return;
+
+    const handleViolation = (reason: string) => {
+      setViolationCount((prev) => {
+        const newCount = prev + 1;
+        const now = new Date().toLocaleTimeString('id-ID');
+        const logEntry = { time: now, reason };
+        setViolationLogs((logs) => [...logs, logEntry]);
+
+        if (newCount >= maxViolations) {
+          // Diskualifikasi & Auto Submit
+          setIsDisqualified(true);
+          setShowViolationModal(true);
+          setViolationModalMsg(
+            `DISKUALIFIKASI: Anda telah melanggar batas maksimal (${newCount}/${maxViolations}) keluar dari layar ujian (${reason}). Lembar ujian dikunci dan diserahkan otomatis.`
+          );
+          setTimeout(() => {
+            handleSubmitExam(true, true);
+          }, 3000);
+        } else {
+          // Peringatan bertingkat
+          setShowViolationModal(true);
+          setViolationModalMsg(
+            `PERINGATAN KELUAR LAYAR (${newCount}/${maxViolations}): Terdeteksi ${reason}. Ujian ini diawasi secara digital! Sisa toleransi Anda: ${maxViolations - newCount} kali lagi.`
+          );
+        }
+        return newCount;
+      });
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        handleViolation('berpindah tab / meminimize browser');
+      }
+    };
+
+    const onWindowBlur = () => {
+      handleViolation('kehilangan fokus layar (jendela lain aktif / split-screen)');
+    };
+
+    const onFullscreenChange = () => {
+      if (activeExam.wajib_fullscreen && !document.fullscreenElement) {
+        handleViolation('keluar dari mode layar penuh (fullscreen)');
+      }
+    };
+
+    const onContextMenu = (e: MouseEvent) => e.preventDefault();
+    const onCopyPaste = (e: ClipboardEvent) => e.preventDefault();
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('blur', onWindowBlur);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('contextmenu', onContextMenu);
+    document.addEventListener('copy', onCopyPaste);
+    document.addEventListener('paste', onCopyPaste);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('blur', onWindowBlur);
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      document.removeEventListener('contextmenu', onContextMenu);
+      document.removeEventListener('copy', onCopyPaste);
+      document.removeEventListener('paste', onCopyPaste);
+    };
+  }, [examStep, activeExam]);
+
   // 5. Submit Jawaban Ujian
-  const handleSubmitExam = async (isAuto = false) => {
+  const handleSubmitExam = async (isAuto = false, disqualified = false) => {
     if (!activeExam) return;
     if (!isAuto && !confirm('Apakah Anda yakin ingin menyelesaikan ujian ini dan mengirimkan seluruh jawaban?')) {
       return;
@@ -411,6 +528,9 @@ export default function UjianCBTPage() {
           token_dipakai: tokenInput,
           user_lat: gpsCoords?.lat || null,
           user_lng: gpsCoords?.lng || null,
+          jumlah_pelanggaran: violationCount,
+          is_disqualified: disqualified || isDisqualified,
+          log_pelanggaran: violationLogs,
         }),
       });
 
@@ -418,6 +538,7 @@ export default function UjianCBTPage() {
       if (data.success) {
         setExamResult(data);
         setExamStep('completed');
+        setShowViolationModal(false);
         fetchExams(); // Refresh list agar status selesai terupdate
       } else {
         alert(data.error || 'Gagal menyimpan hasil ujian.');
@@ -452,6 +573,7 @@ export default function UjianCBTPage() {
     setLoadingQuestions(true);
     setEditingQuestion(null);
     setFormQuestion({
+      tipe_soal: 'pilihan_ganda',
       pertanyaan: '',
       opsi_a: '',
       opsi_b: '',
@@ -459,6 +581,7 @@ export default function UjianCBTPage() {
       opsi_d: '',
       opsi_e: '',
       kunci_jawaban: 'A',
+      rubrik_kata_kunci: '',
       bobot_nilai: 10,
       pembahasan: '',
     });
@@ -489,14 +612,16 @@ export default function UjianCBTPage() {
     };
     setEditingQuestion(questionWithNumber);
     setFormQuestion({
+      tipe_soal: q.tipe_soal || 'pilihan_ganda',
       pertanyaan: q.pertanyaan,
-      opsi_a: q.opsi_a,
-      opsi_b: q.opsi_b,
-      opsi_c: q.opsi_c,
+      opsi_a: q.opsi_a || '',
+      opsi_b: q.opsi_b || '',
+      opsi_c: q.opsi_c || '',
       opsi_d: q.opsi_d || '',
       opsi_e: q.opsi_e || '',
-      kunci_jawaban: q.kunci_jawaban || 'A',
-      bobot_nilai: q.bobot_nilai,
+      kunci_jawaban: q.kunci_jawaban || (q.tipe_soal === 'essay' ? '' : 'A'),
+      rubrik_kata_kunci: q.rubrik_kata_kunci || '',
+      bobot_nilai: q.bobot_nilai || 10,
       pembahasan: q.pembahasan || '',
     });
 
@@ -508,6 +633,137 @@ export default function UjianCBTPage() {
         modalSoalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }, 50);
+  };
+
+  // Handler Download Template Soal Excel
+  const handleDownloadTemplate = () => {
+    window.open('/api/ujian/template-soal', '_blank');
+  };
+
+  // Handler Upload Excel Soal
+  const handleExcelFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedExamForSoal) return;
+
+    setImportingExcelSoal(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('ujian_id', String(selectedExamForSoal.id));
+
+      const res = await fetch('/api/ujian/soal/import', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Alhamdulillah! ${data.message}`);
+        openSoalManager(selectedExamForSoal);
+        fetchExams();
+      } else {
+        alert(data.error || 'Gagal mengimpor file Excel.');
+      }
+    } catch (err: any) {
+      alert('Error saat mengupload Excel: ' + err.message);
+    } finally {
+      setImportingExcelSoal(false);
+      if (excelFileInputRef.current) excelFileInputRef.current.value = '';
+    }
+  };
+
+  // Handler Modal Koreksi Essay & Asisten AI
+  const openEssayReviewModal = async (exam: ExamItem) => {
+    setSelectedExamForEssay(exam);
+    setShowEssayModal(true);
+    setLoadingEssayAnswers(true);
+    setEssayStudentAnswers([]);
+    setEssayGradesDraft({});
+
+    try {
+      const res = await fetch(`/api/ujian/essay?ujian_id=${exam.id}`);
+      const data = await res.json();
+      if (data.success) {
+        const list = data.essay_list || [];
+        setEssayStudentAnswers(list);
+        const draft: Record<number, { skor_final: number; catatan_guru: string }> = {};
+        list.forEach((item: any) => {
+          draft[item.id] = {
+            skor_final: item.skor_final !== null ? Number(item.skor_final) : (item.skor_ai !== null ? Number(item.skor_ai) : Number(item.bobot_maksimal)),
+            catatan_guru: item.catatan_guru || '',
+          };
+        });
+        setEssayGradesDraft(draft);
+      }
+    } catch (err: any) {
+      console.error('Error fetching essay list:', err);
+    } finally {
+      setLoadingEssayAnswers(false);
+    }
+  };
+
+  const handleRunAiGrading = async (essayId?: number) => {
+    if (!selectedExamForEssay) return;
+    setRunningAiGrading(true);
+    try {
+      const res = await fetch('/api/ujian/koreksi-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ujian_id: selectedExamForEssay.id,
+          essay_id: essayId || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Alhamdulillah! ${data.message}`);
+        openEssayReviewModal(selectedExamForEssay);
+      } else {
+        alert(data.error || 'Gagal menjalankan koreksi AI.');
+      }
+    } catch (err: any) {
+      alert('Error saat koreksi AI: ' + err.message);
+    } finally {
+      setRunningAiGrading(false);
+    }
+  };
+
+  const handleSaveAllEssayGrades = async (muridId?: number) => {
+    if (!selectedExamForEssay) return;
+    setSavingGrades(true);
+    try {
+      const muridIdsToProcess = muridId
+        ? [muridId]
+        : Array.from(new Set(essayStudentAnswers.map((a: any) => a.murid_id)));
+
+      for (const mId of muridIdsToProcess) {
+        const muridItems = essayStudentAnswers.filter((a: any) => a.murid_id === mId);
+        const gradesPayload = muridItems.map((item: any) => ({
+          id: item.id,
+          skor_final: essayGradesDraft[item.id]?.skor_final !== undefined
+            ? essayGradesDraft[item.id].skor_final
+            : (item.skor_final !== null ? item.skor_final : (item.skor_ai || 0)),
+          catatan_guru: essayGradesDraft[item.id]?.catatan_guru || item.catatan_guru || null,
+        }));
+
+        await fetch('/api/ujian/essay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ujian_id: selectedExamForEssay.id,
+            murid_id: mId,
+            grades: gradesPayload,
+          }),
+        });
+      }
+
+      alert('Alhamdulillah! Nilai essay santri berhasil disimpan dan disinkronkan ke Raport.');
+      openEssayReviewModal(selectedExamForEssay);
+      fetchExams();
+    } catch (err: any) {
+      alert('Gagal menyimpan nilai essay: ' + err.message);
+    } finally {
+      setSavingGrades(false);
+    }
   };
 
   // Fungsi load daftar kuis QuizB untuk panel import soal
@@ -568,15 +824,15 @@ export default function UjianCBTPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setImportFeedback(`✅ ${data.message || `${toImport.length} soal berhasil diimpor!`}`);
+        setImportFeedback(`âœ… ${data.message || `${toImport.length} soal berhasil diimpor!`}`);
         setQuizImportQuestions([]);
         setSelectedImportQids(new Set());
         openSoalManager(selectedExamForSoal);
       } else {
-        setImportFeedback(`❌ ${data.error || 'Gagal mengimpor soal.'}`);
+        setImportFeedback(`âŒ ${data.error || 'Gagal mengimpor soal.'}`);
       }
     } catch (err: any) {
-      setImportFeedback(`❌ ${err.message}`);
+      setImportFeedback(`âŒ ${err.message}`);
     } finally {
       setImportingQuestions(false);
     }
@@ -702,7 +958,7 @@ export default function UjianCBTPage() {
         }
       }
 
-      alert(`✅ Berhasil mengimpor paket ujian "${quizBModalForm.judul}" beserta ${importedCount} butir soal dari QuizB! Ujian siap dikerjakan santri.`);
+      alert(`âœ… Berhasil mengimpor paket ujian "${quizBModalForm.judul}" beserta ${importedCount} butir soal dari QuizB! Ujian siap dikerjakan santri.`);
       setShowQuizBImportModal(false);
       setMainTab('kelola');
       fetchExams();
@@ -733,6 +989,7 @@ export default function UjianCBTPage() {
         alert('Soal berhasil disimpan!');
         setEditingQuestion(null);
         setFormQuestion({
+          tipe_soal: 'pilihan_ganda',
           pertanyaan: '',
           opsi_a: '',
           opsi_b: '',
@@ -740,6 +997,7 @@ export default function UjianCBTPage() {
           opsi_d: '',
           opsi_e: '',
           kunci_jawaban: 'A',
+          rubrik_kata_kunci: '',
           bobot_nilai: 10,
           pembahasan: '',
         });
@@ -811,21 +1069,21 @@ export default function UjianCBTPage() {
           });
           const data = await res.json();
           if (data.success) {
-            setGeofenceMsg('✅ Titik acuan berhasil dikunci pada koordinat perangkat pengawas saat ini!');
+            setGeofenceMsg('âœ… Titik acuan berhasil dikunci pada koordinat perangkat pengawas saat ini!');
             openSesiPengawas(selectedExamForSesi!);
             fetchExams();
           } else {
-            setGeofenceMsg('❌ Gagal: ' + (data.error || 'Terjadi kesalahan'));
+            setGeofenceMsg('âŒ Gagal: ' + (data.error || 'Terjadi kesalahan'));
           }
         } catch (err: any) {
-          setGeofenceMsg('❌ Gagal menghubungi server: ' + err.message);
+          setGeofenceMsg('âŒ Gagal menghubungi server: ' + err.message);
         } finally {
           setGeofenceLoading(false);
         }
       },
       (err) => {
         setGeofenceLoading(false);
-        setGeofenceMsg('❌ Gagal membaca GPS pengawas: ' + err.message + '. Pastikan izin akses lokasi diizinkan di browser.');
+        setGeofenceMsg('âŒ Gagal membaca GPS pengawas: ' + err.message + '. Pastikan izin akses lokasi diizinkan di browser.');
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -850,12 +1108,12 @@ export default function UjianCBTPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setGeofenceMsg('✅ Titik acuan direset kembali mengikuti Pusat Pesantren dari Pengaturan Absensi.');
+        setGeofenceMsg('âœ… Titik acuan direset kembali mengikuti Pusat Pesantren dari Pengaturan Absensi.');
         openSesiPengawas(selectedExamForSesi);
         fetchExams();
       }
     } catch (err: any) {
-      setGeofenceMsg('❌ Gagal: ' + err.message);
+      setGeofenceMsg('âŒ Gagal: ' + err.message);
     } finally {
       setGeofenceLoading(false);
     }
@@ -877,7 +1135,7 @@ export default function UjianCBTPage() {
           wajib_geofence: sesiData?.wajib_geofence ?? 1,
         }),
       });
-      setGeofenceMsg(`✅ Batas radius diubah menjadi ${newRadius} meter.`);
+      setGeofenceMsg(`âœ… Batas radius diubah menjadi ${newRadius} meter.`);
       openSesiPengawas(selectedExamForSesi);
     } catch (e) {}
   };
@@ -960,7 +1218,7 @@ export default function UjianCBTPage() {
                   })),
                 }),
               });
-              alert(`✅ Ujian berhasil dibuat beserta ${qData.questions.length} butir soal dari QuizB!`);
+              alert(`âœ… Ujian berhasil dibuat beserta ${qData.questions.length} butir soal dari QuizB!`);
             } else {
               alert('Ujian berhasil dibuat!');
             }
@@ -1043,7 +1301,22 @@ export default function UjianCBTPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Indikator Anti-Curang / Proctoring */}
+            {activeExam.anti_curang ? (
+              <div
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-[11px] sm:text-xs shadow-inner ${
+                  violationCount > 0
+                    ? 'bg-rose-600 text-white animate-pulse'
+                    : 'bg-black/30 text-emerald-200 border border-white/10'
+                }`}
+                title="Sistem Proctoring Anti Pindah Layar Aktif"
+              >
+                <ShieldCheck size={14} className={violationCount > 0 ? 'text-white' : 'text-emerald-300'} />
+                <span>Diawasi ({violationCount}/{activeExam.max_pelanggaran || 3}x)</span>
+              </div>
+            ) : null}
+
             {/* Timer Countdown */}
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl font-mono font-bold text-xs sm:text-sm shadow-inner ${
@@ -1057,7 +1330,7 @@ export default function UjianCBTPage() {
             </div>
 
             <button
-              onClick={() => handleSubmitExam(false)}
+              onClick={() => handleSubmitExam(false, false)}
               disabled={submittingExam}
               className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5"
             >
@@ -1073,9 +1346,20 @@ export default function UjianCBTPage() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 sm:p-7 shadow-sm border border-gray-200 dark:border-gray-700 space-y-6 flex-1 flex flex-col justify-between">
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
-                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Butir Soal No. {currentQIndex + 1}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Butir Soal No. {currentQIndex + 1}
+                    </span>
+                    {curQ.tipe_soal === 'essay' ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                        ESSAY / URAIAN
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        PILIHAN GANDA
+                      </span>
+                    )}
+                  </div>
                   <button
                     onClick={() => {
                       const next = new Set(flaggedQuestions);
@@ -1109,41 +1393,66 @@ export default function UjianCBTPage() {
                   </div>
                 )}
 
-                {/* Pilihan Opsi A, B, C, D, E */}
-                <div className="space-y-2.5 pt-2">
-                  {['A', 'B', 'C', 'D', 'E'].map((optKey) => {
-                    const optText = (curQ as any)[`opsi_${optKey.toLowerCase()}`];
-                    if (!optText) return null;
-                    const isSelected = userAnswers[curQ.id] === optKey;
+                {/* Input Soal Essay vs Pilihan Ganda */}
+                {curQ.tipe_soal === 'essay' ? (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-bold bg-purple-50 dark:bg-purple-950/30 p-3 rounded-2xl border border-purple-200 dark:border-purple-800/50 text-purple-800 dark:text-purple-300">
+                      <div className="flex items-center gap-2">
+                        <Sparkles size={15} className="text-purple-600 dark:text-purple-400" />
+                        <span>Bobot Nilai Soal: {curQ.bobot_nilai || 10} Poin</span>
+                      </div>
+                      <span className="text-[11px] font-normal text-purple-600 dark:text-purple-400">
+                        Panjang jawaban: {(userAnswers[curQ.id] || '').length} karakter &bull; Tersimpan otomatis
+                      </span>
+                    </div>
 
-                    return (
-                      <button
-                        key={optKey}
-                        onClick={() => {
-                          setUserAnswers((prev) => ({ ...prev, [curQ.id]: optKey }));
-                        }}
-                        className={`w-full text-left p-3.5 sm:p-4 rounded-2xl border transition-all flex items-start gap-3.5 ${
-                          isSelected
-                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 dark:border-emerald-500 shadow-sm'
-                            : 'bg-gray-50/70 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-700/50 border-gray-200 dark:border-gray-700'
-                        }`}
-                      >
-                        <span
-                          className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
+                    <textarea
+                      rows={6}
+                      value={userAnswers[curQ.id] || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setUserAnswers((prev) => ({ ...prev, [curQ.id]: val }));
+                      }}
+                      placeholder="Tuliskan jawaban essay Anda dengan lengkap dan jelas di sini... (Mendukung teks tulisan Arab / Pegon / Latin)"
+                      className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 leading-relaxed text-gray-800 dark:text-gray-100 placeholder:text-gray-400"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 pt-2">
+                    {['A', 'B', 'C', 'D', 'E'].map((optKey) => {
+                      const optText = (curQ as any)[`opsi_${optKey.toLowerCase()}`];
+                      if (!optText) return null;
+                      const isSelected = userAnswers[curQ.id] === optKey;
+
+                      return (
+                        <button
+                          key={optKey}
+                          onClick={() => {
+                            setUserAnswers((prev) => ({ ...prev, [curQ.id]: optKey }));
+                          }}
+                          className={`w-full text-left p-3.5 sm:p-4 rounded-2xl border transition-all flex items-start gap-3.5 ${
                             isSelected
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 dark:border-emerald-500 shadow-sm'
+                              : 'bg-gray-50/70 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-700/50 border-gray-200 dark:border-gray-700'
                           }`}
                         >
-                          {optKey}
-                        </span>
-                        <span className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 pt-0.5 leading-normal">
-                          {optText}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                          <span
+                            className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
+                              isSelected
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
+                            }`}
+                          >
+                            {optKey}
+                          </span>
+                          <span className="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-200 pt-0.5 leading-normal">
+                            {optText}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Navigasi Bawah */}
@@ -1210,60 +1519,138 @@ export default function UjianCBTPage() {
             </div>
           </div>
         </div>
+
+        {/* Modal Peringatan Pelanggaran Layar / Anti Pindah Layar */}
+        {showViolationModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
+            <div
+              className={`p-6 sm:p-7 rounded-3xl max-w-md w-full shadow-2xl border text-center space-y-4 ${
+                isDisqualified
+                  ? 'bg-rose-950 border-rose-600 text-white'
+                  : 'bg-white dark:bg-gray-900 border-amber-500 text-gray-900 dark:text-gray-100'
+              }`}
+            >
+              <div className="w-16 h-16 rounded-3xl bg-rose-500/20 text-rose-500 mx-auto flex items-center justify-center">
+                <AlertTriangle size={36} />
+              </div>
+              <h3 className="font-extrabold text-base sm:text-lg">
+                {isDisqualified ? 'â›” DISKUALIFIKASI UJIAN' : 'âš ï¸ PERINGATAN KELUAR LAYAR!'}
+              </h3>
+              <p className="text-xs sm:text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+                {violationModalMsg}
+              </p>
+              {!isDisqualified && (
+                <button
+                  onClick={() => {
+                    setShowViolationModal(false);
+                    if (activeExam?.wajib_fullscreen && document.documentElement.requestFullscreen) {
+                      document.documentElement.requestFullscreen().catch(() => {});
+                    }
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-md transition-all"
+                >
+                  Saya Mengerti &amp; Kembali Mengerjakan
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   // =========================================================================
-  // TAMPILAN SELESAI UJIAN (HASIL INSTAN)
+  // TAMPILAN SELESAI UJIAN (HASIL INSTAN & STATUS ESSAY)
   // =========================================================================
   if (examStep === 'completed' && examResult) {
+    const hasil = examResult.hasil || {};
+    const isDisq = hasil.is_disqualified;
+    const isWaitingEssay = hasil.status_koreksi === 'menunggu_koreksi';
+    const displayScore = hasil.skor_akhir !== undefined ? hasil.skor_akhir : examResult.skor_akhir;
+
     return (
       <div className="max-w-xl mx-auto p-4 sm:p-6 my-10 animate-[fadeIn_0.3s_ease-out]">
         <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100 dark:border-gray-700 text-center space-y-5">
-          <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-            <Award size={36} className="animate-bounce" />
+          <div
+            className={`w-16 h-16 rounded-3xl flex items-center justify-center mx-auto shadow-inner ${
+              isDisq
+                ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60'
+                : isWaitingEssay
+                ? 'bg-purple-100 text-purple-600 dark:bg-purple-950/60'
+                : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60'
+            }`}
+          >
+            {isDisq ? (
+              <AlertTriangle size={36} />
+            ) : isWaitingEssay ? (
+              <Sparkles size={36} className="text-purple-600 animate-pulse" />
+            ) : (
+              <Award size={36} className="animate-bounce" />
+            )}
           </div>
 
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-gray-100">
-              Alhamdulillah, Ujian Selesai!
+              {isDisq
+                ? 'Ujian Dihentikan (Didiskualifikasi)'
+                : isWaitingEssay
+                ? 'Jawaban Berhasil Diserahkan!'
+                : 'Alhamdulillah, Ujian Selesai!'}
             </h2>
             <p className="text-xs text-gray-400 mt-1">
-              Jawaban Anda telah terekam dan disinkronkan ke buku rapor madrasah.
+              {examResult.message || 'Jawaban Anda telah berhasil terekam di sistem digital madrasah.'}
             </p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800/60">
-            <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
-              Nilai Skor Akhir Anda
-            </p>
-            <p className="text-5xl font-black text-emerald-600 dark:text-emerald-400 my-2">
-              {examResult.skor_akhir}
-            </p>
-            <span
-              className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                examResult.status_lulus
-                  ? 'bg-emerald-200 text-emerald-900'
-                  : 'bg-rose-100 text-rose-800'
-              }`}
-            >
-              {examResult.status_lulus ? '🌟 LULUS KKM' : '⚠️ Perlu Remedial'}
-            </span>
-          </div>
+          {isDisq ? (
+            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs text-left space-y-1">
+              <p className="font-bold">Catatan Pengawas Sistem:</p>
+              <p>Perangkat Anda terdeteksi keluar dari layar pengerjaan melebihi batas toleransi. Nilai ujian ditandai 0 dan tercatat ke riwayat pengawas.</p>
+            </div>
+          ) : isWaitingEssay ? (
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/30 border border-purple-200 dark:border-purple-800/60 text-center space-y-2">
+              <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-purple-200 text-purple-900 dark:bg-purple-900/60 dark:text-purple-200">
+                â³ MENUNGGU KOREKSI ESSAY
+              </span>
+              <p className="text-xs text-purple-800 dark:text-purple-300 font-medium leading-relaxed pt-1">
+                Ujian ini memuat butir soal essay/uraian. Jawaban Anda sedang dalam antrean penilaian oleh dewan asatidz dengan bantuan Asisten AI. Nilai akhir resmi akan muncul setelah koreksi selesai.
+              </p>
+              <p className="text-xs text-gray-500 pt-1">
+                Poin sementara dari Pilihan Ganda: <strong className="text-purple-700 dark:text-purple-300">{displayScore}</strong>
+              </p>
+            </div>
+          ) : (
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800/60">
+              <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
+                Nilai Skor Akhir Anda
+              </p>
+              <p className="text-5xl font-black text-emerald-600 dark:text-emerald-400 my-2">
+                {displayScore}
+              </p>
+              <span
+                className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                  hasil.status_lulus || examResult.status_lulus
+                    ? 'bg-emerald-200 text-emerald-900'
+                    : 'bg-rose-100 text-rose-800'
+                }`}
+              >
+                {hasil.status_lulus || examResult.status_lulus ? 'ðŸŒŸ LULUS KKM' : 'âš ï¸ Perlu Remedial'}
+              </span>
+            </div>
+          )}
 
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
               <span className="text-[10px] text-gray-400 uppercase font-bold block">Total Soal</span>
-              <span className="text-lg font-black text-gray-800 dark:text-gray-100">{examResult.total_soal}</span>
+              <span className="text-lg font-black text-gray-800 dark:text-gray-100">{hasil.total_soal || examResult.total_soal || examQuestions.length}</span>
             </div>
             <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl">
-              <span className="text-[10px] text-emerald-600 uppercase font-bold block">Benar</span>
-              <span className="text-lg font-black text-emerald-600">{examResult.jumlah_benar}</span>
+              <span className="text-[10px] text-emerald-600 uppercase font-bold block">Benar (PG)</span>
+              <span className="text-lg font-black text-emerald-600">{hasil.jumlah_benar !== undefined ? hasil.jumlah_benar : (examResult.jumlah_benar || 0)}</span>
             </div>
             <div className="p-3 bg-rose-50 dark:bg-rose-950/40 rounded-xl">
-              <span className="text-[10px] text-rose-600 uppercase font-bold block">Salah</span>
-              <span className="text-lg font-black text-rose-600">{examResult.jumlah_salah}</span>
+              <span className="text-[10px] text-rose-600 uppercase font-bold block">Salah (PG)</span>
+              <span className="text-lg font-black text-rose-600">{hasil.jumlah_salah !== undefined ? hasil.jumlah_salah : (examResult.jumlah_salah || 0)}</span>
             </div>
           </div>
 
@@ -1553,7 +1940,7 @@ export default function UjianCBTPage() {
                   <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
                     <p className="flex items-center gap-1.5 font-medium">
                       <BookOpen size={14} className="text-emerald-600" />
-                      <span>{exam.mata_pelajaran} {exam.kitab ? `— ${exam.kitab}` : ''}</span>
+                      <span>{exam.mata_pelajaran} {exam.kitab ? `â€” ${exam.kitab}` : ''}</span>
                     </p>
                     <p className="flex items-center gap-1.5">
                       <Layers size={14} />
@@ -1645,6 +2032,15 @@ export default function UjianCBTPage() {
                             <span>Token &amp; Sesi</span>
                           </button>
                         </div>
+
+                        {/* Tombol Koreksi Essay & Asisten AI */}
+                        <button
+                          onClick={() => openEssayReviewModal(exam)}
+                          className="w-full px-3 py-2 rounded-xl bg-purple-50 dark:bg-purple-900/50 text-purple-700 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-800/70 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-purple-200 dark:border-purple-800/40"
+                        >
+                          <Sparkles size={13} className="text-purple-600 dark:text-purple-300" />
+                          <span>Koreksi Essay &amp; Asisten AI</span>
+                        </button>
 
                         {/* Tombol Lihat Hasil Peserta */}
                         <button
@@ -1874,7 +2270,7 @@ export default function UjianCBTPage() {
                       }}
                       className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
                     >
-                      {isCustomMapelInput ? '📋 Pilih dari Kurikulum' : '✏️ Ketik Mapel Khusus'}
+                      {isCustomMapelInput ? 'ðŸ“‹ Pilih dari Kurikulum' : 'âœï¸ Ketik Mapel Khusus'}
                     </button>
                   </div>
 
@@ -2053,6 +2449,54 @@ export default function UjianCBTPage() {
                     </label>
                   )}
                 </div>
+
+                {/* Pengaturan Keamanan & Anti Pindah Layar */}
+                <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 space-y-3">
+                  <div className="flex items-center gap-2 font-bold text-xs text-amber-900 dark:text-amber-200">
+                    <ShieldCheck size={16} className="text-amber-600 dark:text-amber-400" />
+                    <span>Keamanan Ujian &amp; Anti Pindah Layar (Proctoring)</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <label className="flex items-center gap-2 cursor-pointer font-semibold text-gray-700 dark:text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={!!formExam.anti_curang}
+                        onChange={(e) => setFormExam({ ...formExam, anti_curang: e.target.checked ? 1 : 0 })}
+                        className="accent-amber-600 rounded"
+                      />
+                      <span>Aktifkan Anti Pindah Tab / Layar</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer font-semibold text-gray-700 dark:text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={!!formExam.wajib_fullscreen}
+                        onChange={(e) => setFormExam({ ...formExam, wajib_fullscreen: e.target.checked ? 1 : 0 })}
+                        className="accent-amber-600 rounded"
+                      />
+                      <span>Wajibkan Mode Layar Penuh</span>
+                    </label>
+                  </div>
+
+                  {formExam.anti_curang ? (
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1 border-t border-amber-200/50 dark:border-amber-800/40">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                        Batas Toleransi Pelanggaran:
+                      </label>
+                      <select
+                        value={formExam.max_pelanggaran || 3}
+                        onChange={(e) => setFormExam({ ...formExam, max_pelanggaran: Number(e.target.value) })}
+                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-xs font-bold text-amber-700 dark:text-amber-300"
+                      >
+                        <option value="1">1x (Sangat Ketat - Langsung Diskualifikasi)</option>
+                        <option value="2">2x Pelanggaran</option>
+                        <option value="3">3x Pelanggaran (Standar Direkomendasikan)</option>
+                        <option value="5">5x Pelanggaran</option>
+                      </select>
+                    </div>
+                  ) : null}
+                </div>
               </div>
               </div>{/* end scrollable body */}
 
@@ -2143,7 +2587,7 @@ export default function UjianCBTPage() {
                           showQuizBDropdownList
                             ? quizBModalSearch
                             : (quizImportList.find((q: any) => String(q.id) === String(quizBModalId))
-                                ? `ID #${quizBModalId} • ${quizImportList.find((q: any) => String(q.id) === String(quizBModalId))?.title}${quizImportList.find((q: any) => String(q.id) === String(quizBModalId))?.category ? ` (${quizImportList.find((q: any) => String(q.id) === String(quizBModalId))?.category})` : ''}`
+                                ? `ID #${quizBModalId} â€¢ ${quizImportList.find((q: any) => String(q.id) === String(quizBModalId))?.title}${quizImportList.find((q: any) => String(q.id) === String(quizBModalId))?.category ? ` (${quizImportList.find((q: any) => String(q.id) === String(quizBModalId))?.category})` : ''}`
                                 : '')
                         }
                         onChange={(e) => {
@@ -2272,13 +2716,13 @@ export default function UjianCBTPage() {
                         {quizBModalError}
                       </p>
                       <p className="text-[11px] text-amber-800/80 dark:text-amber-400">
-                        💡 <strong>Solusi:</strong> Salin file terbaru <code>public/quizb_bridge.php</code> yang ada di aplikasi ini ke cPanel File Manager <code>quizb.my.id</code> agar aksi penarikan butir soal aktif.
+                        ðŸ’¡ <strong>Solusi:</strong> Salin file terbaru <code>public/quizb_bridge.php</code> yang ada di aplikasi ini ke cPanel File Manager <code>quizb.my.id</code> agar aksi penarikan butir soal aktif.
                       </p>
                     </div>
                   ) : quizBModalId && quizBModalQuestions.length > 0 ? (
                     <div className="p-3 bg-emerald-100/70 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl space-y-1.5">
                       <div className="flex items-center justify-between font-bold text-xs text-emerald-800 dark:text-emerald-300">
-                        <span>✅ {quizBModalQuestions.length} Butir Soal Siap Diimpor</span>
+                        <span>âœ… {quizBModalQuestions.length} Butir Soal Siap Diimpor</span>
                         <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Semua pilihan ganda &amp; kunci jawaban terdeteksi</span>
                       </div>
                       <div className="max-h-28 overflow-y-auto space-y-1 pr-1 text-[11px] text-gray-600 dark:text-gray-300">
@@ -2296,7 +2740,7 @@ export default function UjianCBTPage() {
                     </div>
                   ) : quizBModalId ? (
                     <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200">
-                      ⚠️ Tidak ada butir soal yang ditemukan pada kuis ini di QuizB. Paket ujian tetap dapat dibuat kosong.
+                      âš ï¸ Tidak ada butir soal yang ditemukan pada kuis ini di QuizB. Paket ujian tetap dapat dibuat kosong.
                     </p>
                   ) : null}
                 </div>
@@ -2434,7 +2878,7 @@ export default function UjianCBTPage() {
                     <>
                       <Sparkles size={14} className="text-yellow-300" />
                       <span>
-                        🚀 Impor &amp; Terbitkan Paket Ujian ({quizBModalQuestions.length} Soal)
+                        ðŸš€ Impor &amp; Terbitkan Paket Ujian ({quizBModalQuestions.length} Soal)
                       </span>
                     </>
                   )}
@@ -2451,21 +2895,55 @@ export default function UjianCBTPage() {
       {showSoalModal && selectedExamForSoal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pb-20 sm:pb-5 bg-black/70 backdrop-blur-xs overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden my-auto">
-            <div className="p-4 sm:p-5 bg-emerald-800 text-white flex items-center justify-between shrink-0">
+            <div className="p-4 sm:p-5 bg-emerald-800 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
               <div>
-                <h3 className="font-extrabold text-base text-white">
-                  Bank Soal: {selectedExamForSoal.judul}
+                <h3 className="font-extrabold text-base text-white flex items-center gap-2">
+                  <BookOpen size={18} />
+                  <span>Bank Soal: {selectedExamForSoal.judul}</span>
                 </h3>
                 <p className="text-xs text-emerald-200">
                   {selectedExamForSoal.mata_pelajaran} &bull; Total {questions.length} Butir Soal Tersimpan
                 </p>
               </div>
-              <button
-                onClick={() => setShowSoalModal(false)}
-                className="p-1.5 text-emerald-200 hover:text-white rounded-lg"
-              >
-                <X size={20} />
-              </button>
+
+              {/* Action Buttons: Template Excel, Upload Excel, & Close */}
+              <div className="flex items-center flex-wrap gap-2">
+                <input
+                  type="file"
+                  ref={excelFileInputRef}
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleExcelFileSelected}
+                  className="hidden"
+                />
+
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition-all border border-white/20 shadow-xs"
+                  title="Unduh format file Excel untuk input soal PG dan Essay"
+                >
+                  <FileText size={14} />
+                  <span>Template Excel</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={importingExcelSoal}
+                  onClick={() => excelFileInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-amber-950 font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 disabled:opacity-50"
+                  title="Unggah file Excel yang sudah diisi soal dan jawaban"
+                >
+                  <Sparkles size={14} />
+                  <span>{importingExcelSoal ? 'Mengimpor...' : 'Impor dari Excel'}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowSoalModal(false)}
+                  className="p-1.5 text-emerald-200 hover:text-white rounded-lg transition-colors ml-1"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             <div ref={modalSoalBodyRef} className="p-5 overflow-y-auto flex-1 space-y-6">
@@ -2473,13 +2951,13 @@ export default function UjianCBTPage() {
               <form
                 ref={formEditSoalRef}
                 onSubmit={handleSaveQuestion}
-                className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                className={`p-4 rounded-2xl border transition-all space-y-3.5 ${
                   editingQuestion
                     ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700/60 ring-2 ring-amber-400/30'
                     : 'bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700'
                 }`}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-gray-200/60 dark:border-gray-700/60">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-gray-200/60 dark:border-gray-700/60">
                   <h4 className="font-bold text-xs sm:text-sm text-gray-800 dark:text-gray-200 flex items-center gap-2">
                     {editingQuestion ? (
                       <>
@@ -2489,17 +2967,35 @@ export default function UjianCBTPage() {
                         </span>
                       </>
                     ) : (
-                      <span>➕ Tambah Butir Soal Baru</span>
+                      <span>âž• Tambah Butir Soal Baru</span>
                     )}
                   </h4>
 
-                  {editingQuestion && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
-                        Sedang Mengedit Soal #{editingQuestion.nomor_urut}
-                      </span>
-                    </div>
-                  )}
+                  {/* Toggle Tipe Soal (Pilihan Ganda vs Essay) */}
+                  <div className="flex items-center gap-1.5 bg-gray-200/80 dark:bg-gray-800 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setFormQuestion({ ...formQuestion, tipe_soal: 'pilihan_ganda' })}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        formQuestion.tipe_soal !== 'essay'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                      }`}
+                    >
+                      ðŸ”˜ Pilihan Ganda
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormQuestion({ ...formQuestion, tipe_soal: 'essay' })}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        formQuestion.tipe_soal === 'essay'
+                          ? 'bg-purple-600 text-white shadow-xs'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                      }`}
+                    >
+                      ðŸ“ Soal Essay (AI)
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -2511,81 +3007,119 @@ export default function UjianCBTPage() {
                     required
                     value={formQuestion.pertanyaan}
                     onChange={(e) => setFormQuestion({ ...formQuestion, pertanyaan: e.target.value })}
-                    placeholder="Tuliskan butir soal di sini..."
-                    className="w-full p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="Tuliskan butir soal di sini (Mendukung teks kitab, bait nadhom, dan tulisan Arab)..."
+                    className="w-full p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                      Opsi A <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formQuestion.opsi_a}
-                      onChange={(e) => setFormQuestion({ ...formQuestion, opsi_a: e.target.value })}
-                      placeholder="Pilihan jawaban A"
-                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                      Opsi B <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formQuestion.opsi_b}
-                      onChange={(e) => setFormQuestion({ ...formQuestion, opsi_b: e.target.value })}
-                      placeholder="Pilihan jawaban B"
-                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                      Opsi C
-                    </label>
-                    <input
-                      type="text"
-                      value={formQuestion.opsi_c}
-                      onChange={(e) => setFormQuestion({ ...formQuestion, opsi_c: e.target.value })}
-                      placeholder="Pilihan jawaban C"
-                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                      Opsi D
-                    </label>
-                    <input
-                      type="text"
-                      value={formQuestion.opsi_d}
-                      onChange={(e) => setFormQuestion({ ...formQuestion, opsi_d: e.target.value })}
-                      placeholder="Pilihan jawaban D"
-                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs"
-                    />
-                  </div>
-                </div>
+                {/* Bagian Input Spesifik: Essay vs Pilihan Ganda */}
+                {formQuestion.tipe_soal === 'essay' ? (
+                  <div className="space-y-3 p-3.5 bg-purple-50/70 dark:bg-purple-950/20 rounded-2xl border border-purple-200 dark:border-purple-800/40">
+                    <div>
+                      <label className="block text-xs font-bold text-purple-900 dark:text-purple-200 mb-1">
+                        Kunci Jawaban Acuan / Ideal Guru (Model Answer) <span className="text-rose-500">*</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        required
+                        value={formQuestion.kunci_jawaban}
+                        onChange={(e) => setFormQuestion({ ...formQuestion, kunci_jawaban: e.target.value })}
+                        placeholder="Tuliskan jawaban acuan/ideal yang diharapkan dari santri sebagai pedoman evaluasi..."
+                        className="w-full p-3 rounded-xl bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
+                      />
+                    </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                      Kunci Jawaban <span className="text-rose-500">*</span>
-                    </label>
-                    <select
-                      value={formQuestion.kunci_jawaban}
-                      onChange={(e) => setFormQuestion({ ...formQuestion, kunci_jawaban: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-emerald-600"
-                    >
-                      <option value="A">A</option>
-                      <option value="B">B</option>
-                      <option value="C">C</option>
-                      <option value="D">D</option>
-                      <option value="E">E</option>
-                    </select>
+                    <div>
+                      <label className="block text-xs font-bold text-purple-900 dark:text-purple-200 mb-1 flex items-center gap-1.5">
+                        <Sparkles size={13} className="text-purple-600 dark:text-purple-400" />
+                        <span>Kata Kunci Pokok untuk Bantuan Koreksi AI (Pisahkan dengan koma)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formQuestion.rubrik_kata_kunci || ''}
+                        onChange={(e) => setFormQuestion({ ...formQuestion, rubrik_kata_kunci: e.target.value })}
+                        placeholder="Contoh: thaharah, bersuci, hadats, najis, air mutlak"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <p className="text-[11px] text-purple-600 dark:text-purple-400 mt-1">
+                        Asisten AI akan mendeteksi variasi kata ini saat menganalisis jawaban santri dan merekomendasikan nilai.
+                      </p>
+                    </div>
                   </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Opsi A <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formQuestion.opsi_a}
+                        onChange={(e) => setFormQuestion({ ...formQuestion, opsi_a: e.target.value })}
+                        placeholder="Pilihan jawaban A"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Opsi B <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formQuestion.opsi_b}
+                        onChange={(e) => setFormQuestion({ ...formQuestion, opsi_b: e.target.value })}
+                        placeholder="Pilihan jawaban B"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Opsi C
+                      </label>
+                      <input
+                        type="text"
+                        value={formQuestion.opsi_c}
+                        onChange={(e) => setFormQuestion({ ...formQuestion, opsi_c: e.target.value })}
+                        placeholder="Pilihan jawaban C"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Opsi D
+                      </label>
+                      <input
+                        type="text"
+                        value={formQuestion.opsi_d}
+                        onChange={(e) => setFormQuestion({ ...formQuestion, opsi_d: e.target.value })}
+                        placeholder="Pilihan jawaban D"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                  {formQuestion.tipe_soal !== 'essay' && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Kunci Jawaban <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={formQuestion.kunci_jawaban}
+                        onChange={(e) => setFormQuestion({ ...formQuestion, kunci_jawaban: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-emerald-600"
+                      >
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                      </select>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
@@ -2606,6 +3140,7 @@ export default function UjianCBTPage() {
                         onClick={() => {
                           setEditingQuestion(null);
                           setFormQuestion({
+                            tipe_soal: 'pilihan_ganda',
                             pertanyaan: '',
                             opsi_a: '',
                             opsi_b: '',
@@ -2613,6 +3148,7 @@ export default function UjianCBTPage() {
                             opsi_d: '',
                             opsi_e: '',
                             kunci_jawaban: 'A',
+                            rubrik_kata_kunci: '',
                             bobot_nilai: 10,
                             pembahasan: '',
                           });
@@ -2658,7 +3194,18 @@ export default function UjianCBTPage() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <span className="font-bold text-emerald-600">No. {idx + 1}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-emerald-600">No. {idx + 1}</span>
+                          {q.tipe_soal === 'essay' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              ESSAY
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              PILIHAN GANDA
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
@@ -2683,19 +3230,35 @@ export default function UjianCBTPage() {
                         </div>
                       </div>
 
-                      <p className="font-semibold text-gray-800 dark:text-gray-100 whitespace-pre-wrap">
+                      <p className="font-semibold text-gray-800 dark:text-gray-100 whitespace-pre-wrap leading-relaxed">
                         {q.pertanyaan}
                       </p>
 
-                      <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-600 dark:text-gray-400 pt-1">
-                        <div>A. {q.opsi_a}</div>
-                        <div>B. {q.opsi_b}</div>
-                        {q.opsi_c && <div>C. {q.opsi_c}</div>}
-                        {q.opsi_d && <div>D. {q.opsi_d}</div>}
-                      </div>
+                      {q.tipe_soal === 'essay' ? (
+                        <div className="space-y-1.5 p-3 rounded-xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 text-[11px]">
+                          <div>
+                            <span className="font-bold text-purple-900 dark:text-purple-200">Kunci Acuan Guru: </span>
+                            <span className="text-gray-700 dark:text-gray-300">{q.kunci_jawaban || '-'}</span>
+                          </div>
+                          {q.rubrik_kata_kunci && (
+                            <div>
+                              <span className="font-bold text-purple-900 dark:text-purple-200">Kata Kunci AI: </span>
+                              <span className="text-purple-700 dark:text-purple-300 font-mono">{q.rubrik_kata_kunci}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-600 dark:text-gray-400 pt-1">
+                          <div>A. {q.opsi_a}</div>
+                          <div>B. {q.opsi_b}</div>
+                          {q.opsi_c && <div>C. {q.opsi_c}</div>}
+                          {q.opsi_d && <div>D. {q.opsi_d}</div>}
+                        </div>
+                      )}
 
-                      <div className="pt-2 border-t border-gray-100 dark:border-gray-800 text-[11px] text-emerald-600 font-bold">
-                        Kunci Jawaban: {q.kunci_jawaban} &bull; Bobot: {q.bobot_nilai} Poin
+                      <div className="pt-2 border-t border-gray-100 dark:border-gray-800 text-[11px] text-emerald-600 font-bold flex items-center justify-between">
+                        <span>{q.tipe_soal === 'essay' ? 'Tipe: Essay' : `Kunci: ${q.kunci_jawaban}`}</span>
+                        <span>Bobot: {q.bobot_nilai} Poin</span>
                       </div>
                     </div>
                   ))
@@ -2727,7 +3290,7 @@ export default function UjianCBTPage() {
                     ))}
                   </select>
                   {quizImportList.length === 0 && (
-                    <p className="text-[10px] text-gray-400 mt-1">Tidak ada kuis QuizB — pastikan QuizB terhubung.</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Tidak ada kuis QuizB â€” pastikan QuizB terhubung.</p>
                   )}
                 </div>
 
@@ -2899,7 +3462,7 @@ export default function UjianCBTPage() {
                   <div>
                     <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">Status Sesi Ujian</span>
                     <span className="text-[11px] text-gray-400">
-                      {sesiData.status_sesi === 'buka' ? '🟢 Terbuka untuk santri' : '🔴 Ditutup'}
+                      {sesiData.status_sesi === 'buka' ? 'ðŸŸ¢ Terbuka untuk santri' : 'ðŸ”´ Ditutup'}
                     </span>
                   </div>
                   <button
@@ -2921,17 +3484,17 @@ export default function UjianCBTPage() {
                       <MapPin size={15} className="text-emerald-500 shrink-0" />
                       <span>Titik Acuan &amp; Jarak Maksimal</span>
                     </div>
-                    {/* Badge status lokasi — tampilan saja, tidak bisa diklik */}
+                    {/* Badge status lokasi â€” tampilan saja, tidak bisa diklik */}
                     <div className="flex justify-center w-full">
                       {sesiData.lat_target ? (
                         <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-300 dark:border-emerald-700 shadow-2xs select-none cursor-default">
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-                          <span>📍 Lokasi Pengawas (Terkunci)</span>
+                          <span>ðŸ“ Lokasi Pengawas (Terkunci)</span>
                         </div>
                       ) : (
                         <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 text-[11px] font-bold border border-blue-300 dark:border-blue-700 shadow-2xs select-none cursor-default">
                           <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
-                          <span>🏢 Pusat Pesantren (Default)</span>
+                          <span>ðŸ¢ Pusat Pesantren (Default)</span>
                         </div>
                       )}
                     </div>
@@ -2941,20 +3504,14 @@ export default function UjianCBTPage() {
                   <div className="text-[11px] text-gray-500 bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/60">
                     {sesiData.lat_target ? (
                       <div>
-                        <div className="flex items-center justify-between mb-0.5">
-                          <strong className="text-emerald-600 dark:text-emerald-400">Terkunci pada Ruang Ujian Pengawas:</strong>
-                          <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md">GPS Pengawas Aktif</span>
-                        </div>
+                        <strong className="text-emerald-600 dark:text-emerald-400 block mb-0.5">Terkunci pada Ruang Ujian Pengawas:</strong>
                         <span className="font-mono text-[10px] text-gray-400">
                           Lat: {Number(sesiData.lat_target).toFixed(6)}, Lng: {Number(sesiData.lng_target).toFixed(6)}
                         </span>
                       </div>
                     ) : (
                       <div>
-                        <div className="flex items-center justify-between mb-0.5">
-                          <strong className="text-blue-600 dark:text-blue-400">Mengikuti Halaman Pengaturan (Pusat Pesantren):</strong>
-                          <span className="text-[10px] text-blue-700 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md">Pesantren Default</span>
-                        </div>
+                        <strong className="text-blue-600 dark:text-blue-400 block mb-0.5">Mengikuti Halaman Pengaturan (Pusat Pesantren):</strong>
                         <span className="font-mono text-[10px] text-gray-400">
                           Lat: {defaultPesantrenCoords?.lat || -7.035992}, Lng: {defaultPesantrenCoords?.lng || 112.350798}
                         </span>
@@ -2962,7 +3519,7 @@ export default function UjianCBTPage() {
                     )}
                   </div>
 
-                  {/* Tombol Aksi GPS Pengawas — saling mengunci (mutual exclusive) */}
+                  {/* Tombol Aksi GPS Pengawas â€” saling mengunci (mutual exclusive) */}
                   <div className="grid grid-cols-2 gap-2">
                     {/* Tombol Kunci GPS Pengawas: aktif/menonjol ketika lat_target BELUM dikunci (belum ada GPS custom) */}
                     <button
@@ -3076,8 +3633,8 @@ export default function UjianCBTPage() {
             {/* Header */}
             <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 dark:border-gray-800">
               <div>
-                <h3 className="font-black text-gray-900 dark:text-white text-base sm:text-lg">📊 Hasil Peserta Ujian</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{selectedExamForHasil.judul} • {selectedExamForHasil.mata_pelajaran}</p>
+                <h3 className="font-black text-gray-900 dark:text-white text-base sm:text-lg">ðŸ“Š Hasil Peserta Ujian</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{selectedExamForHasil.judul} â€¢ {selectedExamForHasil.mata_pelajaran}</p>
               </div>
               <button onClick={() => setShowHasilModal(false)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
                 <X size={20} />
@@ -3145,27 +3702,31 @@ export default function UjianCBTPage() {
                   {/* Tabel Peringkat (Bisa Digeser / Di-scroll pada Mobile) */}
                   <div className="space-y-1">
                     <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800 touch-pan-x overscroll-x-contain shadow-2xs">
-                      <table className="min-w-[560px] w-full text-sm">
+                      <table className="min-w-[680px] w-full text-sm">
                         <thead>
                           <tr className="bg-gray-50 dark:bg-gray-800/60 text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">
                             <th className="px-3 py-2.5 text-left">#</th>
                             <th className="px-3 py-2.5 text-left">Nama Santri</th>
                             <th className="px-3 py-2.5 text-left">NIS</th>
                             <th className="px-3 py-2.5 text-center">Nilai</th>
-                            <th className="px-3 py-2.5 text-center">Benar</th>
+                            <th className="px-3 py-2.5 text-center">Benar (PG)</th>
+                            <th className="px-3 py-2.5 text-center">Pengawasan</th>
                             <th className="px-3 py-2.5 text-center">Status</th>
-                            <th className="px-3 py-2.5 text-center">Durasi</th>
+                            <th className="px-3 py-2.5 text-center">Aksi</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                           {hasilPeserta.map((h: any, idx: number) => {
                             const durasiMenit = Math.floor((h.durasi_detik || 0) / 60);
                             const durasiDetik = (h.durasi_detik || 0) % 60;
+                            const isDisq = !!h.is_disqualified;
+                            const isWaitingEssay = h.status_koreksi === 'menunggu_koreksi';
+
                             return (
                               <tr key={h.id} className={`transition-colors ${idx < 3 ? 'bg-amber-50/30 dark:bg-amber-950/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}>
                                 <td className="px-3 py-3">
                                   <span className={`font-black text-sm ${idx === 0 ? 'text-amber-500' : idx === 1 ? 'text-gray-400' : idx === 2 ? 'text-orange-400' : 'text-gray-500'}`}>
-                                    {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                                    {idx === 0 ? 'ðŸ¥‡' : idx === 1 ? 'ðŸ¥ˆ' : idx === 2 ? 'ðŸ¥‰' : idx + 1}
                                   </span>
                                 </td>
                                 <td className="px-3 py-3">
@@ -3174,26 +3735,60 @@ export default function UjianCBTPage() {
                                 </td>
                                 <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400">{h.nis || '-'}</td>
                                 <td className="px-3 py-3 text-center">
-                                  <span className={`font-black text-base ${Number(h.skor_akhir) >= (selectedExamForHasil.passing_grade || 70) ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                    {Number(h.skor_akhir).toFixed(0)}
+                                  <span className={`font-black text-base ${isDisq ? 'text-rose-600' : Number(h.skor_akhir) >= (selectedExamForHasil.passing_grade || 70) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                    {isDisq ? '0' : Number(h.skor_akhir).toFixed(0)}
                                   </span>
+                                  {isWaitingEssay && (
+                                    <span className="block text-[9px] font-bold text-purple-600 dark:text-purple-400">(Draft PG)</span>
+                                  )}
                                 </td>
                                 <td className="px-3 py-3 text-center text-xs text-gray-600 dark:text-gray-300">
                                   {h.jumlah_benar}/{h.total_soal}
                                 </td>
+                                <td className="px-3 py-3 text-center text-xs">
+                                  {isDisq ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-extrabold text-[10px] border border-rose-200">
+                                      â›” Diskualifikasi
+                                    </span>
+                                  ) : Number(h.jumlah_pelanggaran || 0) > 0 ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-bold text-[10px] border border-amber-200">
+                                      âš ï¸ {h.jumlah_pelanggaran}x Pindah Layar
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px] font-bold">
+                                      <ShieldCheck size={11} /> Tertib (0x)
+                                    </span>
+                                  )}
+                                </td>
                                 <td className="px-3 py-3 text-center">
-                                  {h.status_lulus ? (
+                                  {isDisq ? (
+                                    <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold">Gugur</span>
+                                  ) : isWaitingEssay ? (
+                                    <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 text-[10px] font-extrabold">
+                                      Antre Essay
+                                    </span>
+                                  ) : h.status_lulus ? (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
                                       <Check size={10} /> Lulus
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 text-[10px] font-bold">
-                                      <X size={10} /> Tidak Lulus
+                                      <X size={10} /> Remedial
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-3 py-3 text-center text-xs text-gray-500 dark:text-gray-400">
-                                  {durasiMenit}m {durasiDetik}d
+                                <td className="px-3 py-3 text-center">
+                                  <button
+                                    onClick={() => {
+                                      setShowHasilModal(false);
+                                      openEssayReviewModal(selectedExamForHasil);
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center justify-center gap-1 transition-colors border border-purple-200 dark:border-purple-800"
+                                    title="Tinjau dan nilai jawaban essay santri ini"
+                                  >
+                                    <Sparkles size={12} />
+                                    <span>Koreksi Essay</span>
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -3202,7 +3797,7 @@ export default function UjianCBTPage() {
                       </table>
                     </div>
                     <p className="text-[10px] text-gray-400 text-center sm:hidden pt-1">
-                      👉 Geser tabel ke kanan/kiri untuk melihat rincian nilai &amp; durasi
+                      ðŸ‘‰ Geser tabel ke kanan/kiri untuk melihat rincian nilai &amp; durasi
                     </p>
                   </div>
                 </>
@@ -3226,6 +3821,264 @@ export default function UjianCBTPage() {
           </div>
         </div>
       )}
+
+      {/* ====================================================================== */}
+      {/* MODAL 7: KOREKSI JAWABAN ESSAY & ASISTEN AI (GURU/ADMIN)               */}
+      {/* ====================================================================== */}
+      {showEssayModal && selectedExamForEssay && (
+        <div className="fixed inset-0 z-[85] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 pb-20 sm:pb-5" onClick={() => setShowEssayModal(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[88vh] flex flex-col my-auto overflow-hidden border border-gray-200 dark:border-gray-800" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-purple-800 to-indigo-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+              <div>
+                <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2">
+                  <Sparkles className="text-yellow-300" size={20} />
+                  <span>Koreksi Essay &amp; Asisten AI</span>
+                </h3>
+                <p className="text-xs text-purple-200 mt-0.5">
+                  {selectedExamForEssay.judul} &bull; {selectedExamForEssay.mata_pelajaran} &bull; Total {essayStudentAnswers.length} Lembar Jawaban Santri
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleRunAiGrading()}
+                  disabled={runningAiGrading || essayStudentAnswers.length === 0}
+                  className="px-3.5 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-purple-950 font-black text-xs flex items-center gap-1.5 shadow-md transition-all disabled:opacity-50"
+                  title="Gunakan AI untuk menganalisis dan memberi rekomendasi nilai pada semua jawaban essay santri"
+                >
+                  <Sparkles size={14} className={runningAiGrading ? 'animate-spin' : ''} />
+                  <span>{runningAiGrading ? 'Menganalisis dengan AI...' : 'âš¡ Analisis Semua dengan AI'}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowEssayModal(false)}
+                  className="p-1.5 text-purple-200 hover:text-white rounded-lg transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+              {loadingEssayAnswers ? (
+                <div className="flex items-center justify-center py-16">
+                  <RefreshCw size={28} className="animate-spin text-purple-600" />
+                  <span className="ml-3 text-gray-500 font-semibold text-sm">Memuat jawaban essay santri...</span>
+                </div>
+              ) : essayStudentAnswers.length === 0 ? (
+                <div className="text-center py-16 space-y-3">
+                  <BookOpen size={44} className="mx-auto text-gray-300" />
+                  <p className="text-gray-500 font-bold text-sm">Belum ada jawaban essay yang disubmit oleh santri untuk ujian ini.</p>
+                  <p className="text-xs text-gray-400 max-w-md mx-auto">
+                    Pastikan ujian telah memuat soal bertipe Essay dan santri telah menyelesaikan pengerjaan.
+                  </p>
+                </div>
+              ) : (
+                essayStudentAnswers.map((item, idx) => {
+                  const draft = essayGradesDraft[item.id] || {
+                    skor_final: item.skor_final !== null ? Number(item.skor_final) : (item.skor_ai !== null ? Number(item.skor_ai) : Number(item.bobot_maksimal)),
+                    catatan_guru: item.catatan_guru || '',
+                  };
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="bg-white dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700/80 p-4 sm:p-5 space-y-3 shadow-xs"
+                    >
+                      {/* Top Bar item */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 font-black text-xs flex items-center justify-center">
+                            {idx + 1}
+                          </span>
+                          <strong className="text-sm text-gray-900 dark:text-gray-100">
+                            {item.nama_santri}
+                          </strong>
+                          <span className="text-xs text-gray-400">
+                            ({item.nis || '-'} &bull; {item.nama_kelas || 'Madin'})
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                            Soal No. {item.nomor_urut} &bull; Bobot Max: {item.bobot_maksimal} Poin
+                          </span>
+                          {item.status_koreksi === 'disetujui' ? (
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200">
+                              Disetujui
+                            </span>
+                          ) : item.status_koreksi === 'dinilai_ai' ? (
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200">
+                              Saran AI
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200">
+                              Belum Dinilai
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Pertanyaan */}
+                      <div>
+                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Pertanyaan:</span>
+                        <p className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
+                          {item.pertanyaan}
+                        </p>
+                      </div>
+
+                      {/* Kunci Acuan */}
+                      <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 text-[11px] space-y-1">
+                        <p className="text-gray-600 dark:text-gray-400">
+                          <strong className="text-emerald-700 dark:text-emerald-400">Kunci Acuan Guru: </strong>
+                          {item.kunci_ideal || '-'}
+                        </p>
+                        {item.rubrik_kata_kunci && (
+                          <p className="text-purple-600 dark:text-purple-400 font-mono text-[10px]">
+                            <strong>Kata Kunci Pokok: </strong>{item.rubrik_kata_kunci}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Jawaban Santri */}
+                      <div className="p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-800/40 space-y-1">
+                        <span className="text-[11px] font-extrabold text-amber-900 dark:text-amber-300 uppercase tracking-wider block">
+                          Jawaban Santri:
+                        </span>
+                        <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-100 font-medium whitespace-pre-wrap leading-relaxed">
+                          {item.jawaban_santri || <em className="text-gray-400">(Tidak memberikan jawaban)</em>}
+                        </p>
+                      </div>
+
+                      {/* Rekomendasi Asisten AI */}
+                      {item.skor_ai !== null && (
+                        <div className="p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
+                              <strong className="text-indigo-900 dark:text-indigo-200">
+                                Rekomendasi AI: {item.skor_ai} / {item.bobot_maksimal} Poin
+                              </strong>
+                            </div>
+                            <p className="text-indigo-800 dark:text-indigo-300 text-[11px] leading-relaxed">
+                              {item.feedback_ai}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEssayGradesDraft((prev) => ({
+                                ...prev,
+                                [item.id]: {
+                                  skor_final: Number(item.skor_ai),
+                                  catatan_guru: prev[item.id]?.catatan_guru || item.feedback_ai || '',
+                                },
+                              }));
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shrink-0 transition-colors shadow-xs"
+                          >
+                            Gunakan Nilai AI
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Form Input Nilai Guru */}
+                      <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs font-bold text-gray-700 dark:text-gray-300 shrink-0">
+                            Skor Akhir Guru:
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max={item.bobot_maksimal}
+                            step="0.5"
+                            value={draft.skor_final}
+                            onChange={(e) => {
+                              const val = Math.min(Number(item.bobot_maksimal), Math.max(0, parseFloat(e.target.value) || 0));
+                              setEssayGradesDraft((prev) => ({
+                                ...prev,
+                                [item.id]: {
+                                  ...prev[item.id],
+                                  skor_final: val,
+                                },
+                              }));
+                            }}
+                            className="w-20 px-3 py-1.5 rounded-xl bg-white dark:bg-gray-900 border border-emerald-500 font-extrabold text-xs sm:text-sm text-center text-emerald-700 dark:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                          <span className="text-xs text-gray-400">/ {item.bobot_maksimal}</span>
+                        </div>
+
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            placeholder="Catatan koreksi / evaluasi untuk santri (opsional)..."
+                            value={draft.catatan_guru}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEssayGradesDraft((prev) => ({
+                                ...prev,
+                                [item.id]: {
+                                  ...prev[item.id],
+                                  catatan_guru: val,
+                                },
+                              }));
+                            }}
+                            className="w-full px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={runningAiGrading}
+                          onClick={() => handleRunAiGrading(item.id)}
+                          className="px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-800 dark:text-purple-300 font-bold text-xs flex items-center gap-1 transition-colors shrink-0"
+                          title="Analisis butir ini dengan AI"
+                        >
+                          <Sparkles size={13} />
+                          <span>Nilai Butir Ini</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 sm:p-5 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+              <p className="text-xs text-gray-500 text-center sm:text-left">
+                Menyimpan nilai akan otomatis mengalkulasikan skor akhir (PG + Essay) dan menyinkronkannya ke raport santri.
+              </p>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowEssayModal(false)}
+                  className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold transition-colors"
+                >
+                  Tutup
+                </button>
+
+                <button
+                  type="button"
+                  disabled={savingGrades || essayStudentAnswers.length === 0}
+                  onClick={() => handleSaveAllEssayGrades()}
+                  className="flex-1 sm:flex-none px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm font-black shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <CheckCircle size={16} />
+                  <span>{savingGrades ? 'Menyimpan...' : 'ðŸ’¾ Simpan Nilai & Sinkronkan Raport'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

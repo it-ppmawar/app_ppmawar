@@ -318,11 +318,11 @@ export default function QuizBModal({
               <Sparkles size={22} className="animate-pulse" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-black text-lg sm:text-xl text-white tracking-tight">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                <h3 className="font-black text-lg sm:text-xl text-white tracking-tight leading-tight">
                   Tarik Nilai Ujian CBT / QuizB
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-400 text-emerald-950 shadow-xs">
+                <span className="self-start sm:self-auto px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-400 text-emerald-950 shadow-xs">
                   CBT &amp; QuizB
                 </span>
               </div>
