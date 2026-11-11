@@ -114,6 +114,27 @@ export default function UjianCBTPage() {
   const [selectedImportQids, setSelectedImportQids] = useState<Set<number>>(new Set());
   const [importingQuestions, setImportingQuestions] = useState(false);
   const [importFeedback, setImportFeedback] = useState('');
+
+  // State Dedicated Modal Impor Paket Kuis dari QuizB
+  const [showQuizBImportModal, setShowQuizBImportModal] = useState(false);
+  const [quizBModalId, setQuizBModalId] = useState('');
+  const [quizBModalSearch, setQuizBModalSearch] = useState('');
+  const [quizBModalQuestions, setQuizBModalQuestions] = useState<any[]>([]);
+  const [loadingQuizBModalQuestions, setLoadingQuizBModalQuestions] = useState(false);
+  const [importingQuizBPaket, setImportingQuizBPaket] = useState(false);
+  const [quizBModalForm, setQuizBModalForm] = useState<any>({
+    judul: '',
+    mata_pelajaran: '',
+    kelas_madin_id: '',
+    semester: '1',
+    tahun_ajaran: '2025/2026',
+    jenis_ujian: 'harian',
+    durasi_menit: 45,
+    passing_grade: 70,
+  });
+
+  // Checkbox auto import di Modal Buat Ujian Biasa
+  const [autoImportQuestionsOnCreate, setAutoImportQuestionsOnCreate] = useState(true);
   const [formQuestion, setFormQuestion] = useState<any>({
     pertanyaan: '',
     opsi_a: '',
@@ -245,6 +266,7 @@ export default function UjianCBTPage() {
   const openCreateModal = () => {
     setEditingExam(null);
     setIsCustomMapelInput(false);
+    setAutoImportQuestionsOnCreate(true);
     setFormExam({
       judul: '',
       deskripsi: '',
@@ -265,6 +287,7 @@ export default function UjianCBTPage() {
     });
     fetchKelasList();
     fetchMapelList();
+    loadQuizzesForImport();
     setShowCreateModal(true);
   };
 
@@ -273,6 +296,7 @@ export default function UjianCBTPage() {
     fetchExams();
     fetchKelasList();
     fetchMapelList();
+    loadQuizzesForImport();
   }, []);
 
   // 2. Pre-Check: Deteksi GPS Perangkat Santri
@@ -505,6 +529,127 @@ export default function UjianCBTPage() {
     }
   };
 
+  // Dedicated Modal Handler: Impor Paket Ujian dari QuizB
+  const openQuizBImportModal = () => {
+    loadQuizzesForImport();
+    setQuizBModalId('');
+    setQuizBModalSearch('');
+    setQuizBModalQuestions([]);
+    setQuizBModalForm({
+      judul: '',
+      mata_pelajaran: mapelList[0]?.mata_pelajaran || '',
+      kitab: '',
+      kelas_madin_id: '',
+      semester: '1',
+      tahun_ajaran: '2025/2026',
+      jenis_ujian: 'harian',
+      durasi_menit: 45,
+      passing_grade: 70,
+    });
+    setShowQuizBImportModal(true);
+  };
+
+  const handleSelectQuizForImportModal = async (quizId: string) => {
+    setQuizBModalId(quizId);
+    if (!quizId) {
+      setQuizBModalQuestions([]);
+      return;
+    }
+    const found = quizImportList.find((q: any) => String(q.id) === String(quizId));
+    if (found) {
+      const matched = mapelList.find((m) =>
+        (found.category && m.mata_pelajaran.toLowerCase().includes(found.category.toLowerCase())) ||
+        found.title.toLowerCase().includes(m.mata_pelajaran.toLowerCase())
+      );
+      setQuizBModalForm((prev: any) => ({
+        ...prev,
+        judul: found.title || '',
+        mata_pelajaran: matched ? matched.mata_pelajaran : (found.category || prev.mata_pelajaran || 'Umum'),
+      }));
+    }
+    setLoadingQuizBModalQuestions(true);
+    try {
+      const res = await fetch(`/api/quizb/fetch?action=get_questions&quiz_id=${encodeURIComponent(quizId)}`);
+      const data = await res.json();
+      setQuizBModalQuestions(data.questions || []);
+    } catch {
+      setQuizBModalQuestions([]);
+    } finally {
+      setLoadingQuizBModalQuestions(false);
+    }
+  };
+
+  const handleExecuteImportQuizBPaket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quizBModalForm.judul.trim() || !quizBModalForm.mata_pelajaran.trim()) {
+      alert('Judul ujian dan mata pelajaran wajib diisi.');
+      return;
+    }
+    setImportingQuizBPaket(true);
+    try {
+      // 1. Buat paket ujian CBT di PPMAWAR
+      const resExam = await fetch('/api/ujian', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...quizBModalForm,
+          quizb_id: quizBModalId,
+          acak_soal: 1,
+          acak_opsi: 1,
+          wajib_token: 1,
+          wajib_geofence: 1,
+          max_radius_meter: 200,
+        }),
+      });
+      const examData = await resExam.json();
+      if (!examData.success) {
+        alert(examData.error || 'Gagal membuat paket ujian.');
+        setImportingQuizBPaket(false);
+        return;
+      }
+
+      const newUjianId = examData.ujian_id;
+
+      // 2. Salin seluruh butir soal ke Bank Soal ujian ini jika ada
+      let importedCount = 0;
+      if (quizBModalQuestions.length > 0) {
+        const resSoal = await fetch('/api/ujian/soal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ujian_id: newUjianId,
+            soal_list: quizBModalQuestions.map((q: any, i: number) => ({
+              nomor_urut: i + 1,
+              pertanyaan: q.pertanyaan,
+              gambar: q.gambar || null,
+              opsi_a: q.opsi_a,
+              opsi_b: q.opsi_b,
+              opsi_c: q.opsi_c || '',
+              opsi_d: q.opsi_d || null,
+              opsi_e: q.opsi_e || null,
+              kunci_jawaban: q.kunci_jawaban || 'A',
+              bobot_nilai: q.bobot_nilai || 10,
+              pembahasan: q.pembahasan || null,
+            })),
+          }),
+        });
+        const soalData = await resSoal.json();
+        if (soalData.success) {
+          importedCount = quizBModalQuestions.length;
+        }
+      }
+
+      alert(`✅ Berhasil mengimpor paket ujian "${quizBModalForm.judul}" beserta ${importedCount} butir soal dari QuizB! Ujian siap dikerjakan santri.`);
+      setShowQuizBImportModal(false);
+      setMainTab('kelola');
+      fetchExams();
+    } catch (err: any) {
+      alert('Error saat mengimpor: ' + err.message);
+    } finally {
+      setImportingQuizBPaket(false);
+    }
+  };
+
   const handleSaveQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedExamForSoal) return;
@@ -727,7 +872,41 @@ export default function UjianCBTPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(editingExam ? 'Ujian berhasil diperbarui!' : 'Ujian berhasil dibuat!');
+        if (!editingExam && data.ujian_id && formExam.quizb_id && autoImportQuestionsOnCreate) {
+          try {
+            const qRes = await fetch(`/api/quizb/fetch?action=get_questions&quiz_id=${encodeURIComponent(formExam.quizb_id)}`);
+            const qData = await qRes.json();
+            if (qData.success && Array.isArray(qData.questions) && qData.questions.length > 0) {
+              await fetch('/api/ujian/soal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  ujian_id: data.ujian_id,
+                  soal_list: qData.questions.map((q: any, i: number) => ({
+                    nomor_urut: i + 1,
+                    pertanyaan: q.pertanyaan,
+                    gambar: q.gambar || null,
+                    opsi_a: q.opsi_a,
+                    opsi_b: q.opsi_b,
+                    opsi_c: q.opsi_c || '',
+                    opsi_d: q.opsi_d || null,
+                    opsi_e: q.opsi_e || null,
+                    kunci_jawaban: q.kunci_jawaban || 'A',
+                    bobot_nilai: q.bobot_nilai || 10,
+                    pembahasan: q.pembahasan || null,
+                  })),
+                }),
+              });
+              alert(`✅ Ujian berhasil dibuat beserta ${qData.questions.length} butir soal dari QuizB!`);
+            } else {
+              alert('Ujian berhasil dibuat!');
+            }
+          } catch (e) {
+            alert('Ujian berhasil dibuat!');
+          }
+        } else {
+          alert(editingExam ? 'Ujian berhasil diperbarui!' : 'Ujian berhasil dibuat!');
+        }
         setShowCreateModal(false);
         setEditingExam(null);
         fetchExams();
@@ -1126,6 +1305,21 @@ export default function UjianCBTPage() {
                 </div>
               </button>
             )}
+
+            {isPengajarOrAdmin && (
+              <button
+                type="button"
+                onClick={openQuizBImportModal}
+                className="px-4 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 border border-teal-400/40"
+                title="Impor kuis dan butir soal dari QuizB langsung menjadi paket ujian CBT"
+              >
+                <Sparkles size={16} className="text-yellow-300" />
+                <div className="flex flex-col items-start leading-tight text-left">
+                  <span className="font-extrabold flex items-center gap-1">🎮 Impor dari QuizB</span>
+                  <span className="text-[10px] font-medium text-emerald-100 mt-0.5">Tarik Bank Soal</span>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1206,13 +1400,23 @@ export default function UjianCBTPage() {
                 Sebagai Pengajar / Asatidz / Admin, Anda dapat mulai membuat paket soal ujian, mengatur token sesi, dan radius geofence.
               </p>
             </div>
-            <button
-              onClick={openCreateModal}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-md transition-all"
-            >
-              <Plus size={16} />
-              <span>Buat Paket Ujian Pertama</span>
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+              <button
+                onClick={openCreateModal}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-md transition-all"
+              >
+                <Plus size={16} />
+                <span>Buat Paket Manual</span>
+              </button>
+              <button
+                type="button"
+                onClick={openQuizBImportModal}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-md transition-all border border-teal-400/30"
+              >
+                <Sparkles size={16} className="text-yellow-300" />
+                <span>🎮 Impor Paket Soal dari QuizB</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="p-16 text-center text-gray-400 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 space-y-2 max-w-lg mx-auto">
@@ -1741,16 +1945,48 @@ export default function UjianCBTPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Tautkan ID QuizB (Opsional)
-                  </label>
-                  <input
-                    type="text"
-                    value={formExam.quizb_id}
-                    onChange={(e) => setFormExam({ ...formExam, quizb_id: e.target.value })}
-                    placeholder="Contoh: 14 (ID kuis di quizb.my.id)"
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                      🎮 Hubungkan / Impor Kuis QuizB
+                    </label>
+                    {formExam.quizb_id && (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                        ID #{formExam.quizb_id}
+                      </span>
+                    )}
+                  </div>
+                  <select
+                    value={formExam.quizb_id || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const selectedQuiz = quizImportList.find((q: any) => String(q.id) === val);
+                      setFormExam((prev: any) => ({
+                        ...prev,
+                        quizb_id: val,
+                        judul: prev.judul || (selectedQuiz ? selectedQuiz.title : ''),
+                        mata_pelajaran: prev.mata_pelajaran || (selectedQuiz ? selectedQuiz.category || '' : ''),
+                      }));
+                    }}
                     className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs"
-                  />
+                  >
+                    <option value="">-- Buat Manual / Tanpa QuizB --</option>
+                    {quizImportList.filter((q: any) => !String(q.id).startsWith('cbt_')).map((q: any) => (
+                      <option key={q.id} value={String(q.id)}>
+                        #{q.id} - {q.title} {q.category ? `(${q.category})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {formExam.quizb_id && !editingExam && (
+                    <label className="flex items-center gap-2 mt-2 cursor-pointer text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                      <input
+                        type="checkbox"
+                        checked={autoImportQuestionsOnCreate}
+                        onChange={(e) => setAutoImportQuestionsOnCreate(e.target.checked)}
+                        className="accent-emerald-600 rounded"
+                      />
+                      <span>Otomatis salin butir soal QuizB ke Bank Soal</span>
+                    </label>
+                  )}
                 </div>
               </div>
               </div>{/* end scrollable body */}
@@ -1768,6 +2004,268 @@ export default function UjianCBTPage() {
                   className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold shadow-md transition-all"
                 >
                   {editingExam ? 'Simpan Perubahan' : 'Buat Ujian'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 1B: IMPOR PAKET UJIAN & BANK SOAL DARI QUIZB                        */}
+      {/* ========================================================================= */}
+      {showQuizBImportModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pb-20 sm:pb-5 bg-black/70 backdrop-blur-xs overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden my-auto">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-teal-700 to-emerald-800 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-yellow-300">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-white">
+                    🎮 Impor Paket Ujian dari QuizB
+                  </h3>
+                  <p className="text-xs text-emerald-100/80">
+                    Tarik butir soal dari quizb.my.id langsung menjadi paket ujian CBT santri PPMAWAR.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuizBImportModal(false)}
+                className="p-1.5 text-emerald-200 hover:text-white rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleExecuteImportQuizBPaket} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm">
+                {/* 1. Pilih Kuis QuizB */}
+                <div className="bg-teal-50/70 dark:bg-teal-950/20 p-4 rounded-2xl border border-teal-200 dark:border-teal-800/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-teal-900 dark:text-teal-200 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
+                      Langkah 1: Pilih Kuis dari Platform QuizB
+                    </span>
+                    <button
+                      type="button"
+                      onClick={loadQuizzesForImport}
+                      className="text-[11px] font-bold text-teal-700 dark:text-teal-300 hover:underline flex items-center gap-1"
+                    >
+                      <RefreshCw size={11} /> Refresh Daftar
+                    </button>
+                  </div>
+
+                  {/* Filter Search */}
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={quizBModalSearch}
+                      onChange={(e) => setQuizBModalSearch(e.target.value)}
+                      placeholder="Cari judul kuis QuizB (misal: Alfiyah, Nahwu, Fiqh)..."
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs focus:ring-2 focus:ring-teal-500 outline-none"
+                    />
+                  </div>
+
+                  {/* Dropdown Kuis */}
+                  <select
+                    value={quizBModalId}
+                    onChange={(e) => handleSelectQuizForImportModal(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-semibold focus:ring-2 focus:ring-teal-500 outline-none"
+                  >
+                    <option value="">-- Klik untuk Memilih Kuis dari QuizB --</option>
+                    {quizImportList
+                      .filter((q: any) => !String(q.id).startsWith('cbt_'))
+                      .filter((q: any) => {
+                        if (!quizBModalSearch.trim()) return true;
+                        const s = quizBModalSearch.toLowerCase();
+                        return (
+                          (q.title || '').toLowerCase().includes(s) ||
+                          (q.category || '').toLowerCase().includes(s) ||
+                          String(q.id).includes(s)
+                        );
+                      })
+                      .map((q: any) => (
+                        <option key={q.id} value={String(q.id)}>
+                          ID #{q.id} &bull; {q.title} {q.category ? `(${q.category})` : ''}
+                        </option>
+                      ))}
+                  </select>
+
+                  {/* Status Fetch Questions */}
+                  {loadingQuizBModalQuestions ? (
+                    <div className="p-3 bg-white dark:bg-gray-800 rounded-xl flex items-center gap-2 text-xs text-gray-500">
+                      <RefreshCw size={14} className="animate-spin text-teal-600" />
+                      <span>Sedang mengambil butir soal dari QuizB...</span>
+                    </div>
+                  ) : quizBModalId && quizBModalQuestions.length > 0 ? (
+                    <div className="p-3 bg-emerald-100/70 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between font-bold text-xs text-emerald-800 dark:text-emerald-300">
+                        <span>✅ {quizBModalQuestions.length} Butir Soal Siap Diimpor</span>
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Semua pilihan ganda &amp; kunci jawaban terdeteksi</span>
+                      </div>
+                      <div className="max-h-28 overflow-y-auto space-y-1 pr-1 text-[11px] text-gray-600 dark:text-gray-300">
+                        {quizBModalQuestions.slice(0, 3).map((q: any, idx: number) => (
+                          <div key={idx} className="bg-white/80 dark:bg-gray-800/80 p-1.5 rounded-lg border border-emerald-200/50">
+                            <strong>{idx + 1}.</strong> {q.pertanyaan} (Kunci: <span className="font-bold text-emerald-600">{q.kunci_jawaban}</span>)
+                          </div>
+                        ))}
+                        {quizBModalQuestions.length > 3 && (
+                          <p className="text-[10px] text-gray-400 italic text-center pt-0.5">
+                            ...dan {quizBModalQuestions.length - 3} butir soal lainnya
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : quizBModalId ? (
+                    <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200">
+                      ⚠️ Tidak ada butir soal yang ditemukan pada kuis ini di QuizB. Paket ujian tetap dapat dibuat kosong.
+                    </p>
+                  ) : null}
+                </div>
+
+                {/* 2. Pengaturan Paket Ujian CBT di PPMAWAR */}
+                <div className="space-y-3 pt-1">
+                  <span className="font-bold text-xs text-gray-800 dark:text-gray-200 uppercase tracking-wider block">
+                    Langkah 2: Pengaturan Paket Ujian di PPMAWAR
+                  </span>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      Judul Ujian CBT <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={quizBModalForm.judul}
+                      onChange={(e) => setQuizBModalForm({ ...quizBModalForm, judul: e.target.value })}
+                      placeholder="Contoh: Ulangan Harian Nahwu Jilid 1"
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Mata Pelajaran <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={quizBModalForm.mata_pelajaran}
+                        onChange={(e) => setQuizBModalForm({ ...quizBModalForm, mata_pelajaran: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs"
+                      >
+                        <option value="">-- Pilih Mata Pelajaran --</option>
+                        {mapelList.map((m) => (
+                          <option key={m.mata_pelajaran} value={m.mata_pelajaran}>
+                            {m.mata_pelajaran}
+                          </option>
+                        ))}
+                        {quizBModalForm.mata_pelajaran && !mapelList.some(m => m.mata_pelajaran === quizBModalForm.mata_pelajaran) && (
+                          <option value={quizBModalForm.mata_pelajaran}>
+                            {quizBModalForm.mata_pelajaran} (Kategori QuizB)
+                          </option>
+                        )}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Target Kelas Madin
+                      </label>
+                      <select
+                        value={quizBModalForm.kelas_madin_id}
+                        onChange={(e) => setQuizBModalForm({ ...quizBModalForm, kelas_madin_id: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs"
+                      >
+                        <option value="">Semua Kelas Madin</option>
+                        {kelasList.map((k) => (
+                          <option key={k.id} value={String(k.id)}>
+                            {k.nama_kelas}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Jenis Ujian
+                      </label>
+                      <select
+                        value={quizBModalForm.jenis_ujian}
+                        onChange={(e) => setQuizBModalForm({ ...quizBModalForm, jenis_ujian: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs"
+                      >
+                        <option value="harian">Ulangan Harian (30%)</option>
+                        <option value="uts">UTS (30%)</option>
+                        <option value="uas">UAS (40%)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Durasi (Menit)
+                      </label>
+                      <input
+                        type="number"
+                        min="5"
+                        max="300"
+                        value={quizBModalForm.durasi_menit}
+                        onChange={(e) => setQuizBModalForm({ ...quizBModalForm, durasi_menit: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        KKM (Passing Grade)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={quizBModalForm.passing_grade}
+                        onChange={(e) => setQuizBModalForm({ ...quizBModalForm, passing_grade: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-2 p-4 sm:p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowQuizBImportModal(false)}
+                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-bold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!quizBModalId || importingQuizBPaket}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 active:scale-95 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {importingQuizBPaket ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Mengimpor Paket &amp; Soal...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} className="text-yellow-300" />
+                      <span>
+                        🚀 Impor &amp; Terbitkan Paket Ujian ({quizBModalQuestions.length} Soal)
+                      </span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

@@ -1076,9 +1076,9 @@ export default function PenilaianRaportPage() {
                     type="button"
                     onClick={() => setShowQuizBModal(true)}
                     className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all"
-                    title="Tarik nilai otomatis dari quizb.my.id"
+                    title="Tarik nilai hasil ujian CBT santri dari Portal Ujian ke buku nilai"
                   >
-                    <span>🎮 Tarik Nilai QuizB</span>
+                    <span>📥 Tarik Nilai Ujian CBT</span>
                   </button>
 
                   <div className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 rounded-xl text-xs font-bold shadow-2xs">
@@ -1097,9 +1097,9 @@ export default function PenilaianRaportPage() {
                     type="button"
                     onClick={() => setShowQuizBModal(true)}
                     className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all"
-                    title="Tarik nilai otomatis dari quizb.my.id"
+                    title="Tarik nilai hasil ujian CBT santri dari Portal Ujian ke buku nilai"
                   >
-                    <span>🎮 Tarik Nilai QuizB</span>
+                    <span>📥 Tarik Nilai Ujian CBT</span>
                   </button>
 
                   <button

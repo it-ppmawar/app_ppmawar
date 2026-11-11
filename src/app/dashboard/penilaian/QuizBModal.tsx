@@ -320,14 +320,14 @@ export default function QuizBModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-black text-lg sm:text-xl text-white tracking-tight">
-                  Integrasi QuizB
+                  Tarik Nilai Ujian CBT / QuizB
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-400 text-emerald-950 shadow-xs">
-                  quizb.my.id
+                  CBT &amp; QuizB
                 </span>
               </div>
               <p className="text-xs text-emerald-100/80 mt-0.5">
-                Sinkronkan nilai kuis online dari platform rekan senior langsung ke catatan raport santri
+                Sinkronkan nilai ujian CBT santri dari Portal Ujian ke buku nilai &amp; raport santri
               </p>
             </div>
           </div>
@@ -350,7 +350,7 @@ export default function QuizBModal({
             }`}
           >
             <Database size={15} />
-            <span>Tarik Otomatis dari QuizB</span>
+            <span>Tarik Nilai Ujian CBT</span>
           </button>
 
           <button
@@ -459,7 +459,7 @@ export default function QuizBModal({
                 <div className="sm:col-span-2">
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
-                      Pilih Kuis dari QuizB
+                      Pilih Ujian CBT Santri / Kuis
                     </label>
                     {selectedMapel && !['semua', 'semua mapel', 'all'].includes(selectedMapel.toLowerCase()) ? (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
@@ -502,6 +502,11 @@ export default function QuizBModal({
                           )
                       : [];
 
+                    // Kelompokkan Ujian CBT PPMAWAR di atas dan Kuis QuizB eksternal di bawah
+                    const allFiltered = [...relatedQuizzes, ...otherQuizzes];
+                    const cbtQuizzes = allFiltered.filter((q) => String(q.id).startsWith('cbt_'));
+                    const externalQuizzes = allFiltered.filter((q) => !String(q.id).startsWith('cbt_'));
+
                     return (
                       <div className="space-y-1.5">
                         {/* Search bar untuk filter tambahan */}
@@ -517,29 +522,29 @@ export default function QuizBModal({
                           onChange={(e) => setSelectedQuizId(e.target.value)}
                           className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
                         >
-                          {relatedQuizzes.length > 0 && (
-                            <optgroup label={isSpecific ? `✅ Terkait ${selectedMapel}` : '📋 Kuis Terkait Mapel PPMAWAR'}>
-                              {relatedQuizzes.map((q) => (
+                          {cbtQuizzes.length > 0 && (
+                            <optgroup label="🏆 HASIL UJIAN CBT SANTRI PPMAWAR (Disarankan)">
+                              {cbtQuizzes.map((q) => (
+                                <option key={q.id} value={q.id}>
+                                  {q.title} {q.category ? `(${q.category})` : ''} &bull; Nilai CBT Tersedia
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          {externalQuizzes.length > 0 && (
+                            <optgroup label="🌐 KUIS ONLINE QUIZB">
+                              {externalQuizzes.map((q) => (
                                 <option key={q.id} value={q.id}>
                                   {q.title} {q.category ? `(${q.category})` : ''} — ID #{q.id}
                                 </option>
                               ))}
                             </optgroup>
                           )}
-                          {otherQuizzes.length > 0 && (
-                            <optgroup label={userRole === 'guru' ? '📂 Kuis Mapel Anda Lainnya' : '📂 Kuis Mapel PPMAWAR Lainnya'}>
-                              {otherQuizzes.map((q) => (
-                                <option key={q.id} value={q.id}>
-                                  {q.title} {q.category ? `(${q.category})` : ''} — ID #{q.id}
-                                </option>
-                              ))}
-                            </optgroup>
-                          )}
-                          {relatedQuizzes.length === 0 && otherQuizzes.length === 0 && (
+                          {allFiltered.length === 0 && (
                             <option disabled value="">
                               {isSpecific
-                                ? `Tidak ada kuis QuizB untuk mapel ${selectedMapel}`
-                                : 'Tidak ada kuis QuizB yang terkait dengan mata pelajaran'}
+                                ? `Tidak ada kuis CBT/QuizB untuk mapel ${selectedMapel}`
+                                : 'Tidak ada kuis CBT/QuizB yang terkait'}
                             </option>
                           )}
                         </select>

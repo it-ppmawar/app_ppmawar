@@ -349,8 +349,8 @@ export async function POST(request: Request) {
     if (!Array.isArray(incomingScores) || incomingScores.length === 0) {
       const isCbtExam = cleanQuizIdStr.startsWith('cbt_') || matchedExamIds.length > 0;
       const errorMsg = isCbtExam
-        ? `Paket ujian CBT ini (${quiz_title || cleanQuizIdStr}) belum memiliki santri yang menyelesaikan ujian (0 Peserta). Silakan pilih paket ujian yang sudah dikerjakan santri (seperti 'ulangan 1').`
-        : 'Tidak ada data peserta/nilai yang ditemukan untuk kuis ini.';
+        ? `Paket ujian CBT ini (${quiz_title || cleanQuizIdStr}) belum memiliki santri yang menyelesaikan ujian (0 Peserta). Silakan pilih paket ujian CBT yang sudah dikerjakan santri.`
+        : 'Tidak ada data peserta/nilai untuk kuis QuizB ini. Pastikan kuis ini sudah diimpor ke Portal Ujian Santri Digital dan dikerjakan oleh para santri di aplikasi CBT PPMAWAR.';
       return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
 
