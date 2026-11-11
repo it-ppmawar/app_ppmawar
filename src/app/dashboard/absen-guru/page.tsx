@@ -545,7 +545,7 @@ export default function AbsenGuruPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-28">
       <div className="max-w-7xl mx-auto px-4 pt-4 space-y-3">
-        {/* ── Header Card ──────────────────────────────────────────────────────── */}
+        {/* ── Hero Card ──────────────────────────────────────────────────────── */}
         <div className="bg-gradient-to-br from-teal-50 to-emerald-100 dark:from-teal-950/40 dark:to-emerald-950/40 rounded-3xl p-4 sm:p-5 border border-teal-200 dark:border-teal-900/50 relative overflow-hidden shadow-xs">
           <div className="absolute top-0 right-0 -mt-3 -mr-3 text-teal-200/40 dark:text-teal-900/20 pointer-events-none">
             <ClipboardList size={110} />
@@ -571,53 +571,89 @@ export default function AbsenGuruPage() {
               </div>
             </div>
 
-            {/* Row 2: Controls & Navigation Buttons */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mt-3 pt-2.5 border-t border-teal-200/60 dark:border-teal-900/40">
-              {/* Group 1: Pilihan Tanggal & Atur Jadwal (2 Kolom Presisi Memenuhi Lebar) */}
-              <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-                <input
-                  type="date"
-                  value={tanggal}
-                  onChange={e => setTanggal(e.target.value)}
-                  className="w-full text-xs font-bold border border-teal-200 dark:border-teal-800 rounded-xl px-2.5 py-2 bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400 text-center shadow-xs cursor-pointer"
-                />
-                <Link
-                  href="/dashboard/jadwal-dewan-guru"
-                  className="w-full py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs text-center truncate"
-                >
-                  <CalendarDays size={13} className="shrink-0" />
-                  <span>Atur Jadwal</span>
-                </Link>
-              </div>
+            {/* Mobile Clock */}
+            <div className="sm:hidden mt-1">
+              <div className="font-mono font-black text-xl text-teal-800 dark:text-teal-300 tracking-widest">{clockStr}</div>
+              <div className="text-teal-600 dark:text-teal-400 text-[10px] font-medium">{dateHeaderStr}</div>
+            </div>
 
-              {/* Group 2: Kartu QR, Segarkan, Scan QR (3 Kolom Presisi Memenuhi Lebar) */}
-              <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
-                <Link
-                  href="/dashboard/qr-dewan-guru"
-                  className="w-full py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs text-center truncate"
-                >
-                  <QrCode size={13} className="shrink-0" />
-                  <span>Kartu QR</span>
-                </Link>
+            {/* Row 2: Tombol Export PDF & Excel */}
+            <div className="flex flex-wrap gap-2 mt-3 pt-2.5 border-t border-teal-200/60 dark:border-teal-900/40">
+              <button
+                onClick={() => handleExportDewanGuru('pdf', true)}
+                className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs"
+                title="Preview PDF"
+              >
+                <FileText size={13} className="shrink-0" />
+                <span>Preview PDF</span>
+              </button>
+              <button
+                onClick={() => handleExportDewanGuru('pdf', false)}
+                className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs"
+                title="Download PDF"
+              >
+                <Download size={13} className="shrink-0" />
+                <span>Unduh PDF</span>
+              </button>
+              <button
+                onClick={() => handleExportDewanGuru('excel')}
+                className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs"
+                title="Download Excel"
+              >
+                <ExternalLink size={13} className="shrink-0" />
+                <span>Unduh Excel</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
-                <button
-                  onClick={() => (mainMode === 'dewan_guru' ? fetchDewanData() : fetchKbmData())}
-                  disabled={dewanLoading || kbmLoading}
-                  className="w-full py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center truncate"
-                  title="Segarkan data"
-                >
-                  <RefreshCw size={13} className={`shrink-0 ${(dewanLoading || kbmLoading) ? 'animate-spin' : ''}`} />
-                  <span>Segarkan</span>
-                </button>
+        {/* ── Kartu Kontrol & Navigasi ───────────────────────────────────────── */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+            {/* Group 1: Pilihan Tanggal & Atur Jadwal */}
+            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+              <input
+                type="date"
+                value={tanggal}
+                onChange={e => setTanggal(e.target.value)}
+                className="w-full text-xs font-bold border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-400 text-center shadow-xs cursor-pointer"
+              />
+              <Link
+                href="/dashboard/jadwal-dewan-guru"
+                className="w-full py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs text-center truncate"
+              >
+                <CalendarDays size={13} className="shrink-0" />
+                <span>Atur Jadwal</span>
+              </Link>
+            </div>
 
-                <button
-                  onClick={() => setShowScanner(true)}
-                  className="w-full py-2 px-2 sm:px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-center truncate"
-                >
-                  <Camera size={13} className="shrink-0" />
-                  <span>Scan QR</span>
-                </button>
-              </div>
+            {/* Group 2: Kartu QR, Segarkan, Scan QR */}
+            <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
+              <Link
+                href="/dashboard/qr-dewan-guru"
+                className="w-full py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs text-center truncate"
+              >
+                <QrCode size={13} className="shrink-0" />
+                <span>Kartu QR</span>
+              </Link>
+
+              <button
+                onClick={() => (mainMode === 'dewan_guru' ? fetchDewanData() : fetchKbmData())}
+                disabled={dewanLoading || kbmLoading}
+                className="w-full py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer text-center truncate disabled:opacity-50"
+                title="Segarkan data"
+              >
+                <RefreshCw size={13} className={`shrink-0 ${(dewanLoading || kbmLoading) ? 'animate-spin' : ''}`} />
+                <span>Segarkan</span>
+              </button>
+
+              <button
+                onClick={() => setShowScanner(true)}
+                className="w-full py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-center truncate"
+              >
+                <Camera size={13} className="shrink-0" />
+                <span>Scan QR</span>
+              </button>
             </div>
           </div>
         </div>
