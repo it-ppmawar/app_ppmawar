@@ -286,11 +286,130 @@ switch ($action) {
         ]);
         break;
 
+    // Aksi Ambil Butir Soal dari Kuis QuizB
+    case 'get_questions':
+        $quizId = $_GET['quiz_id'] ?? $_POST['quiz_id'] ?? null;
+        $search = $_GET['q'] ?? $_POST['q'] ?? null;
+
+        try {
+            // Deteksi nama tabel soal
+            $questionTable = null;
+            $candidateQues = ['questions', 'quiz_questions', 'soal', 'tbl_soal', 'exam_questions', 'items'];
+            foreach ($candidateQues as $t) {
+                try {
+                    $test = $pdo->query("SELECT 1 FROM `{$t}` LIMIT 1");
+                    $questionTable = $t;
+                    break;
+                } catch (Exception $ex) {}
+            }
+
+            if (!$questionTable) {
+                echo json_encode(['status' => 'success', 'questions' => [], 'message' => 'Tabel soal kuis belum terdeteksi otomatis.']);
+                break;
+            }
+
+            // Ambil daftar kolom tabel soal
+            $colStmt = $pdo->query("DESCRIBE `{$questionTable}`");
+            $columns = [];
+            while ($c = $colStmt->fetch()) {
+                $columns[] = strtolower($c['Field']);
+            }
+
+            // Deteksi kolom quiz_id
+            $quizIdCol = 'quiz_id';
+            foreach (['quiz_id', 'exam_id', 'package_id', 'id_kuis', 'id_ujian', 'id_paket'] as $col) {
+                if (in_array($col, $columns)) {
+                    $quizIdCol = $col;
+                    break;
+                }
+            }
+
+            // Deteksi kolom pertanyaan
+            $pertanyaanCol = 'question';
+            foreach (['question', 'question_text', 'pertanyaan', 'soal', 'title', 'body', 'content'] as $col) {
+                if (in_array($col, $columns)) {
+                    $pertanyaanCol = $col;
+                    break;
+                }
+            }
+
+            // Build Query
+            $whereParts = [];
+            $queryParams = [];
+
+            if ($quizId && in_array($quizIdCol, $columns)) {
+                $whereParts[] = "`{$quizIdCol}` = :qid";
+                $queryParams[':qid'] = $quizId;
+            }
+
+            if ($search) {
+                $whereParts[] = "`{$pertanyaanCol}` LIKE :search";
+                $queryParams[':search'] = '%' . $search . '%';
+            }
+
+            $whereSql = count($whereParts) > 0 ? "WHERE " . implode(' AND ', $whereParts) : "";
+            $sql = "SELECT * FROM `{$questionTable}` {$whereSql} ORDER BY id ASC LIMIT 200";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($queryParams);
+            
+            $questions = [];
+            while ($row = $stmt->fetch()) {
+                // Ekstraksi opsi A, B, C, D, E
+                $opsiA = $row['option_a'] ?? $row['opsi_a'] ?? $row['choice_a'] ?? $row['a'] ?? '';
+                $opsiB = $row['option_b'] ?? $row['opsi_b'] ?? $row['choice_b'] ?? $row['b'] ?? '';
+                $opsiC = $row['option_c'] ?? $row['opsi_c'] ?? $row['choice_c'] ?? $row['c'] ?? '';
+                $opsiD = $row['option_d'] ?? $row['opsi_d'] ?? $row['choice_d'] ?? $row['d'] ?? '';
+                $opsiE = $row['option_e'] ?? $row['opsi_e'] ?? $row['choice_e'] ?? $row['e'] ?? '';
+
+                // Ekstraksi kunci
+                $kunci = $row['correct_answer'] ?? $row['correct_option'] ?? $row['answer'] ?? $row['kunci'] ?? $row['kunci_jawaban'] ?? 'A';
+                
+                // Normalisasi kunci: jika kunci berupa teks yang sama dengan opsi, ubah ke huruf A/B/C/D
+                if (strlen($kunci) > 1) {
+                    if (trim($kunci) === trim($opsiA)) $kunci = 'A';
+                    elseif (trim($kunci) === trim($opsiB)) $kunci = 'B';
+                    elseif (trim($kunci) === trim($opsiC)) $kunci = 'C';
+                    elseif (trim($kunci) === trim($opsiD)) $kunci = 'D';
+                    elseif (trim($kunci) === trim($opsiE)) $kunci = 'E';
+                    else $kunci = substr(strtoupper($kunci), 0, 1);
+                }
+                $kunci = strtoupper(trim($kunci));
+                if (!in_array($kunci, ['A', 'B', 'C', 'D', 'E'])) $kunci = 'A';
+
+                $questions[] = [
+                    'id' => $row['id'] ?? 0,
+                    'pertanyaan' => $row[$pertanyaanCol] ?? $row['question'] ?? $row['pertanyaan'] ?? '',
+                    'gambar' => $row['gambar'] ?? $row['image'] ?? $row['photo'] ?? null,
+                    'opsi_a' => $opsiA,
+                    'opsi_b' => $opsiB,
+                    'opsi_c' => $opsiC,
+                    'opsi_d' => $opsiD,
+                    'opsi_e' => $opsiE,
+                    'kunci_jawaban' => $kunci,
+                    'bobot_nilai' => (int)($row['point'] ?? $row['score'] ?? $row['bobot'] ?? 10),
+                    'pembahasan' => $row['explanation'] ?? $row['pembahasan'] ?? null,
+                ];
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'quiz_id' => $quizId,
+                'table_used' => $questionTable,
+                'total_questions' => count($questions),
+                'questions' => $questions,
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+        break;
+
     default:
         http_response_code(400);
         echo json_encode([
             'status' => 'error',
-            'message' => "Aksi '{$action}' tidak dikenal. Pilihan: test, list_quizzes, get_results, push_to_ppmawar."
+            'message' => "Aksi '{$action}' tidak dikenal. Pilihan: test, list_quizzes, get_results, get_questions, push_to_ppmawar."
         ]);
         break;
 }

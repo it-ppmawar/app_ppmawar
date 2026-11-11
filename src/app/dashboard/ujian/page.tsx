@@ -104,6 +104,16 @@ export default function UjianCBTPage() {
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuestionItem | null>(null);
+
+  // State Import Soal dari QuizB
+  const [quizImportSearch, setQuizImportSearch] = useState('');
+  const [quizImportId, setQuizImportId] = useState('');
+  const [quizImportList, setQuizImportList] = useState<any[]>([]);
+  const [quizImportQuestions, setQuizImportQuestions] = useState<any[]>([]);
+  const [loadingImportQuestions, setLoadingImportQuestions] = useState(false);
+  const [selectedImportQids, setSelectedImportQids] = useState<Set<number>>(new Set());
+  const [importingQuestions, setImportingQuestions] = useState(false);
+  const [importFeedback, setImportFeedback] = useState('');
   const [formQuestion, setFormQuestion] = useState<any>({
     pertanyaan: '',
     opsi_a: '',
@@ -403,6 +413,14 @@ export default function UjianCBTPage() {
     setSelectedExamForSoal(exam);
     setShowSoalModal(true);
     setLoadingQuestions(true);
+    // Reset state import soal
+    setQuizImportId('');
+    setQuizImportSearch('');
+    setQuizImportQuestions([]);
+    setSelectedImportQids(new Set());
+    setImportFeedback('');
+    // Load daftar kuis QuizB untuk import
+    loadQuizzesForImport();
     try {
       const res = await fetch(`/api/ujian/soal?ujian_id=${exam.id}`);
       const data = await res.json();
@@ -412,6 +430,78 @@ export default function UjianCBTPage() {
     } catch (e) {
     } finally {
       setLoadingQuestions(false);
+    }
+  };
+
+  // Fungsi load daftar kuis QuizB untuk panel import soal
+  const loadQuizzesForImport = async () => {
+    try {
+      const res = await fetch('/api/quizb/fetch');
+      const data = await res.json();
+      if (data.success) setQuizImportList(data.quizzes || []);
+    } catch {}
+  };
+
+  // Fungsi ambil soal dari kuis QuizB
+  const handleFetchImportQuestions = async () => {
+    if (!quizImportId) return;
+    setLoadingImportQuestions(true);
+    setImportFeedback('');
+    try {
+      const qParam = quizImportSearch ? `&q=${encodeURIComponent(quizImportSearch)}` : '';
+      const url = `/api/quizb/fetch?action=get_questions&quiz_id=${encodeURIComponent(quizImportId)}${qParam}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const qs = data.questions || [];
+      setQuizImportQuestions(qs);
+      setSelectedImportQids(new Set(qs.map((_: any, i: number) => i)));
+    } catch {
+      setQuizImportQuestions([]);
+    } finally {
+      setLoadingImportQuestions(false);
+    }
+  };
+
+  // Fungsi import soal terpilih ke bank soal ujian CBT
+  const handleImportSelectedQuestions = async () => {
+    if (!selectedExamForSoal || quizImportQuestions.length === 0) return;
+    const toImport = quizImportQuestions.filter((_: any, i: number) => selectedImportQids.has(i));
+    if (toImport.length === 0) return;
+    setImportingQuestions(true);
+    try {
+      const res = await fetch('/api/ujian/soal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ujian_id: selectedExamForSoal.id,
+          soal_list: toImport.map((q: any, i: number) => ({
+            nomor_urut: questions.length + i + 1,
+            pertanyaan: q.pertanyaan,
+            gambar: q.gambar || null,
+            opsi_a: q.opsi_a,
+            opsi_b: q.opsi_b,
+            opsi_c: q.opsi_c || '',
+            opsi_d: q.opsi_d || null,
+            opsi_e: q.opsi_e || null,
+            kunci_jawaban: q.kunci_jawaban || 'A',
+            bobot_nilai: q.bobot_nilai || 10,
+            pembahasan: q.pembahasan || null,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setImportFeedback(`✅ ${data.message || `${toImport.length} soal berhasil diimpor!`}`);
+        setQuizImportQuestions([]);
+        setSelectedImportQids(new Set());
+        openSoalManager(selectedExamForSoal);
+      } else {
+        setImportFeedback(`❌ ${data.error || 'Gagal mengimpor soal.'}`);
+      }
+    } catch (err: any) {
+      setImportFeedback(`❌ ${err.message}`);
+    } finally {
+      setImportingQuestions(false);
     }
   };
 
@@ -985,48 +1075,55 @@ export default function UjianCBTPage() {
             <button
               type="button"
               onClick={() => setMainTab('daftar')}
-              className={`px-4 py-3 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-sm ${
+              className={`px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-sm ${
                 mainTab === 'daftar'
                   ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
                   : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
               }`}
             >
-              <Play size={15} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700' : 'text-emerald-300'} />
-              <span>Daftar Ujian</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                mainTab === 'daftar' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
-              }`}>
-                {exams.filter((e) => e.status_sesi === 'buka').length} Aktif
-              </span>
+              <Play size={16} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700' : 'text-emerald-300'} />
+              <div className="flex flex-col items-start leading-tight text-left">
+                <span className="font-extrabold">Daftar Ujian</span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full mt-0.5 ${
+                  mainTab === 'daftar' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
+                }`}>
+                  {exams.filter((e) => e.status_sesi === 'buka').length} Aktif
+                </span>
+              </div>
             </button>
 
             {isPengajarOrAdmin && (
               <button
                 type="button"
                 onClick={() => setMainTab('kelola')}
-                className={`px-4 py-3 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-sm ${
+                className={`px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-sm ${
                   mainTab === 'kelola'
                     ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
                     : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
                 }`}
               >
-                <Settings size={15} className={mainTab === 'kelola' ? 'text-emerald-700' : 'text-emerald-300'} />
-                <span>⚙️ Kelola Ujian &amp; Bank Soal</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                  mainTab === 'kelola' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
-                }`}>
-                  {exams.length}
-                </span>
+                <Settings size={16} className={mainTab === 'kelola' ? 'text-emerald-700' : 'text-emerald-300'} />
+                <div className="flex flex-col items-start leading-tight text-left">
+                  <span className="font-extrabold">Kelola Ujian &amp; Bank Soal</span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full mt-0.5 ${
+                    mainTab === 'kelola' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
+                  }`}>
+                    {exams.length} Paket Ujian
+                  </span>
+                </div>
               </button>
             )}
 
             {isPengajarOrAdmin && (
               <button
                 onClick={openCreateModal}
-                className="px-4 py-3 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5"
+                className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
               >
                 <Plus size={16} />
-                <span>Buat Ujian Baru</span>
+                <div className="flex flex-col items-start leading-tight text-left">
+                  <span className="font-extrabold">Buat Ujian Baru</span>
+                  <span className="text-[10px] font-medium text-emerald-100 mt-0.5">+ Tambah Paket</span>
+                </div>
               </button>
             )}
           </div>
@@ -1904,6 +2001,140 @@ export default function UjianCBTPage() {
                       </div>
                     </div>
                   ))
+                )}
+              </div>
+
+              {/* ===== SECTION IMPORT SOAL DARI QUIZB ===== */}
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200 dark:border-emerald-800/40 p-4 space-y-3">
+                <h4 className="font-bold text-sm text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                  <Sparkles size={15} />
+                  🎮 Impor Soal dari QuizB
+                </h4>
+
+                {/* Dropdown pilih kuis QuizB */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Pilih Kuis dari QuizB
+                  </label>
+                  <select
+                    value={quizImportId}
+                    onChange={e => setQuizImportId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">-- Pilih Kuis --</option>
+                    {quizImportList.map((q: any) => (
+                      <option key={q.id} value={String(q.id)}>
+                        {q.title}{q.category ? ` (${q.category})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {quizImportList.length === 0 && (
+                    <p className="text-[10px] text-gray-400 mt-1">Tidak ada kuis QuizB — pastikan QuizB terhubung.</p>
+                  )}
+                </div>
+
+                {/* Input pencarian + tombol ambil soal */}
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={quizImportSearch}
+                      onChange={e => setQuizImportSearch(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleFetchImportQuestions()}
+                      placeholder="Cari soal berdasarkan kata kunci (opsional)..."
+                      className="w-full pl-8 pr-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleFetchImportQuestions}
+                    disabled={!quizImportId || loadingImportQuestions}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 shrink-0 transition-colors"
+                  >
+                    {loadingImportQuestions
+                      ? <RefreshCw size={13} className="animate-spin" />
+                      : <Search size={13} />
+                    }
+                    Ambil Soal
+                  </button>
+                </div>
+
+                {/* Feedback import */}
+                {importFeedback && (
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl px-3 py-2">
+                    {importFeedback}
+                  </p>
+                )}
+
+                {/* Preview daftar soal yang ditemukan */}
+                {quizImportQuestions.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                        {quizImportQuestions.length} soal ditemukan:
+                      </span>
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedImportQids(new Set(quizImportQuestions.map((_: any, i: number) => i)))}
+                          className="text-xs text-emerald-600 font-bold hover:underline"
+                        >
+                          Pilih Semua
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedImportQids(new Set())}
+                          className="text-xs text-gray-500 font-bold hover:underline"
+                        >
+                          Batal Semua
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                      {quizImportQuestions.map((q: any, i: number) => (
+                        <label
+                          key={i}
+                          className="flex items-start gap-2 p-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:border-emerald-400 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedImportQids.has(i)}
+                            onChange={e => {
+                              const next = new Set(selectedImportQids);
+                              if (e.target.checked) next.add(i); else next.delete(i);
+                              setSelectedImportQids(next);
+                            }}
+                            className="mt-0.5 shrink-0 accent-emerald-600"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 line-clamp-2">
+                              {i + 1}. {q.pertanyaan}
+                            </p>
+                            <p className="text-[10px] text-gray-500 mt-0.5">
+                              A. {q.opsi_a} | B. {q.opsi_b}
+                              {q.opsi_c ? ` | C. ${q.opsi_c}` : ''}
+                              {' '}&bull; Kunci: <span className="font-bold text-emerald-600">{q.kunci_jawaban}</span>
+                            </p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleImportSelectedQuestions}
+                      disabled={selectedImportQids.size === 0 || importingQuestions}
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+                    >
+                      {importingQuestions
+                        ? <RefreshCw size={14} className="animate-spin" />
+                        : <Plus size={14} />
+                      }
+                      Import {selectedImportQids.size} Soal Terpilih ke Bank Soal
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

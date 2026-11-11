@@ -71,6 +71,79 @@ export async function GET(request: Request) {
       // ignore
     }
 
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+    const quizId = searchParams.get('quiz_id');
+    const searchQ = searchParams.get('q') || '';
+
+    // HANDLER KHUSUS: AMBIL DAFTAR BUTIR SOAL DARI QUIZB / UJIAN CBT
+    if (action === 'get_questions') {
+      if (!quizId) {
+        return NextResponse.json({ error: 'Parameter quiz_id diperlukan' }, { status: 400 });
+      }
+
+      // Jika dari ujian CBT internal PPMAWAR (prefix cbt_)
+      if (String(quizId).startsWith('cbt_')) {
+        const cbtId = Number(quizId.replace('cbt_', ''));
+        let qSql = 'SELECT * FROM ujian_soal WHERE ujian_id = ?';
+        const qParams: any[] = [cbtId];
+        if (searchQ) {
+          qSql += ' AND pertanyaan LIKE ?';
+          qParams.push(`%${searchQ}%`);
+        }
+        qSql += ' ORDER BY nomor_urut ASC, id ASC';
+        const [rows] = await pool.execute<RowDataPacket[]>(qSql, qParams);
+        return NextResponse.json({
+          success: true,
+          quiz_id: quizId,
+          total_questions: rows.length,
+          questions: rows,
+          is_internal: true,
+        });
+      }
+
+      // Jika dari QuizB di Rumahweb
+      try {
+        const targetUrl = new URL(bridgeUrl);
+        targetUrl.searchParams.set('action', 'get_questions');
+        targetUrl.searchParams.set('quiz_id', String(quizId));
+        if (searchQ) targetUrl.searchParams.set('q', searchQ);
+        targetUrl.searchParams.set('secret', secretKey);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const resp = await fetch(targetUrl.toString(), {
+          signal: controller.signal,
+          headers: { 'Accept': 'application/json' },
+        });
+        clearTimeout(timeoutId);
+
+        if (resp.ok) {
+          const data = await resp.json();
+          return NextResponse.json({
+            success: true,
+            quiz_id: quizId,
+            total_questions: data.total_questions || (data.questions ? data.questions.length : 0),
+            questions: data.questions || [],
+            message: data.message || '',
+          });
+        } else {
+          return NextResponse.json({
+            success: false,
+            error: `QuizB Bridge merespon HTTP ${resp.status}`,
+            questions: [],
+          }, { status: resp.status });
+        }
+      } catch (err: any) {
+        return NextResponse.json({
+          success: false,
+          error: `Gagal mengambil butir soal dari QuizB: ${err.message}`,
+          questions: [],
+        }, { status: 500 });
+      }
+    }
+
     // Ambil riwayat sync terakhir
     let recentLogs: any[] = [];
     try {
