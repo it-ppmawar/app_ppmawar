@@ -303,46 +303,102 @@ export default function AbsenGuruPage() {
     }
   };
 
-  const handleExportDewanGuru = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
-    const list = filteredDewanList;
-    if (list.length === 0) {
-      alert('Tidak ada data dewan guru untuk diexport.');
-      return;
-    }
+  const handleExportData = (format: 'pdf' | 'excel' = 'pdf', previewOnly = false) => {
+    if (mainMode === 'dewan_guru') {
+      const list = filteredDewanList;
+      if (list.length === 0) {
+        alert('Tidak ada data dewan guru untuk diexport.');
+        return;
+      }
 
-    const currentJadwal = jadwalList.find(j => j.id === selectedJadwalId);
-    const sesiInfo = currentJadwal ? ` | Sesi: ${currentJadwal.nama_sesi} (${(currentJadwal.jam_mulai || '').slice(0, 5)} - ${(currentJadwal.jam_selesai || '').slice(0, 5)})` : '';
-    const title = 'PRESENSI KEHADIRAN DEWAN GURU YPMA';
-    const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${dateHeaderStr || tanggal}${sesiInfo} | Unit: ${dewanHomebase}\nTotal Guru: ${dewanStats.total} | Hadir: ${dewanStats.hadir} | Izin: ${dewanStats.izin} | Sakit: ${dewanStats.sakit} | Alpha: ${dewanStats.alpha} | Belum Absen: ${dewanStats.belum}`;
-    const filename = `Presensi_Dewan_Guru_${dewanHomebase.replace(/[^a-zA-Z0-9_-]/g, '_')}_${tanggal}`;
-    const columns = ['No', 'NIP', 'Nama Guru', 'Unit / Homebase', 'No. HP', 'Status', 'Jam Masuk', 'Metode', 'Keterangan'];
-    const rows = list.map((g, idx) => [
-      idx + 1,
-      g.nip || '-',
-      g.nama || '-',
-      g.homebase || '-',
-      g.no_hp || '-',
-      g.status || 'Belum Absen',
-      g.jam_absen ? String(g.jam_absen).slice(0, 5) : '-',
-      g.metode || '-',
-      g.keterangan || '-'
-    ]);
+      const currentJadwal = jadwalList.find(j => j.id === selectedJadwalId);
+      const sesiInfo = currentJadwal ? ` | Sesi: ${currentJadwal.nama_sesi} (${(currentJadwal.jam_mulai || '').slice(0, 5)} - ${(currentJadwal.jam_selesai || '').slice(0, 5)})` : '';
+      const title = 'PRESENSI KEHADIRAN DEWAN GURU YPMA';
+      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${dateHeaderStr || tanggal}${sesiInfo} | Unit: ${dewanHomebase}\nTotal Guru: ${dewanStats.total} | Hadir: ${dewanStats.hadir} | Izin: ${dewanStats.izin} | Sakit: ${dewanStats.sakit} | Alpha: ${dewanStats.alpha} | Belum Absen: ${dewanStats.belum}`;
+      const filename = `Presensi_Dewan_Guru_${dewanHomebase.replace(/[^a-zA-Z0-9_-]/g, '_')}_${tanggal}`;
+      const columns = ['No', 'NIP', 'Nama Guru', 'Unit / Homebase', 'No. HP', 'Status', 'Jam Masuk', 'Metode', 'Keterangan'];
+      const rows = list.map((g, idx) => [
+        idx + 1,
+        g.nip || '-',
+        g.nama || '-',
+        g.homebase || '-',
+        g.no_hp || '-',
+        g.status || 'Belum Absen',
+        g.jam_absen ? String(g.jam_absen).slice(0, 5) : '-',
+        g.metode || '-',
+        g.keterangan || '-'
+      ]);
 
-    if (format === 'excel') {
-      exportToExcel({ title, subtitle, columns, rows, filename });
+      if (format === 'excel') {
+        exportToExcel({ title, subtitle, columns, rows, filename });
+      } else {
+        const result = exportToPDF({ title, subtitle, columns, rows, filename, previewOnly });
+        if (previewOnly && result) {
+          const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+          if (isMobile) {
+            window.open(result, '_blank');
+          } else {
+            setPdfUrl(result);
+            setShowPdfPreview(true);
+          }
+        }
+      }
     } else {
-      const result = exportToPDF({ title, subtitle, columns, rows, filename, previewOnly });
-      if (previewOnly && result) {
-        const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
-        if (isMobile) {
-          window.open(result, '_blank');
-        } else {
-          setPdfUrl(result);
-          setShowPdfPreview(true);
+      // Mode santri_kbm
+      const list = filteredKbmCards;
+      if (list.length === 0) {
+        alert('Tidak ada data jadwal santri (KBM) untuk diexport.');
+        return;
+      }
+
+      let filterInfo = `Kategori: ${TIPE_LABEL[activeTab] || 'Semua KBM'}`;
+      if (activeTab === 'madin') {
+        filterInfo += ` | Jenjang: ${levelTab === 'SEMUA' ? 'Semua Jenjang' : levelTab} (${genderMode})`;
+      } else if (activeTab === 'quran' || activeTab === 'kegiatan') {
+        filterInfo += ` | ${activeAsrama}`;
+      }
+      if (waktuFilter !== 'semua') {
+        filterInfo += ` | Waktu: ${waktuFilter.toUpperCase()}`;
+      }
+      if (kbmSearch.trim()) {
+        filterInfo += ` | Pencarian: "${kbmSearch}"`;
+      }
+
+      const sudahDiisiCount = list.filter(c => c.sudah_absen).length;
+      const belumDiisiCount = list.filter(c => !c.sudah_absen).length;
+
+      const title = 'JADWAL MENGAJAR SANTRI & PRESENSI KBM';
+      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${dateHeaderStr || tanggal} (${kbmHari || ''})\n${filterInfo}\nTotal Jadwal: ${list.length} | Sudah Diisi: ${sudahDiisiCount} | Belum Diisi: ${belumDiisiCount}`;
+      const filename = `Presensi_KBM_${activeTab}_${tanggal}`;
+      const columns = ['No', 'Jam', 'Kelas', 'Mata Pelajaran', 'Guru / Pembina', 'Status Waktu', 'Presensi Santri'];
+      const rows = list.map((c, idx) => [
+        idx + 1,
+        `${fmt(c.jam_mulai)} - ${fmt(c.jam_selesai)}`,
+        c.nama_kelas || '-',
+        c.mata_pelajaran || '-',
+        c.guru_nama || 'Belum Ditugaskan',
+        (c.status_waktu || 'menunggu').toUpperCase(),
+        c.sudah_absen ? 'Sudah Diisi' : 'Belum Diisi'
+      ]);
+
+      if (format === 'excel') {
+        exportToExcel({ title, subtitle, columns, rows, filename });
+      } else {
+        const result = exportToPDF({ title, subtitle, columns, rows, filename, previewOnly });
+        if (previewOnly && result) {
+          const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+          if (isMobile) {
+            window.open(result, '_blank');
+          } else {
+            setPdfUrl(result);
+            setShowPdfPreview(true);
+          }
         }
       }
     }
   };
+
+  const handleExportDewanGuru = handleExportData;
 
   // QR Scanner Controller
   useEffect(() => {
@@ -578,30 +634,30 @@ export default function AbsenGuruPage() {
             </div>
 
             {/* Row 2: Tombol Export PDF & Excel */}
-            <div className="flex flex-wrap gap-2 mt-3 pt-2.5 border-t border-teal-200/60 dark:border-teal-900/40">
+            <div className="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-teal-200/60 dark:border-teal-900/40 w-full sm:w-auto sm:flex sm:flex-wrap">
               <button
-                onClick={() => handleExportDewanGuru('pdf', true)}
-                className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs"
+                onClick={() => handleExportData('pdf', true)}
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs text-center truncate cursor-pointer"
                 title="Preview PDF"
               >
                 <FileText size={13} className="shrink-0" />
-                <span>Preview PDF</span>
+                <span className="truncate">Preview PDF</span>
               </button>
               <button
-                onClick={() => handleExportDewanGuru('pdf', false)}
-                className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs"
+                onClick={() => handleExportData('pdf', false)}
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs text-center truncate cursor-pointer"
                 title="Download PDF"
               >
                 <Download size={13} className="shrink-0" />
-                <span>Unduh PDF</span>
+                <span className="truncate">Unduh PDF</span>
               </button>
               <button
-                onClick={() => handleExportDewanGuru('excel')}
-                className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs"
+                onClick={() => handleExportData('excel')}
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 py-2 px-2 sm:px-3 rounded-xl bg-white/80 dark:bg-teal-950/60 text-teal-800 dark:text-teal-200 hover:bg-white border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all shadow-xs text-center truncate cursor-pointer"
                 title="Download Excel"
               >
                 <ExternalLink size={13} className="shrink-0" />
-                <span>Unduh Excel</span>
+                <span className="truncate">Unduh Excel</span>
               </button>
             </div>
           </div>
@@ -1288,10 +1344,12 @@ export default function AbsenGuruPage() {
                       }`}>
                         {sudahAbsen ? '✅ Absen Terisi' : '📋 Belum Diisi'}
                       </span>
-                      {/* Badge status guru */}
-                      <span className={`block text-center text-[10px] px-2 py-0.5 rounded-xl font-bold border ${sc}`}>
-                        {card.status || 'Belum Absen'}
-                      </span>
+                      {/* Badge status guru (hanya jika ada status tercatat seperti Hadir, Izin, Sakit, Alpha) */}
+                      {card.status && card.status !== 'Belum Absen' && (
+                        <span className={`block text-center text-[10px] px-2 py-0.5 rounded-xl font-bold border ${sc}`}>
+                          {card.status}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -1437,10 +1495,10 @@ export default function AbsenGuruPage() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">
-                    Preview Dokumen Presensi Dewan Guru YPMA
+                    {mainMode === 'dewan_guru' ? 'Preview Dokumen Presensi Dewan Guru YPMA' : 'Preview Jadwal Mengajar & Presensi KBM'}
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Tanggal: {dateHeaderStr || tanggal} | Unit: {dewanHomebase}
+                    Tanggal: {dateHeaderStr || tanggal} {mainMode === 'dewan_guru' ? `| Unit: ${dewanHomebase}` : `| ${TIPE_LABEL[activeTab] || 'Semua KBM'}`}
                   </p>
                 </div>
               </div>
@@ -1454,7 +1512,7 @@ export default function AbsenGuruPage() {
                   <span className="hidden sm:inline">Buka Tab Baru</span>
                 </button>
                 <button
-                  onClick={() => handleExportDewanGuru('pdf', false)}
+                  onClick={() => handleExportData('pdf', false)}
                   className="py-2 px-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <Download size={14} />
