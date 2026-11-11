@@ -19,6 +19,19 @@ const nextConfig: NextConfig = {
         '@vladmandic/face-api': false,
       };
     }
+
+    // Suppress "Critical dependency: require function is used in a way in which
+    // dependencies cannot be statically extracted" warning dari @vladmandic/face-api.
+    // Library ini menggunakan dynamic require() secara internal (bukan dari kode kita).
+    // Fungsionalitas absensi wajah tidak terpengaruh sama sekali.
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      {
+        module: /node_modules\/@vladmandic\/face-api/,
+        message: /Critical dependency/,
+      },
+    ];
+
     return config;
   },
   typescript: {
