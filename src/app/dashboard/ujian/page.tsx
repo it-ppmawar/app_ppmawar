@@ -2919,7 +2919,7 @@ export default function UjianCBTPage() {
                   <div className="flex flex-col items-center text-center gap-2 pb-2 border-b border-gray-200/50 dark:border-gray-700/50">
                     <div className="flex items-center justify-center gap-1.5 font-bold text-xs sm:text-sm text-gray-800 dark:text-gray-200">
                       <MapPin size={15} className="text-emerald-500 shrink-0" />
-                      <span>Titik Acuan &amp; Jarak Maksimal (Anti-Joki)</span>
+                      <span>Titik Acuan &amp; Jarak Maksimal</span>
                     </div>
                     {/* Badge status lokasi — tampilan saja, tidak bisa diklik */}
                     <div className="flex justify-center w-full">
