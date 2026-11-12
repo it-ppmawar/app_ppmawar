@@ -50,11 +50,11 @@ export async function GET(request: Request) {
     let muridList: any[] = [];
     if (exam.kelas_madin_id) {
       const [mRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT murid_id, nama_murid, nis, jenis_kelamin, status_aktif
+        `SELECT murid_id, nama, nama as nama_murid, nis, jenis_kelamin
          FROM murid 
-         WHERE kelas_madin_id = ? AND status_aktif = 1
-         ORDER BY nama_murid ASC`,
-        [exam.kelas_madin_id]
+         WHERE kelas_madin_id = ? OR kelas_madin_2_id = ?
+         ORDER BY nama ASC`,
+        [exam.kelas_madin_id, exam.kelas_madin_id]
       );
       muridList = mRows;
     }
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
       hasilMap.set(row.murid_id, row);
     });
 
-    // Jika murid di kelas kosong (misal ujian umum tanpa kelas_madin_id), satukan murid dari hasil & live
+    // Jika murid di kelas kosong (misal ujian umum tanpa kelas_madin_id), satukan murid dari hasil & live atau ambil seluruh santri
     if (muridList.length === 0) {
       const allMuridIds = new Set<number>();
       liveRows.forEach((r: any) => allMuridIds.add(r.murid_id));
@@ -96,13 +96,20 @@ export async function GET(request: Request) {
       if (allMuridIds.size > 0) {
         const idArr = Array.from(allMuridIds);
         const [fallbackMurid] = await pool.execute<RowDataPacket[]>(
-          `SELECT murid_id, nama_murid, nis, jenis_kelamin, status_aktif
+          `SELECT murid_id, nama, nama as nama_murid, nis, jenis_kelamin
            FROM murid 
            WHERE murid_id IN (${idArr.map(() => '?').join(',')})
-           ORDER BY nama_murid ASC`,
+           ORDER BY nama ASC`,
           idArr
         );
         muridList = fallbackMurid;
+      } else {
+        const [fallbackAll] = await pool.execute<RowDataPacket[]>(
+          `SELECT murid_id, nama, nama as nama_murid, nis, jenis_kelamin
+           FROM murid 
+           ORDER BY nama ASC LIMIT 500`
+        );
+        muridList = fallbackAll;
       }
     }
 
