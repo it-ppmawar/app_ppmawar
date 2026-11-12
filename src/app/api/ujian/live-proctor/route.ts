@@ -164,7 +164,6 @@ export async function GET(request: Request) {
       const belum = Math.max(totalSoal - terjawab, 0);
 
       // Pelanggaran & log
-      const pelanggaranCount = (live?.jumlah_pelanggaran ?? hasil?.jumlah_pelanggaran ?? 0);
       let logs: any[] = [];
       try {
         const rawLog = live?.log_pelanggaran || hasil?.log_pelanggaran;
@@ -173,6 +172,14 @@ export async function GET(request: Request) {
         }
       } catch (e) {
         logs = [];
+      }
+
+      let pelanggaranCount = Number(live?.jumlah_pelanggaran ?? hasil?.jumlah_pelanggaran ?? 0);
+      // Jika status didiskualifikasi, pelanggaran tidak boleh 0x
+      if (status === 'didiskualifikasi' && pelanggaranCount === 0) {
+        pelanggaranCount = logs.length > 0 ? logs.length : (Number(exam.max_pelanggaran) || 3);
+      } else if (logs.length > pelanggaranCount) {
+        pelanggaranCount = logs.length;
       }
 
       return {
