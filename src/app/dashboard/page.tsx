@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Clock, BookOpen, Activity, FileText, CheckCircle, XCircle, AlertTriangle, Users, User, Camera, CalendarDays, ClipboardCheck, QrCode, CreditCard, Archive, PenTool, Trash2, Pencil, X, Check, ChevronDown, ChevronUp, Shield } from 'lucide-react';
+import { Clock, BookOpen, Activity, FileText, CheckCircle, XCircle, AlertTriangle, Users, User, Camera, CalendarDays, ClipboardCheck, QrCode, CreditCard, Archive, PenTool, Trash2, Pencil, X, Check, ChevronDown, ChevronUp, Shield, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
@@ -273,9 +273,9 @@ export default function DashboardPage() {
             </Link>
           )}
 
-          <Link href="/dashboard/jadwal" className="flex flex-col items-center justify-center p-3 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-2xl border border-teal-100 dark:border-teal-800/50 shadow-sm hover:bg-teal-100 dark:hover:bg-teal-900/50 transition">
-            <CalendarDays size={24} className="mb-2" />
-            <span className="text-[10px] font-semibold text-center">Lihat Jadwal</span>
+          <Link href="/dashboard/ujian" className="flex flex-col items-center justify-center p-3 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-2xl border border-teal-100 dark:border-teal-800/50 shadow-sm hover:bg-teal-100 dark:hover:bg-teal-900/50 transition">
+            <GraduationCap size={24} className="mb-2" />
+            <span className="text-[10px] font-semibold text-center">Ujian CBT</span>
           </Link>
           {lowerRole !== 'tamu' && (
             <Link href="/dashboard/murid" className="flex flex-col items-center justify-center p-3 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-2xl border border-orange-100 dark:border-orange-800/50 shadow-sm hover:bg-orange-100 dark:hover:bg-orange-900/50 transition">
