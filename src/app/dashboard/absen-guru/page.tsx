@@ -6,7 +6,8 @@ import {
   Users, Clock, RefreshCw, BookOpen, ClipboardList,
   WifiOff, UserCheck, UserX, Search, X, Home, Building2,
   QrCode, CalendarDays, Camera, CheckCircle2, AlertCircle,
-  Sparkles, SlidersHorizontal, Check, UserPlus, Phone, FileText, Download, ExternalLink
+  Sparkles, SlidersHorizontal, Check, UserPlus, Phone, FileText, Download, ExternalLink,
+  Lock, LockOpen, Hourglass
 } from 'lucide-react';
 import Link from 'next/link';
 import { exportToPDF, exportToExcel } from '@/lib/exportUtils';
@@ -68,6 +69,15 @@ const formatTanggalFilter = (tglStr: string) => {
   const DAY = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
   return `${DAY[dateObj.getDay()]}, ${d} ${MON[m - 1]} ${y}`;
+};
+
+const getKbmStatusCategory = (c: any): 'terkunci' | 'terbuka' | 'selesai' | 'tertutup' => {
+  const sudahAbsen = Boolean(c?.sudah_absen);
+  const sw = c?.status_waktu; // 'aktif' | 'selesai' | 'menunggu'
+  if (sudahAbsen) return 'selesai';
+  if (sw === 'aktif') return 'terbuka';
+  if (sw === 'selesai') return 'tertutup';
+  return 'terkunci';
 };
 
 export default function AbsenGuruPage() {
@@ -385,15 +395,19 @@ export default function AbsenGuruPage() {
       const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${formatTanggalFilter(tglKbm)}\n${filterInfo}\nTotal Jadwal: ${list.length} | Sudah Diisi: ${sudahDiisiCount} | Belum Diisi: ${belumDiisiCount}`;
       const filename = `Presensi_KBM_${activeTab}_${tglKbm}`;
       const columns = ['No', 'Jam', 'Kelas', 'Mata Pelajaran', 'Guru / Pembina', 'Status Waktu', 'Presensi Santri'];
-      const rows = list.map((c, idx) => [
-        idx + 1,
-        `${fmt(c.jam_mulai)} - ${fmt(c.jam_selesai)}`,
-        c.nama_kelas || '-',
-        c.mata_pelajaran || '-',
-        c.guru_nama || 'Belum Ditugaskan',
-        (c.status_waktu || 'menunggu').toUpperCase(),
-        c.sudah_absen ? 'Sudah Diisi' : 'Belum Diisi'
-      ]);
+      const rows = list.map((c, idx) => {
+        const cat = getKbmStatusCategory(c);
+        const catLabel = cat === 'terbuka' ? 'Terbuka' : cat === 'selesai' ? 'Selesai' : cat === 'tertutup' ? 'Tertutup' : 'Terkunci';
+        return [
+          idx + 1,
+          `${fmt(c.jam_mulai)} - ${fmt(c.jam_selesai)}`,
+          c.nama_kelas || '-',
+          c.mata_pelajaran || '-',
+          c.guru_nama || 'Belum Ditugaskan',
+          catLabel,
+          c.sudah_absen ? 'Sudah' : 'Belum Diisi'
+        ];
+      });
 
       if (format === 'excel') {
         exportToExcel({ title, subtitle, columns, rows, filename });
@@ -1275,6 +1289,7 @@ export default function AbsenGuruPage() {
                 const hc = TIPE_HEADER[card.tipe] || 'bg-gray-500';
                 const sudahAbsen: boolean = !!card.sudah_absen;
                 const statusWaktu: string = card.status_waktu || 'menunggu';
+                const kbmStatus = getKbmStatusCategory(card);
 
                 return (
                   <div
@@ -1304,22 +1319,31 @@ export default function AbsenGuruPage() {
                         {card.mata_pelajaran || '—'}
                       </div>
 
-                      {/* Badge status waktu */}
-                      <div className="flex items-center gap-1">
-                        {statusWaktu === 'aktif' && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
-                            AKTIF
+                      {/* Badge status jadwal KBM: Terkunci, Terbuka, Selesai, Tertutup (Rata Tengah) */}
+                      <div className="flex items-center justify-center w-full pt-1">
+                        {kbmStatus === 'terbuka' && (
+                          <span className="inline-flex items-center justify-center gap-1 text-[9.5px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse inline-block"></span>
+                            <LockOpen size={10} className="shrink-0" />
+                            <span>Terbuka</span>
                           </span>
                         )}
-                        {statusWaktu === 'selesai' && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                            ✓ SELESAI
+                        {kbmStatus === 'terkunci' && (
+                          <span className="inline-flex items-center justify-center gap-1 text-[9.5px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            <Lock size={10} className="shrink-0" />
+                            <span>Terkunci</span>
                           </span>
                         )}
-                        {statusWaktu === 'menunggu' && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                            ⏳ MENUNGGU
+                        {kbmStatus === 'selesai' && (
+                          <span className="inline-flex items-center justify-center gap-1 text-[9.5px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            <CheckCircle2 size={10} className="shrink-0" />
+                            <span>Selesai</span>
+                          </span>
+                        )}
+                        {kbmStatus === 'tertutup' && (
+                          <span className="inline-flex items-center justify-center gap-1 text-[9.5px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                            <Hourglass size={10} className="shrink-0" />
+                            <span>Tertutup</span>
                           </span>
                         )}
                       </div>
