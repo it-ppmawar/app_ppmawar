@@ -129,6 +129,7 @@ export default function AbsenGuruPage() {
   const [dewanLoading, setDewanLoading] = useState(true);
   const [dewanError, setDewanError] = useState('');
   const [dewanData, setDewanData] = useState<any[]>([]);
+  const [dewanTanggal, setDewanTanggal] = useState('');
   const [dewanStats, setDewanStats] = useState({ total: 0, hadir: 0, izin: 0, sakit: 0, alpha: 0, belum: 0 });
   const [dewanHomebase, setDewanHomebase] = useState('SEMUA');
   const [dewanStatusFilter, setDewanStatusFilter] = useState('SEMUA');
@@ -172,6 +173,7 @@ export default function AbsenGuruPage() {
       } else {
         setDewanData(json.data || []);
         if (json.stats) setDewanStats(json.stats);
+        setDewanTanggal(tanggal);
         if (json.jadwalList) {
           setJadwalList(json.jadwalList);
           if (targetJadwal === undefined && !selectedJadwalId && json.jadwalList.length > 0) {
@@ -324,8 +326,9 @@ export default function AbsenGuruPage() {
       const currentJadwal = jadwalList.find(j => j.id === selectedJadwalId);
       const sesiInfo = currentJadwal ? ` | Sesi: ${currentJadwal.nama_sesi} (${(currentJadwal.jam_mulai || '').slice(0, 5)} - ${(currentJadwal.jam_selesai || '').slice(0, 5)})` : '';
       const title = 'PRESENSI KEHADIRAN DEWAN GURU YPMA';
-      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${formatTanggalFilter(tanggal)}${sesiInfo} | Unit: ${dewanHomebase}\nTotal Guru: ${dewanStats.total} | Hadir: ${dewanStats.hadir} | Izin: ${dewanStats.izin} | Sakit: ${dewanStats.sakit} | Alpha: ${dewanStats.alpha} | Belum Absen: ${dewanStats.belum}`;
-      const filename = `Presensi_Dewan_Guru_${dewanHomebase.replace(/[^a-zA-Z0-9_-]/g, '_')}_${tanggal}`;
+      const tglDewan = dewanTanggal || tanggal;
+      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${formatTanggalFilter(tglDewan)}${sesiInfo} | Unit: ${dewanHomebase}\nTotal Guru: ${dewanStats.total} | Hadir: ${dewanStats.hadir} | Izin: ${dewanStats.izin} | Sakit: ${dewanStats.sakit} | Alpha: ${dewanStats.alpha} | Belum Absen: ${dewanStats.belum}`;
+      const filename = `Presensi_Dewan_Guru_${dewanHomebase.replace(/[^a-zA-Z0-9_-]/g, '_')}_${tglDewan}`;
       const columns = ['No', 'NIP', 'Nama Guru', 'Unit / Homebase', 'No. HP', 'Status', 'Jam Masuk', 'Metode', 'Keterangan'];
       const rows = list.map((g, idx) => [
         idx + 1,
@@ -378,8 +381,9 @@ export default function AbsenGuruPage() {
       const belumDiisiCount = list.filter(c => !c.sudah_absen).length;
 
       const title = 'JADWAL MENGAJAR SANTRI & PRESENSI KBM';
-      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${formatTanggalFilter(tanggal)} (${kbmHari || ''})\n${filterInfo}\nTotal Jadwal: ${list.length} | Sudah Diisi: ${sudahDiisiCount} | Belum Diisi: ${belumDiisiCount}`;
-      const filename = `Presensi_KBM_${activeTab}_${tanggal}`;
+      const tglKbm = kbmTanggal || tanggal;
+      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${formatTanggalFilter(tglKbm)} (${kbmHari || ''})\n${filterInfo}\nTotal Jadwal: ${list.length} | Sudah Diisi: ${sudahDiisiCount} | Belum Diisi: ${belumDiisiCount}`;
+      const filename = `Presensi_KBM_${activeTab}_${tglKbm}`;
       const columns = ['No', 'Jam', 'Kelas', 'Mata Pelajaran', 'Guru / Pembina', 'Status Waktu', 'Presensi Santri'];
       const rows = list.map((c, idx) => [
         idx + 1,
@@ -482,6 +486,7 @@ export default function AbsenGuruPage() {
   const [kbmError, setKbmError] = useState('');
   const [kbmData, setKbmData] = useState<any[]>([]);
   const [kbmHari, setKbmHari] = useState('');
+  const [kbmTanggal, setKbmTanggal] = useState('');
   const [kegiatanRaw, setKegiatanRaw] = useState<any[]>([]);
 
   const [activeTab, setActiveTab] = useState<'semua' | 'madin' | 'quran' | 'kegiatan'>('semua');
@@ -504,6 +509,7 @@ export default function AbsenGuruPage() {
       }
       setKbmData(json.data || []);
       setKbmHari(json.hari || '');
+      setKbmTanggal(tanggal);
       setKegiatanRaw(json.kegiatanJadwal || []);
     } catch {
       setKbmError('Koneksi gagal.');
@@ -1482,7 +1488,7 @@ export default function AbsenGuruPage() {
                     {mainMode === 'dewan_guru' ? 'Preview Dokumen Presensi Dewan Guru YPMA' : 'Preview Jadwal Mengajar & Presensi KBM'}
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Tanggal: {formatTanggalFilter(tanggal)} {mainMode === 'dewan_guru' ? `| Unit: ${dewanHomebase}` : `| ${TIPE_LABEL[activeTab] || 'Semua KBM'}`}
+                    Tanggal: {formatTanggalFilter(mainMode === 'dewan_guru' ? (dewanTanggal || tanggal) : (kbmTanggal || tanggal))} {mainMode === 'dewan_guru' ? `| Unit: ${dewanHomebase}` : `| ${TIPE_LABEL[activeTab] || 'Semua KBM'}`}
                   </p>
                 </div>
               </div>
