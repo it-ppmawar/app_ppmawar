@@ -1548,14 +1548,14 @@ export default function UjianCBTPage() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 sm:p-7 shadow-sm border border-gray-200 dark:border-gray-700 space-y-6 flex-1 flex flex-col justify-between">
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3 gap-2">
-                  {/* Sisi Kiri: Badge Tipe Soal */}
-                  <div className="w-[85px] sm:w-[105px] flex items-center justify-start shrink-0">
+                  {/* Sisi Kiri: Badge Tipe Soal (Ukuran Presisi Sama Persis dengan Tombol Ragu-ragu) */}
+                  <div className="w-[95px] sm:w-[110px] flex items-center justify-start shrink-0">
                     {curQ.tipe_soal === 'essay' ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 tracking-wider">
+                      <span className="w-full px-2.5 sm:px-3 py-1 rounded-xl text-xs font-bold inline-flex items-center justify-center bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 tracking-wider shadow-2xs">
                         ESSAY
                       </span>
                     ) : (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 tracking-wider">
+                      <span className="w-full px-2.5 sm:px-3 py-1 rounded-xl text-xs font-bold inline-flex items-center justify-center bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 tracking-wider shadow-2xs">
                         PILIHAN
                       </span>
                     )}
@@ -1563,13 +1563,13 @@ export default function UjianCBTPage() {
 
                   {/* Sisi Tengah: Nomor Soal Rata Tengah Seperti Badge Diawasi Topbar */}
                   <div className="flex-1 flex items-center justify-center">
-                    <span className="text-xs sm:text-sm font-black text-gray-800 dark:text-gray-200 uppercase tracking-widest bg-gray-100 dark:bg-gray-700/60 px-3 py-0.5 rounded-full border border-gray-200 dark:border-gray-600/60 shadow-2xs">
+                    <span className="text-xs sm:text-sm font-black text-gray-800 dark:text-gray-200 uppercase tracking-widest bg-gray-100 dark:bg-gray-700/60 px-3.5 py-1 rounded-full border border-gray-200 dark:border-gray-600/60 shadow-2xs">
                       NO. {currentQIndex + 1}
                     </span>
                   </div>
 
-                  {/* Sisi Kanan: Tombol Ragu-ragu */}
-                  <div className="w-[85px] sm:w-[105px] flex items-center justify-end shrink-0">
+                  {/* Sisi Kanan: Tombol Ragu-ragu (Ukuran Presisi Sama Persis dengan Badge Kiri) */}
+                  <div className="w-[95px] sm:w-[110px] flex items-center justify-end shrink-0">
                     <button
                       onClick={() => {
                         const next = new Set(flaggedQuestions);
@@ -1577,10 +1577,10 @@ export default function UjianCBTPage() {
                         else next.add(curQ.id);
                         setFlaggedQuestions(next);
                       }}
-                      className={`px-2.5 sm:px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                      className={`w-full px-2.5 sm:px-3 py-1 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                         flaggedQuestions.has(curQ.id)
                           ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-xs ring-1 ring-amber-400'
-                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 border border-transparent'
                       }`}
                     >
                       <Flag size={13} className={flaggedQuestions.has(curQ.id) ? 'fill-amber-500 text-amber-600' : ''} />
@@ -1974,16 +1974,16 @@ export default function UjianCBTPage() {
             <button
               type="button"
               onClick={() => setMainTab('daftar')}
-              className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2 sm:gap-3 shadow-sm min-h-[52px] cursor-pointer ${
+              className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-start gap-2 sm:gap-3 shadow-sm min-h-[68px] sm:min-h-[56px] cursor-pointer ${
                 mainTab === 'daftar'
                   ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
                   : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
               }`}
             >
-              <Play size={16} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
-              <div className="flex flex-col items-start leading-tight text-left min-w-0">
-                <span className="font-extrabold truncate text-xs sm:text-sm">Daftar Ujian</span>
-                <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-0.5 whitespace-nowrap ${
+              <Play size={18} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
+              <div className="flex flex-col items-start justify-center leading-tight text-left min-w-0 flex-1">
+                <span className="font-extrabold text-xs sm:text-sm leading-snug">Daftar Ujian</span>
+                <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-1 whitespace-nowrap ${
                   mainTab === 'daftar' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
                 }`}>
                   {exams.filter((e) => e.status_sesi === 'buka').length} Aktif
@@ -1996,19 +1996,19 @@ export default function UjianCBTPage() {
               <button
                 type="button"
                 onClick={() => setMainTab('kelola')}
-                className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2 sm:gap-3 shadow-sm min-h-[52px] cursor-pointer ${
+                className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-start gap-2 sm:gap-3 shadow-sm min-h-[68px] sm:min-h-[56px] cursor-pointer ${
                   mainTab === 'kelola'
                     ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
                     : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
                 }`}
               >
-                <Settings size={16} className={mainTab === 'kelola' ? 'text-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
-                <div className="flex flex-col items-start leading-tight text-left min-w-0">
-                  <span className="font-extrabold truncate text-xs sm:text-sm">Kelola Ujian & Bank Soal</span>
-                  <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-0.5 whitespace-nowrap ${
+                <Settings size={18} className={mainTab === 'kelola' ? 'text-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
+                <div className="flex flex-col items-start justify-center leading-tight text-left min-w-0 flex-1">
+                  <span className="font-extrabold text-[11px] sm:text-sm leading-snug line-clamp-2">Kelola Ujian &amp; Bank Soal</span>
+                  <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-1 whitespace-nowrap ${
                     mainTab === 'kelola' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
                   }`}>
-                    {exams.length} Paket<span className="hidden sm:inline"> Ujian</span>
+                    {exams.length} Paket Ujian
                   </span>
                 </div>
               </button>
@@ -2436,8 +2436,8 @@ export default function UjianCBTPage() {
               </button>
             </div>
 
-            <div className="space-y-1">
-              <h4 className="font-bold text-sm text-gray-800 dark:text-gray-100">{activeExam.judul}</h4>
+            <div className="space-y-1 text-center">
+              <h4 className="font-extrabold text-base text-gray-800 dark:text-gray-100">{activeExam.judul}</h4>
               <p className="text-xs text-gray-400">
                 Durasi: {activeExam.durasi_menit} Menit &bull; KKM: {activeExam.passing_grade}
               </p>
@@ -4134,36 +4134,46 @@ export default function UjianCBTPage() {
       {showEssayModal && selectedExamForEssay && (
         <div className="fixed inset-0 z-[85] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 pb-20 sm:pb-5" onClick={() => setShowEssayModal(false)}>
           <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[88vh] flex flex-col my-auto overflow-hidden border border-gray-200 dark:border-gray-800" onClick={e => e.stopPropagation()}>
-            {/* Header */}
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-purple-800 to-indigo-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-              <div>
-                <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2">
-                  <Sparkles className="text-yellow-300" size={20} />
-                  <span>Koreksi Essay &amp; Asisten AI</span>
-                </h3>
-                <p className="text-xs text-purple-200 mt-0.5">
-                  {selectedExamForEssay.judul} &bull; {selectedExamForEssay.mata_pelajaran} &bull; Total {essayStudentAnswers.length} Lembar Jawaban Santri
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleRunAiGrading()}
-                  disabled={runningAiGrading || essayStudentAnswers.length === 0}
-                  className="px-3.5 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-purple-950 font-black text-xs flex items-center gap-1.5 shadow-md transition-all disabled:opacity-50"
-                  title="Gunakan AI untuk menganalisis dan memberi rekomendasi nilai pada semua jawaban essay santri"
-                >
-                  <Sparkles size={14} className={runningAiGrading ? 'animate-spin' : ''} />
-                  <span>{runningAiGrading ? 'Menganalisis dengan AI...' : '⚡ Analisis Semua dengan AI'}</span>
-                </button>
-
+            {/* Header Modal 7: Model Verifikasi Ruang Ujian (Garis pembatas tidak sampai ujung) */}
+            <div className="px-5 sm:px-6 pt-5 sm:pt-6 shrink-0 relative">
+              <div className="border-b border-gray-100 dark:border-gray-800 pb-4">
+                {/* Tombol Tutup (X) Konsisten di Pojok Kanan Atas */}
                 <button
                   onClick={() => setShowEssayModal(false)}
-                  className="p-1.5 text-purple-200 hover:text-white rounded-lg transition-colors"
+                  className="absolute top-5 right-5 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl transition-colors cursor-pointer"
+                  title="Tutup Modal"
                 >
                   <X size={20} />
                 </button>
+
+                {/* Info Judul & Mapel */}
+                <div className="flex items-center gap-3 pr-10">
+                  <div className="w-9 h-9 rounded-2xl bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-300 flex items-center justify-center font-bold shrink-0">
+                    <Sparkles size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-extrabold text-base sm:text-lg text-gray-900 dark:text-gray-100">
+                      Koreksi Essay &amp; Asisten AI
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5 leading-relaxed break-words">
+                      {selectedExamForEssay.judul} &bull; {selectedExamForEssay.mata_pelajaran} &bull; Total {essayStudentAnswers.length} Lembar Jawaban Santri
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tombol Analisis AI Rata Tengah (Hapus ikon tambahan, cukup emoji ⚡) */}
+                <div className="flex items-center justify-center mt-3">
+                  <button
+                    type="button"
+                    onClick={() => handleRunAiGrading()}
+                    disabled={runningAiGrading || essayStudentAnswers.length === 0}
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                    title="Gunakan AI untuk menganalisis dan memberi rekomendasi nilai pada semua jawaban essay santri"
+                  >
+                    {runningAiGrading && <RefreshCw size={14} className="animate-spin text-white" />}
+                    <span>{runningAiGrading ? 'Menganalisis dengan AI...' : '⚡ Analisis Semua dengan AI'}</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -4383,62 +4393,65 @@ export default function UjianCBTPage() {
       {showLiveProctorModal && selectedExamForLive && (
         <div className="fixed inset-0 z-[85] bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 pb-20 sm:pb-4" onClick={() => setShowLiveProctorModal(false)}>
           <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col my-auto overflow-hidden border border-gray-200 dark:border-gray-800" onClick={e => e.stopPropagation()}>
-            {/* Header */}
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 border-b border-indigo-700/40 relative pr-12 sm:pr-14">
-              <div className="min-w-0 pr-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                  <h3 className="font-black text-sm sm:text-base">
+            {/* Header Modal 8: Model Verifikasi Ruang Ujian (Garis tidak sampai ujung) */}
+            <div className="px-4 sm:px-5 pt-4 sm:pt-5 shrink-0 relative">
+              <div className="border-b border-gray-100 dark:border-gray-800 pb-3">
+                {/* Tombol (X) Konsisten di Pojok Kanan Atas */}
+                <button
+                  onClick={() => setShowLiveProctorModal(false)}
+                  className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl transition-colors cursor-pointer"
+                  title="Tutup ruang pengawasan"
+                >
+                  <X size={20} />
+                </button>
+
+                {/* Baris 1: Judul + Dot */}
+                <div className="flex items-center gap-2 pr-10">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                  <h3 className="font-black text-sm sm:text-base text-gray-900 dark:text-gray-100">
                     Ruang Pengawasan Ujian Real-Time
                   </h3>
                 </div>
-                <p className="text-xs text-blue-200 mt-0.5 truncate">
+
+                {/* Baris 2: Subtitle tidak terpotong (wrap penuh) */}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed break-words pr-10">
                   {selectedExamForLive.judul} &bull; {selectedExamForLive.mata_pelajaran} &bull; {liveProctorData?.exam?.nama_kelas || selectedExamForLive.nama_kelas || 'Seluruh Kelas'} &bull; Token:{' '}
-                  <span className="font-mono font-bold text-amber-300 bg-black/30 px-1.5 py-0.5 rounded">
+                  <span className="font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded text-[11px]">
                     {liveProctorData?.exam?.token_ujian || selectedExamForLive.token_ujian || '-'}
                   </span>
                 </p>
+
+                {/* Baris 3: Kontrol Auto-Refresh & Refresh, rata tengah di HP */}
+                <div className="flex items-center justify-center gap-2 mt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setLiveAutoRefresh(!liveAutoRefresh)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
+                      liveAutoRefresh
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/50'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+                    }`}
+                    title={liveAutoRefresh ? 'Auto refresh aktif' : 'Auto refresh dijeda'}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${liveAutoRefresh ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+                    <span>{liveAutoRefresh ? `Auto Live (${liveCountdown}s)` : 'Jeda Auto'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={loadingLiveProctor}
+                    onClick={() => {
+                      fetchLiveProctorData(selectedExamForLive.id);
+                      setLiveCountdown(5);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer border border-gray-200 dark:border-gray-700"
+                    title="Perbarui data sekarang"
+                  >
+                    <RefreshCw size={14} className={loadingLiveProctor ? 'animate-spin' : ''} />
+                    <span>Refresh</span>
+                  </button>
+                </div>
               </div>
-
-              {/* Kontrol Auto-Refresh & Tombol Refresh: Rata Tengah di HP */}
-              <div className="flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 mt-1 sm:mt-0">
-                <button
-                  type="button"
-                  onClick={() => setLiveAutoRefresh(!liveAutoRefresh)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
-                    liveAutoRefresh
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'
-                      : 'bg-white/10 text-gray-300 border-white/10'
-                  }`}
-                  title={liveAutoRefresh ? 'Auto refresh aktif setiap 5 detik' : 'Auto refresh dijeda'}
-                >
-                  <span className={`w-2 h-2 rounded-full ${liveAutoRefresh ? 'bg-emerald-400 animate-pulse' : 'bg-gray-400'}`} />
-                  <span>{liveAutoRefresh ? `Auto Live (${liveCountdown}s)` : 'Jeda Auto'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={loadingLiveProctor}
-                  onClick={() => {
-                    fetchLiveProctorData(selectedExamForLive.id);
-                    setLiveCountdown(5);
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                  title="Perbarui data sekarang"
-                >
-                  <RefreshCw size={14} className={loadingLiveProctor ? 'animate-spin' : ''} />
-                  <span>Refresh</span>
-                </button>
-              </div>
-
-              {/* Tombol (X) Konsisten di Ujung Kanan Atas */}
-              <button
-                onClick={() => setShowLiveProctorModal(false)}
-                className="absolute top-4 right-4 p-1.5 text-blue-200 hover:text-white rounded-lg transition-colors cursor-pointer"
-                title="Tutup ruang pengawasan"
-              >
-                <X size={20} />
-              </button>
             </div>
 
             {/* Area Gulir Terpadu: Dimulai langsung dari bawah header agar ruang pantau lapang di HP */}
@@ -4492,27 +4505,29 @@ export default function UjianCBTPage() {
                 </div>
               </div>
 
-              {/* Filter Pills: Bertumpuk di HP agar tidak perlu geser, sticky agar tetap mudah diakses */}
-              <div className="sticky top-0 z-10 p-2 sm:px-4 sm:py-2.5 border-b border-gray-100 dark:border-gray-800 flex flex-wrap justify-center items-center gap-1.5 shrink-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xs shadow-2xs">
-                {[
-                  { key: 'semua', label: 'Semua Peserta', count: liveProctorData?.summary?.total_peserta || 0 },
-                  { key: 'sedang_mengerjakan', label: '🟢 Mengerjakan', count: liveProctorData?.summary?.sedang_mengerjakan || 0 },
-                  { key: 'belum_masuk', label: '⚪ Belum Masuk', count: liveProctorData?.summary?.belum_masuk || 0 },
-                  { key: 'selesai', label: '✅ Selesai', count: liveProctorData?.summary?.selesai || 0 },
-                  { key: 'didiskualifikasi', label: '⛔ Diskualifikasi', count: liveProctorData?.summary?.didiskualifikasi || 0 },
-                ].map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setLiveProctorFilter(f.key as any)}
-                    className={`px-2.5 py-1 sm:px-3 sm:py-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all shrink-0 cursor-pointer text-center ${
-                      liveProctorFilter === f.key
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
-                    }`}
-                  >
-                    {f.label} ({f.count})
-                  </button>
-                ))}
+              {/* Filter Pills: 1 baris dengan scroll horizontal */}
+              <div className="sticky top-0 z-10 px-2 sm:px-4 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xs shadow-2xs">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+                  {[
+                    { key: 'semua', label: 'Semua Peserta', count: liveProctorData?.summary?.total_peserta || 0 },
+                    { key: 'sedang_mengerjakan', label: '🟢 Mengerjakan', count: liveProctorData?.summary?.sedang_mengerjakan || 0 },
+                    { key: 'belum_masuk', label: '⚪ Belum Masuk', count: liveProctorData?.summary?.belum_masuk || 0 },
+                    { key: 'selesai', label: '✅ Selesai', count: liveProctorData?.summary?.selesai || 0 },
+                    { key: 'didiskualifikasi', label: '⛔ Diskualifikasi', count: liveProctorData?.summary?.didiskualifikasi || 0 },
+                  ].map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => setLiveProctorFilter(f.key as any)}
+                      className={`px-2.5 py-1 sm:px-3 sm:py-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all shrink-0 cursor-pointer whitespace-nowrap ${
+                        liveProctorFilter === f.key
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Body: Daftar Peserta & Progress Real-Time */}
@@ -4585,11 +4600,16 @@ export default function UjianCBTPage() {
                                 </div>
 
                                 <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="font-extrabold text-xs sm:text-sm text-gray-800 dark:text-gray-100 truncate">
-                                      {p.nama_murid}
-                                    </h4>
-                                    {/* Status Badge */}
+                                  {/* Nama Santri */}
+                                  <h4 className="font-extrabold text-xs sm:text-sm text-gray-800 dark:text-gray-100 truncate">
+                                    {p.nama_murid}
+                                  </h4>
+                                  {/* NIS & Jenis Kelamin */}
+                                  <p className="text-[11px] text-gray-400 mt-0.5">
+                                    NIS: <span className="font-mono">{p.nis || '-'}</span> &bull; {p.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki'}
+                                  </p>
+                                  {/* Status Badge: Di bawah NIS */}
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                                     {isOnline && (
                                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
@@ -4620,14 +4640,11 @@ export default function UjianCBTPage() {
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-[11px] text-gray-400 mt-0.5">
-                                    NIS: <span className="font-mono">{p.nis || '-'}</span> &bull; {p.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki'}
-                                  </p>
                                 </div>
                               </div>
 
-                              {/* Kolom 2: Progress Pengerjaan Soal (Terjawab, Belum, Ragu) */}
-                              <div className="flex-1 max-w-sm sm:px-3">
+                              {/* Kolom 2: Progress Pengerjaan Soal (Terjawab, Belum, Ragu) — seragam di PC */}
+                              <div className="flex-1 sm:px-3 min-w-0">
                                 <div className="flex items-center justify-between text-[11px] mb-1 font-bold">
                                   <span className="text-gray-600 dark:text-gray-300">
                                     Terjawab: <strong className="text-emerald-600 dark:text-emerald-400">{p.jumlah_terjawab}</strong> / {totalSoal} Soal
