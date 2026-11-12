@@ -4,9 +4,9 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Sparkles, Award, Clock, CheckCircle, AlertCircle, AlertTriangle,
   ShieldCheck, MapPin, Key, RefreshCw, Play, Plus, Trash2, Edit3,
-  BookOpen, User, FileText, ChevronRight, ChevronLeft, ChevronDown, Flag, X,
+  BookOpen, User, Users, FileText, ChevronRight, ChevronLeft, ChevronDown, Flag, X,
   ExternalLink, Lock, Unlock, HelpCircle, Check, ArrowRight,
-  Filter, Search, Layers, Radio, Settings
+  Filter, Search, Layers, Radio, Settings, Sun, Moon
 } from 'lucide-react';
 
 interface ExamItem {
@@ -231,6 +231,147 @@ export default function UjianCBTPage() {
       return () => clearTimeout(timer);
     }
   }, [showFsToast]);
+
+  // State Mode Terang / Gelap di Layar Penuh Ujian Santri
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isDark = document.documentElement.classList.contains('dark') || localStorage.theme === 'dark';
+      setIsDarkMode(isDark);
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    if (next) {
+      document.documentElement.classList.add('dark');
+      localStorage.theme = 'dark';
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.theme = 'light';
+    }
+  };
+
+  // State Modal Ruang Pengawasan Live Proctoring (Guru / Admin)
+  const [showLiveProctorModal, setShowLiveProctorModal] = useState(false);
+  const [selectedExamForLive, setSelectedExamForLive] = useState<ExamItem | null>(null);
+  const [liveProctorData, setLiveProctorData] = useState<any>(null);
+  const [loadingLiveProctor, setLoadingLiveProctor] = useState(false);
+  const [liveProctorFilter, setLiveProctorFilter] = useState<'semua' | 'sedang_mengerjakan' | 'belum_masuk' | 'selesai' | 'didiskualifikasi'>('semua');
+  const [liveAutoRefresh, setLiveAutoRefresh] = useState(true);
+  const [liveCountdown, setLiveCountdown] = useState(5);
+  const [actionResetLoading, setActionResetLoading] = useState<number | null>(null);
+
+  // Fungsi Fetch Data Live Proctoring
+  const fetchLiveProctorData = async (examId: number) => {
+    setLoadingLiveProctor(true);
+    try {
+      const res = await fetch(`/api/ujian/live-proctor?ujian_id=${examId}&t=${Date.now()}`);
+      const data = await res.json();
+      if (data.success) {
+        setLiveProctorData(data);
+      }
+    } catch (e) {
+      console.error('Error fetching live proctor data:', e);
+    } finally {
+      setLoadingLiveProctor(false);
+    }
+  };
+
+  const openLiveProctorModal = (exam: ExamItem) => {
+    setSelectedExamForLive(exam);
+    setShowLiveProctorModal(true);
+    setLiveProctorFilter('semua');
+    setLiveCountdown(5);
+    fetchLiveProctorData(exam.id);
+  };
+
+  // Auto-refresh interval 5 detik saat modal live proctor terbuka
+  useEffect(() => {
+    if (!showLiveProctorModal || !selectedExamForLive || !liveAutoRefresh) return;
+
+    const timer = setInterval(() => {
+      setLiveCountdown((prev) => {
+        if (prev <= 1) {
+          fetchLiveProctorData(selectedExamForLive.id);
+          return 5;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [showLiveProctorModal, selectedExamForLive, liveAutoRefresh]);
+
+  // Handler Reset Sesi Santri (Dispensasi / Kendala Teknis)
+  const handleResetSantriLive = async (muridId: number, namaMurid: string) => {
+    if (!selectedExamForLive) return;
+    if (!confirm(`Apakah Anda yakin ingin mereset sesi santri "${namaMurid}"?\n\nSantri akan diizinkan masuk dan mengerjakan kembali ujian dari awal.`)) {
+      return;
+    }
+
+    setActionResetLoading(muridId);
+    try {
+      const res = await fetch('/api/ujian/live-proctor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reset_santri',
+          ujian_id: selectedExamForLive.id,
+          target_murid_id: muridId,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchLiveProctorData(selectedExamForLive.id);
+        fetchExams();
+      } else {
+        alert(data.error || 'Gagal mereset sesi santri.');
+      }
+    } catch (e: any) {
+      alert('Terjadi kesalahan: ' + e.message);
+    } finally {
+      setActionResetLoading(null);
+    }
+  };
+
+  // Heartbeat live sync setiap 8 detik saat santri sedang mengerjakan ujian
+  useEffect(() => {
+    if (examStep !== 'in_progress' || !activeExam) return;
+
+    const sendHeartbeat = async (extraAction = 'heartbeat') => {
+      try {
+        await fetch('/api/ujian/live-proctor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: extraAction,
+            ujian_id: activeExam.id,
+            jumlah_terjawab: Object.keys(userAnswersRef.current || {}).length,
+            jumlah_ragu: flaggedQuestions.size,
+            total_soal: examQuestions.length,
+            jumlah_pelanggaran: violationCount,
+            is_disqualified: isDisqualified,
+            log_pelanggaran: violationLogs,
+          }),
+        });
+      } catch (err) {
+        // silent heartbeat error
+      }
+    };
+
+    // Kirim join awal
+    sendHeartbeat('join');
+
+    // Interval heartbeat tiap 8 detik
+    const interval = setInterval(() => {
+      sendHeartbeat('heartbeat');
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, [examStep, activeExam, violationCount, isDisqualified, flaggedQuestions.size]);
 
   // SSO Embed Modal
   const [ssoUrl, setSsoUrl] = useState<string | null>(null);
@@ -491,7 +632,24 @@ export default function UjianCBTPage() {
         const newCount = prev + 1;
         const nowStr = new Date().toLocaleTimeString('id-ID');
         const logEntry = { time: nowStr, reason };
-        setViolationLogs((logs) => [...logs, logEntry]);
+        const updatedLogs = [...violationLogs, logEntry];
+        setViolationLogs(updatedLogs);
+
+        // Laporkan pelanggaran ke server live proctoring secara instan
+        fetch('/api/ujian/live-proctor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'violation',
+            ujian_id: activeExam.id,
+            jumlah_terjawab: Object.keys(userAnswersRef.current || {}).length,
+            jumlah_ragu: flaggedQuestions.size,
+            total_soal: examQuestions.length,
+            jumlah_pelanggaran: newCount,
+            is_disqualified: newCount >= maxViolations,
+            log_pelanggaran: updatedLogs,
+          }),
+        }).catch(() => {});
 
         if (newCount >= maxViolations) {
           // Diskualifikasi & Auto Submit
@@ -1322,63 +1480,51 @@ export default function UjianCBTPage() {
 
     return (
       <div className="fixed inset-0 z-[90] bg-gray-100 dark:bg-gray-950 flex flex-col overflow-hidden animate-[fadeIn_0.2s_ease-out]">
-        {/* Top Header Exam Bar */}
-        <header className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between shadow-lg rounded-b-2xl sm:rounded-b-3xl shrink-0 border-b border-emerald-700/40">
-          {/* Sisi Kiri: Badge Diawasi di atas, lalu No & Judul di bawahnya */}
-          <div className="flex flex-col items-start gap-1 min-w-0">
+        {/* Top Header Exam Bar (Ramping, Minimalis, Elegan) */}
+        <header className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between shadow-md rounded-b-2xl sm:rounded-b-3xl shrink-0 border-b border-emerald-700/40 relative z-30">
+          {/* Sisi Kiri: Spacer Penyeimbang Tombol Kanan */}
+          <div className="w-[85px] sm:w-[100px] flex items-center gap-1.5 opacity-90">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="text-[10px] font-black tracking-wider text-emerald-200 uppercase hidden sm:inline">Ujian CBT</span>
+          </div>
+
+          {/* Sisi Tengah: Badge Diawasi (Rata Tengah) */}
+          <div className="flex-1 flex justify-center items-center">
             {activeExam.anti_curang ? (
               <div
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold text-[10px] sm:text-[11px] shadow-xs ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-[11px] sm:text-xs shadow-xs ${
                   violationCount > 0
                     ? 'bg-rose-600 text-white animate-pulse'
                     : 'bg-black/25 text-emerald-100 border border-white/15'
                 }`}
                 title="Sistem Proctoring Anti Pindah Layar Aktif"
               >
-                <ShieldCheck size={12} className={violationCount > 0 ? 'text-white' : 'text-emerald-300'} />
+                <ShieldCheck size={13} className={violationCount > 0 ? 'text-white' : 'text-emerald-300'} />
                 <span>Diawasi ({violationCount}/{activeExam.max_pelanggaran || 3}x)</span>
               </div>
-            ) : null}
-
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/15 flex items-center justify-center font-black text-xs sm:text-sm shrink-0 border border-white/10 shadow-xs">
-                {currentQIndex + 1}
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-[11px] bg-black/20 text-emerald-200 border border-white/10">
+                <span>Mode Mandiri</span>
               </div>
-              <div className="min-w-0">
-                <h2 className="text-xs sm:text-sm font-extrabold truncate max-w-[150px] sm:max-w-xs">{activeExam.judul}</h2>
-                <p className="text-[10px] sm:text-[11px] text-emerald-200 truncate max-w-[150px] sm:max-w-xs">
-                  {activeExam.mata_pelajaran} &bull; Soal {currentQIndex + 1} dari {examQuestions.length}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Sisi Kanan: Badge Waktu Mundur di atas, lalu Tombol Selesai di bawahnya */}
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <div
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono font-bold text-[10px] sm:text-xs shadow-xs ${
-                secondsLeft <= 300
-                  ? 'bg-rose-500 text-white animate-pulse'
-                  : 'bg-black/25 text-emerald-100 border border-white/15'
-              }`}
-            >
-              <Clock size={12} />
-              <span>{formatTimer(secondsLeft)}</span>
-            </div>
-
+          {/* Sisi Kanan: Tombol Mode Terang/Gelap (Rata Kanan, ukuran sama presisi dengan tombol Selesai) */}
+          <div className="w-[85px] sm:w-[100px] flex justify-end">
             <button
-              onClick={() => handleSubmitExam(false, false)}
-              disabled={submittingExam}
-              className="px-3.5 sm:px-4 py-1 sm:py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+              onClick={toggleDarkMode}
+              type="button"
+              className="px-3.5 sm:px-4 py-1 sm:py-1.5 bg-black/25 hover:bg-black/40 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/20 shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0"
+              title={isDarkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
             >
-              <CheckCircle size={14} />
-              <span>{submittingExam ? 'Mengirim...' : 'Selesai'}</span>
+              {isDarkMode ? <Sun size={14} className="text-amber-300" /> : <Moon size={14} className="text-sky-200" />}
+              <span>{isDarkMode ? 'Terang' : 'Gelap'}</span>
             </button>
           </div>
         </header>
 
         {/* Exam Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col max-w-4xl mx-auto w-full">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-28 sm:pb-32 flex flex-col max-w-4xl mx-auto w-full">
           {curQ ? (
             <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 sm:p-7 shadow-sm border border-gray-200 dark:border-gray-700 space-y-6 flex-1 flex flex-col justify-between">
               <div className="space-y-4">
@@ -1558,6 +1704,48 @@ export default function UjianCBTPage() {
           </div>
         </div>
 
+        {/* Bottom Bar Exam (Melengkung ke atas, tidak menutupi konten) */}
+        <footer className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white px-3 sm:px-6 py-2.5 sm:py-3 shadow-[0_-5px_20px_rgba(0,0,0,0.25)] rounded-t-2xl sm:rounded-t-3xl border-t border-emerald-700/40 flex items-center justify-between">
+          {/* Sisi Kiri: Nomor Soal, Nama Ujian, Mata Pelajaran */}
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 pr-2">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/15 flex items-center justify-center font-black text-xs sm:text-sm shrink-0 border border-white/10 shadow-xs">
+              {currentQIndex + 1}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xs sm:text-sm font-extrabold truncate max-w-[130px] sm:max-w-xs leading-tight">
+                {activeExam.judul}
+              </h2>
+              <p className="text-[10px] sm:text-[11px] text-emerald-200 truncate max-w-[130px] sm:max-w-xs leading-tight mt-0.5">
+                {activeExam.mata_pelajaran} &bull; Soal {currentQIndex + 1} dari {examQuestions.length}
+              </p>
+            </div>
+          </div>
+
+          {/* Sisi Kanan: Jam/Waktu Mundur & Tombol Selesai */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            <div
+              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl font-mono font-bold text-xs sm:text-sm shadow-xs ${
+                secondsLeft <= 300
+                  ? 'bg-rose-500 text-white animate-pulse'
+                  : 'bg-black/25 text-emerald-100 border border-white/15'
+              }`}
+              title="Sisa Waktu Pengerjaan Ujian"
+            >
+              <Clock size={13} />
+              <span>{formatTimer(secondsLeft)}</span>
+            </div>
+
+            <button
+              onClick={() => handleSubmitExam(false, false)}
+              disabled={submittingExam}
+              className="px-3.5 sm:px-4 py-1 sm:py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+            >
+              <CheckCircle size={14} />
+              <span>{submittingExam ? 'Mengirim...' : 'Selesai'}</span>
+            </button>
+          </div>
+        </footer>
+
         {/* Modal Peringatan Pelanggaran Layar / Anti Pindah Layar */}
         {showViolationModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
@@ -1597,9 +1785,9 @@ export default function UjianCBTPage() {
           </div>
         )}
 
-        {/* Toast Notifikasi Layar Penuh (Dapat ditutup / pudar otomatis) */}
+        {/* Toast Notifikasi Layar Penuh (Dapat ditutup / pudar otomatis, di atas bottombar) */}
         {showFsToast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[95] max-w-sm w-[90%] bg-gray-900/95 dark:bg-black/95 text-white text-xs px-4 py-2.5 rounded-2xl shadow-2xl backdrop-blur-md border border-white/10 flex items-center justify-between gap-3 animate-[fadeIn_0.2s_ease-out] transition-opacity duration-500">
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[45] max-w-sm w-[90%] bg-gray-900/95 dark:bg-black/95 text-white text-xs px-4 py-2.5 rounded-2xl shadow-2xl backdrop-blur-md border border-white/10 flex items-center justify-between gap-3 animate-[fadeIn_0.2s_ease-out] transition-opacity duration-500">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-base shrink-0">🛡️</span>
               <p className="leading-snug text-[11px] text-gray-200">
@@ -2047,6 +2235,14 @@ export default function UjianCBTPage() {
                             </span>
                             <div className="flex items-center gap-2">
                               <button
+                                onClick={() => openLiveProctorModal(exam)}
+                                className="text-blue-600 dark:text-blue-400 hover:underline font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                                title="Pantau peserta ujian secara real-time"
+                              >
+                                <Radio size={12} className="animate-pulse text-cyan-500" />
+                                <span>Pantau Live</span>
+                              </button>
+                              <button
                                 onClick={() => openSesiPengawas(exam)}
                                 className="text-amber-600 dark:text-amber-400 hover:underline font-bold text-[11px] flex items-center gap-1"
                               >
@@ -2100,6 +2296,15 @@ export default function UjianCBTPage() {
                         >
                           <Sparkles size={13} className="text-purple-600 dark:text-purple-300" />
                           <span>Koreksi Essay &amp; Asisten AI</span>
+                        </button>
+
+                        {/* Tombol Ruang Pengawasan Live Real-Time */}
+                        <button
+                          onClick={() => openLiveProctorModal(exam)}
+                          className="w-full px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                        >
+                          <Radio size={14} className="animate-pulse text-cyan-200" />
+                          <span>📡 Ruang Pengawasan Live</span>
                         </button>
 
                         {/* Tombol Lihat Hasil Peserta */}
@@ -4138,6 +4343,349 @@ export default function UjianCBTPage() {
                   <span>{savingGrades ? 'Menyimpan...' : 'Simpan Nilai & Sinkronkan Raport'}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 8: RUANG PENGAWASAN REAL-TIME / LIVE PROCTORING (GURU/PENGAWAS)      */}
+      {/* ========================================================================= */}
+      {showLiveProctorModal && selectedExamForLive && (
+        <div className="fixed inset-0 z-[85] bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 pb-20 sm:pb-4" onClick={() => setShowLiveProctorModal(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col my-auto overflow-hidden border border-gray-200 dark:border-gray-800" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 border-b border-indigo-700/40">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                  <h3 className="font-black text-sm sm:text-base flex items-center gap-2">
+                    <Radio size={18} className="text-cyan-300" />
+                    <span>Ruang Pengawasan Ujian Real-Time</span>
+                  </h3>
+                </div>
+                <p className="text-xs text-blue-200 mt-0.5 truncate">
+                  {selectedExamForLive.judul} &bull; {selectedExamForLive.mata_pelajaran} &bull; {liveProctorData?.exam?.nama_kelas || 'Kelas'} &bull; Token:{' '}
+                  <span className="font-mono font-bold text-amber-300 bg-black/30 px-1.5 py-0.5 rounded">
+                    {liveProctorData?.exam?.token_ujian || '-'}
+                  </span>
+                </p>
+              </div>
+
+              {/* Kontrol Auto-Refresh & Tombol Refresh */}
+              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setLiveAutoRefresh(!liveAutoRefresh)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                    liveAutoRefresh
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'
+                      : 'bg-white/10 text-gray-300 border-white/10'
+                  }`}
+                  title={liveAutoRefresh ? 'Auto refresh aktif setiap 5 detik' : 'Auto refresh dijeda'}
+                >
+                  <span className={`w-2 h-2 rounded-full ${liveAutoRefresh ? 'bg-emerald-400 animate-pulse' : 'bg-gray-400'}`} />
+                  <span>{liveAutoRefresh ? `Auto Live (${liveCountdown}s)` : 'Jeda Auto'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={loadingLiveProctor}
+                  onClick={() => {
+                    fetchLiveProctorData(selectedExamForLive.id);
+                    setLiveCountdown(5);
+                  }}
+                  className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                  title="Perbarui data sekarang"
+                >
+                  <RefreshCw size={14} className={loadingLiveProctor ? 'animate-spin' : ''} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+
+                <button
+                  onClick={() => setShowLiveProctorModal(false)}
+                  className="p-1.5 text-blue-200 hover:text-white rounded-lg transition-colors ml-1"
+                  title="Tutup ruang pengawasan"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Statistik Cepat / Quick Badges */}
+            <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 grid grid-cols-2 sm:grid-cols-5 gap-2 shrink-0">
+              <div className="bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 shadow-2xs">
+                <span className="text-[10px] font-bold text-gray-400 block uppercase">Total Peserta</span>
+                <span className="text-base sm:text-lg font-black text-gray-800 dark:text-gray-100">
+                  {liveProctorData?.summary?.total_peserta || 0}
+                </span>
+                <span className="text-[10px] text-gray-400 ml-1">Santri</span>
+              </div>
+
+              <div className="bg-emerald-50/70 dark:bg-emerald-950/30 p-2.5 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/40 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase">Mengerjakan</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                </div>
+                <span className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-300">
+                  {liveProctorData?.summary?.sedang_mengerjakan || 0}
+                </span>
+                <span className="text-[10px] text-emerald-600/70 ml-1">Santri Live</span>
+              </div>
+
+              <div className="bg-gray-100/70 dark:bg-gray-800/80 p-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs">
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 block uppercase">Belum Masuk</span>
+                <span className="text-base sm:text-lg font-black text-gray-700 dark:text-gray-300">
+                  {liveProctorData?.summary?.belum_masuk || 0}
+                </span>
+                <span className="text-[10px] text-gray-400 ml-1">Santri</span>
+              </div>
+
+              <div className="bg-blue-50/70 dark:bg-blue-950/30 p-2.5 rounded-2xl border border-blue-200/80 dark:border-blue-800/40 shadow-2xs">
+                <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 block uppercase">Selesai</span>
+                <span className="text-base sm:text-lg font-black text-blue-700 dark:text-blue-300">
+                  {liveProctorData?.summary?.selesai || 0}
+                </span>
+                <span className="text-[10px] text-blue-600/70 ml-1">Tersimpan</span>
+              </div>
+
+              <div className="bg-rose-50/70 dark:bg-rose-950/30 p-2.5 rounded-2xl border border-rose-200/80 dark:border-rose-800/40 shadow-2xs col-span-2 sm:col-span-1">
+                <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 block uppercase">Didiskualifikasi</span>
+                <span className="text-base sm:text-lg font-black text-rose-700 dark:text-rose-300">
+                  {liveProctorData?.summary?.didiskualifikasi || 0}
+                </span>
+                <span className="text-[10px] text-rose-600/70 ml-1">Pelanggaran</span>
+              </div>
+            </div>
+
+            {/* Filter Pills */}
+            <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 flex items-center gap-1.5 overflow-x-auto shrink-0 bg-white dark:bg-gray-900">
+              {[
+                { key: 'semua', label: 'Semua Peserta', count: liveProctorData?.summary?.total_peserta || 0 },
+                { key: 'sedang_mengerjakan', label: '🟢 Mengerjakan', count: liveProctorData?.summary?.sedang_mengerjakan || 0 },
+                { key: 'belum_masuk', label: '⚪ Belum Masuk', count: liveProctorData?.summary?.belum_masuk || 0 },
+                { key: 'selesai', label: '✅ Selesai', count: liveProctorData?.summary?.selesai || 0 },
+                { key: 'didiskualifikasi', label: '⛔ Diskualifikasi', count: liveProctorData?.summary?.didiskualifikasi || 0 },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setLiveProctorFilter(f.key as any)}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                    liveProctorFilter === f.key
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
+                  }`}
+                >
+                  {f.label} ({f.count})
+                </button>
+              ))}
+            </div>
+
+            {/* Body: Daftar Peserta & Progress Real-Time */}
+            <div className="p-3 sm:p-5 overflow-y-auto flex-1 space-y-3">
+              {loadingLiveProctor && !liveProctorData ? (
+                <div className="py-12 flex flex-col items-center justify-center text-gray-400 gap-3">
+                  <RefreshCw size={28} className="animate-spin text-blue-500" />
+                  <p className="text-xs font-medium">Memuat data ruang pengawasan real-time...</p>
+                </div>
+              ) : (
+                (() => {
+                  const rawList = liveProctorData?.participants || [];
+                  const filtered = rawList.filter((p: any) => {
+                    if (liveProctorFilter === 'semua') return true;
+                    if (liveProctorFilter === 'sedang_mengerjakan') {
+                      return p.status === 'sedang_mengerjakan' || p.status === 'terputus';
+                    }
+                    return p.status === liveProctorFilter;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="py-12 text-center text-gray-400 space-y-2">
+                        <Users size={32} className="mx-auto opacity-30" />
+                        <p className="text-xs font-medium">Tidak ada peserta dalam kategori ini.</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2.5">
+                      {filtered.map((p: any) => {
+                        const isDisq = p.status === 'didiskualifikasi';
+                        const isOnline = p.status === 'sedang_mengerjakan';
+                        const isOffline = p.status === 'terputus';
+                        const isFinished = p.status === 'selesai';
+                        const isNotStarted = p.status === 'belum_masuk';
+
+                        const totalSoal = p.total_soal || liveProctorData?.exam?.total_soal || 1;
+                        const pctAnswered = Math.min(Math.round((p.jumlah_terjawab / totalSoal) * 100), 100);
+
+                        return (
+                          <div
+                            key={p.murid_id}
+                            className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                              isDisq
+                                ? 'bg-rose-50/60 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/50'
+                                : isOnline
+                                ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/50 shadow-2xs'
+                                : isFinished
+                                ? 'bg-blue-50/30 dark:bg-blue-950/10 border-blue-200 dark:border-blue-800/40'
+                                : 'bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700'
+                            }`}
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              {/* Kolom 1: Nama, NIS, dan Status Keaktifan */}
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-black text-xs sm:text-sm shrink-0 ${
+                                    isDisq
+                                      ? 'bg-rose-500 text-white shadow-xs'
+                                      : isOnline
+                                      ? 'bg-emerald-600 text-white shadow-xs'
+                                      : isFinished
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                  }`}
+                                >
+                                  {p.nama_murid ? p.nama_murid.charAt(0).toUpperCase() : '?'}
+                                </div>
+
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-extrabold text-xs sm:text-sm text-gray-800 dark:text-gray-100 truncate">
+                                      {p.nama_murid}
+                                    </h4>
+                                    {/* Status Badge */}
+                                    {isOnline && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                                        <span>Live ({p.seconds_ago !== null ? `${p.seconds_ago}s` : 'Aktif'})</span>
+                                      </span>
+                                    )}
+                                    {isOffline && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                        <span>Layar Keluar / Idle</span>
+                                      </span>
+                                    )}
+                                    {isNotStarted && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                                        Belum Masuk
+                                      </span>
+                                    )}
+                                    {isFinished && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300">
+                                        <CheckCircle size={10} />
+                                        <span>Selesai (Skor: {p.skor_akhir ?? '-'})</span>
+                                      </span>
+                                    )}
+                                    {isDisq && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-2xs">
+                                        <AlertTriangle size={10} />
+                                        <span>Gugur (Diskualifikasi)</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-gray-400 mt-0.5">
+                                    NIS: <span className="font-mono">{p.nis || '-'}</span> &bull; {p.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Kolom 2: Progress Pengerjaan Soal (Terjawab, Belum, Ragu) */}
+                              <div className="flex-1 max-w-sm sm:px-3">
+                                <div className="flex items-center justify-between text-[11px] mb-1 font-bold">
+                                  <span className="text-gray-600 dark:text-gray-300">
+                                    Terjawab: <strong className="text-emerald-600 dark:text-emerald-400">{p.jumlah_terjawab}</strong> / {totalSoal} Soal
+                                  </span>
+                                  <div className="flex items-center gap-2 text-[10px]">
+                                    {p.jumlah_ragu > 0 && (
+                                      <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold">
+                                        {p.jumlah_ragu} Ragu
+                                      </span>
+                                    )}
+                                    <span className="text-gray-400">
+                                      {p.jumlah_belum} Belum
+                                    </span>
+                                  </div>
+                                </div>
+                                {/* Bar Kemajuan */}
+                                <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-500 ${
+                                      isDisq
+                                        ? 'bg-rose-500'
+                                        : isFinished
+                                        ? 'bg-blue-600'
+                                        : 'bg-emerald-500'
+                                    }`}
+                                    style={{ width: `${isNotStarted ? 0 : pctAnswered}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Kolom 3: Catatan Proctoring Pindah Layar & Aksi Pengawas */}
+                              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-800">
+                                {/* Catatan Pelanggaran */}
+                                <div className="text-right">
+                                  <span className="text-[10px] text-gray-400 block font-bold">Pindah Layar:</span>
+                                  {p.jumlah_pelanggaran === 0 ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-600 dark:text-emerald-400">
+                                      <ShieldCheck size={13} />
+                                      <span>0x (Tertib)</span>
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className={`inline-flex items-center gap-1 text-[11px] font-black ${
+                                        p.jumlah_pelanggaran >= (selectedExamForLive.max_pelanggaran || 3)
+                                          ? 'text-rose-600 dark:text-rose-400 animate-pulse'
+                                          : 'text-amber-600 dark:text-amber-400'
+                                      }`}
+                                      title={p.log_pelanggaran?.map((l: any) => `${l.time}: ${l.reason}`).join(' | ')}
+                                    >
+                                      <AlertTriangle size={13} />
+                                      <span>{p.jumlah_pelanggaran}x Pelanggaran</span>
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Tombol Reset / Izinkan Masuk Lagi bagi santri yang bermasalah / diskualifikasi */}
+                                {(isDisq || isOffline || isFinished) && (
+                                  <button
+                                    type="button"
+                                    disabled={actionResetLoading === p.murid_id}
+                                    onClick={() => handleResetSantriLive(p.murid_id, p.nama_murid)}
+                                    className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-bold transition-all border border-amber-200 dark:border-amber-800/50 flex items-center gap-1 shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
+                                    title="Izinkan santri masuk kembali dan mengulang pengerjaan jika ada kendala teknis"
+                                  >
+                                    <RefreshCw size={12} className={actionResetLoading === p.murid_id ? 'animate-spin' : ''} />
+                                    <span>Reset Sesi</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+
+            {/* Footer Modal 8 */}
+            <div className="p-3.5 sm:p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs text-gray-500 shrink-0">
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Pengawasan digital aktif: memantau kehadiran, progress butir soal, dan pelanggaran layar real-time.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLiveProctorModal(false)}
+                className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>

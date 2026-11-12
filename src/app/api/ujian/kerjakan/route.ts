@@ -197,6 +197,25 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Belum ada soal pada ujian ini.' }, { status: 400 });
       }
 
+      // Catat bahwa santri mulai masuk ke ruang ujian live
+      await pool.execute(
+        `INSERT INTO ujian_live_proctor 
+          (ujian_id, murid_id, status_pengerjaan, jumlah_terjawab, jumlah_ragu, total_soal,
+           jumlah_pelanggaran, is_disqualified, device_info, ip_address, waktu_masuk, last_heartbeat)
+         VALUES (?, ?, 'sedang_mengerjakan', 0, 0, ?, 0, 0, ?, ?, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+           status_pengerjaan = IF(is_disqualified = 1, 'didiskualifikasi', 'sedang_mengerjakan'),
+           last_heartbeat = NOW(),
+           total_soal = VALUES(total_soal)`,
+        [
+          ujian_id,
+          targetMuridId,
+          soalRows.length,
+          deviceInfo ? deviceInfo.slice(0, 250) : null,
+          ipAddress,
+        ]
+      ).catch(() => {});
+
       return NextResponse.json({
         success: true,
         message: 'Validasi berhasil! Selamat mengerjakan ujian.',
@@ -333,6 +352,27 @@ export async function POST(request: Request) {
           deviceInfo ? deviceInfo.slice(0, 500) : null,
         ]
       );
+
+      // 1b. Perbarui status di tabel live proctoring
+      await pool.execute(
+        `UPDATE ujian_live_proctor 
+         SET status_pengerjaan = ?,
+             jumlah_terjawab = ?,
+             jumlah_pelanggaran = ?,
+             is_disqualified = ?,
+             log_pelanggaran = ?,
+             waktu_selesai = NOW()
+         WHERE ujian_id = ? AND murid_id = ?`,
+        [
+          is_disqualified ? 'didiskualifikasi' : 'selesai',
+          Object.keys(answers).length,
+          Number(jumlah_pelanggaran) || 0,
+          is_disqualified ? 1 : 0,
+          JSON.stringify(log_pelanggaran || []),
+          ujian_id,
+          targetMuridId,
+        ]
+      ).catch(() => {});
 
       // 2. Simpan setiap butir jawaban essay santri ke tabel ujian_essay_jawaban
       if (hasEssay && essayList.length > 0) {

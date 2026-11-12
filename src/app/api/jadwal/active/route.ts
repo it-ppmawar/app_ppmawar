@@ -65,7 +65,7 @@ export async function GET() {
 
     if (role === 'guru') {
       const queryMadin = `
-        SELECT j.jam_mulai, j.jam_selesai, j.mata_pelajaran, 
+        SELECT j.jadwal_id as id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, 
                m.nama_kelas, 'madin' as tipe
         FROM jadwal_madin j
         JOIN kelas_madin m ON j.kelas_madin_id = m.kelas_id
@@ -73,7 +73,7 @@ export async function GET() {
       `;
       
       const queryQuran = `
-        SELECT j.jam_mulai, j.jam_selesai, j.mata_pelajaran, 
+        SELECT j.jadwal_id as id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, 
                q.nama_kelas, 'quran' as tipe
         FROM jadwal_quran j
         JOIN kelas_quran q ON j.kelas_quran_id = q.id
@@ -82,7 +82,7 @@ export async function GET() {
 
       // Guru yang juga merangkap pembina kamar — ambil juga dari jadwal_kegiatan
       const queryKegiatanGuru = `
-        SELECT jk.jam_mulai, jk.jam_selesai, jk.nama_kegiatan as mata_pelajaran,
+        SELECT jk.kegiatan_id as id, jk.jam_mulai, jk.jam_selesai, jk.nama_kegiatan as mata_pelajaran,
                k.nama_kamar as nama_kelas, 'kegiatan' as tipe
         FROM jadwal_kegiatan jk
         JOIN kamar k ON jk.kamar_id = k.kamar_id
@@ -95,7 +95,7 @@ export async function GET() {
       allSchedules = [...madinRows, ...quranRows, ...kegiatanGuruRows];
     } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
       const queryKegiatan = `
-        SELECT jk.jam_mulai, jk.jam_selesai, jk.nama_kegiatan as mata_pelajaran,
+        SELECT jk.kegiatan_id as id, jk.jam_mulai, jk.jam_selesai, jk.nama_kegiatan as mata_pelajaran,
                k.nama_kamar as nama_kelas, 'kegiatan' as tipe
         FROM jadwal_kegiatan jk
         JOIN kamar k ON jk.kamar_id = k.kamar_id
@@ -123,13 +123,41 @@ export async function GET() {
       const windowEnd = selesaiSecs + 3 * 3600;
 
       if (currentSecs >= windowStart && currentSecs <= windowEnd) {
+        let sudahAbsen = false;
+        try {
+          const todayDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' }); // YYYY-MM-DD
+          if (sched.tipe === 'madin') {
+            const [rows] = await pool.execute<RowDataPacket[]>(
+              'SELECT 1 FROM absensi WHERE jadwal_madin_id = ? AND tanggal = ? LIMIT 1',
+              [sched.id, todayDate]
+            );
+            sudahAbsen = rows.length > 0;
+          } else if (sched.tipe === 'quran') {
+            const [rows] = await pool.execute<RowDataPacket[]>(
+              'SELECT 1 FROM absensi_quran WHERE jadwal_quran_id = ? AND tanggal = ? LIMIT 1',
+              [sched.id, todayDate]
+            );
+            sudahAbsen = rows.length > 0;
+          } else if (sched.tipe === 'kegiatan') {
+            const [rows] = await pool.execute<RowDataPacket[]>(
+              'SELECT 1 FROM absensi_kegiatan WHERE kegiatan_id = ? AND tanggal = ? LIMIT 1',
+              [sched.id, todayDate]
+            );
+            sudahAbsen = rows.length > 0;
+          }
+        } catch (e) {
+          // ignore
+        }
+
         activeSchedule = {
+          id: sched.id,
           title: sched.tipe === 'kegiatan'
             ? `Kegiatan Kamar ${sched.nama_kelas}: ${sched.mata_pelajaran}`
             : `Mengajar ${sched.tipe === 'madin' ? 'Madin' : "Al-Qur'an"} ${sched.nama_kelas}`,
           time: `${sched.jam_mulai.substring(0,5)} - ${sched.jam_selesai.substring(0,5)}`,
           status: currentSecs < mulaiSecs ? 'Persiapan Absen' : (currentSecs > selesaiSecs ? 'Batas Akhir Absen' : 'Sedang Berlangsung'),
-          type: sched.tipe
+          type: sched.tipe,
+          sudah_absen: sudahAbsen,
         };
         break; // Show only the first active one
       }

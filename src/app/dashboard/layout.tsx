@@ -42,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [pwaInstallable, setPwaInstallable] = useState(false);
   const [userSchedules, setUserSchedules] = useState<any[]>([]);
 
-  const hasActiveAbsen = !!activeSchedule || ((user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0);
+  const hasActiveAbsen = (!!activeSchedule && !activeSchedule.sudah_absen) || ((user?.role === 'admin' || user?.role === 'staff') && pendingRemindersCount > 0);
 
   const userRoleLower = (user?.role || '').toLowerCase();
   const isWali = userRoleLower === 'wali_murid' || userRoleLower === 'wali_alumni';
@@ -127,8 +127,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .then(res => res.json())
       .then(data => {
         if (data.success && Array.isArray(data.exams)) {
-          const hasOpen = data.exams.some((e: any) => e.status_sesi === 'buka');
-          setHasActiveExam(hasOpen);
+          // Hanya berdetak jika ada ujian berstatus 'buka' DAN santri ini BELUM menyelesaikan ujian tersebut
+          const hasOpenAndUnfinished = data.exams.some((e: any) => e.status_sesi === 'buka' && !e.hasil_id);
+          setHasActiveExam(hasOpenAndUnfinished);
         } else {
           setHasActiveExam(false);
         }

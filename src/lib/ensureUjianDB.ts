@@ -187,6 +187,31 @@ export async function ensureUjianDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // 6. Tabel Live Proctoring & Pengawasan Real-Time Ruang Ujian
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS ujian_live_proctor (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ujian_id INT NOT NULL,
+        murid_id INT NOT NULL,
+        status_pengerjaan ENUM('sedang_mengerjakan', 'selesai', 'didiskualifikasi') NOT NULL DEFAULT 'sedang_mengerjakan',
+        jumlah_terjawab INT NOT NULL DEFAULT 0,
+        jumlah_ragu INT NOT NULL DEFAULT 0,
+        total_soal INT NOT NULL DEFAULT 0,
+        jumlah_pelanggaran INT NOT NULL DEFAULT 0,
+        is_disqualified TINYINT(1) NOT NULL DEFAULT 0,
+        log_pelanggaran JSON NULL,
+        device_info VARCHAR(255) NULL,
+        ip_address VARCHAR(50) NULL,
+        waktu_masuk DATETIME NOT NULL,
+        last_heartbeat DATETIME NOT NULL,
+        waktu_selesai DATETIME NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_live_murid (ujian_id, murid_id),
+        INDEX idx_live_exam (ujian_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     isUjianDbEnsured = true;
   } catch (error) {
     console.error('Error ensuring ujian tables:', error);
