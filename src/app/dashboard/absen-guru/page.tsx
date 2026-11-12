@@ -60,6 +60,16 @@ const TIPE_LABEL: Record<string, string> = {
 
 const fmt = (t: string) => (t || '').slice(0, 5);
 
+const formatTanggalFilter = (tglStr: string) => {
+  if (!tglStr) return '';
+  const [y, m, d] = tglStr.split('-').map(Number);
+  if (!y || !m || !d) return tglStr;
+  const dateObj = new Date(y, m - 1, d);
+  const DAY = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+  return `${DAY[dateObj.getDay()]}, ${d} ${MON[m - 1]} ${y}`;
+};
+
 export default function AbsenGuruPage() {
   const router = useRouter();
   const [role, setRole] = useState('');
@@ -314,7 +324,7 @@ export default function AbsenGuruPage() {
       const currentJadwal = jadwalList.find(j => j.id === selectedJadwalId);
       const sesiInfo = currentJadwal ? ` | Sesi: ${currentJadwal.nama_sesi} (${(currentJadwal.jam_mulai || '').slice(0, 5)} - ${(currentJadwal.jam_selesai || '').slice(0, 5)})` : '';
       const title = 'PRESENSI KEHADIRAN DEWAN GURU YPMA';
-      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${dateHeaderStr || tanggal}${sesiInfo} | Unit: ${dewanHomebase}\nTotal Guru: ${dewanStats.total} | Hadir: ${dewanStats.hadir} | Izin: ${dewanStats.izin} | Sakit: ${dewanStats.sakit} | Alpha: ${dewanStats.alpha} | Belum Absen: ${dewanStats.belum}`;
+      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${formatTanggalFilter(tanggal)}${sesiInfo} | Unit: ${dewanHomebase}\nTotal Guru: ${dewanStats.total} | Hadir: ${dewanStats.hadir} | Izin: ${dewanStats.izin} | Sakit: ${dewanStats.sakit} | Alpha: ${dewanStats.alpha} | Belum Absen: ${dewanStats.belum}`;
       const filename = `Presensi_Dewan_Guru_${dewanHomebase.replace(/[^a-zA-Z0-9_-]/g, '_')}_${tanggal}`;
       const columns = ['No', 'NIP', 'Nama Guru', 'Unit / Homebase', 'No. HP', 'Status', 'Jam Masuk', 'Metode', 'Keterangan'];
       const rows = list.map((g, idx) => [
@@ -368,7 +378,7 @@ export default function AbsenGuruPage() {
       const belumDiisiCount = list.filter(c => !c.sudah_absen).length;
 
       const title = 'JADWAL MENGAJAR SANTRI & PRESENSI KBM';
-      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${dateHeaderStr || tanggal} (${kbmHari || ''})\n${filterInfo}\nTotal Jadwal: ${list.length} | Sudah Diisi: ${sudahDiisiCount} | Belum Diisi: ${belumDiisiCount}`;
+      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${formatTanggalFilter(tanggal)} (${kbmHari || ''})\n${filterInfo}\nTotal Jadwal: ${list.length} | Sudah Diisi: ${sudahDiisiCount} | Belum Diisi: ${belumDiisiCount}`;
       const filename = `Presensi_KBM_${activeTab}_${tanggal}`;
       const columns = ['No', 'Jam', 'Kelas', 'Mata Pelajaran', 'Guru / Pembina', 'Status Waktu', 'Presensi Santri'];
       const rows = list.map((c, idx) => [
@@ -1472,7 +1482,7 @@ export default function AbsenGuruPage() {
                     {mainMode === 'dewan_guru' ? 'Preview Dokumen Presensi Dewan Guru YPMA' : 'Preview Jadwal Mengajar & Presensi KBM'}
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Tanggal: {dateHeaderStr || tanggal} {mainMode === 'dewan_guru' ? `| Unit: ${dewanHomebase}` : `| ${TIPE_LABEL[activeTab] || 'Semua KBM'}`}
+                    Tanggal: {formatTanggalFilter(tanggal)} {mainMode === 'dewan_guru' ? `| Unit: ${dewanHomebase}` : `| ${TIPE_LABEL[activeTab] || 'Semua KBM'}`}
                   </p>
                 </div>
               </div>
