@@ -382,7 +382,7 @@ export default function AbsenGuruPage() {
 
       const title = 'JADWAL MENGAJAR SANTRI & PRESENSI KBM';
       const tglKbm = kbmTanggal || tanggal;
-      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${formatTanggalFilter(tglKbm)} (${kbmHari || ''})\n${filterInfo}\nTotal Jadwal: ${list.length} | Sudah Diisi: ${sudahDiisiCount} | Belum Diisi: ${belumDiisiCount}`;
+      const subtitle = `PP. Matholi'ul Anwar Simo Sungelebak\nTanggal: ${formatTanggalFilter(tglKbm)}\n${filterInfo}\nTotal Jadwal: ${list.length} | Sudah Diisi: ${sudahDiisiCount} | Belum Diisi: ${belumDiisiCount}`;
       const filename = `Presensi_KBM_${activeTab}_${tglKbm}`;
       const columns = ['No', 'Jam', 'Kelas', 'Mata Pelajaran', 'Guru / Pembina', 'Status Waktu', 'Presensi Santri'];
       const rows = list.map((c, idx) => [
