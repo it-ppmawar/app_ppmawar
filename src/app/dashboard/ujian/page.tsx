@@ -38,6 +38,7 @@ interface ExamItem {
   status_sesi?: 'tertutup' | 'buka' | 'selesai';
   total_soal?: number;
   total_peserta?: number;
+  total_hasil?: number;
   // Santri result (jika sudah mengerjakan)
   hasil_id?: number | null;
   skor_akhir?: number | null;
@@ -2337,7 +2338,7 @@ export default function UjianCBTPage() {
                                 className="text-emerald-600 dark:text-emerald-400 hover:underline font-bold text-[11px] flex items-center gap-1"
                               >
                                 <Award size={12} />
-                                <span>Hasil</span>
+                                <span>Hasil ({exam.total_hasil || 0})</span>
                               </button>
                             </div>
                           </div>
@@ -2398,10 +2399,10 @@ export default function UjianCBTPage() {
                               fetchHasilPeserta(exam);
                             }}
                             className="px-2 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-800/70 font-bold text-[11px] sm:text-xs flex items-center justify-center gap-1.5 transition-colors border border-emerald-200 dark:border-emerald-700/40 text-center cursor-pointer shadow-2xs"
-                            title={`Lihat Hasil Peserta (${exam.total_peserta || 0} Santri)`}
+                            title={`Lihat Hasil Peserta (${exam.total_hasil || 0} Santri)`}
                           >
                             <Award size={13} className="shrink-0" />
-                            <span className="truncate">Hasil ({exam.total_peserta || 0})</span>
+                            <span className="truncate">Hasil ({exam.total_hasil || 0})</span>
                           </button>
                         </div>
 
