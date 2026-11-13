@@ -143,6 +143,17 @@ export default function UjianCBTPage() {
   const [importingQuestions, setImportingQuestions] = useState(false);
   const [importFeedback, setImportFeedback] = useState('');
 
+  // Searchable Dropdown State untuk Create Modal
+  const [mapelSearch, setMapelSearch] = useState('');
+  const [kelasSearch, setKelasSearch] = useState('');
+  const [quizbCreateSearch, setQuizbCreateSearch] = useState('');
+  const [showMapelDropdown, setShowMapelDropdown] = useState(false);
+  const [showKelasDropdown, setShowKelasDropdown] = useState(false);
+  const [showQuizbCreateDropdown, setShowQuizbCreateDropdown] = useState(false);
+  const createMapelRef = useRef<HTMLDivElement>(null);
+  const createKelasRef = useRef<HTMLDivElement>(null);
+  const createQuizbRef = useRef<HTMLDivElement>(null);
+
   // State Dedicated Modal Impor Paket Kuis dari QuizB
   const [showQuizBImportModal, setShowQuizBImportModal] = useState(false);
   const [quizBModalId, setQuizBModalId] = useState('');
@@ -523,6 +534,15 @@ export default function UjianCBTPage() {
     const handleClickOutside = (e: MouseEvent) => {
       if (quizBDropdownRef.current && !quizBDropdownRef.current.contains(e.target as Node)) {
         setShowQuizBDropdownList(false);
+      }
+      if (createMapelRef.current && !createMapelRef.current.contains(e.target as Node)) {
+        setShowMapelDropdown(false);
+      }
+      if (createKelasRef.current && !createKelasRef.current.contains(e.target as Node)) {
+        setShowKelasDropdown(false);
+      }
+      if (createQuizbRef.current && !createQuizbRef.current.contains(e.target as Node)) {
+        setShowQuizbCreateDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -1987,20 +2007,22 @@ export default function UjianCBTPage() {
             <button
               type="button"
               onClick={() => setMainTab('daftar')}
-              className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-start gap-2 sm:gap-3 shadow-sm min-h-[68px] sm:min-h-[56px] cursor-pointer ${
+              className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2 sm:gap-3 shadow-sm min-h-[68px] sm:min-h-[56px] cursor-pointer ${
                 mainTab === 'daftar'
                   ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
                   : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
               }`}
             >
-              <Play size={18} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
-              <div className="flex flex-col items-start justify-center leading-tight text-left min-w-0 flex-1">
-                <span className="font-extrabold text-xs sm:text-sm leading-snug">Daftar Ujian</span>
-                <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-1 whitespace-nowrap ${
-                  mainTab === 'daftar' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
-                }`}>
-                  {exams.filter((e) => e.status_sesi === 'buka').length} Aktif
-                </span>
+              <div className="flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
+                <Play size={18} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
+                <div className="flex flex-col items-center sm:items-start justify-center leading-tight text-center sm:text-left min-w-0">
+                  <span className="font-extrabold text-xs sm:text-sm leading-snug">Daftar Ujian</span>
+                  <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-1 whitespace-nowrap ${
+                    mainTab === 'daftar' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
+                  }`}>
+                    {exams.filter((e) => e.status_sesi === 'buka').length} Aktif
+                  </span>
+                </div>
               </div>
             </button>
 
@@ -2009,20 +2031,22 @@ export default function UjianCBTPage() {
               <button
                 type="button"
                 onClick={() => setMainTab('kelola')}
-                className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-start gap-2 sm:gap-3 shadow-sm min-h-[68px] sm:min-h-[56px] cursor-pointer ${
+                className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2 sm:gap-3 shadow-sm min-h-[68px] sm:min-h-[56px] cursor-pointer ${
                   mainTab === 'kelola'
                     ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
                     : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
                 }`}
               >
-                <Settings size={18} className={mainTab === 'kelola' ? 'text-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
-                <div className="flex flex-col items-start justify-center leading-tight text-left min-w-0 flex-1">
-                  <span className="font-extrabold text-[11px] sm:text-sm leading-snug line-clamp-2">Kelola Ujian &amp; Bank Soal</span>
-                  <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-1 whitespace-nowrap ${
-                    mainTab === 'kelola' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
-                  }`}>
-                    {exams.length} Paket Ujian
-                  </span>
+                <div className="flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
+                  <Settings size={18} className={mainTab === 'kelola' ? 'text-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
+                  <div className="flex flex-col items-center sm:items-start justify-center leading-tight text-center sm:text-left min-w-0">
+                    <span className="font-extrabold text-[11px] sm:text-sm leading-snug line-clamp-2">Kelola Ujian &amp; Bank Soal</span>
+                    <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-1 whitespace-nowrap ${
+                      mainTab === 'kelola' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
+                    }`}>
+                      {exams.length} Paket Ujian
+                    </span>
+                  </div>
                 </div>
               </button>
             )}
@@ -2097,13 +2121,18 @@ export default function UjianCBTPage() {
 
       {/* Kartu Profil Santri: Sendirian Rata Tengah di Bawah Toolbar Filter */}
       {santriInfo && (
-        <div className="flex justify-center w-full">
-          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-gray-800 shadow-xs border border-gray-100 dark:border-gray-700 text-xs sm:text-sm text-gray-700 dark:text-gray-200">
-            <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-              <User size={14} />
+        <div className="flex justify-center w-full px-2">
+          <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-gray-800 shadow-xs border border-gray-100 dark:border-gray-700 text-xs sm:text-sm text-gray-700 dark:text-gray-200 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                <User size={14} />
+              </div>
+              <span className="text-center">
+                Santri: <strong className="text-emerald-700 dark:text-emerald-400 font-extrabold">{santriInfo.nama}</strong>
+              </span>
             </div>
-            <span>
-              Santri: <strong className="text-emerald-700 dark:text-emerald-400 font-extrabold">{santriInfo.nama}</strong> <span className="text-gray-400 font-mono">({santriInfo.nis || 'NIS -'})</span>
+            <span className="text-gray-400 font-mono text-[11px] sm:text-xs">
+              ({santriInfo.nis || 'NIS -'})
             </span>
           </div>
         </div>
@@ -2620,31 +2649,44 @@ export default function UjianCBTPage() {
                       className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   ) : (
-                    <select
-                      required
-                      value={formExam.mata_pelajaran}
-                      onChange={(e) => {
-                        const selectedVal = e.target.value;
-                        const matchedItem = mapelList.find((m) => m.mata_pelajaran === selectedVal);
-                        setFormExam((prev: any) => ({
-                          ...prev,
-                          mata_pelajaran: selectedVal,
-                          kitab: matchedItem?.kitab || prev.kitab || '',
-                        }));
-                        fetchKelasList(selectedVal);
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold text-gray-800 dark:text-gray-200 text-xs sm:text-sm"
-                    >
-                      <option value="">-- Pilih Mata Pelajaran --</option>
-                      {formExam.mata_pelajaran && !mapelList.some((m) => m.mata_pelajaran === formExam.mata_pelajaran) && (
-                        <option value={formExam.mata_pelajaran}>{formExam.mata_pelajaran} (Tersimpan)</option>
+                    <div className="relative" ref={createMapelRef}>
+                      <input
+                        type="text"
+                        value={showMapelDropdown ? mapelSearch : (formExam.mata_pelajaran || '')}
+                        onFocus={() => { setShowMapelDropdown(true); setMapelSearch(''); }}
+                        onChange={(e) => setMapelSearch(e.target.value)}
+                        placeholder="-- Cari / Pilih Mata Pelajaran --"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold text-gray-800 dark:text-gray-200 text-xs sm:text-sm"
+                      />
+                      {showMapelDropdown && (
+                        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                          {mapelList
+                            .filter((m) => m.mata_pelajaran.toLowerCase().includes(mapelSearch.toLowerCase()))
+                            .map((m, idx) => (
+                              <button
+                                key={`${m.mata_pelajaran}-${idx}`}
+                                type="button"
+                                className="w-full text-left px-3.5 py-2 text-xs hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-semibold text-gray-700 dark:text-gray-200"
+                                onClick={() => {
+                                  setFormExam((prev: any) => ({
+                                    ...prev,
+                                    mata_pelajaran: m.mata_pelajaran,
+                                    kitab: m.kitab || prev.kitab || '',
+                                  }));
+                                  fetchKelasList(m.mata_pelajaran);
+                                  setShowMapelDropdown(false);
+                                  setMapelSearch('');
+                                }}
+                              >
+                                {m.mata_pelajaran} {m.kitab ? `(${m.kitab})` : ''}
+                              </button>
+                            ))}
+                          {mapelList.filter((m) => m.mata_pelajaran.toLowerCase().includes(mapelSearch.toLowerCase())).length === 0 && (
+                            <div className="px-3.5 py-2 text-xs text-gray-400">Tidak ada hasil</div>
+                          )}
+                        </div>
                       )}
-                      {mapelList.map((m, idx) => (
-                        <option key={`${m.mata_pelajaran}-${idx}`} value={m.mata_pelajaran}>
-                          {m.mata_pelajaran} {m.kitab ? `(${m.kitab})` : ''}
-                        </option>
-                      ))}
-                    </select>
+                    </div>
                   )}
                 </div>
 
@@ -2667,29 +2709,48 @@ export default function UjianCBTPage() {
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                     Target Kelas {formExam.mata_pelajaran ? <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">(Terkait Mapel)</span> : ''}
                   </label>
-                  <select
-                    value={formExam.kelas_madin_id}
-                    onChange={(e) => {
-                      const newKelas = e.target.value;
-                      setFormExam({ ...formExam, kelas_madin_id: newKelas });
-                      if (!formExam.mata_pelajaran) {
-                        fetchMapelList(newKelas);
-                      }
-                    }}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-800 dark:text-gray-200"
-                  >
-                    <option value="">
-                      {formExam.mata_pelajaran ? 'Semua Kelas (Mapel Terkait)' : 'Semua Kelas'}
-                    </option>
-                    {formExam.kelas_madin_id && !kelasList.some((k) => String(k.kelas_id) === String(formExam.kelas_madin_id)) && (
-                      <option value={formExam.kelas_madin_id}>Kelas Terpilih (ID: {formExam.kelas_madin_id})</option>
+                  <div className="relative" ref={createKelasRef}>
+                    <input
+                      type="text"
+                      value={showKelasDropdown ? kelasSearch : (kelasList.find((k: any) => String(k.kelas_id) === String(formExam.kelas_madin_id))?.nama_kelas || (formExam.kelas_madin_id ? `Kelas ID: ${formExam.kelas_madin_id}` : ''))}
+                      onFocus={() => { setShowKelasDropdown(true); setKelasSearch(''); }}
+                      onChange={(e) => setKelasSearch(e.target.value)}
+                      placeholder={formExam.mata_pelajaran ? 'Semua Kelas (Mapel Terkait)' : 'Semua Kelas'}
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    {showKelasDropdown && (
+                      <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-semibold text-gray-500 dark:text-gray-400"
+                          onClick={() => {
+                            setFormExam({ ...formExam, kelas_madin_id: '' });
+                            setShowKelasDropdown(false);
+                            setKelasSearch('');
+                          }}
+                        >
+                          {formExam.mata_pelajaran ? 'Semua Kelas (Mapel Terkait)' : 'Semua Kelas'}
+                        </button>
+                        {kelasList
+                          .filter((k: any) => k.nama_kelas.toLowerCase().includes(kelasSearch.toLowerCase()))
+                          .map((k: any) => (
+                            <button
+                              key={k.kelas_id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-semibold text-gray-700 dark:text-gray-200"
+                              onClick={() => {
+                                setFormExam({ ...formExam, kelas_madin_id: String(k.kelas_id) });
+                                if (!formExam.mata_pelajaran) fetchMapelList(String(k.kelas_id));
+                                setShowKelasDropdown(false);
+                                setKelasSearch('');
+                              }}
+                            >
+                              {k.nama_kelas}
+                            </button>
+                          ))}
+                      </div>
                     )}
-                    {kelasList.map((k) => (
-                      <option key={k.kelas_id} value={k.kelas_id}>
-                        {k.nama_kelas}
-                      </option>
-                    ))}
-                  </select>
+                  </div>
                 </div>
 
                 <div>
@@ -2748,27 +2809,52 @@ export default function UjianCBTPage() {
                       </span>
                     )}
                   </div>
-                  <select
-                    value={formExam.quizb_id || ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const selectedQuiz = quizImportList.find((q: any) => String(q.id) === val);
-                      setFormExam((prev: any) => ({
-                        ...prev,
-                        quizb_id: val,
-                        judul: prev.judul || (selectedQuiz ? selectedQuiz.title : ''),
-                        mata_pelajaran: prev.mata_pelajaran || (selectedQuiz ? selectedQuiz.category || '' : ''),
-                      }));
-                    }}
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs"
-                  >
-                    <option value="">-- Buat Manual / Tanpa QuizB --</option>
-                    {quizImportList.filter((q: any) => !String(q.id).startsWith('cbt_')).map((q: any) => (
-                      <option key={q.id} value={String(q.id)}>
-                        #{q.id} - {q.title} {q.category ? `(${q.category})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative" ref={createQuizbRef}>
+                    <input
+                      type="text"
+                      value={showQuizbCreateDropdown ? quizbCreateSearch : (formExam.quizb_id ? (() => { const q = quizImportList.find((q: any) => String(q.id) === String(formExam.quizb_id)); return q ? `#${q.id} - ${q.title}` : `#${formExam.quizb_id}`; })() : '')}
+                      onFocus={() => { setShowQuizbCreateDropdown(true); setQuizbCreateSearch(''); }}
+                      onChange={(e) => setQuizbCreateSearch(e.target.value)}
+                      placeholder="-- Buat Manual / Tanpa QuizB --"
+                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    {showQuizbCreateDropdown && (
+                      <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 font-semibold"
+                          onClick={() => {
+                            setFormExam((prev: any) => ({ ...prev, quizb_id: '' }));
+                            setShowQuizbCreateDropdown(false);
+                            setQuizbCreateSearch('');
+                          }}
+                        >
+                          -- Buat Manual / Tanpa QuizB --
+                        </button>
+                        {quizImportList
+                          .filter((q: any) => !String(q.id).startsWith('cbt_') && (`${q.id} ${q.title} ${q.category || ''}`).toLowerCase().includes(quizbCreateSearch.toLowerCase()))
+                          .map((q: any) => (
+                            <button
+                              key={q.id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-semibold text-gray-700 dark:text-gray-200"
+                              onClick={() => {
+                                setFormExam((prev: any) => ({
+                                  ...prev,
+                                  quizb_id: String(q.id),
+                                  judul: prev.judul || q.title || '',
+                                  mata_pelajaran: prev.mata_pelajaran || q.category || '',
+                                }));
+                                setShowQuizbCreateDropdown(false);
+                                setQuizbCreateSearch('');
+                              }}
+                            >
+                              #{q.id} - {q.title} {q.category ? `(${q.category})` : ''}
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                   {formExam.quizb_id && !editingExam && (
                     <label className="flex items-center gap-2 mt-2 cursor-pointer text-xs font-bold text-emerald-700 dark:text-emerald-400">
                       <input
@@ -4439,23 +4525,21 @@ export default function UjianCBTPage() {
         <div className="fixed inset-0 z-[85] bg-black/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 pb-20 sm:pb-4" onClick={() => setShowLiveProctorModal(false)}>
           <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col my-auto overflow-hidden border border-gray-200 dark:border-gray-800" onClick={e => e.stopPropagation()}>
             {/* Header Modal 8: Model Verifikasi Ruang Ujian (Garis tidak sampai ujung) */}
-            <div className="px-4 sm:px-5 pt-4 sm:pt-5 shrink-0 relative">
+            <div className="px-4 sm:px-5 pt-4 sm:pt-5 shrink-0">
               <div className="border-b border-gray-100 dark:border-gray-800 pb-3">
-                {/* Tombol (X) Konsisten di Pojok Kanan Atas */}
-                <button
-                  onClick={() => setShowLiveProctorModal(false)}
-                  className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl transition-colors cursor-pointer"
-                  title="Tutup ruang pengawasan"
-                >
-                  <X size={20} />
-                </button>
-
-                {/* Baris 1: Judul + Dot */}
-                <div className="flex items-center justify-center gap-2 pr-0 sm:pr-8">
+                {/* Baris 1: Dot + Judul (rata kiri HP, tengah PC) + X di kanan */}
+                <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
-                  <h3 className="font-black text-sm sm:text-base text-gray-900 dark:text-gray-100 text-center">
+                  <h3 className="font-black text-sm sm:text-base text-gray-900 dark:text-gray-100 flex-1 text-left sm:text-center">
                     Ruang Pengawasan Ujian Real-Time
                   </h3>
+                  <button
+                    onClick={() => setShowLiveProctorModal(false)}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl transition-colors cursor-pointer shrink-0"
+                    title="Tutup ruang pengawasan"
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
 
                 {/* Baris 2: Subtitle rata tengah agar lebih estetik */}

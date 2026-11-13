@@ -130,7 +130,7 @@ export async function GET(request: Request) {
               COALESCE(s.max_radius_meter, 200) as max_radius_meter,
               COALESCE(s.status_sesi, 'buka') as status_sesi,
               (SELECT COUNT(*) FROM ujian_soal WHERE ujian_id = u.id) as total_soal,
-              (SELECT COUNT(*) FROM ujian_hasil_santri WHERE ujian_id = u.id) as total_peserta
+              (CASE WHEN u.kelas_madin_id IS NOT NULL THEN (SELECT COUNT(*) FROM murid WHERE kelas_madin_id = u.kelas_madin_id OR kelas_madin_2_id = u.kelas_madin_id) ELSE 0 END) as total_peserta
        FROM ujian_madin u
        LEFT JOIN kelas_madin km ON u.kelas_madin_id = km.kelas_id
        LEFT JOIN guru g ON u.guru_id = g.guru_id
