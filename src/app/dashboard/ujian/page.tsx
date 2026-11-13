@@ -161,6 +161,12 @@ export default function UjianCBTPage() {
   const [quizBModalSearch, setQuizBModalSearch] = useState('');
   const [showQuizBDropdownList, setShowQuizBDropdownList] = useState(false);
   const quizBDropdownRef = useRef<HTMLDivElement>(null);
+  const [quizBMapelSearch, setQuizBMapelSearch] = useState('');
+  const [showQuizBMapelDropdown, setShowQuizBMapelDropdown] = useState(false);
+  const quizBMapelDropdownRef = useRef<HTMLDivElement>(null);
+  const [quizBKelasSearch, setQuizBKelasSearch] = useState('');
+  const [showQuizBKelasDropdown, setShowQuizBKelasDropdown] = useState(false);
+  const quizBKelasDropdownRef = useRef<HTMLDivElement>(null);
   const [quizBModalQuestions, setQuizBModalQuestions] = useState<any[]>([]);
   const [quizBModalError, setQuizBModalError] = useState('');
   const [loadingQuizBModalQuestions, setLoadingQuizBModalQuestions] = useState(false);
@@ -544,6 +550,12 @@ export default function UjianCBTPage() {
       }
       if (createQuizbRef.current && !createQuizbRef.current.contains(e.target as Node)) {
         setShowQuizbCreateDropdown(false);
+      }
+      if (quizBMapelDropdownRef.current && !quizBMapelDropdownRef.current.contains(e.target as Node)) {
+        setShowQuizBMapelDropdown(false);
+      }
+      if (quizBKelasDropdownRef.current && !quizBKelasDropdownRef.current.contains(e.target as Node)) {
+        setShowQuizBKelasDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -1088,6 +1100,10 @@ export default function UjianCBTPage() {
     setQuizBModalId('');
     setQuizBModalSearch('');
     setShowQuizBDropdownList(false);
+    setQuizBMapelSearch('');
+    setShowQuizBMapelDropdown(false);
+    setQuizBKelasSearch('');
+    setShowQuizBKelasDropdown(false);
     setQuizBModalQuestions([]);
     setQuizBModalError('');
     setQuizBModalForm({
@@ -3190,45 +3206,280 @@ export default function UjianCBTPage() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* 1. Combobox Searchable Mata Pelajaran */}
                     <div>
                       <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                         Mata Pelajaran <span className="text-rose-500">*</span>
                       </label>
-                      <select
-                        value={quizBModalForm.mata_pelajaran}
-                        onChange={(e) => setQuizBModalForm({ ...quizBModalForm, mata_pelajaran: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs"
-                      >
-                        <option value="">-- Pilih Mata Pelajaran --</option>
-                        {mapelList.map((m) => (
-                          <option key={m.mata_pelajaran} value={m.mata_pelajaran}>
-                            {m.mata_pelajaran}
-                          </option>
-                        ))}
-                        {quizBModalForm.mata_pelajaran && !mapelList.some(m => m.mata_pelajaran === quizBModalForm.mata_pelajaran) && (
-                          <option value={quizBModalForm.mata_pelajaran}>
-                            {quizBModalForm.mata_pelajaran} (Kategori QuizB)
-                          </option>
+                      <div className="relative" ref={quizBMapelDropdownRef}>
+                        <div
+                          onClick={() => setShowQuizBMapelDropdown(true)}
+                          className={`w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border transition-all flex items-center gap-2 cursor-pointer ${
+                            showQuizBMapelDropdown
+                              ? 'border-teal-500 ring-2 ring-teal-500/20 shadow-sm'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-teal-400'
+                          }`}
+                        >
+                          <Search size={14} className="text-gray-400 shrink-0" />
+                          <input
+                            type="text"
+                            placeholder="-- Cari atau Pilih Mata Pelajaran --"
+                            value={
+                              showQuizBMapelDropdown
+                                ? quizBMapelSearch
+                                : (quizBModalForm.mata_pelajaran || '')
+                            }
+                            onChange={(e) => {
+                              setQuizBMapelSearch(e.target.value);
+                              setShowQuizBMapelDropdown(true);
+                            }}
+                            onFocus={() => setShowQuizBMapelDropdown(true)}
+                            className="w-full bg-transparent outline-none text-xs text-gray-800 dark:text-gray-100 placeholder:text-gray-400 font-medium cursor-text min-w-0"
+                            autoComplete="off"
+                          />
+                          {quizBModalForm.mata_pelajaran && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQuizBModalForm((prev: any) => ({ ...prev, mata_pelajaran: '' }));
+                                setQuizBMapelSearch('');
+                              }}
+                              className="text-gray-400 hover:text-rose-500 shrink-0 p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                              title="Hapus pilihan mapel"
+                            >
+                              <X size={13} />
+                            </button>
+                          )}
+                          <ChevronDown
+                            size={14}
+                            className={`text-gray-400 shrink-0 transition-transform ${
+                              showQuizBMapelDropdown ? 'rotate-180 text-teal-600' : ''
+                            }`}
+                          />
+                        </div>
+
+                        {/* Floating List Mata Pelajaran */}
+                        {showQuizBMapelDropdown && (
+                          <div className="absolute left-0 right-0 top-full mt-1 z-40 max-h-52 overflow-y-auto bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700/60 animate-[fadeIn_0.1s_ease-out]">
+                            <button
+                              type="button"
+                              onMouseDown={() => {
+                                setQuizBModalForm((prev: any) => ({ ...prev, mata_pelajaran: '' }));
+                                setQuizBMapelSearch('');
+                                setShowQuizBMapelDropdown(false);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs text-gray-400 italic hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                            >
+                              -- Kosongkan Pilihan --
+                            </button>
+
+                            {/* Pilihan mapel custom dari QuizB jika ada dan belum ada di mapelList */}
+                            {quizBModalForm.mata_pelajaran && !mapelList.some(m => m.mata_pelajaran === quizBModalForm.mata_pelajaran) && (
+                              <button
+                                type="button"
+                                onMouseDown={() => {
+                                  setQuizBMapelSearch('');
+                                  setShowQuizBMapelDropdown(false);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 font-bold flex items-center justify-between cursor-pointer"
+                              >
+                                <span>{quizBModalForm.mata_pelajaran} (Kategori QuizB)</span>
+                                <Check size={14} className="text-teal-600 dark:text-teal-400 shrink-0" />
+                              </button>
+                            )}
+
+                            {/* Opsi gunakan kata kunci yang diketik sebagai mapel baru */}
+                            {quizBMapelSearch.trim() && !mapelList.some(m => m.mata_pelajaran.toLowerCase() === quizBMapelSearch.trim().toLowerCase()) && (
+                              <button
+                                type="button"
+                                onMouseDown={() => {
+                                  setQuizBModalForm((prev: any) => ({ ...prev, mata_pelajaran: quizBMapelSearch.trim() }));
+                                  setQuizBMapelSearch('');
+                                  setShowQuizBMapelDropdown(false);
+                                }}
+                                className="w-full text-left px-3 py-2 text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 cursor-pointer flex items-center gap-1.5"
+                              >
+                                <Plus size={13} />
+                                <span>Gunakan &quot;{quizBMapelSearch.trim()}&quot; sebagai Mapel Baru</span>
+                              </button>
+                            )}
+
+                            {mapelList
+                              .filter((m) => {
+                                if (!quizBMapelSearch.trim()) return true;
+                                const s = quizBMapelSearch.toLowerCase();
+                                return (
+                                  m.mata_pelajaran.toLowerCase().includes(s) ||
+                                  (m.kitab && m.kitab.toLowerCase().includes(s))
+                                );
+                              })
+                              .map((m, idx) => {
+                                const isSelected = quizBModalForm.mata_pelajaran === m.mata_pelajaran;
+                                return (
+                                  <button
+                                    key={`${m.mata_pelajaran}-${idx}`}
+                                    type="button"
+                                    onMouseDown={() => {
+                                      setQuizBModalForm((prev: any) => ({
+                                        ...prev,
+                                        mata_pelajaran: m.mata_pelajaran,
+                                        kitab: m.kitab || prev.kitab || '',
+                                      }));
+                                      setQuizBMapelSearch('');
+                                      setShowQuizBMapelDropdown(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 font-bold'
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                    }`}
+                                  >
+                                    <div className="truncate pr-2">
+                                      <span>{m.mata_pelajaran}</span>
+                                      {m.kitab && (
+                                        <span className="text-[10px] text-gray-400 ml-1.5 font-normal">
+                                          ({m.kitab})
+                                        </span>
+                                      )}
+                                    </div>
+                                    {isSelected && <Check size={14} className="text-teal-600 dark:text-teal-400 shrink-0" />}
+                                  </button>
+                                );
+                              })}
+
+                            {mapelList.filter((m) => {
+                              if (!quizBMapelSearch.trim()) return true;
+                              const s = quizBMapelSearch.toLowerCase();
+                              return (
+                                m.mata_pelajaran.toLowerCase().includes(s) ||
+                                (m.kitab && m.kitab.toLowerCase().includes(s))
+                              );
+                            }).length === 0 && !quizBMapelSearch.trim() && (
+                              <div className="p-3 text-xs text-gray-400 italic text-center">
+                                Mata pelajaran tidak ditemukan
+                              </div>
+                            )}
+                          </div>
                         )}
-                      </select>
+                      </div>
                     </div>
 
+                    {/* 2. Combobox Searchable Target Kelas */}
                     <div>
                       <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
                         Target Kelas Madin
                       </label>
-                      <select
-                        value={quizBModalForm.kelas_madin_id}
-                        onChange={(e) => setQuizBModalForm({ ...quizBModalForm, kelas_madin_id: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs"
-                      >
-                        <option value="">Semua Kelas Madin</option>
-                        {kelasList.map((k) => (
-                          <option key={k.id} value={String(k.id)}>
-                            {k.nama_kelas}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative" ref={quizBKelasDropdownRef}>
+                        <div
+                          onClick={() => setShowQuizBKelasDropdown(true)}
+                          className={`w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border transition-all flex items-center gap-2 cursor-pointer ${
+                            showQuizBKelasDropdown
+                              ? 'border-teal-500 ring-2 ring-teal-500/20 shadow-sm'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-teal-400'
+                          }`}
+                        >
+                          <Search size={14} className="text-gray-400 shrink-0" />
+                          <input
+                            type="text"
+                            placeholder="Semua Kelas Madin"
+                            value={
+                              showQuizBKelasDropdown
+                                ? quizBKelasSearch
+                                : (kelasList.find((k: any) => String(k.id || k.kelas_id) === String(quizBModalForm.kelas_madin_id))?.nama_kelas || (quizBModalForm.kelas_madin_id ? `Kelas ID: ${quizBModalForm.kelas_madin_id}` : 'Semua Kelas Madin'))
+                            }
+                            onChange={(e) => {
+                              setQuizBKelasSearch(e.target.value);
+                              setShowQuizBKelasDropdown(true);
+                            }}
+                            onFocus={() => setShowQuizBKelasDropdown(true)}
+                            className="w-full bg-transparent outline-none text-xs text-gray-800 dark:text-gray-100 placeholder:text-gray-400 font-medium cursor-text min-w-0"
+                            autoComplete="off"
+                          />
+                          {quizBModalForm.kelas_madin_id && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQuizBModalForm((prev: any) => ({ ...prev, kelas_madin_id: '' }));
+                                setQuizBKelasSearch('');
+                              }}
+                              className="text-gray-400 hover:text-rose-500 shrink-0 p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                              title="Kembalikan ke semua kelas"
+                            >
+                              <X size={13} />
+                            </button>
+                          )}
+                          <ChevronDown
+                            size={14}
+                            className={`text-gray-400 shrink-0 transition-transform ${
+                              showQuizBKelasDropdown ? 'rotate-180 text-teal-600' : ''
+                            }`}
+                          />
+                        </div>
+
+                        {/* Floating List Target Kelas */}
+                        {showQuizBKelasDropdown && (
+                          <div className="absolute left-0 right-0 top-full mt-1 z-40 max-h-52 overflow-y-auto bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700/60 animate-[fadeIn_0.1s_ease-out]">
+                            <button
+                              type="button"
+                              onMouseDown={() => {
+                                setQuizBModalForm((prev: any) => ({ ...prev, kelas_madin_id: '' }));
+                                setQuizBKelasSearch('');
+                                setShowQuizBKelasDropdown(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                                !quizBModalForm.kelas_madin_id
+                                  ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 font-bold'
+                                  : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 italic'
+                              }`}
+                            >
+                              <span>Semua Kelas Madin</span>
+                              {!quizBModalForm.kelas_madin_id && <Check size={14} className="text-teal-600 dark:text-teal-400 shrink-0" />}
+                            </button>
+
+                            {kelasList
+                              .filter((k: any) => {
+                                if (!quizBKelasSearch.trim()) return true;
+                                const s = quizBKelasSearch.toLowerCase();
+                                return (k.nama_kelas || '').toLowerCase().includes(s);
+                              })
+                              .map((k: any) => {
+                                const kId = String(k.id || k.kelas_id);
+                                const isSelected = String(quizBModalForm.kelas_madin_id) === kId;
+                                return (
+                                  <button
+                                    key={kId}
+                                    type="button"
+                                    onMouseDown={() => {
+                                      setQuizBModalForm((prev: any) => ({ ...prev, kelas_madin_id: kId }));
+                                      setQuizBKelasSearch('');
+                                      setShowQuizBKelasDropdown(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center justify-between cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 font-bold'
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
+                                    }`}
+                                  >
+                                    <span className="truncate">{k.nama_kelas}</span>
+                                    {isSelected && <Check size={14} className="text-teal-600 dark:text-teal-400 shrink-0" />}
+                                  </button>
+                                );
+                              })}
+
+                            {kelasList.filter((k: any) => {
+                              if (!quizBKelasSearch.trim()) return true;
+                              const s = quizBKelasSearch.toLowerCase();
+                              return (k.nama_kelas || '').toLowerCase().includes(s);
+                            }).length === 0 && (
+                              <div className="p-3 text-xs text-gray-400 italic text-center">
+                                Kelas tidak ditemukan
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
