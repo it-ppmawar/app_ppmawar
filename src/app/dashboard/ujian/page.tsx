@@ -297,10 +297,11 @@ export default function UjianCBTPage() {
   const [selectedExamForLive, setSelectedExamForLive] = useState<ExamItem | null>(null);
   const [liveProctorData, setLiveProctorData] = useState<any>(null);
   const [loadingLiveProctor, setLoadingLiveProctor] = useState(false);
-  const [liveProctorFilter, setLiveProctorFilter] = useState<'semua' | 'sedang_mengerjakan' | 'belum_masuk' | 'selesai' | 'didiskualifikasi'>('semua');
+  const [liveProctorFilter, setLiveProctorFilter] = useState<'semua' | 'sedang_mengerjakan' | 'belum_masuk' | 'selesai' | 'melanggar' | 'didiskualifikasi'>('semua');
   const [liveAutoRefresh, setLiveAutoRefresh] = useState(true);
   const [liveCountdown, setLiveCountdown] = useState(5);
   const [actionResetLoading, setActionResetLoading] = useState<number | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   // Fungsi Fetch Data Live Proctoring
   const fetchLiveProctorData = async (examId: number) => {
@@ -4841,76 +4842,96 @@ export default function UjianCBTPage() {
             {/* Area Gulir Terpadu: Dimulai langsung dari bawah header agar ruang pantau lapang di HP */}
             <div className="flex-1 overflow-y-auto flex flex-col">
               {/* Statistik Cepat / Quick Badges */}
-              <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 grid grid-cols-3 sm:grid-cols-5 gap-2 shrink-0">
-                {/* Baris 1 (HP): Total Peserta memenuhi 1 baris */}
-                <div className="col-span-3 sm:col-span-1 bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 shadow-2xs">
-                  <span className="text-[10px] font-bold text-gray-400 block uppercase">Total Peserta</span>
-                  <span className="text-base sm:text-lg font-black text-gray-800 dark:text-gray-100">
-                    {liveProctorData?.summary?.total_peserta || 0}
-                  </span>
-                  <span className="text-[10px] text-gray-400 ml-1">Santri</span>
-                </div>
+              {(() => {
+                const countMelanggar = (liveProctorData?.participants || []).filter((p: any) => (p.jumlah_pelanggaran || 0) > 0).length;
+                return (
+                  <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 grid grid-cols-6 sm:grid-cols-6 gap-2 shrink-0">
+                    {/* Baris 1 (HP): Total Peserta memenuhi 1 baris */}
+                    <div className="col-span-6 sm:col-span-1 bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 shadow-2xs">
+                      <span className="text-[10px] font-bold text-gray-400 block uppercase">Total Peserta</span>
+                      <span className="text-base sm:text-lg font-black text-gray-800 dark:text-gray-100">
+                        {liveProctorData?.summary?.total_peserta || 0}
+                      </span>
+                      <span className="text-[10px] text-gray-400 ml-1">Santri</span>
+                    </div>
 
-                {/* Baris 2 (HP): Mengerjakan, Belum Masuk, Selesai berdampingan sama rata 3 kolom */}
-                <div className="col-span-1 bg-emerald-50/70 dark:bg-emerald-950/30 p-2.5 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/40 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase truncate">Mengerjakan</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                    {/* Baris 2 (HP): Mengerjakan, Belum Masuk, Selesai berdampingan sama rata 3 kolom */}
+                    <div className="col-span-2 sm:col-span-1 bg-emerald-50/70 dark:bg-emerald-950/30 p-2.5 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/40 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase truncate">Mengerjakan</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                      </div>
+                      <span className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-300 block">
+                        {liveProctorData?.summary?.sedang_mengerjakan || 0}
+                      </span>
+                      <span className="text-[10px] text-emerald-600/70">Santri Live</span>
+                    </div>
+
+                    <div className="col-span-2 sm:col-span-1 bg-gray-100/70 dark:bg-gray-800/80 p-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs">
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 block uppercase truncate">Belum Masuk</span>
+                      <span className="text-base sm:text-lg font-black text-gray-700 dark:text-gray-300 block">
+                        {liveProctorData?.summary?.belum_masuk || 0}
+                      </span>
+                      <span className="text-[10px] text-gray-400">Santri</span>
+                    </div>
+
+                    <div className="col-span-2 sm:col-span-1 bg-blue-50/70 dark:bg-blue-950/30 p-2.5 rounded-2xl border border-blue-200/80 dark:border-blue-800/40 shadow-2xs">
+                      <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 block uppercase truncate">Selesai</span>
+                      <span className="text-base sm:text-lg font-black text-blue-700 dark:text-blue-300 block">
+                        {liveProctorData?.summary?.selesai || 0}
+                      </span>
+                      <span className="text-[10px] text-blue-600/70">Tersimpan</span>
+                    </div>
+
+                    {/* Baris 3 (HP): Melanggar dan Didiskualifikasi berdampingan dalam 1 baris */}
+                    <div className="col-span-3 sm:col-span-1 bg-amber-50/70 dark:bg-amber-950/30 p-2.5 rounded-2xl border border-amber-200/80 dark:border-amber-800/40 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase truncate">Melanggar</span>
+                        <AlertTriangle size={12} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                      </div>
+                      <span className="text-base sm:text-lg font-black text-amber-700 dark:text-amber-300 block">
+                        {countMelanggar}
+                      </span>
+                      <span className="text-[10px] text-amber-600/70">Pindah Layar</span>
+                    </div>
+
+                    <div className="col-span-3 sm:col-span-1 bg-rose-50/70 dark:bg-rose-950/30 p-2.5 rounded-2xl border border-rose-200/80 dark:border-rose-800/40 shadow-2xs">
+                      <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 block uppercase truncate">Didiskualifikasi</span>
+                      <span className="text-base sm:text-lg font-black text-rose-700 dark:text-rose-300 block">
+                        {liveProctorData?.summary?.didiskualifikasi || 0}
+                      </span>
+                      <span className="text-[10px] text-rose-600/70">Pelanggaran</span>
+                    </div>
                   </div>
-                  <span className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-300 block">
-                    {liveProctorData?.summary?.sedang_mengerjakan || 0}
-                  </span>
-                  <span className="text-[10px] text-emerald-600/70">Santri Live</span>
-                </div>
-
-                <div className="col-span-1 bg-gray-100/70 dark:bg-gray-800/80 p-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs">
-                  <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 block uppercase truncate">Belum Masuk</span>
-                  <span className="text-base sm:text-lg font-black text-gray-700 dark:text-gray-300 block">
-                    {liveProctorData?.summary?.belum_masuk || 0}
-                  </span>
-                  <span className="text-[10px] text-gray-400">Santri</span>
-                </div>
-
-                <div className="col-span-1 bg-blue-50/70 dark:bg-blue-950/30 p-2.5 rounded-2xl border border-blue-200/80 dark:border-blue-800/40 shadow-2xs">
-                  <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 block uppercase truncate">Selesai</span>
-                  <span className="text-base sm:text-lg font-black text-blue-700 dark:text-blue-300 block">
-                    {liveProctorData?.summary?.selesai || 0}
-                  </span>
-                  <span className="text-[10px] text-blue-600/70">Tersimpan</span>
-                </div>
-
-                {/* Baris 3 (HP): Didiskualifikasi memenuhi 1 baris paling bawah */}
-                <div className="col-span-3 sm:col-span-1 bg-rose-50/70 dark:bg-rose-950/30 p-2.5 rounded-2xl border border-rose-200/80 dark:border-rose-800/40 shadow-2xs">
-                  <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 block uppercase">Didiskualifikasi</span>
-                  <span className="text-base sm:text-lg font-black text-rose-700 dark:text-rose-300">
-                    {liveProctorData?.summary?.didiskualifikasi || 0}
-                  </span>
-                  <span className="text-[10px] text-rose-600/70 ml-1">Pelanggaran</span>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Filter Pills: 1 baris dengan scroll horizontal */}
               <div className="sticky top-0 z-10 px-2 sm:px-4 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xs shadow-2xs">
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
-                  {[
-                    { key: 'semua', label: 'Semua Peserta', count: liveProctorData?.summary?.total_peserta || 0 },
-                    { key: 'sedang_mengerjakan', label: '🟢 Mengerjakan', count: liveProctorData?.summary?.sedang_mengerjakan || 0 },
-                    { key: 'belum_masuk', label: '⚪ Belum Masuk', count: liveProctorData?.summary?.belum_masuk || 0 },
-                    { key: 'selesai', label: '✅ Selesai', count: liveProctorData?.summary?.selesai || 0 },
-                    { key: 'didiskualifikasi', label: '⛔ Diskualifikasi', count: liveProctorData?.summary?.didiskualifikasi || 0 },
-                  ].map((f) => (
-                    <button
-                      key={f.key}
-                      onClick={() => setLiveProctorFilter(f.key as any)}
-                      className={`px-2.5 py-1 sm:px-3 sm:py-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all shrink-0 cursor-pointer whitespace-nowrap ${
-                        liveProctorFilter === f.key
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
-                      }`}
-                    >
-                      {f.label} ({f.count})
-                    </button>
-                  ))}
+                  {(() => {
+                    const countMelanggar = (liveProctorData?.participants || []).filter((p: any) => (p.jumlah_pelanggaran || 0) > 0).length;
+                    return [
+                      { key: 'semua', label: 'Semua Peserta', count: liveProctorData?.summary?.total_peserta || 0 },
+                      { key: 'sedang_mengerjakan', label: '🟢 Mengerjakan', count: liveProctorData?.summary?.sedang_mengerjakan || 0 },
+                      { key: 'belum_masuk', label: '⚪ Belum Masuk', count: liveProctorData?.summary?.belum_masuk || 0 },
+                      { key: 'selesai', label: '✅ Selesai', count: liveProctorData?.summary?.selesai || 0 },
+                      { key: 'melanggar', label: '⚠️ Melanggar', count: countMelanggar },
+                      { key: 'didiskualifikasi', label: '⛔ Diskualifikasi', count: liveProctorData?.summary?.didiskualifikasi || 0 },
+                    ].map((f) => (
+                      <button
+                        key={f.key}
+                        onClick={() => setLiveProctorFilter(f.key as any)}
+                        className={`px-2.5 py-1 sm:px-3 sm:py-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all shrink-0 cursor-pointer whitespace-nowrap ${
+                          liveProctorFilter === f.key
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
+                        }`}
+                      >
+                        {f.label} ({f.count})
+                      </button>
+                    ));
+                  })()}
                 </div>
               </div>
 
@@ -4928,6 +4949,9 @@ export default function UjianCBTPage() {
                     if (liveProctorFilter === 'semua') return true;
                     if (liveProctorFilter === 'sedang_mengerjakan') {
                       return p.status === 'sedang_mengerjakan' || p.status === 'terputus';
+                    }
+                    if (liveProctorFilter === 'melanggar') {
+                      return (p.jumlah_pelanggaran || 0) > 0;
                     }
                     return p.status === liveProctorFilter;
                   });
@@ -4972,7 +4996,15 @@ export default function UjianCBTPage() {
                                 {/* Baris Header Santri: Foto + Nama Santri (di HP berdampingan, di PC foto di kiri) */}
                                 <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
                                   {/* Foto / Inisial Avatar Santri */}
-                                  <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden shrink-0 shadow-2xs">
+                                  <div
+                                    className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden shrink-0 shadow-2xs ${p.foto && p.foto !== '-' ? 'cursor-pointer hover:ring-2 hover:ring-emerald-400 transition-all' : ''}`}
+                                    onClick={() => {
+                                      if (p.foto && p.foto !== '-') {
+                                        setPreviewImage({ url: getFotoUrl(p.foto), title: p.nama_murid });
+                                      }
+                                    }}
+                                    title={p.foto && p.foto !== '-' ? 'Klik untuk lihat foto' : undefined}
+                                  >
                                     <div
                                       className={`absolute inset-0 flex items-center justify-center font-black text-xs sm:text-sm ${
                                         isDisq
@@ -5130,6 +5162,36 @@ export default function UjianCBTPage() {
               )}
             </div>
           </div>
+
+          {/* Fullscreen Photo Preview - muncul di atas semua modal */}
+          {previewImage && (
+            <div
+              className="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+              onClick={() => setPreviewImage(null)}
+            >
+              <div
+                className="relative max-w-sm w-full bg-gray-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-700"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-4 py-3 bg-gray-800 flex items-center justify-between border-b border-gray-700">
+                  <span className="font-bold text-white text-sm truncate">{previewImage.title}</span>
+                  <button
+                    onClick={() => setPreviewImage(null)}
+                    className="p-1.5 rounded-full bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white transition-colors shrink-0 ml-2"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="p-4 flex justify-center bg-black/60">
+                  <img
+                    src={previewImage.url}
+                    alt={previewImage.title}
+                    className="max-h-[65vh] w-auto object-contain rounded-xl shadow-lg"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Footer Modal 8: Di HP di bawah rata tengah, di PC di ujung kanan */}
           <div className="p-3.5 sm:p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2.5 sm:gap-3 text-xs text-gray-500 shrink-0 text-center sm:text-left">

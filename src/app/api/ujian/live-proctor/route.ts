@@ -226,6 +226,7 @@ export async function GET(request: Request) {
         sedang_mengerjakan: countSedang,
         belum_masuk: countBelum,
         selesai: countSelesai,
+        melanggar: participants.filter((p: any) => p.jumlah_pelanggaran > 0).length,
         didiskualifikasi: countDiskualifikasi,
       },
       participants,
