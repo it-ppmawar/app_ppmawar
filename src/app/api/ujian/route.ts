@@ -137,7 +137,7 @@ export async function GET(request: Request) {
        LEFT JOIN guru g ON u.guru_id = g.guru_id
        LEFT JOIN ujian_sesi_pengawas s ON u.id = s.ujian_id
        WHERE ${whereClause}
-       ORDER BY u.id DESC`,
+       ORDER BY u.judul ASC, u.id DESC`,
       params
     );
 

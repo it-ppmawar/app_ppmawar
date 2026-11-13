@@ -1505,14 +1505,17 @@ export default function UjianCBTPage() {
     });
   }, [exams, searchQ, filterJenis]);
 
-  // Daftar Ujian yang Ditampilkan Sesuai Tab:
+  // Daftar Ujian yang Ditampilkan Sesuai Tab (Diurutkan Abjad A-Z Natural):
   // - Tab 'daftar': Hanya ujian yang sesi pengawasnya aktif/terbuka (sesuai waktu pelaksanaan)
   // - Tab 'kelola': Seluruh paket ujian untuk dikelola oleh guru/admin
   const displayedExams = useMemo(() => {
-    if (mainTab === 'daftar') {
-      return filteredExams.filter((e) => e.status_sesi === 'buka');
-    }
-    return filteredExams;
+    const list = mainTab === 'daftar'
+      ? filteredExams.filter((e) => e.status_sesi === 'buka')
+      : filteredExams;
+
+    return [...list].sort((a, b) =>
+      a.judul.localeCompare(b.judul, 'id', { numeric: true, sensitivity: 'base' })
+    );
   }, [filteredExams, mainTab]);
 
   // Format Helper Waktu Menit:Detik
