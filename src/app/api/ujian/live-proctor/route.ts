@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     let muridList: any[] = [];
     if (exam.kelas_madin_id) {
       const [mRows] = await pool.execute<RowDataPacket[]>(
-        `SELECT murid_id, nama, nama as nama_murid, nis, jenis_kelamin
+        `SELECT murid_id, nama, nama as nama_murid, nis, jenis_kelamin, foto
          FROM murid 
          WHERE kelas_madin_id = ? OR kelas_madin_2_id = ?
          ORDER BY nama ASC`,
@@ -96,7 +96,7 @@ export async function GET(request: Request) {
       if (allMuridIds.size > 0) {
         const idArr = Array.from(allMuridIds);
         const [fallbackMurid] = await pool.execute<RowDataPacket[]>(
-          `SELECT murid_id, nama, nama as nama_murid, nis, jenis_kelamin
+          `SELECT murid_id, nama, nama as nama_murid, nis, jenis_kelamin, foto
            FROM murid 
            WHERE murid_id IN (${idArr.map(() => '?').join(',')})
            ORDER BY nama ASC`,
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
         muridList = fallbackMurid;
       } else {
         const [fallbackAll] = await pool.execute<RowDataPacket[]>(
-          `SELECT murid_id, nama, nama as nama_murid, nis, jenis_kelamin
+          `SELECT murid_id, nama, nama as nama_murid, nis, jenis_kelamin, foto
            FROM murid 
            ORDER BY nama ASC LIMIT 500`
         );
@@ -187,6 +187,7 @@ export async function GET(request: Request) {
         nama_murid: m.nama_murid,
         nis: m.nis,
         jenis_kelamin: m.jenis_kelamin,
+        foto: m.foto || null,
         status, // 'belum_masuk' | 'sedang_mengerjakan' | 'terputus' | 'selesai' | 'didiskualifikasi'
         is_live_online: isLiveOnline,
         total_soal: totalSoal,

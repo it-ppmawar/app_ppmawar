@@ -66,6 +66,23 @@ interface QuestionItem {
   pembahasan?: string | null;
 }
 
+// Helper untuk menentukan URL Foto Santri (Lokal vs Mitra)
+const getFotoUrl = (fotoName: string | null) => {
+  if (!fotoName || fotoName === '-') return '';
+  if (fotoName.startsWith('http://') || fotoName.startsWith('https://')) {
+    return fotoName;
+  }
+  if (fotoName.startsWith('foto_') || fotoName.startsWith('upload_') || fotoName.startsWith('profil_')) {
+    return `/uploads/${fotoName}`;
+  }
+  const baseUrl = process.env.NEXT_PUBLIC_API_MITRA_FOTO_URL || 'https://mawar.smartpesantren.id/sekretariat/berkas/';
+  const cleanFotoName = fotoName.startsWith('/') ? fotoName.substring(1) : fotoName;
+  if (cleanFotoName.includes('sekretariat/berkas')) {
+    return `https://mawar.smartpesantren.id/${cleanFotoName}`;
+  }
+  return `${baseUrl}${cleanFotoName}`;
+};
+
 export default function UjianCBTPage() {
   const [role, setRole] = useState<string>('santri');
   const [santriInfo, setSantriInfo] = useState<any>(null);
@@ -1500,7 +1517,7 @@ export default function UjianCBTPage() {
             <button
               onClick={() => handleSubmitExam(false, false)}
               disabled={submittingExam}
-              className="px-3 sm:px-3.5 py-1 sm:py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
+              className="w-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
             >
               <CheckCircle size={14} />
               <span>{submittingExam ? 'Mengirim...' : 'Selesai'}</span>
@@ -1533,7 +1550,7 @@ export default function UjianCBTPage() {
             <button
               onClick={toggleDarkMode}
               type="button"
-              className="px-3 sm:px-3.5 py-1 sm:py-1.5 bg-black/25 hover:bg-black/40 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/20 shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+              className="w-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 bg-black/25 hover:bg-black/40 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/20 shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
               title={isDarkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
             >
               {isDarkMode ? <Sun size={14} className="text-amber-300" /> : <Moon size={14} className="text-sky-200" />}
@@ -1548,7 +1565,7 @@ export default function UjianCBTPage() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 sm:p-7 shadow-sm border border-gray-200 dark:border-gray-700 space-y-6 flex-1 flex flex-col justify-between">
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3 gap-2">
-                  {/* Sisi Kiri: Badge Tipe Soal (Ukuran Presisi Sama Persis dengan Tombol Ragu-ragu) */}
+                  {/* Sisi Kiri: Badge Tipe Soal (Ukuran Presisi Sama Persis dengan Tombol Ragu) */}
                   <div className="w-[95px] sm:w-[110px] flex items-center justify-start shrink-0">
                     {curQ.tipe_soal === 'essay' ? (
                       <span className="w-full px-2.5 sm:px-3 py-1 rounded-xl text-xs font-bold inline-flex items-center justify-center bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 tracking-wider shadow-2xs">
@@ -1568,7 +1585,7 @@ export default function UjianCBTPage() {
                     </span>
                   </div>
 
-                  {/* Sisi Kanan: Tombol Ragu-ragu (Ukuran Presisi Sama Persis dengan Badge Kiri) */}
+                  {/* Sisi Kanan: Tombol Ragu (Ukuran Presisi Sama Persis dengan Badge Kiri) */}
                   <div className="w-[95px] sm:w-[110px] flex items-center justify-end shrink-0">
                     <button
                       onClick={() => {
@@ -1584,7 +1601,7 @@ export default function UjianCBTPage() {
                       }`}
                     >
                       <Flag size={13} className={flaggedQuestions.has(curQ.id) ? 'fill-amber-500 text-amber-600' : ''} />
-                      <span>Ragu-ragu</span>
+                      <span>Ragu</span>
                     </button>
                   </div>
                 </div>
@@ -1859,12 +1876,17 @@ export default function UjianCBTPage() {
           </div>
 
           <div>
+            {!isDisq && (
+              <p className="font-arabic text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 mb-1" dir="rtl">
+                الحمد لله
+              </p>
+            )}
             <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-gray-100">
               {isDisq
                 ? 'Ujian Dihentikan (Didiskualifikasi)'
                 : isWaitingEssay
-                ? 'Jawaban Berhasil Diserahkan!'
-                : 'Alhamdulillah, Ujian Selesai!'}
+                ? 'Jawaban Diserahkan!'
+                : 'Ujian Selesai!'}
             </h2>
             <p className="text-xs text-gray-400 mt-1">
               {examResult.message || 'Jawaban Anda telah berhasil terekam di sistem digital madrasah.'}
@@ -1957,15 +1979,6 @@ export default function UjianCBTPage() {
             <p className="text-teal-100/80 text-xs sm:text-sm mt-1 max-w-xl">
               Pelaksanaan ulangan harian, UTS, dan UAS resmi berbasis komputer/gadget santri dengan verifikasi token &amp; geolokasi.
             </p>
-
-            {santriInfo && (
-              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10 text-xs font-semibold text-emerald-100">
-                <User size={14} />
-                <span>
-                  Santri: <strong>{santriInfo.nama}</strong> ({santriInfo.nis || 'NIS -'})
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Menu Tombol Header: Berdampingan Presisi di HP, Responsif di PC */}
@@ -2081,6 +2094,20 @@ export default function UjianCBTPage() {
           )}
         </div>
       </div>
+
+      {/* Kartu Profil Santri: Sendirian Rata Tengah di Bawah Toolbar Filter */}
+      {santriInfo && (
+        <div className="flex justify-center w-full">
+          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-gray-800 shadow-xs border border-gray-100 dark:border-gray-700 text-xs sm:text-sm text-gray-700 dark:text-gray-200">
+            <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+              <User size={14} />
+            </div>
+            <span>
+              Santri: <strong className="text-emerald-700 dark:text-emerald-400 font-extrabold">{santriInfo.nama}</strong> <span className="text-gray-400 font-mono">({santriInfo.nis || 'NIS -'})</span>
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Grid Kartu Ujian (Rata Tengah) */}
       {loading ? (
@@ -4219,33 +4246,37 @@ export default function UjianCBTPage() {
                       className="bg-white dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700/80 p-4 sm:p-5 space-y-3 shadow-xs"
                     >
                       {/* Top Bar item */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-gray-100 dark:border-gray-700">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 font-black text-xs flex items-center justify-center">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-gray-100 dark:border-gray-700">
+                        {/* Nama Santri & Info Kelas: Bertumpuk 2 baris di HP agar longgar & utuh */}
+                        <div className="flex items-start sm:items-center gap-2.5">
+                          <span className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 font-black text-xs flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
                             {idx + 1}
                           </span>
-                          <strong className="text-sm text-gray-900 dark:text-gray-100">
-                            {item.nama_santri}
-                          </strong>
-                          <span className="text-xs text-gray-400">
-                            ({item.nis || '-'} &bull; {item.nama_kelas || 'Madin'})
-                          </span>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 min-w-0">
+                            <strong className="text-sm font-extrabold text-gray-900 dark:text-gray-100">
+                              {item.nama_santri}
+                            </strong>
+                            <span className="text-xs text-gray-400">
+                              ({item.nis || '-'} &bull; {item.nama_kelas || 'Madin'})
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                        {/* Badges Soal & Status: Bertumpuk 2 baris rata tengah di HP */}
+                        <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-end gap-1.5 sm:gap-2 text-center w-full sm:w-auto">
+                          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 whitespace-nowrap">
                             Soal No. {item.nomor_urut} &bull; Bobot Max: {item.bobot_maksimal} Poin
                           </span>
                           {item.status_koreksi === 'disetujui' ? (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200">
+                            <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 whitespace-nowrap">
                               Disetujui
                             </span>
                           ) : item.status_koreksi === 'dinilai_ai' ? (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200">
+                            <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 whitespace-nowrap">
                               Saran AI
                             </span>
                           ) : (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200">
+                            <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 whitespace-nowrap">
                               Belum Dinilai
                             </span>
                           )}
@@ -4420,15 +4451,15 @@ export default function UjianCBTPage() {
                 </button>
 
                 {/* Baris 1: Judul + Dot */}
-                <div className="flex items-center gap-2 pr-10">
+                <div className="flex items-center justify-center gap-2 pr-0 sm:pr-8">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
-                  <h3 className="font-black text-sm sm:text-base text-gray-900 dark:text-gray-100">
+                  <h3 className="font-black text-sm sm:text-base text-gray-900 dark:text-gray-100 text-center">
                     Ruang Pengawasan Ujian Real-Time
                   </h3>
                 </div>
 
-                {/* Baris 2: Subtitle tidak terpotong (wrap penuh) */}
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed break-words pr-10">
+                {/* Baris 2: Subtitle rata tengah agar lebih estetik */}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed break-words text-center">
                   {selectedExamForLive.judul} &bull; {selectedExamForLive.mata_pelajaran} &bull; {liveProctorData?.exam?.nama_kelas || selectedExamForLive.nama_kelas || 'Seluruh Kelas'} &bull; Token:{' '}
                   <span className="font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded text-[11px]">
                     {liveProctorData?.exam?.token_ujian || selectedExamForLive.token_ujian || '-'}
@@ -4596,29 +4627,51 @@ export default function UjianCBTPage() {
                                 : 'bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700'
                             }`}
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                              {/* Sisi Kiri & Tengah: Avatar + (Nama Santri menembus ke atas progress bar & Progress Bar di bawahnya) */}
-                              <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
-                                {/* Avatar */}
-                                <div
-                                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-black text-xs sm:text-sm shrink-0 ${
-                                    isDisq
-                                      ? 'bg-rose-500 text-white shadow-xs'
-                                      : isOnline
-                                      ? 'bg-emerald-600 text-white shadow-xs'
-                                      : isFinished
-                                      ? 'bg-blue-600 text-white'
-                                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                  }`}
-                                >
-                                  {p.nama_murid ? p.nama_murid.charAt(0).toUpperCase() : '?'}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+                              {/* Sisi Kiri & Tengah: Foto + Info Santri + Progress Bar */}
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 flex-1 min-w-0 w-full">
+                                {/* Baris Header Santri: Foto + Nama Santri (di HP berdampingan, di PC foto di kiri) */}
+                                <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+                                  {/* Foto / Inisial Avatar Santri */}
+                                  <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden shrink-0 shadow-2xs">
+                                    <div
+                                      className={`absolute inset-0 flex items-center justify-center font-black text-xs sm:text-sm ${
+                                        isDisq
+                                          ? 'bg-rose-500 text-white'
+                                          : isOnline
+                                          ? 'bg-emerald-600 text-white'
+                                          : isFinished
+                                          ? 'bg-blue-600 text-white'
+                                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                      }`}
+                                    >
+                                      {p.nama_murid ? p.nama_murid.charAt(0).toUpperCase() : '?'}
+                                    </div>
+                                    {p.foto && p.foto !== '-' && (
+                                      <img
+                                        src={getFotoUrl(p.foto)}
+                                        alt={p.nama_murid}
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none';
+                                        }}
+                                      />
+                                    )}
+                                  </div>
+
+                                  {/* Nama Santri di HP (tampil di sebelah foto) */}
+                                  <div className="min-w-0 flex-1 sm:hidden">
+                                    <h4 className="font-extrabold text-xs sm:text-sm text-gray-800 dark:text-gray-100 truncate">
+                                      {p.nama_murid}
+                                    </h4>
+                                  </div>
                                 </div>
 
-                                {/* Kolom Tengah: Atas (Nama santri menembus luas + NIS + Badge), Bawah (Progress Bar) */}
-                                <div className="flex-1 min-w-0 space-y-1.5">
-                                  {/* Baris Atas: Nama Santri leluasa ke kanan, NIS, dan Status */}
-                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                    <h4 className="font-extrabold text-xs sm:text-sm text-gray-800 dark:text-gray-100">
+                                {/* Konten Detail: Di HP merapat ke ujung kiri rata dengan foto, di PC berada di samping foto */}
+                                <div className="flex-1 min-w-0 w-full space-y-1.5">
+                                  {/* Baris Info: Nama Santri (di PC) + NIS & Status Badge (Merapat Penuh ke Ujung Kiri di HP) */}
+                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 w-full">
+                                    <h4 className="hidden sm:inline-block font-extrabold text-xs sm:text-sm text-gray-800 dark:text-gray-100">
                                       {p.nama_murid}
                                     </h4>
                                     <span className="text-[11px] text-gray-400">
@@ -4656,8 +4709,8 @@ export default function UjianCBTPage() {
                                     )}
                                   </div>
 
-                                  {/* Baris Bawah: Progress Bar Seragam */}
-                                  <div>
+                                  {/* Baris Bawah: Progress Bar (Merapat Penuh ke Ujung Kiri di HP) */}
+                                  <div className="w-full">
                                     <div className="flex items-center justify-between text-[11px] mb-1 font-bold">
                                       <span className="text-gray-600 dark:text-gray-300">
                                         Terjawab: <strong className="text-emerald-600 dark:text-emerald-400">{p.jumlah_terjawab}</strong> / {totalSoal} Soal
@@ -4739,16 +4792,16 @@ export default function UjianCBTPage() {
             </div>
           </div>
 
-          {/* Footer Modal 8: Info kiri, Tutup kanan */}
-          <div className="p-3.5 sm:p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3 text-xs text-gray-500 shrink-0">
-            <div className="flex items-center gap-2 text-[11px]">
+          {/* Footer Modal 8: Di HP di bawah rata tengah, di PC di ujung kanan */}
+          <div className="p-3.5 sm:p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2.5 sm:gap-3 text-xs text-gray-500 shrink-0 text-center sm:text-left">
+            <div className="flex items-center justify-center sm:justify-start gap-2 text-[11px]">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               <span>Pengawasan digital aktif: memantau kehadiran, progress butir soal, dan pelanggaran layar real-time.</span>
             </div>
             <button
               type="button"
               onClick={() => setShowLiveProctorModal(false)}
-              className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold text-xs transition-colors cursor-pointer shadow-2xs active:scale-95 shrink-0"
+              className="px-6 sm:px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold text-xs transition-colors cursor-pointer shadow-2xs active:scale-95 shrink-0"
             >
               Tutup
             </button>
