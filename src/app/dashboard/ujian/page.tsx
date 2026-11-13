@@ -2255,8 +2255,8 @@ export default function UjianCBTPage() {
                         </button>
 
                         {isPengajarOrAdmin && (
-                          <div className="flex items-center justify-end text-xs pt-1 px-1 gap-2 text-gray-400">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center text-xs pt-1.5 px-1 text-gray-400">
+                            <div className="flex items-center justify-center flex-wrap gap-3 sm:gap-4">
                               <button
                                 onClick={() => openLiveProctorModal(exam)}
                                 className="text-blue-600 dark:text-blue-400 hover:underline font-bold text-[11px] flex items-center gap-1 cursor-pointer"
@@ -4019,7 +4019,7 @@ export default function UjianCBTPage() {
                   {/* Tabel Peringkat (Bisa Digeser / Di-scroll pada Mobile) */}
                   <div className="space-y-1">
                     <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-800 touch-pan-x overscroll-x-contain shadow-2xs">
-                      <table className="min-w-[680px] w-full text-sm">
+                      <table className="min-w-[760px] w-full text-sm">
                         <thead>
                           <tr className="bg-gray-50 dark:bg-gray-800/60 text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">
                             <th className="px-3 py-2.5 text-left">#</th>
@@ -4027,8 +4027,8 @@ export default function UjianCBTPage() {
                             <th className="px-3 py-2.5 text-left">NIS</th>
                             <th className="px-3 py-2.5 text-center">Nilai</th>
                             <th className="px-3 py-2.5 text-center">Benar (PG)</th>
-                            <th className="px-3 py-2.5 text-center">Pengawasan</th>
-                            <th className="px-3 py-2.5 text-center">Status</th>
+                            <th className="px-3 py-2.5 text-center min-w-[150px] whitespace-nowrap">Pengawasan</th>
+                            <th className="px-3 py-2.5 text-center min-w-[130px] whitespace-nowrap">Status</th>
                             <th className="px-3 py-2.5 text-center">Aksi</th>
                           </tr>
                         </thead>
@@ -4062,35 +4062,38 @@ export default function UjianCBTPage() {
                                 <td className="px-3 py-3 text-center text-xs text-gray-600 dark:text-gray-300">
                                   {h.jumlah_benar}/{h.total_soal}
                                 </td>
-                                <td className="px-3 py-3 text-center text-xs">
+                                <td className="px-3 py-3 text-center text-xs whitespace-nowrap">
                                   {isDisq ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-extrabold text-[10px] border border-rose-200">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-extrabold text-[10px] border border-rose-200 dark:border-rose-800">
                                       ⛔ Diskualifikasi
                                     </span>
                                   ) : Number(h.jumlah_pelanggaran || 0) > 0 ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-bold text-[10px] border border-amber-200">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-bold text-[10px] border border-amber-200 dark:border-amber-800">
                                       ⚠️ {h.jumlah_pelanggaran}x Pindah Layar
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px] font-bold">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
                                       <ShieldCheck size={11} /> Tertib (0x)
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-3 py-3 text-center">
+                                <td className="px-3 py-3 text-center whitespace-nowrap">
                                   {isDisq ? (
-                                    <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold">Gugur</span>
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-extrabold text-[10px] border border-rose-200 dark:border-rose-800">
+                                      ⛔ Gugur
+                                    </span>
                                   ) : isWaitingEssay ? (
-                                    <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 text-[10px] font-extrabold">
-                                      Antre Essay
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 text-[10px] font-extrabold border border-purple-200 dark:border-purple-800">
+                                      <Sparkles size={10} className="text-purple-600 dark:text-purple-400" />
+                                      <span>Antre Essay</span>
                                     </span>
                                   ) : h.status_lulus ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
-                                      <Check size={10} /> Lulus
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
+                                      <Check size={11} /> Lulus
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 text-[10px] font-bold">
-                                      <X size={10} /> Remedial
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 text-[10px] font-bold border border-rose-200 dark:border-rose-800">
+                                      <X size={11} /> Remedial
                                     </span>
                                   )}
                                 </td>
@@ -4687,18 +4690,18 @@ export default function UjianCBTPage() {
                                 </div>
                               </div>
 
-                              {/* Sisi Kanan: Pindah Layar (1 baris inline) & Tombol Reset Sesi Bertumpuk — Lebar Tetap di PC agar seragam */}
-                              <div className="sm:w-48 shrink-0 flex flex-col items-start sm:items-end justify-center gap-1.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-800">
-                                {/* Catatan Pelanggaran — 1 baris inline */}
-                                <div className="text-right">
+                              {/* Sisi Kanan (Bawah di HP): Pindah Layar (1 baris inline) & Tombol Reset Sesi — Berdampingan 1 Baris di HP agar lebih tipis, Bertumpuk di PC */}
+                              <div className="w-full sm:w-48 shrink-0 flex flex-row items-center justify-between sm:flex-col sm:items-end sm:justify-center gap-2 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-800">
+                                {/* Catatan Pelanggaran — 1 baris inline tidak terpotong */}
+                                <div className="text-left sm:text-right">
                                   {p.jumlah_pelanggaran === 0 && !isDisq ? (
-                                    <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-600 dark:text-emerald-400">
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                                       <ShieldCheck size={13} />
                                       <span>Pindah Layar: 0x (Tertib)</span>
                                     </span>
                                   ) : (
                                     <span
-                                      className={`inline-flex items-center gap-1 text-[11px] font-black ${
+                                      className={`inline-flex items-center gap-1 text-[11px] font-black whitespace-nowrap ${
                                         isDisq || p.jumlah_pelanggaran >= (selectedExamForLive.max_pelanggaran || 3)
                                           ? 'text-rose-600 dark:text-rose-400 animate-pulse'
                                           : 'text-amber-600 dark:text-amber-400'
@@ -4717,7 +4720,7 @@ export default function UjianCBTPage() {
                                     type="button"
                                     disabled={actionResetLoading === p.murid_id}
                                     onClick={() => handleResetSantriLive(p.murid_id, p.nama_murid)}
-                                    className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-bold transition-all border border-amber-200 dark:border-amber-800/50 flex items-center gap-1 shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
+                                    className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-bold transition-all border border-amber-200 dark:border-amber-800/50 flex items-center gap-1 shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
                                     title="Izinkan santri masuk kembali dan mengulang pengerjaan jika ada kendala teknis"
                                   >
                                     <RefreshCw size={12} className={actionResetLoading === p.murid_id ? 'animate-spin' : ''} />
