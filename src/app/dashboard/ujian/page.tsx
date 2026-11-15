@@ -2975,18 +2975,18 @@ export default function UjianCBTPage() {
                 <X size={18} />
               </button>
               <div className="border-b border-gray-100 dark:border-gray-800 pb-4 pr-9">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-2xl bg-teal-100 dark:bg-teal-950/60 flex items-center justify-center text-teal-600 dark:text-teal-400 shrink-0">
-                    <Sparkles size={18} />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-base text-gray-800 dark:text-gray-100">
+                <div>
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-teal-100 dark:bg-teal-950/60 flex items-center justify-center text-teal-600 dark:text-teal-400 shrink-0">
+                      <Sparkles size={18} />
+                    </div>
+                    <h3 className="font-extrabold text-base sm:text-lg text-gray-800 dark:text-gray-100">
                       Impor Paket Ujian dari QuizB
                     </h3>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                      Tarik butir soal dari quizb.my.id langsung menjadi paket ujian CBT santri PPMAWAR.
-                    </p>
                   </div>
+                  <p className="text-xs text-gray-400 dark:text-gray-400 mt-1.5 sm:mt-1 leading-relaxed break-words">
+                    Tarik butir soal dari quizb.my.id langsung menjadi paket ujian CBT santri PPMAWAR.
+                  </p>
                 </div>
               </div>
             </div>
@@ -2995,20 +2995,22 @@ export default function UjianCBTPage() {
             <form onSubmit={handleExecuteImportQuizBPaket} className="flex flex-col flex-1 overflow-hidden">
               <div className="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm">
                 {/* 1. Pilih Kuis QuizB */}
-                <div className="bg-teal-50/70 dark:bg-teal-950/20 p-4 rounded-2xl border border-teal-200 dark:border-teal-800/40 space-y-3">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-teal-900 dark:text-teal-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="font-bold text-xs text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
                       <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
                       Langkah 1: Pilih Kuis dari Platform QuizB
                     </span>
                     <button
                       type="button"
                       onClick={loadQuizzesForImport}
-                      className="text-[11px] font-bold text-teal-700 dark:text-teal-300 hover:underline flex items-center gap-1"
+                      className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 cursor-pointer"
                     >
                       <RefreshCw size={11} /> Refresh Daftar
                     </button>
                   </div>
+
+                  <div className="bg-teal-50/70 dark:bg-teal-950/20 p-4 rounded-2xl border border-teal-200 dark:border-teal-800/40 space-y-3">
 
                   {/* Combobox Searchable Dropdown Terpadu: 1 Kolom Saja */}
                   <div className="relative" ref={quizBDropdownRef}>
@@ -3184,6 +3186,7 @@ export default function UjianCBTPage() {
                       ⚠️ Tidak ada butir soal yang ditemukan pada kuis ini di QuizB. Paket ujian tetap dapat dibuat kosong.
                     </p>
                   ) : null}
+                  </div>
                 </div>
 
                 {/* 2. Pengaturan Paket Ujian CBT di PPMAWAR */}
@@ -3568,55 +3571,64 @@ export default function UjianCBTPage() {
       {showSoalModal && selectedExamForSoal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 pb-20 sm:pb-5 bg-black/70 backdrop-blur-xs overflow-y-auto animate-[fadeIn_0.15s_ease-out]">
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden my-auto">
-            <div className="p-4 sm:p-5 bg-emerald-800 text-white shrink-0 relative">
-              {/* X Button — pojok kanan atas */}
-              <button
-                onClick={() => setShowSoalModal(false)}
-                className="absolute top-4 right-4 p-1.5 text-emerald-200 hover:text-white rounded-lg transition-colors z-10"
-              >
-                <X size={20} />
-              </button>
-
-              <div className="pr-9">
-                <h3 className="font-extrabold text-base text-white flex items-center gap-2">
-                  <BookOpen size={18} />
-                  <span>Bank Soal: {selectedExamForSoal.judul}</span>
-                </h3>
-                <p className="text-xs text-emerald-200">
-                  {selectedExamForSoal.mata_pelajaran} &bull; Total {questions.length} Butir Soal Tersimpan
-                </p>
-              </div>
-
-              {/* Action Buttons: Template Excel, Upload Excel — rata tengah */}
-              <div className="flex items-center justify-center flex-wrap gap-2 mt-3">
-                <input
-                  type="file"
-                  ref={excelFileInputRef}
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleExcelFileSelected}
-                  className="hidden"
-                />
-
+            {/* Header Modal 3: Model Verifikasi Ruang Ujian / Token & Sesi (Garis pembatas tidak sampai ujung) */}
+            <div className="px-5 sm:px-6 pt-5 sm:pt-6 shrink-0 relative">
+              <div className="border-b border-gray-100 dark:border-gray-800 pb-4">
+                {/* Tombol Tutup (X) Konsisten di Pojok Kanan Atas */}
                 <button
-                  type="button"
-                  onClick={handleDownloadTemplate}
-                  className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition-all border border-white/20 shadow-xs"
-                  title="Unduh format file Excel untuk input soal PG dan Essay"
+                  onClick={() => setShowSoalModal(false)}
+                  className="absolute top-5 right-5 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl transition-colors cursor-pointer"
+                  title="Tutup Modal"
                 >
-                  <FileText size={14} />
-                  <span>Template Excel</span>
+                  <X size={20} />
                 </button>
 
-                <button
-                  type="button"
-                  disabled={importingExcelSoal}
-                  onClick={() => excelFileInputRef.current?.click()}
-                  className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-amber-950 font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 disabled:opacity-50"
-                  title="Unggah file Excel yang sudah diisi soal dan jawaban"
-                >
-                  <Sparkles size={14} />
-                  <span>{importingExcelSoal ? 'Mengimpor...' : 'Impor dari Excel'}</span>
-                </button>
+                {/* Info Judul & Mapel */}
+                <div className="pr-10">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-300 flex items-center justify-center font-bold shrink-0">
+                      <BookOpen size={18} />
+                    </div>
+                    <h3 className="font-extrabold text-base sm:text-lg text-gray-900 dark:text-gray-100">
+                      Bank Soal: {selectedExamForSoal.judul}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5 sm:mt-1 leading-relaxed break-words">
+                    {selectedExamForSoal.mata_pelajaran} &bull; Total {questions.length} Butir Soal Tersimpan
+                  </p>
+                </div>
+
+                {/* Action Buttons: Template Excel, Upload Excel — rata tengah */}
+                <div className="flex items-center justify-center flex-wrap gap-2 mt-3">
+                  <input
+                    type="file"
+                    ref={excelFileInputRef}
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleExcelFileSelected}
+                    className="hidden"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadTemplate}
+                    className="px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/80 hover:dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold text-xs flex items-center gap-1.5 transition-all border border-gray-200 dark:border-gray-600 shadow-xs cursor-pointer active:scale-95"
+                    title="Unduh format file Excel untuk input soal PG dan Essay"
+                  >
+                    <FileText size={14} className="text-emerald-600 dark:text-emerald-400" />
+                    <span>Template Excel</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={importingExcelSoal}
+                    onClick={() => excelFileInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                    title="Unggah file Excel yang sudah diisi soal dan jawaban"
+                  >
+                    <Sparkles size={14} />
+                    <span>{importingExcelSoal ? 'Mengimpor...' : 'Impor dari Excel'}</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -4529,19 +4541,19 @@ export default function UjianCBTPage() {
                   <X size={20} />
                 </button>
 
-                {/* Info Judul & Mapel */}
-                <div className="flex items-center gap-3 pr-10">
-                  <div className="w-9 h-9 rounded-2xl bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-300 flex items-center justify-center font-bold shrink-0">
-                    <Sparkles size={18} />
-                  </div>
-                  <div className="min-w-0">
+                {/* Info Judul & Mapel: di HP teks baris kedua merapat ke kiri sejajar ikon */}
+                <div className="pr-10">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-300 flex items-center justify-center font-bold shrink-0">
+                      <Sparkles size={18} />
+                    </div>
                     <h3 className="font-extrabold text-base sm:text-lg text-gray-900 dark:text-gray-100">
                       Koreksi Essay &amp; Asisten AI
                     </h3>
-                    <p className="text-xs text-gray-400 mt-0.5 leading-relaxed break-words">
-                      {selectedExamForEssay.judul} &bull; {selectedExamForEssay.mata_pelajaran} &bull; Total {essayStudentAnswers.length} Lembar Jawaban Santri
-                    </p>
                   </div>
+                  <p className="text-xs text-gray-400 mt-1.5 sm:mt-1 leading-relaxed break-words">
+                    {selectedExamForEssay.judul} &bull; {selectedExamForEssay.mata_pelajaran} &bull; Total {essayStudentAnswers.length} Lembar Jawaban Santri
+                  </p>
                 </div>
 
                 {/* Tombol Analisis AI Rata Tengah (Hapus ikon tambahan, cukup emoji ⚡) */}
