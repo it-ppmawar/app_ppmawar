@@ -2996,21 +2996,22 @@ export default function UjianCBTPage() {
               <div className="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm">
                 {/* 1. Pilih Kuis QuizB */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
-                      Langkah 1: Pilih Kuis dari Platform QuizB
-                    </span>
-                    <button
-                      type="button"
-                      onClick={loadQuizzesForImport}
-                      className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <RefreshCw size={11} /> Refresh Daftar
-                    </button>
-                  </div>
+                  <span className="font-bold text-xs text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
+                    Langkah 1: Pilih Kuis dari Platform QuizB
+                  </span>
 
                   <div className="bg-teal-50/70 dark:bg-teal-950/20 p-4 rounded-2xl border border-teal-200 dark:border-teal-800/40 space-y-3">
+                    {/* Tombol Refresh Daftar: di HP rata tengah, di PC rata kanan */}
+                    <div className="flex items-center justify-center sm:justify-end">
+                      <button
+                        type="button"
+                        onClick={loadQuizzesForImport}
+                        className="text-[11px] font-bold text-teal-700 dark:text-teal-300 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <RefreshCw size={11} /> Refresh Daftar
+                      </button>
+                    </div>
 
                   {/* Combobox Searchable Dropdown Terpadu: 1 Kolom Saja */}
                   <div className="relative" ref={quizBDropdownRef}>
@@ -3191,7 +3192,8 @@ export default function UjianCBTPage() {
 
                 {/* 2. Pengaturan Paket Ujian CBT di PPMAWAR */}
                 <div className="space-y-3 pt-1">
-                  <span className="font-bold text-xs text-gray-800 dark:text-gray-200 uppercase tracking-wider block">
+                  <span className="font-bold text-xs text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <Settings size={14} className="text-emerald-600 dark:text-emerald-400" />
                     Langkah 2: Pengaturan Paket Ujian di PPMAWAR
                   </span>
 
