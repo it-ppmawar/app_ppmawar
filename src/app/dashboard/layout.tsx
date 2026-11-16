@@ -72,13 +72,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const notifKey = `notified_${schedule.title}_${schedule.time}_${new Date().toLocaleDateString()}`;
       if (!force && localStorage.getItem(notifKey)) return;
 
+      const targetUrl = schedule.quick_url || '/dashboard/absen';
+      const jadwalTag = `jadwal_aktif_${schedule.id}_${new Date().toLocaleDateString('sv-SE')}`;
+
       const showNotif = () => {
         const title = 'Jadwal Aktif: ' + schedule.title;
         const options = {
           body: `Waktunya mengajar ${schedule.title} (${schedule.time}). Silakan input absensi.`,
           icon: '/icon-192-v2.png',
           badge: '/icon-192-v2.png',
-          data: '/dashboard/absen',
+          tag: jadwalTag,
+          renotify: false,
+          actions: [
+            { action: 'open_absen', title: '📋 Input Absen Sekarang' }
+          ],
+          data: {
+            url: targetUrl,
+            quickUrl: targetUrl,
+            type: 'jadwal_aktif',
+            tag: jadwalTag,
+          },
           vibrate: [200, 100, 200, 100, 200, 100, 200],
           requireInteraction: true
         };
@@ -236,6 +249,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     window.addEventListener('pwa-available', checkPwa);
     window.addEventListener('pwa-closed', checkPwa); // Even if closed on screen, we want it in sidebar
 
+    // Listen for SW navigation messages (from push notification click)
+    const handleSwMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'NAVIGATE' && event.data.url) {
+        window.location.href = event.data.url;
+      }
+    };
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSwMessage);
+    }
+
     // Global Ctrl+K / Cmd+K shortcut untuk Command Palette
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -246,6 +269,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     window.addEventListener('keydown', handleGlobalKeyDown);
 
     return () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+      }
       window.removeEventListener('fingerprint-registered', handleFingerprintRegistered);
       window.removeEventListener('avatar-updated', handleAvatarUpdated);
       window.removeEventListener('storage', handleAvatarUpdated);

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
+import { createShortToken } from '@/lib/auth/shortToken';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,7 @@ const CRON_SECRET = process.env.CRON_SECRET || 'ppmawar-cron-2026';
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
 const VAPID_EMAIL = process.env.VAPID_EMAIL || 'mailto:admin@ppmawar.or.id';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.ppmawar.or.id';
 
 export async function GET(request: Request) {
   try {
@@ -49,7 +51,7 @@ export async function GET(request: Request) {
     const [madinRows] = await pool.query<RowDataPacket[]>(`
       SELECT j.jadwal_id as id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran,
              m.nama_kelas as kelas_nama, 'madin' as tipe,
-             g.guru_id, g.nama as guru_nama
+             g.guru_id, g.nama as guru_nama, g.user_id
       FROM jadwal_madin j
       JOIN kelas_madin m ON j.kelas_madin_id = m.kelas_id
       JOIN guru g ON j.guru_id = g.guru_id
@@ -59,7 +61,7 @@ export async function GET(request: Request) {
     const [quranRows] = await pool.query<RowDataPacket[]>(`
       SELECT j.id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran,
              q.nama_kelas as kelas_nama, 'quran' as tipe,
-             g.guru_id, g.nama as guru_nama
+             g.guru_id, g.nama as guru_nama, g.user_id
       FROM jadwal_quran j
       JOIN kelas_quran q ON j.kelas_quran_id = q.id
       JOIN guru g ON j.guru_id = g.guru_id
@@ -69,7 +71,7 @@ export async function GET(request: Request) {
     const [kegiatanRows] = await pool.query<RowDataPacket[]>(`
       SELECT jk.kegiatan_id as id, jk.jam_mulai, jk.jam_selesai, jk.nama_kegiatan as mata_pelajaran,
              k.nama_kamar as kelas_nama, 'kegiatan' as tipe,
-             g.guru_id, g.nama as guru_nama
+             g.guru_id, g.nama as guru_nama, g.user_id
       FROM jadwal_kegiatan jk
       JOIN kamar k ON jk.kamar_id = k.kamar_id
       JOIN guru g ON jk.guru_id = g.guru_id
@@ -88,6 +90,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, sent: 0, message: 'Tidak ada jadwal dalam 30 menit ke depan.' });
     }
 
+    // Ambil pengaturan waktu tenggang (jam)
+    let waktuTenggang = 3;
+    try {
+      const [settingRows] = await pool.execute<RowDataPacket[]>(
+        'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "waktu_tenggang_absensi" LIMIT 1'
+      );
+      if (settingRows.length > 0 && settingRows[0].nilai) {
+        const parsed = parseInt(settingRows[0].nilai);
+        if (!isNaN(parsed) && parsed > 0) waktuTenggang = parsed;
+      }
+    } catch (_) {}
+
     // Import web-push
     const webpush = require('web-push');
     webpush.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -96,6 +110,28 @@ export async function GET(request: Request) {
     const errors: string[] = [];
 
     for (const jadwal of upcoming) {
+      // Generate quick token untuk guru ini
+      let quickUrl = `${APP_URL}/dashboard/absen`;
+      try {
+        const todayDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+        const quickPayload: any = {
+          type: 'quick_absen',
+          guru_id: jadwal.guru_id,
+          guru_nama: jadwal.guru_nama,
+          user_id: jadwal.user_id || null,
+          jadwal_id: Number(jadwal.id),
+          tipe: jadwal.tipe,
+          date: todayDate,
+          role: 'guru',
+          waktu_tenggang: waktuTenggang,
+          createdAt: Date.now()
+        };
+        const quickToken = await createShortToken(quickPayload, `${waktuTenggang}h`, 'quick_absen');
+        quickUrl = `${APP_URL}/absen/quick?token=${quickToken}`;
+      } catch (tokenErr: any) {
+        errors.push(`quick-token guru_id=${jadwal.guru_id}: ${tokenErr.message}`);
+      }
+
       // Ambil subscription guru terkait
       const [subscriptions] = await pool.query<RowDataPacket[]>(
         `SELECT endpoint, p256dh, auth_key FROM push_subscriptions
@@ -105,11 +141,25 @@ export async function GET(request: Request) {
 
       const jamMulai = jadwal.jam_mulai.substring(0, 5);
       const jamSelesai = jadwal.jam_selesai.substring(0, 5);
+      const jadwalTag = `jadwal_aktif_${jadwal.id}_${new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' })}`;
+
       const payload = JSON.stringify({
-        title: `⏰ Pengingat Mengajar — ${jadwal.kelas_nama}`,
+        title: `⏰ Pengingat Mengajar – ${jadwal.kelas_nama}`,
         body: `${jadwal.mata_pelajaran} | ${jamMulai} - ${jamSelesai} WIB | Mulai ~30 menit lagi`,
-        url: '/dashboard',
         vibrate: [300, 100, 300, 100, 300],
+        tag: jadwalTag,
+        renotify: false,
+        requireInteraction: true,
+        actions: [
+          { action: 'open_absen', title: '📋 Input Absen Sekarang' }
+        ],
+        data: {
+          url: quickUrl,
+          quickUrl: quickUrl,
+          type: 'jadwal_aktif',
+          jadwalId: jadwal.id,
+          tag: jadwalTag,
+        },
       });
 
       for (const sub of subscriptions) {

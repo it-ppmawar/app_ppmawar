@@ -3,6 +3,7 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
+import { createShortToken } from '@/lib/auth/shortToken';
 
 export const dynamic = 'force-dynamic';
 
@@ -149,6 +150,48 @@ export async function GET() {
           // ignore
         }
 
+        // Generate quick_url untuk guru
+        let quickUrl: string | null = null;
+        try {
+          const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.ppmawar.or.id';
+          let waktuTenggang = 3;
+          try {
+            const [settingRows] = await pool.execute<RowDataPacket[]>(
+              'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = "waktu_tenggang_absensi" LIMIT 1'
+            );
+            if (settingRows.length > 0 && settingRows[0].nilai) {
+              const parsed = parseInt(settingRows[0].nilai);
+              if (!isNaN(parsed) && parsed > 0) waktuTenggang = parsed;
+            }
+          } catch (_) {}
+
+          const todayDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+          const quickPayload: any = {
+            type: 'quick_absen',
+            guru_id: guruId,
+            user_id: payload.userId || null,
+            jadwal_id: Number(sched.id),
+            tipe: sched.tipe,
+            date: todayDate,
+            role: 'guru',
+            waktu_tenggang: waktuTenggang,
+            createdAt: Date.now()
+          };
+
+          // Ambil nama guru
+          try {
+            const [guruRows] = await pool.execute<RowDataPacket[]>(
+              'SELECT nama FROM guru WHERE guru_id = ? LIMIT 1', [guruId]
+            );
+            if (guruRows.length > 0) quickPayload.guru_nama = guruRows[0].nama;
+          } catch (_) {}
+
+          const quickToken = await createShortToken(quickPayload, `${waktuTenggang}h`, 'quick_absen');
+          quickUrl = `${APP_URL}/absen/quick?token=${quickToken}`;
+        } catch (_) {
+          quickUrl = null;
+        }
+
         activeSchedule = {
           id: sched.id,
           title: sched.tipe === 'kegiatan'
@@ -158,6 +201,7 @@ export async function GET() {
           status: currentSecs < mulaiSecs ? 'Persiapan Absen' : (currentSecs > selesaiSecs ? 'Batas Akhir Absen' : 'Sedang Berlangsung'),
           type: sched.tipe,
           sudah_absen: sudahAbsen,
+          quick_url: quickUrl,
         };
         break; // Show only the first active one
       }
