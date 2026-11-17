@@ -79,8 +79,8 @@ export async function GET(request: Request) {
       const isKepalaMadin = isKepalaPutra || isKepalaPutri || isKepalaAll;
 
       let rekapUrl = `${APP_URL}/dashboard/absensi?tab=rekap&bulan=${bulanNum}&tahun=${tahunNum}`;
-      let notifTitle = `📊 Rekap Absen ${bulanNama} ${tahunNum}`;
-      let notifBody = `Rekap kehadiran santri bulan ${bulanNama} ${tahunNum} sudah tersedia. Ketuk untuk melihat detail.`;
+      let notifTitle = `📊 Rekap Absen Mengajar Madin – ${bulanNama} ${tahunNum}`;
+      let notifBody = `Rekap kehadiran santri Madin bulan ${bulanNama} ${tahunNum} sudah tersedia. Ketuk untuk melihat detail kelas yang Anda ampu.`;
 
       if (isKepalaMadin) {
         const targetWilayah = isKepalaPutra ? 'putra' : isKepalaPutri ? 'putri' : 'all';
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
           guru_id: Number(sub.guru_id),
           bulan: bulanNum,
           tahun: tahunNum,
-          categories: ['madin', 'quran', 'kegiatan'],
+          categories: ['madin'], // Khusus Madin yang aktif saat ini
         }, '30d', 'rekap_guru', rekapRefKey);
         rekapUrl = `${APP_URL}/rekap/guru?token=${rekapToken}`;
       }
@@ -115,7 +115,7 @@ export async function GET(request: Request) {
         tag,
         renotify: false,
         requireInteraction: false,
-        actions: [{ action: 'open_rekap', title: '📋 Lihat Rekap Absen' }],
+        actions: [{ action: 'open_rekap', title: '📋 Lihat Rekap Madin' }],
         data: { url: rekapUrl, rekapUrl, type: 'rekap_bulanan', tag },
       });
 
@@ -149,7 +149,7 @@ export async function GET(request: Request) {
     for (const sub of waliSubs) {
       const previewToken = await createShortToken({
         muridId: Number(sub.murid_id),
-        tipe: 'all',
+        tipe: 'madin', // Khusus Madin yang aktif saat ini
         bulan: String(bulanNum),
         tahun: String(tahunNum),
         role: 'wali_murid',
@@ -159,13 +159,13 @@ export async function GET(request: Request) {
       const rekapUrl = `${APP_URL}/rekapitulasi/preview?t=${previewToken}`;
       const tag = `rekap_bulanan_${tahunNum}_${bulanNum}_wali_${sub.user_id}`;
       const pushPayload = JSON.stringify({
-        title: `📊 Rekap Absen ${bulanNama} ${tahunNum}`,
-        body: `Rekap kehadiran Ananda ${sub.santri_nama} bulan ${bulanNama} ${tahunNum} sudah tersedia. Ketuk untuk melihat raport presensi.`,
+        title: `📊 Rekap Absen Madin ${bulanNama} ${tahunNum}`,
+        body: `Rekap kehadiran Madin Ananda ${sub.santri_nama} bulan ${bulanNama} ${tahunNum} sudah tersedia. Ketuk untuk melihat raport presensi.`,
         vibrate: [200, 100, 200],
         tag,
         renotify: false,
         requireInteraction: false,
-        actions: [{ action: 'open_rekap', title: '📋 Lihat Rekap Absen' }],
+        actions: [{ action: 'open_rekap', title: '📋 Lihat Rekap Madin' }],
         data: { url: rekapUrl, rekapUrl, type: 'rekap_bulanan', tag },
       });
 
@@ -223,7 +223,7 @@ export async function GET(request: Request) {
         tag,
         renotify: false,
         requireInteraction: false,
-        actions: [{ action: 'open_rekap', title: '📋 Lihat Rekap Absen' }],
+        actions: [{ action: 'open_rekap', title: '📋 Lihat Rekap Madin' }],
         data: { url: rekapUrl, rekapUrl, type: 'rekap_bulanan', tag },
       });
 

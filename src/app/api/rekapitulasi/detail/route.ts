@@ -621,11 +621,14 @@ export async function GET(request: Request) {
       );
       rows = result;
     } else if ((effectiveTipe === "all" || effectiveTipe === "semua") && murid_id) {
+      // Saat ini yang aktif berjalan adalah absensi Madin saja, sehingga filter 'all' difokuskan ke Madin
       const dateWhereMadin = isRentang ? "a.tanggal BETWEEN ? AND ?" : "MONTH(a.tanggal) = ? AND YEAR(a.tanggal) = ?";
       const pMadin = isRentang ? [murid_id, tanggal_dari, tanggal_sampai] : [murid_id, bulan, tahun];
-      const pQuran = isRentang ? [murid_id, tanggal_dari, tanggal_sampai] : [murid_id, bulan, tahun];
-      const pKegiatan = isRentang ? [murid_id, tanggal_dari, tanggal_sampai] : [murid_id, bulan, tahun];
-
+      let subFilterWhere = "";
+      if (sub_filter && sub_filter.trim() !== "") {
+        subFilterWhere = " AND jm.mata_pelajaran = ?";
+        pMadin.push(sub_filter.trim());
+      }
       const [result] = await pool.execute<RowDataPacket[]>(
         `SELECT DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
           COALESCE(jm.hari, "") as hari,
@@ -641,46 +644,9 @@ export async function GET(request: Request) {
          LEFT JOIN murid mrd ON a.murid_id = mrd.murid_id
          LEFT JOIN kelas_madin km_murid ON mrd.kelas_madin_id = km_murid.kelas_id
          LEFT JOIN guru g ON jm.guru_id = g.guru_id
-         WHERE a.murid_id = ? AND ${dateWhereMadin}
-
-         UNION ALL
-
-         SELECT DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
-          COALESCE(jq.hari, "") as hari,
-          COALESCE(jq.jam_mulai, "") as jam_mulai,
-          COALESCE(jq.jam_selesai, "") as jam_selesai,
-          COALESCE(jq.mata_pelajaran, "Tahfidz / Tilawah") as mata_pelajaran,
-          COALESCE(kq_murid.nama_kelas, kq.nama_kelas, "-") as kelas_nama,
-          COALESCE(g.nama, "") as guru_nama,
-          "Quran" as tipe_label
-         FROM absensi_quran a
-         LEFT JOIN jadwal_quran jq ON a.jadwal_quran_id = jq.id
-         LEFT JOIN kelas_quran kq ON jq.kelas_quran_id = kq.id
-         LEFT JOIN murid mrd ON a.murid_id = mrd.murid_id
-         LEFT JOIN kelas_quran kq_murid ON mrd.kelas_quran_id = kq_murid.id
-         LEFT JOIN guru g ON jq.guru_id = g.guru_id
-         WHERE a.murid_id = ? AND ${dateWhereMadin}
-
-         UNION ALL
-
-         SELECT DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal, a.status, COALESCE(a.keterangan, "") as keterangan,
-          COALESCE(jk.hari, "") as hari,
-          COALESCE(jk.jam_mulai, "") as jam_mulai,
-          COALESCE(jk.jam_selesai, "") as jam_selesai,
-          COALESCE(jk.nama_kegiatan, "Kegiatan Asrama") as mata_pelajaran,
-          COALESCE(k_murid.nama_kamar, k.nama_kamar, "-") as kelas_nama,
-          COALESCE(g.nama, "") as guru_nama,
-          "Kegiatan" as tipe_label
-         FROM absensi_kegiatan a
-         LEFT JOIN jadwal_kegiatan jk ON a.kegiatan_id = jk.kegiatan_id
-         LEFT JOIN kamar k ON jk.kamar_id = k.kamar_id
-         LEFT JOIN murid mrd ON a.murid_id = mrd.murid_id
-         LEFT JOIN kamar k_murid ON mrd.kamar_id = k_murid.kamar_id
-         LEFT JOIN guru g ON jk.guru_id = g.guru_id
-         WHERE a.murid_id = ? AND ${dateWhereMadin}
-
-         ORDER BY tanggal DESC, jam_mulai ASC`,
-        [...pMadin, ...pQuran, ...pKegiatan]
+         WHERE a.murid_id = ? AND ${dateWhereMadin}${subFilterWhere}
+         ORDER BY a.tanggal DESC, jm.jam_mulai ASC`,
+        pMadin
       );
       rows = result;
     } else if (effectiveTipe === "guru" && guru_id) {
