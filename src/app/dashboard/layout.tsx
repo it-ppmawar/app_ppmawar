@@ -123,7 +123,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           if (data.success) {
             if (data.activeSchedule) {
               setActiveSchedule(data.activeSchedule);
-              triggerDeviceNotification(data.activeSchedule);
+              if (data.activeSchedule.sudah_absen) {
+                // Absen sudah dilakukan: dismiss notifikasi dari laci jika masih ada
+                try {
+                  if (typeof window !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    const todayDate = new Date().toLocaleDateString('sv-SE');
+                    const jadwalTag = `jadwal_aktif_${data.activeSchedule.id}_${todayDate}`;
+                    navigator.serviceWorker.controller.postMessage({ type: 'DISMISS_NOTIFICATION', tag: jadwalTag });
+                  }
+                } catch (_) {}
+              } else {
+                triggerDeviceNotification(data.activeSchedule);
+              }
             } else {
               setActiveSchedule(null);
             }

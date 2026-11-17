@@ -1125,6 +1125,19 @@ function QuickAbsenContent() {
       const result = await res.json();
 
       if (result.success || res.ok) {
+        // Dismiss notifikasi jadwal dari laci notifikasi (agar tidak terus nongkrong setelah absen selesai)
+        try {
+          if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+            const todayDate = new Date().toLocaleDateString('sv-SE');
+            const jadwalId = data?.jadwal?.jadwal_id || data?.jadwal_id;
+            if (jadwalId) {
+              const jadwalTag = `jadwal_aktif_${jadwalId}_${todayDate}`;
+              if (navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'DISMISS_NOTIFICATION', tag: jadwalTag });
+              }
+            }
+          }
+        } catch (_) {}
         setShowSuccessModal(true);
       } else {
         setError(result.error || 'Gagal menyimpan absensi.');

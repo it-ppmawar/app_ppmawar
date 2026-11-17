@@ -2266,7 +2266,7 @@ function NotifikasiContent() {
                       <SortButton<ReminderSortField> field="nama"  label="Nama Guru"    current={reminderSortField} dir={reminderSortDir} onSort={handleReminderSort} color="amber" />
                       <SortButton<ReminderSortField> field="kelas" label="Kelas / Kamar" current={reminderSortField} dir={reminderSortDir} onSort={handleReminderSort} color="amber" />
                       <SortButton<ReminderSortField> field="jam"   label="Jam"          current={reminderSortField} dir={reminderSortDir} onSort={handleReminderSort} color="amber" />
-                      <SortButton<ReminderSortField> field="tipe"  label="Kategori"     current={reminderSortField} dir={reminderSortDir} onSort={handleReminderSort} color="amber" />
+                      <SortButton<ReminderSortField> field="tipe"  label="Mapel/Kategori" current={reminderSortField} dir={reminderSortDir} onSort={handleReminderSort} color="amber" />
                     </div>
                   )}
 

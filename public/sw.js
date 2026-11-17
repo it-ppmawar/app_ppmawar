@@ -37,7 +37,12 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
+  // Untuk aksi input absen: JANGAN tutup notifikasi dulu.
+  // Notifikasi akan ditutup secara manual oleh halaman setelah absen berhasil disubmit,
+  // atau secara otomatis saat jadwal sudah lewat / tidak aktif.
+  if (event.action !== 'open_absen') {
+    event.notification.close();
+  }
 
   const notifData = event.notification.data || {};
   const action = event.action;
