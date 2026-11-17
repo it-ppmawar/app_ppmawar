@@ -77,7 +77,7 @@ self.addEventListener('notificationclick', (event) => {
           ? new URL(targetUrl).pathname
           : targetUrl.split('?')[0];
 
-        if (clientUrl.pathname.startsWith('/dashboard') || clientUrl.pathname.startsWith('/absen')) {
+        if (clientUrl.pathname.startsWith('/dashboard') || clientUrl.pathname.startsWith('/absen') || clientUrl.pathname.startsWith('/rekap') || clientUrl.pathname.startsWith('/rekapitulasi')) {
           if ('navigate' in client) {
             return client.navigate(targetUrl).then(c => c && c.focus());
           }
