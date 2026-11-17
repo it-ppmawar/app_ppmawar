@@ -53,7 +53,34 @@ export async function GET() {
       }, { headers: noCacheHeaders });
     }
 
-    if ((role === 'guru' && !guruId) || ((role === 'pengurus_asrama' || role === 'pengasuh') && !kamarId)) {
+    const userRoleLower = (role || '').toLowerCase();
+    let effGuruId = guruId;
+    if (userRoleLower === 'guru' && !effGuruId) {
+      try {
+        const [gRows] = await pool.execute<RowDataPacket[]>(
+          'SELECT guru_id FROM guru WHERE user_id = ? LIMIT 1',
+          [payload.userId]
+        );
+        if (gRows.length > 0) effGuruId = gRows[0].guru_id;
+      } catch (_) {}
+    }
+
+    let effKamarId = kamarId;
+    if ((userRoleLower === 'pengurus_asrama' || userRoleLower === 'pengasuh') && !effKamarId) {
+      try {
+        const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
+        const asramaName = await resolveAsrama(payload.userId, role, payload.username || '', payload.namaAsrama || null);
+        if (asramaName) {
+          const [kRows] = await pool.execute<RowDataPacket[]>(
+            'SELECT kamar_id FROM kamar WHERE nama_asrama = ? LIMIT 1',
+            [asramaName]
+          );
+          if (kRows.length > 0) effKamarId = kRows[0].kamar_id;
+        }
+      } catch (_) {}
+    }
+
+    if ((userRoleLower === 'guru' && !effGuruId) || ((userRoleLower === 'pengurus_asrama' || userRoleLower === 'pengasuh') && !effKamarId)) {
       return NextResponse.json({ success: true, activeSchedule: null }, { headers: noCacheHeaders });
     }
 
@@ -64,7 +91,7 @@ export async function GET() {
 
     let allSchedules: any[] = [];
 
-    if (role === 'guru') {
+    if (userRoleLower === 'guru') {
       const queryMadin = `
         SELECT j.jadwal_id as id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, 
                m.nama_kelas, 'madin' as tipe
@@ -74,7 +101,7 @@ export async function GET() {
       `;
       
       const queryQuran = `
-        SELECT j.jadwal_id as id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, 
+        SELECT j.id as id, j.jam_mulai, j.jam_selesai, j.mata_pelajaran, 
                q.nama_kelas, 'quran' as tipe
         FROM jadwal_quran j
         JOIN kelas_quran q ON j.kelas_quran_id = q.id
@@ -90,19 +117,19 @@ export async function GET() {
         WHERE jk.hari = ? AND jk.guru_id = ?
       `;
 
-      const [madinRows] = await pool.execute<RowDataPacket[]>(queryMadin, [currentDay, guruId]);
-      const [quranRows] = await pool.execute<RowDataPacket[]>(queryQuran, [currentDay, guruId]);
-      const [kegiatanGuruRows] = await pool.execute<RowDataPacket[]>(queryKegiatanGuru, [currentDay, guruId]);
+      const [madinRows] = await pool.execute<RowDataPacket[]>(queryMadin, [currentDay, effGuruId]);
+      const [quranRows] = await pool.execute<RowDataPacket[]>(queryQuran, [currentDay, effGuruId]);
+      const [kegiatanGuruRows] = await pool.execute<RowDataPacket[]>(queryKegiatanGuru, [currentDay, effGuruId]);
       allSchedules = [...madinRows, ...quranRows, ...kegiatanGuruRows];
-    } else if (role === 'pengurus_asrama' || role === 'pengasuh') {
+    } else if (userRoleLower === 'pengurus_asrama' || userRoleLower === 'pengasuh') {
       const queryKegiatan = `
         SELECT jk.kegiatan_id as id, jk.jam_mulai, jk.jam_selesai, jk.nama_kegiatan as mata_pelajaran,
                k.nama_kamar as nama_kelas, 'kegiatan' as tipe
         FROM jadwal_kegiatan jk
         JOIN kamar k ON jk.kamar_id = k.kamar_id
-        WHERE jk.hari = ? AND jk.kamar_id = ?
+        WHERE jk.hari = ? AND (jk.kamar_id = ? OR k.nama_asrama = ?)
       `;
-      const [kegiatanRows] = await pool.execute<RowDataPacket[]>(queryKegiatan, [currentDay, kamarId]);
+      const [kegiatanRows] = await pool.execute<RowDataPacket[]>(queryKegiatan, [currentDay, effKamarId, payload.namaAsrama || '']);
       allSchedules = [...kegiatanRows];
     }
 
@@ -168,22 +195,24 @@ export async function GET() {
           const todayDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
           const quickPayload: any = {
             type: 'quick_absen',
-            guru_id: guruId,
+            guru_id: effGuruId || null,
             user_id: payload.userId || null,
             jadwal_id: Number(sched.id),
             tipe: sched.tipe,
             date: todayDate,
-            role: 'guru',
+            role: userRoleLower,
             waktu_tenggang: waktuTenggang,
             createdAt: Date.now()
           };
 
           // Ambil nama guru
           try {
-            const [guruRows] = await pool.execute<RowDataPacket[]>(
-              'SELECT nama FROM guru WHERE guru_id = ? LIMIT 1', [guruId]
-            );
-            if (guruRows.length > 0) quickPayload.guru_nama = guruRows[0].nama;
+            if (effGuruId) {
+              const [guruRows] = await pool.execute<RowDataPacket[]>(
+                'SELECT nama FROM guru WHERE guru_id = ? LIMIT 1', [effGuruId]
+              );
+              if (guruRows.length > 0) quickPayload.guru_nama = guruRows[0].nama;
+            }
           } catch (_) {}
 
           const quickToken = await createShortToken(quickPayload, `${waktuTenggang}h`, 'quick_absen');
@@ -192,18 +221,31 @@ export async function GET() {
           quickUrl = null;
         }
 
-        activeSchedule = {
+        const candidateSchedule = {
           id: sched.id,
+          jadwal_id: sched.id,
           title: sched.tipe === 'kegiatan'
             ? `Kegiatan Kamar ${sched.nama_kelas}: ${sched.mata_pelajaran}`
             : `Mengajar ${sched.tipe === 'madin' ? 'Madin' : "Al-Qur'an"} ${sched.nama_kelas}`,
-          time: `${sched.jam_mulai.substring(0,5)} - ${sched.jam_selesai.substring(0,5)}`,
+          nama_kelas: sched.nama_kelas,
+          nama_kegiatan: sched.mata_pelajaran,
+          mata_pelajaran: sched.mata_pelajaran,
+          jam_mulai: sched.jam_mulai ? sched.jam_mulai.substring(0, 5) : '',
+          jam_selesai: sched.jam_selesai ? sched.jam_selesai.substring(0, 5) : '',
+          time: `${sched.jam_mulai ? sched.jam_mulai.substring(0, 5) : ''} - ${sched.jam_selesai ? sched.jam_selesai.substring(0, 5) : ''}`,
           status: currentSecs < mulaiSecs ? 'Persiapan Absen' : (currentSecs > selesaiSecs ? 'Batas Akhir Absen' : 'Sedang Berlangsung'),
           type: sched.tipe,
+          tipe: sched.tipe,
           sudah_absen: sudahAbsen,
           quick_url: quickUrl,
         };
-        break; // Show only the first active one
+
+        if (!sudahAbsen) {
+          activeSchedule = candidateSchedule;
+          break; // Utamakan jadwal aktif yang BELUM diabsen
+        } else if (!activeSchedule) {
+          activeSchedule = candidateSchedule; // Simpan sebagai cadangan jika semua sudah diabsen
+        }
       }
     }
 

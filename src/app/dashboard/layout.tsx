@@ -116,24 +116,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
 
     // Fetch Active Schedule dari DB (dengan cache-buster)
-    fetch(`/api/jadwal/active?t=${Date.now()}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          if (data.activeSchedule) {
-            setActiveSchedule(data.activeSchedule);
-            triggerDeviceNotification(data.activeSchedule);
-          } else {
-            setActiveSchedule(null);
+    const fetchActiveSchedule = () => {
+      fetch(`/api/jadwal/active?t=${Date.now()}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            if (data.activeSchedule) {
+              setActiveSchedule(data.activeSchedule);
+              triggerDeviceNotification(data.activeSchedule);
+            } else {
+              setActiveSchedule(null);
+            }
+            if (data.pendingRemindersCount !== undefined) {
+              setPendingRemindersCount(data.pendingRemindersCount);
+            } else {
+              setPendingRemindersCount(0);
+            }
           }
-          if (data.pendingRemindersCount !== undefined) {
-            setPendingRemindersCount(data.pendingRemindersCount);
-          } else {
-            setPendingRemindersCount(0);
-          }
-        }
-      })
-      .catch(console.error);
+        })
+        .catch(console.error);
+    };
+
+    fetchActiveSchedule();
+
+    // Auto-refresh cek jadwal aktif setiap 45 detik agar status tombol bottombar & notifikasi selalu real-time
+    const activeInterval = setInterval(fetchActiveSchedule, 45000);
 
     // Fetch Status Ujian Aktif (untuk wali murid & santri)
     fetch(`/api/ujian?t=${Date.now()}`)
@@ -148,6 +155,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
       })
       .catch(() => setHasActiveExam(false));
+
+    return () => clearInterval(activeInterval);
   }, [pathname]);
 
   useEffect(() => {
@@ -415,10 +424,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       <div className="p-4 space-y-3">
                         <div>
                           <span className="text-[10px] bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 font-bold px-2 py-0.5 rounded-full uppercase">
-                            {activeSchedule.tipe}
+                            {activeSchedule.tipe || activeSchedule.type}
                           </span>
-                          <p className="font-bold text-gray-800 dark:text-gray-100 text-sm mt-1">{activeSchedule.nama_kegiatan || activeSchedule.nama_kelas}</p>
-                          <p className="text-gray-500 dark:text-gray-400 text-xs">Pukul {activeSchedule.jam_mulai} - {activeSchedule.jam_selesai}</p>
+                          <p className="font-bold text-gray-800 dark:text-gray-100 text-sm mt-1">{activeSchedule.title || activeSchedule.nama_kegiatan || activeSchedule.nama_kelas}</p>
+                          <p className="text-gray-500 dark:text-gray-400 text-xs">Pukul {activeSchedule.time || `${activeSchedule.jam_mulai} - ${activeSchedule.jam_selesai}`}</p>
                         </div>
                         <Link href="/dashboard/absen" onClick={() => setShowNotif(false)} className="block w-full text-center bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 rounded-xl transition-colors">
                           Mulai Absensi

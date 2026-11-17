@@ -344,7 +344,16 @@ export default function DashboardPage() {
       {!lowerRole.includes('petugas') && (
       <>
       <section className="space-y-4">
-        {['kegiatan', 'quran', 'madin'].filter(tipe => lowerRole === 'admin' || lowerRole === 'staff' || allSchedules.some(s => s.tipe === tipe)).map(tipe => {
+        {['madin', 'quran', 'kegiatan']
+          .filter(tipe => lowerRole === 'admin' || lowerRole === 'staff' || allSchedules.some(s => s.tipe === tipe))
+          .sort((a, b) => {
+            const aActive = schedules.filter(s => s.tipe === a && s.status === 'aktif').length;
+            const bActive = schedules.filter(s => s.tipe === b && s.status === 'aktif').length;
+            if (aActive > 0 && bActive === 0) return -1;
+            if (bActive > 0 && aActive === 0) return 1;
+            return 0;
+          })
+          .map(tipe => {
           const tipeName = tipe === 'kegiatan' ? 'Kegiatan' : tipe === 'quran' ? "Qur'an" : 'Madin';
           const Icon = tipe === 'kegiatan' ? Clock : BookOpen;
           const tipeSchedules = schedules.filter(s => s.tipe === tipe);
