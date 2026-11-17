@@ -40,26 +40,56 @@ export async function GET(request: Request) {
     let sentCount = 0;
     const errors: string[] = [];
 
-    // Ambil penugasan Kepala Madin dari database pengaturan
-    let kepalaMadinPutraId = '';
-    let kepalaMadinPutriId = '';
-    let kepalaMadinAllId = '';
+    // =========================================================================
+    // 0. AMBIL KONFIGURASI SINKRONISASI DARI HALAMAN PENGATURAN
+    // =========================================================================
+    const settingMap: Record<string, string> = {};
     try {
       const [settingRows] = await pool.query<RowDataPacket[]>(
         `SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis
-         WHERE nama_pengaturan IN ('kepala_madin_putra_id', 'kepala_madin_putri_id', 'kepala_madin_all_id')`
+         WHERE nama_pengaturan IN (
+           'absensi_otomatis_madin', 'absensi_otomatis_quran', 'absensi_otomatis_kegiatan',
+           'absensi_otomatis_santri', 'absensi_otomatis_santri_madin', 'absensi_otomatis_santri_quran', 'absensi_otomatis_santri_kegiatan',
+           'kepala_madin_putra_id', 'kepala_madin_putri_id', 'kepala_madin_all_id'
+         )`
       );
       for (const r of settingRows) {
-        if (r.nama_pengaturan === 'kepala_madin_putra_id') kepalaMadinPutraId = String(r.nilai || '').trim();
-        if (r.nama_pengaturan === 'kepala_madin_putri_id') kepalaMadinPutriId = String(r.nilai || '').trim();
-        if (r.nama_pengaturan === 'kepala_madin_all_id') kepalaMadinAllId = String(r.nilai || '').trim();
+        settingMap[r.nama_pengaturan] = String(r.nilai || '').trim();
       }
     } catch (_) {}
 
+    const kepalaMadinPutraId = settingMap['kepala_madin_putra_id'] || '';
+    const kepalaMadinPutriId = settingMap['kepala_madin_putri_id'] || '';
+    const kepalaMadinAllId = settingMap['kepala_madin_all_id'] || '';
+
+    // Kategori aktif untuk Guru (disinkronkan dengan toggle di Pengaturan)
+    const activeGuruCategories: string[] = [];
+    if (settingMap['absensi_otomatis_madin'] === '1' || settingMap['absensi_otomatis_madin'] === 'true') activeGuruCategories.push('madin');
+    if (settingMap['absensi_otomatis_quran'] === '1' || settingMap['absensi_otomatis_quran'] === 'true') activeGuruCategories.push('quran');
+    if (settingMap['absensi_otomatis_kegiatan'] === '1' || settingMap['absensi_otomatis_kegiatan'] === 'true') activeGuruCategories.push('kegiatan');
+    if (activeGuruCategories.length === 0) activeGuruCategories.push('madin'); // Fallback aman
+
+    // Kategori aktif untuk Santri / Wali Murid (disinkronkan dengan toggle di Pengaturan)
+    const activeSantriCategories: string[] = [];
+    if (settingMap['absensi_otomatis_santri_madin'] === '1' || settingMap['absensi_otomatis_santri_madin'] === 'true') activeSantriCategories.push('madin');
+    if (settingMap['absensi_otomatis_santri_quran'] === '1' || settingMap['absensi_otomatis_santri_quran'] === 'true') activeSantriCategories.push('quran');
+    if (settingMap['absensi_otomatis_santri_kegiatan'] === '1' || settingMap['absensi_otomatis_santri_kegiatan'] === 'true') activeSantriCategories.push('kegiatan');
+    if (activeSantriCategories.length === 0) {
+      // Jika toggle sub santri belum diset, sinkronkan dengan kategori aktif guru
+      activeGuruCategories.forEach(c => {
+        if (!activeSantriCategories.includes(c)) activeSantriCategories.push(c);
+      });
+      if (activeSantriCategories.length === 0) activeSantriCategories.push('madin');
+    }
+
+    const isSingleSantriCategory = activeSantriCategories.length === 1;
+    const targetSantriTipe = isSingleSantriCategory ? activeSantriCategories[0] : 'all';
+    const santriKategoriLabel = isSingleSantriCategory
+      ? (targetSantriTipe === 'madin' ? 'Madin' : targetSantriTipe === 'quran' ? "Al-Qur'an" : 'Asrama')
+      : 'Santri';
+
     // =========================================================================
     // 1. GURU & KEPALA MADIN (GURU)
-    // - Jika guru menjabat Kepala Madin -> diarahkan ke /rekap/kepala-madin?token=...
-    // - Jika guru pengajar biasa -> diarahkan ke /rekap/guru?token=...
     // =========================================================================
     const [guruSubs] = await pool.query<RowDataPacket[]>(`
       SELECT DISTINCT ps.endpoint, ps.p256dh, ps.auth_key,
@@ -79,8 +109,11 @@ export async function GET(request: Request) {
       const isKepalaMadin = isKepalaPutra || isKepalaPutri || isKepalaAll;
 
       let rekapUrl = `${APP_URL}/dashboard/absensi?tab=rekap&bulan=${bulanNum}&tahun=${tahunNum}`;
-      let notifTitle = `📊 Rekap Absen Mengajar Madin – ${bulanNama} ${tahunNum}`;
-      let notifBody = `Rekap kehadiran santri Madin bulan ${bulanNama} ${tahunNum} sudah tersedia. Ketuk untuk melihat detail kelas yang Anda ampu.`;
+      const guruKatLabel = activeGuruCategories.length === 1
+        ? (activeGuruCategories[0] === 'madin' ? 'Madin' : activeGuruCategories[0] === 'quran' ? "Al-Qur'an" : 'Asrama')
+        : 'Mengajar';
+      let notifTitle = `📊 Rekap Absen ${guruKatLabel} – ${bulanNama} ${tahunNum}`;
+      let notifBody = `Rekap kehadiran santri ${guruKatLabel} bulan ${bulanNama} ${tahunNum} sudah tersedia. Ketuk untuk melihat detail kelas yang Anda ampu.`;
 
       if (isKepalaMadin) {
         const targetWilayah = isKepalaPutra ? 'putra' : isKepalaPutri ? 'putri' : 'all';
@@ -96,13 +129,13 @@ export async function GET(request: Request) {
         }, '30d', 'rekap_kepala_madin');
         rekapUrl = `${APP_URL}/rekap/kepala-madin?token=${reportToken}`;
       } else {
-        const rekapRefKey = `rekap_guru_${sub.guru_id}_${bulanNum}_${tahunNum}`;
+        const rekapRefKey = `rekap_guru_${sub.guru_id}_${bulanNum}_${tahunNum}_${activeGuruCategories.join('_')}`;
         const rekapToken = await createShortToken({
           type: 'rekap_guru',
           guru_id: Number(sub.guru_id),
           bulan: bulanNum,
           tahun: tahunNum,
-          categories: ['madin'], // Khusus Madin yang aktif saat ini
+          categories: activeGuruCategories,
         }, '30d', 'rekap_guru', rekapRefKey);
         rekapUrl = `${APP_URL}/rekap/guru?token=${rekapToken}`;
       }
@@ -115,7 +148,7 @@ export async function GET(request: Request) {
         tag,
         renotify: false,
         requireInteraction: false,
-        actions: [{ action: 'open_rekap', title: '📋 Lihat Rekap Madin' }],
+        actions: [{ action: 'open_rekap', title: '📋 Lihat Rekap Absen' }],
         data: { url: rekapUrl, rekapUrl, type: 'rekap_bulanan', tag },
       });
 
@@ -134,8 +167,7 @@ export async function GET(request: Request) {
     }
 
     // =========================================================================
-    // 2. WALI MURID / SANTRI
-    // - Diarahkan langsung ke /rekapitulasi/preview?t=token (tampilan sama persis pesan WA)
+    // 2. WALI MURID / SANTRI (Sesuai Kategori Aktif di Pengaturan)
     // =========================================================================
     const [waliSubs] = await pool.query<RowDataPacket[]>(`
       SELECT DISTINCT ps.endpoint, ps.p256dh, ps.auth_key, u.id as user_id,
@@ -149,7 +181,7 @@ export async function GET(request: Request) {
     for (const sub of waliSubs) {
       const previewToken = await createShortToken({
         muridId: Number(sub.murid_id),
-        tipe: 'madin', // Khusus Madin yang aktif saat ini
+        tipe: targetSantriTipe,
         bulan: String(bulanNum),
         tahun: String(tahunNum),
         role: 'wali_murid',
@@ -159,13 +191,13 @@ export async function GET(request: Request) {
       const rekapUrl = `${APP_URL}/rekapitulasi/preview?t=${previewToken}`;
       const tag = `rekap_bulanan_${tahunNum}_${bulanNum}_wali_${sub.user_id}`;
       const pushPayload = JSON.stringify({
-        title: `📊 Rekap Absen Madin ${bulanNama} ${tahunNum}`,
-        body: `Rekap kehadiran Madin Ananda ${sub.santri_nama} bulan ${bulanNama} ${tahunNum} sudah tersedia. Ketuk untuk melihat raport presensi.`,
+        title: `📊 Rekap Absen ${santriKategoriLabel} ${bulanNama} ${tahunNum}`,
+        body: `Rekap kehadiran ${santriKategoriLabel} Ananda ${sub.santri_nama} bulan ${bulanNama} ${tahunNum} sudah tersedia. Ketuk untuk melihat raport presensi.`,
         vibrate: [200, 100, 200],
         tag,
         renotify: false,
         requireInteraction: false,
-        actions: [{ action: 'open_rekap', title: '📋 Lihat Rekap Madin' }],
+        actions: [{ action: 'open_rekap', title: `📋 Lihat Rekap ${santriKategoriLabel}` }],
         data: { url: rekapUrl, rekapUrl, type: 'rekap_bulanan', tag },
       });
 
@@ -185,7 +217,6 @@ export async function GET(request: Request) {
 
     // =========================================================================
     // 3. ADMIN & STAFF (KEPALA MADIN / PENGAWAS)
-    // - Diarahkan langsung ke /rekap/kepala-madin?token=token (evaluasi dewan guru resmi)
     // =========================================================================
     const [adminSubs] = await pool.query<RowDataPacket[]>(`
       SELECT DISTINCT ps.endpoint, ps.p256dh, ps.auth_key, u.id as user_id, u.role, u.username, u.nama, u.asrama
@@ -223,7 +254,7 @@ export async function GET(request: Request) {
         tag,
         renotify: false,
         requireInteraction: false,
-        actions: [{ action: 'open_rekap', title: '📋 Lihat Rekap Madin' }],
+        actions: [{ action: 'open_rekap', title: '📋 Lihat Rekap Absen' }],
         data: { url: rekapUrl, rekapUrl, type: 'rekap_bulanan', tag },
       });
 
@@ -245,8 +276,12 @@ export async function GET(request: Request) {
       success: true,
       sent: sentCount,
       bulan: `${bulanNama} ${tahunNum}`,
+      activeCategories: {
+        guru: activeGuruCategories,
+        santri: activeSantriCategories,
+      },
       errors: errors.length > 0 ? errors : undefined,
-      message: `✅ ${sentCount} push notifikasi rekap bulanan terkirim sesuai role masing-masing.`,
+      message: `✅ ${sentCount} push notifikasi rekap bulanan terkirim (sinkron dengan pengaturan aktif).`,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

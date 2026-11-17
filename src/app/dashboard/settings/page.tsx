@@ -776,7 +776,16 @@ export default function SettingsPage() {
                     type="checkbox" 
                     className="sr-only peer"
                     checked={settings.absensi_otomatis_santri}
-                    onChange={(e) => setSettings({ ...settings, absensi_otomatis_santri: e.target.checked })}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setSettings(prev => ({
+                        ...prev,
+                        absensi_otomatis_santri: checked,
+                        ...(checked && !prev.absensi_otomatis_santri_madin && !prev.absensi_otomatis_santri_quran && !prev.absensi_otomatis_santri_kegiatan
+                          ? { absensi_otomatis_santri_madin: true }
+                          : {})
+                      }));
+                    }}
                   />
                   <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 dark:peer-focus:ring-emerald-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
                 </label>
@@ -786,77 +795,96 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Perincian Target Kategori Jadwal Santri */}
-            {settings.absensi_otomatis_santri && (
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
-                <div className="space-y-0.5">
-                  <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Target Kategori Jadwal Otomatis Santri:
-                  </h4>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                    Pilih kategori santri yang ingin diberlakukan pencatatan Alpa otomatis
-                  </p>
+            {/* Perincian Target Kategori Jadwal Santri (Selalu Tampil & Dapat Dikonfigurasi Langsung) */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Target Kategori Jadwal Otomatis Santri:
+                </h4>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  Pilih kategori jadwal santri yang ingin diberlakukan pencatatan Alpa otomatis & sinkronisasi laporan rekap
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. Santri Madin */}
+                <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_santri_madin ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+                  <div>
+                    <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                      <BookOpen size={14} className="text-indigo-600 dark:text-indigo-400" /> Santri Madin
+                    </p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Madrasah Diniyah</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={settings.absensi_otomatis_santri_madin}
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setSettings(prev => ({
+                          ...prev,
+                          absensi_otomatis_santri_madin: val,
+                          absensi_otomatis_santri: val ? true : prev.absensi_otomatis_santri
+                        }));
+                      }}
+                    />
+                    <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                  </label>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* 1. Santri Madin */}
-                  <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_santri_madin ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
-                    <div>
-                      <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                        <BookOpen size={14} className="text-indigo-600 dark:text-indigo-400" /> Santri Madin
-                      </p>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Madrasah Diniyah</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="sr-only peer"
-                        checked={settings.absensi_otomatis_santri_madin}
-                        onChange={(e) => setSettings({ ...settings, absensi_otomatis_santri_madin: e.target.checked })}
-                      />
-                      <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                    </label>
-                  </div>
 
-                  {/* 2. Santri Qur'an */}
-                  <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_santri_quran ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
-                    <div>
-                      <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                        <BookOpen size={14} className="text-emerald-600 dark:text-emerald-400" /> Santri Qur'an
-                      </p>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Kelas Al-Qur'an</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="sr-only peer"
-                        checked={settings.absensi_otomatis_santri_quran}
-                        onChange={(e) => setSettings({ ...settings, absensi_otomatis_santri_quran: e.target.checked })}
-                      />
-                      <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"></div>
-                    </label>
+                {/* 2. Santri Qur'an */}
+                <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_santri_quran ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+                  <div>
+                    <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                      <BookOpen size={14} className="text-emerald-600 dark:text-emerald-400" /> Santri Qur'an
+                    </p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Kelas Al-Qur'an</p>
                   </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={settings.absensi_otomatis_santri_quran}
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setSettings(prev => ({
+                          ...prev,
+                          absensi_otomatis_santri_quran: val,
+                          absensi_otomatis_santri: val ? true : prev.absensi_otomatis_santri
+                        }));
+                      }}
+                    />
+                    <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
 
-                  {/* 3. Santri Kegiatan Asrama */}
-                  <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_santri_kegiatan ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
-                    <div>
-                      <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                        <Users size={14} className="text-amber-600 dark:text-amber-400" /> Santri Kegiatan Asrama
-                      </p>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Kegiatan Asrama / Kamar</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="sr-only peer"
-                        checked={settings.absensi_otomatis_santri_kegiatan}
-                        onChange={(e) => setSettings({ ...settings, absensi_otomatis_santri_kegiatan: e.target.checked })}
-                      />
-                      <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-amber-600"></div>
-                    </label>
+                {/* 3. Santri Kegiatan Asrama */}
+                <div className={`p-3.5 rounded-xl border transition shadow-sm flex items-center justify-between gap-3 ${settings.absensi_otomatis_santri_kegiatan ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
+                  <div>
+                    <p className="font-bold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                      <Users size={14} className="text-amber-600 dark:text-amber-400" /> Santri Kegiatan Asrama
+                    </p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Jadwal Kegiatan Asrama / Kamar</p>
                   </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={settings.absensi_otomatis_santri_kegiatan}
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setSettings(prev => ({
+                          ...prev,
+                          absensi_otomatis_santri_kegiatan: val,
+                          absensi_otomatis_santri: val ? true : prev.absensi_otomatis_santri
+                        }));
+                      }}
+                    />
+                    <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-amber-600"></div>
+                  </label>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Opsi Pembersihan Data Alpa Otomatis Santri */}
             <div className="pt-3 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
