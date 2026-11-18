@@ -789,8 +789,13 @@ function InputAbsenContent() {
         setShowErrorModal(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
-    } catch (err) {
-      setErrorMsg('Terjadi kesalahan saat menyimpan. Periksa koneksi internet Anda.');
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('network')) {
+        setErrorMsg('Koneksi internet terputus atau tidak stabil saat menyimpan absensi. Data centang Anda aman dan tidak hilang. Pastikan sinyal internet atau WiFi aktif lalu silakan ketuk "Coba Simpan Lagi".');
+      } else {
+        setErrorMsg('Terjadi kesalahan saat menyimpan. Periksa koneksi internet Anda.');
+      }
       setShowErrorModal(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
@@ -2165,6 +2170,8 @@ function InputAbsenContent() {
                   ? 'Absensi Ditolak (Di Luar Radius)'
                   : errorMsg.toLowerCase().includes('gps') || errorMsg.toLowerCase().includes('lokasi')
                   ? 'Izin Lokasi (GPS) Diperlukan'
+                  : errorMsg.toLowerCase().includes('koneksi') || errorMsg.toLowerCase().includes('internet') || errorMsg.toLowerCase().includes('fetch')
+                  ? 'Koneksi Internet Terputus'
                   : (errorMsg.toLowerCase().includes('keterangan') || errorMsg.toLowerCase().includes('unknown column') || murid.length === 0)
                   ? 'Pemberitahuan Data Santri & Presensi'
                   : 'Gagal Menyimpan Absensi'}
@@ -2177,6 +2184,20 @@ function InputAbsenContent() {
             </div>
 
             <div className="space-y-2 pt-2">
+              {(errorMsg.toLowerCase().includes('koneksi') || errorMsg.toLowerCase().includes('internet') || errorMsg.toLowerCase().includes('fetch')) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowErrorModal(false);
+                    handleSave();
+                  }}
+                  disabled={saving}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw size={14} className={saving ? 'animate-spin' : ''} />
+                  <span>Coba Simpan Lagi</span>
+                </button>
+              )}
               {(errorMsg.toLowerCase().includes('gps') || errorMsg.toLowerCase().includes('lokasi') || errorMsg.toLowerCase().includes('jarak')) && (
                 <>
                   <button

@@ -1147,7 +1147,12 @@ function QuickAbsenContent() {
         }
       }
     } catch (e: any) {
-      setError('Terjadi kesalahan: ' + e.message);
+      const msg = e?.message || '';
+      if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('network')) {
+        setError('Koneksi internet terputus atau tidak stabil saat menyimpan absensi. Data centang Anda aman dan tidak hilang. Pastikan sinyal internet atau WiFi aktif lalu silakan ketuk "Coba Simpan Lagi".');
+      } else {
+        setError('Terjadi kesalahan: ' + msg);
+      }
       setShowErrorModal(true);
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1204,7 +1209,12 @@ function QuickAbsenContent() {
         }
       }
     } catch (err: any) {
-      setError('Terjadi kesalahan: ' + err.message);
+      const msg = err?.message || '';
+      if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('network')) {
+        setError('Koneksi internet terputus atau tidak stabil saat mengirim permohonan. Pastikan sinyal internet aktif lalu coba lagi.');
+      } else {
+        setError('Terjadi kesalahan: ' + msg);
+      }
       setShowErrorModal(true);
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2246,6 +2256,8 @@ function QuickAbsenContent() {
                   ? 'Absensi Ditolak (Di Luar Radius)'
                   : error.toLowerCase().includes('gps') || error.toLowerCase().includes('lokasi')
                   ? 'Izin Lokasi (GPS) Diperlukan'
+                  : error.toLowerCase().includes('koneksi') || error.toLowerCase().includes('internet') || error.toLowerCase().includes('fetch')
+                  ? 'Koneksi Internet Terputus'
                   : 'Gagal Menyimpan Absensi'}
               </h3>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm mx-auto">
@@ -2254,6 +2266,20 @@ function QuickAbsenContent() {
             </div>
 
             <div className="space-y-2 pt-2">
+              {(error.toLowerCase().includes('koneksi') || error.toLowerCase().includes('internet') || error.toLowerCase().includes('fetch')) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowErrorModal(false);
+                    handleSubmit();
+                  }}
+                  disabled={submitting}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw size={14} className={submitting ? 'animate-spin' : ''} />
+                  <span>Coba Simpan Lagi</span>
+                </button>
+              )}
               {(error.toLowerCase().includes('gps') || error.toLowerCase().includes('lokasi') || error.toLowerCase().includes('jarak')) && (
                 <>
                   <button
