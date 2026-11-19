@@ -137,10 +137,14 @@ export async function GET(request: Request) {
 
     // ─── Helper: hitung status waktu ───────────────────────────────────────
     const now = new Date();
+    // Tanggal hari ini di WIB (UTC+7)
+    const todayWIB = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(now);
     // Gunakan waktu WIB (UTC+7)
     const currentSecs = (now.getUTCHours() + 7) % 24 * 3600 + now.getUTCMinutes() * 60 + now.getUTCSeconds();
 
     const getStatusWaktu = (jamMulai: string, jamSelesai: string): 'aktif' | 'menunggu' | 'selesai' => {
+      // Jika tanggal yang dilihat bukan hari ini, semua jadwal sudah selesai
+      if (targetDate !== todayWIB) return 'selesai';
       const toSecs = (t: string) => {
         const parts = (t || '00:00').split(':');
         return parseInt(parts[0]) * 3600 + parseInt(parts[1] || '0') * 60;
