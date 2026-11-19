@@ -873,11 +873,10 @@ export default function PenilaianRaportPage() {
         </div>
 
         {/* Pintasan ke Portal Ujian Santri Digital */}
-        <div className="relative z-10 mt-3 pt-3 border-t border-amber-700/40 flex items-center justify-between gap-2">
-          <span className="text-amber-200/70 text-[11px] font-semibold">Pintasan cepat:</span>
+        <div className="relative z-10 mt-3 pt-3 border-t border-amber-700/40">
           <a
             href="/dashboard/ujian"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-teal-500/20 hover:bg-teal-500/35 border border-teal-400/30 text-teal-200 hover:text-white text-xs font-bold transition-all"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/35 border border-teal-400/30 text-teal-200 hover:text-white text-xs font-bold transition-all"
           >
             <ShieldCheck size={14} className="shrink-0" />
             <span>Portal Ujian Santri Digital</span>

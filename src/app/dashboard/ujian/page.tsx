@@ -2074,11 +2074,10 @@ export default function UjianCBTPage() {
           </div>
 
           {/* Pintasan ke Penilaian & Raport Digital */}
-          <div className="relative z-10 mt-3 pt-3 border-t border-emerald-700/40 flex items-center justify-between gap-2">
-            <span className="text-teal-200/70 text-[11px] font-semibold">Pintasan cepat:</span>
+          <div className="relative z-10 mt-3 pt-3 border-t border-emerald-700/40">
             <a
               href="/dashboard/penilaian"
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/30 text-amber-200 hover:text-white text-xs font-bold transition-all"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/30 text-amber-200 hover:text-white text-xs font-bold transition-all"
             >
               <Award size={14} className="shrink-0" />
               <span>Penilaian &amp; Raport Digital</span>

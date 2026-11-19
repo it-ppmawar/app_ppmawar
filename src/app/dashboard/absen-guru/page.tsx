@@ -799,7 +799,7 @@ export default function AbsenGuruPage() {
                   })()}
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs no-scrollbar">
+                <div className="flex flex-wrap justify-center gap-1.5 pb-0.5 text-xs">
                   {jadwalList.map(j => {
                     const isSelected = selectedJadwalId === j.id;
                     const isInsidental = j.tipe_jadwal === 'insidental';
@@ -810,7 +810,7 @@ export default function AbsenGuruPage() {
                           setSelectedJadwalId(j.id);
                           fetchDewanData(j.id);
                         }}
-                        className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
+                        className={`py-1.5 px-3 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                           isSelected
                             ? isInsidental
                               ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-400/40'
