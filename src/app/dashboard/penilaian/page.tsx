@@ -836,52 +836,55 @@ export default function PenilaianRaportPage() {
             </p>
           </div>
 
-          {/* Switcher Tab: Hanya tampilkan tab Input untuk non-wali */}
-          {isWaliOrSantri ? (
-            <div className="w-full sm:w-auto max-w-md mx-auto md:mx-0 flex bg-black/35 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0">
-              <div className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm w-full text-center bg-amber-500 text-white shadow-md">
-                <GraduationCap size={16} />
-                <span>Raport Santri</span>
+          {/* Kanan: Tab Switcher + Pintasan (selalu stack vertikal) */}
+          <div className="flex flex-col gap-2 w-full md:w-auto">
+            {/* Switcher Tab: Hanya tampilkan tab Input untuk non-wali */}
+            {isWaliOrSantri ? (
+              <div className="w-full sm:w-auto max-w-md mx-auto md:mx-0 flex bg-black/35 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0">
+                <div className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm w-full text-center bg-amber-500 text-white shadow-md">
+                  <GraduationCap size={16} />
+                  <span>Raport Santri</span>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="w-full sm:w-auto max-w-md mx-auto md:mx-0 grid grid-cols-2 gap-2 bg-black/35 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0">
-              <button
-                onClick={() => setActiveTab('input')}
-                className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all w-full text-center ${
-                  activeTab === 'input'
-                    ? 'bg-amber-500 text-white shadow-md'
-                    : 'text-amber-200/80 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <ClipboardCheck size={16} />
-                <span>Input &amp; Leger Nilai</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('raport')}
-                className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all w-full text-center ${
-                  activeTab === 'raport'
-                    ? 'bg-amber-500 text-white shadow-md'
-                    : 'text-amber-200/80 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <GraduationCap size={16} />
-                <span>Raport Santri</span>
-              </button>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="w-full sm:w-auto max-w-md mx-auto md:mx-0 grid grid-cols-2 gap-2 bg-black/35 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0">
+                <button
+                  onClick={() => setActiveTab('input')}
+                  className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all w-full text-center ${
+                    activeTab === 'input'
+                      ? 'bg-amber-500 text-white shadow-md'
+                      : 'text-amber-200/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <ClipboardCheck size={16} />
+                  <span>Input &amp; Leger Nilai</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('raport')}
+                  className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all w-full text-center ${
+                    activeTab === 'raport'
+                      ? 'bg-amber-500 text-white shadow-md'
+                      : 'text-amber-200/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <GraduationCap size={16} />
+                  <span>Raport Santri</span>
+                </button>
+              </div>
+            )}
 
-        {/* Pintasan ke Portal Ujian Santri Digital */}
-        <div className="relative z-10 mt-3 pt-3 border-t border-amber-700/40">
-          <a
-            href="/dashboard/ujian"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/35 border border-teal-400/30 text-teal-200 hover:text-white text-xs font-bold transition-all"
-          >
-            <ShieldCheck size={14} className="shrink-0" />
-            <span>Portal Ujian Santri Digital</span>
-            <ChevronRight size={13} className="shrink-0 opacity-70" />
-          </a>
+            {/* Pintasan ke Portal Ujian Santri Digital */}
+            <div className="pt-1 border-t border-amber-700/40">
+              <a
+                href="/dashboard/ujian"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/35 border border-teal-400/30 text-teal-200 hover:text-white text-xs font-bold transition-all"
+              >
+                <ShieldCheck size={14} className="shrink-0" />
+                <span>Portal Ujian Santri Digital</span>
+                <ChevronRight size={13} className="shrink-0 opacity-70" />
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 

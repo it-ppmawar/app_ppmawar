@@ -2022,67 +2022,70 @@ export default function UjianCBTPage() {
             </p>
           </div>
 
-          {/* Menu Tombol Header: Berdampingan Presisi di HP, Responsif di PC */}
-          <div className={`grid ${isPengajarOrAdmin ? 'grid-cols-2' : 'grid-cols-1'} sm:flex sm:flex-row items-stretch sm:items-center justify-start md:justify-end gap-2.5 sm:gap-3 w-full md:w-auto pt-2 md:pt-0`}>
-            {/* Tombol 1: Daftar Ujian */}
-            <button
-              type="button"
-              onClick={() => setMainTab('daftar')}
-              className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2 sm:gap-3 shadow-sm min-h-[68px] sm:min-h-[56px] cursor-pointer ${
-                mainTab === 'daftar'
-                  ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
-                  : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
-                <Play size={18} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
-                <div className="flex flex-col items-center sm:items-start justify-center leading-tight text-center sm:text-left min-w-0">
-                  <span className="font-extrabold text-xs sm:text-sm leading-snug">Daftar Ujian</span>
-                  <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-1 whitespace-nowrap ${
-                    mainTab === 'daftar' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
-                  }`}>
-                    {exams.filter((e) => e.status_sesi === 'buka').length} Aktif
-                  </span>
-                </div>
-              </div>
-            </button>
-
-            {/* Tombol 2: Kelola Ujian & Bank Soal */}
-            {isPengajarOrAdmin && (
+          {/* Kanan: Tombol Navigasi + Pintasan (selalu stack vertikal) */}
+          <div className="flex flex-col gap-2 w-full md:w-auto pt-2 md:pt-0">
+            {/* Menu Tombol Header: Berdampingan Presisi di HP, Responsif di PC */}
+            <div className={`grid ${isPengajarOrAdmin ? 'grid-cols-2' : 'grid-cols-1'} sm:flex sm:flex-row items-stretch sm:items-center justify-start md:justify-end gap-2.5 sm:gap-3 w-full`}>
+              {/* Tombol 1: Daftar Ujian */}
               <button
                 type="button"
-                onClick={() => setMainTab('kelola')}
+                onClick={() => setMainTab('daftar')}
                 className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2 sm:gap-3 shadow-sm min-h-[68px] sm:min-h-[56px] cursor-pointer ${
-                  mainTab === 'kelola'
+                  mainTab === 'daftar'
                     ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
                     : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
                 }`}
               >
                 <div className="flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
-                  <Settings size={18} className={mainTab === 'kelola' ? 'text-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
+                  <Play size={18} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
                   <div className="flex flex-col items-center sm:items-start justify-center leading-tight text-center sm:text-left min-w-0">
-                    <span className="font-extrabold text-[11px] sm:text-sm leading-snug line-clamp-2">Kelola Ujian &amp; Bank Soal</span>
+                    <span className="font-extrabold text-xs sm:text-sm leading-snug">Daftar Ujian</span>
                     <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-1 whitespace-nowrap ${
-                      mainTab === 'kelola' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
+                      mainTab === 'daftar' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
                     }`}>
-                      {exams.length} Paket Ujian
+                      {exams.filter((e) => e.status_sesi === 'buka').length} Aktif
                     </span>
                   </div>
                 </div>
               </button>
-            )}
-          </div>
 
-          {/* Pintasan ke Penilaian & Raport Digital */}
-          <div className="relative z-10 mt-3 pt-3 border-t border-emerald-700/40">
-            <a
-              href="/dashboard/penilaian"
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/30 text-amber-200 hover:text-white text-xs font-bold transition-all"
-            >
-              <Award size={14} className="shrink-0" />
-              <span>Penilaian &amp; Raport Digital</span>
-              <ChevronRight size={13} className="shrink-0 opacity-70" />
-            </a>
+              {/* Tombol 2: Kelola Ujian & Bank Soal */}
+              {isPengajarOrAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setMainTab('kelola')}
+                  className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2 sm:gap-3 shadow-sm min-h-[68px] sm:min-h-[56px] cursor-pointer ${
+                    mainTab === 'kelola'
+                      ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
+                      : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
+                    <Settings size={18} className={mainTab === 'kelola' ? 'text-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
+                    <div className="flex flex-col items-center sm:items-start justify-center leading-tight text-center sm:text-left min-w-0">
+                      <span className="font-extrabold text-[11px] sm:text-sm leading-snug line-clamp-2">Kelola Ujian &amp; Bank Soal</span>
+                      <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-1 whitespace-nowrap ${
+                        mainTab === 'kelola' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
+                      }`}>
+                        {exams.length} Paket Ujian
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              )}
+            </div>
+
+            {/* Pintasan ke Penilaian & Raport Digital */}
+            <div className="pt-1 border-t border-emerald-700/40">
+              <a
+                href="/dashboard/penilaian"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/30 text-amber-200 hover:text-white text-xs font-bold transition-all"
+              >
+                <Award size={14} className="shrink-0" />
+                <span>Penilaian &amp; Raport Digital</span>
+                <ChevronRight size={13} className="shrink-0 opacity-70" />
+              </a>
+            </div>
           </div>
         </div>
       </div>
