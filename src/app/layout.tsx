@@ -10,10 +10,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.ico' },
-      { url: '/logo.png', type: 'image/png' }
+      { url: '/icon-192-v2.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512-v2.png', type: 'image/png', sizes: '512x512' }
     ],
     apple: [
-      { url: '/logo.png', type: 'image/png' }
+      { url: '/icon-512-v2.png', type: 'image/png', sizes: '512x512' }
     ]
   },
   appleWebApp: {
