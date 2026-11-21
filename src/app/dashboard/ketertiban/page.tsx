@@ -568,72 +568,81 @@ export default function KetertibanPage() {
         </div>
       )}
 
-      {/* Ringkasan Statistik 4 Kartu Terintegrasi */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div 
-          onClick={() => setActiveTab('izin')} 
-          className={`p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
-            activeTab === 'izin'
-              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 ring-2 ring-amber-400'
-              : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
-          }`}
-        >
-          <div className="bg-amber-100 dark:bg-amber-900/50 p-2.5 rounded-full mb-2">
-            <Clock size={20} className="text-amber-600 dark:text-amber-400" />
+      {/* Ringkasan Statistik: Baris 1 (Total Izin, Sakit, Alpa), Baris 2 (Pelanggaran Lain Melebar) */}
+      <div className="space-y-2.5 sm:space-y-3">
+        {/* Baris 1: 3 Kartu Berdampingan (Izin, Sakit, Alpa) */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div 
+            onClick={() => setActiveTab('izin')} 
+            className={`p-2.5 sm:p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
+              activeTab === 'izin'
+                ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 ring-2 ring-amber-400'
+                : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+            }`}
+          >
+            <div className="bg-amber-100 dark:bg-amber-900/50 p-2 sm:p-2.5 rounded-full mb-1.5 sm:mb-2">
+              <Clock size={18} className="text-amber-600 dark:text-amber-400" />
+            </div>
+            <p className="text-[9.5px] sm:text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider text-center">Total Izin</p>
+            <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-0.5">
+              {summary.totalIzin}
+            </p>
           </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Izin</p>
-          <p className="text-2xl font-black text-amber-600 dark:text-amber-400">
-            {summary.totalIzin}
-          </p>
+
+          <div 
+            onClick={() => setActiveTab('sakit')} 
+            className={`p-2.5 sm:p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
+              activeTab === 'sakit'
+                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700 ring-2 ring-rose-400'
+                : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+            }`}
+          >
+            <div className="bg-rose-100 dark:bg-rose-900/50 p-2 sm:p-2.5 rounded-full mb-1.5 sm:mb-2">
+              <HeartPulse size={18} className="text-rose-600 dark:text-rose-400" />
+            </div>
+            <p className="text-[9.5px] sm:text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider text-center">Total Sakit</p>
+            <p className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 mt-0.5">
+              {summary.totalSakit}
+            </p>
+          </div>
+
+          <div 
+            onClick={() => setActiveTab('alpa')} 
+            className={`p-2.5 sm:p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
+              activeTab === 'alpa'
+                ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-700 ring-2 ring-red-400'
+                : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+            }`}
+          >
+            <div className="bg-red-100 dark:bg-red-900/50 p-2 sm:p-2.5 rounded-full mb-1.5 sm:mb-2">
+              <UserX size={18} className="text-red-600 dark:text-red-400" />
+            </div>
+            <p className="text-[9.5px] sm:text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider text-center">Total Alpa</p>
+            <p className="text-xl sm:text-2xl font-black text-red-600 dark:text-red-400 mt-0.5">
+              {summary.totalAlpa}
+            </p>
+          </div>
         </div>
 
-        <div 
-          onClick={() => setActiveTab('sakit')} 
-          className={`p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
-            activeTab === 'sakit'
-              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700 ring-2 ring-rose-400'
-              : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
-          }`}
-        >
-          <div className="bg-rose-100 dark:bg-rose-900/50 p-2.5 rounded-full mb-2">
-            <HeartPulse size={20} className="text-rose-600 dark:text-rose-400" />
-          </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Sakit</p>
-          <p className="text-2xl font-black text-rose-600 dark:text-rose-400">
-            {summary.totalSakit}
-          </p>
-        </div>
-
-        <div 
-          onClick={() => setActiveTab('alpa')} 
-          className={`p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
-            activeTab === 'alpa'
-              ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-700 ring-2 ring-red-400'
-              : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
-          }`}
-        >
-          <div className="bg-red-100 dark:bg-red-900/50 p-2.5 rounded-full mb-2">
-            <UserX size={20} className="text-red-600 dark:text-red-400" />
-          </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Total Alpa</p>
-          <p className="text-2xl font-black text-red-600 dark:text-red-400">
-            {summary.totalAlpa}
-          </p>
-        </div>
-
+        {/* Baris 2: Pelanggaran Lain Melebar Memenuhi Kanan Kiri */}
         <div 
           onClick={() => setActiveTab('pelanggaran')} 
-          className={`p-4 rounded-2xl shadow-sm border flex flex-col items-center justify-center transition-all cursor-pointer ${
+          className={`w-full px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl shadow-sm border flex items-center justify-between transition-all cursor-pointer ${
             activeTab === 'pelanggaran'
               ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-700 ring-2 ring-purple-400'
               : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
           }`}
         >
-          <div className="bg-purple-100 dark:bg-purple-900/50 p-2.5 rounded-full mb-2">
-            <AlertTriangle size={20} className="text-purple-600 dark:text-purple-400" />
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-full shrink-0">
+              <AlertTriangle size={18} className="text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Pelanggaran Lain</p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium hidden sm:block">Catatan dan rekap pelanggaran tata tertib santri</p>
+            </div>
           </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Pelanggaran Lain</p>
-          <p className="text-2xl font-black text-purple-600 dark:text-purple-400">
+          <p className="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400">
             {summary.totalPelanggaran}
           </p>
         </div>
@@ -720,41 +729,50 @@ export default function KetertibanPage() {
         </div>
       </div>
 
-      {/* Tabs Status Ketertiban (4 Tab: Izin, Sakit, Alpa, Pelanggaran Lain) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl">
+      {/* Tabs Status Ketertiban: Baris 1 (Izin, Sakit, Alpa), Baris 2 (Pelanggaran Lain Melebar) */}
+      <div className="flex flex-col gap-1.5 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl">
+        {/* Baris 1: 3 Tab Berdampingan (Izin, Sakit, Alpa) */}
+        <div className="grid grid-cols-3 gap-1.5">
+          <button
+            type="button"
+            onClick={() => setActiveTab('izin')}
+            className={`py-2 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'izin'
+                ? 'bg-white dark:bg-gray-700 shadow-sm text-amber-600 dark:text-amber-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            <span>📋 Izin</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('sakit')}
+            className={`py-2 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'sakit'
+                ? 'bg-white dark:bg-gray-700 shadow-sm text-rose-600 dark:text-rose-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            <span>🩺 Sakit</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('alpa')}
+            className={`py-2 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'alpa'
+                ? 'bg-white dark:bg-gray-700 shadow-sm text-red-600 dark:text-red-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            <span>🚫 Alpa</span>
+          </button>
+        </div>
+
+        {/* Baris 2: Pelanggaran Lain Melebar Memenuhi Kanan Kiri */}
         <button
-          onClick={() => setActiveTab('izin')}
-          className={`py-2.5 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'izin'
-              ? 'bg-white dark:bg-gray-700 shadow-sm text-amber-600 dark:text-amber-400'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-          }`}
-        >
-          <span>📋 Rekap Izin</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('sakit')}
-          className={`py-2.5 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'sakit'
-              ? 'bg-white dark:bg-gray-700 shadow-sm text-rose-600 dark:text-rose-400'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-          }`}
-        >
-          <span>🩺 Rekap Sakit</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('alpa')}
-          className={`py-2.5 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-            activeTab === 'alpa'
-              ? 'bg-white dark:bg-gray-700 shadow-sm text-red-600 dark:text-red-400'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-          }`}
-        >
-          <span>🚫 Rekap Alpa</span>
-        </button>
-        <button
+          type="button"
           onClick={() => setActiveTab('pelanggaran')}
-          className={`py-2.5 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+          className={`w-full py-2 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeTab === 'pelanggaran'
               ? 'bg-white dark:bg-gray-700 shadow-sm text-purple-600 dark:text-purple-400'
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
