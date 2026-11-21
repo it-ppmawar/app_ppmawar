@@ -729,57 +729,65 @@ export default function KetertibanPage() {
         </div>
       </div>
 
-      {/* Tabs Status Ketertiban: Baris 1 (Izin, Sakit, Alpa), Baris 2 (Pelanggaran Lain Melebar) */}
-      <div className="flex flex-col gap-1.5 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl">
-        {/* Baris 1: 3 Tab Berdampingan (Izin, Sakit, Alpa) */}
-        <div className="grid grid-cols-3 gap-1.5">
-          <button
-            type="button"
-            onClick={() => setActiveTab('izin')}
-            className={`py-2 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'izin'
-                ? 'bg-white dark:bg-gray-700 shadow-sm text-amber-600 dark:text-amber-400'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            <span>📋 Izin</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('sakit')}
-            className={`py-2 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'sakit'
-                ? 'bg-white dark:bg-gray-700 shadow-sm text-rose-600 dark:text-rose-400'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            <span>🩺 Sakit</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('alpa')}
-            className={`py-2 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'alpa'
-                ? 'bg-white dark:bg-gray-700 shadow-sm text-red-600 dark:text-red-400'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            <span>🚫 Alpa</span>
-          </button>
+      {/* Tabs Status Ketertiban: Baris 1 (3 Tab Izin, Sakit, Alpa), Baris 2 (Tab Pelanggaran Lain Terpisah) */}
+      <div className="space-y-2 sm:space-y-2.5">
+        {/* Baris 1: 3 Tab Berdampingan dengan Border Batas Melingkar */}
+        <div className="bg-gray-100/90 dark:bg-gray-800/90 p-1.5 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs">
+          <div className="grid grid-cols-3 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab('izin')}
+              className={`py-2 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'izin'
+                  ? 'bg-white dark:bg-gray-700 shadow-sm text-amber-600 dark:text-amber-400 border border-amber-300/50 dark:border-amber-600/40'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              <span>📋 Izin</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('sakit')}
+              className={`py-2 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'sakit'
+                  ? 'bg-white dark:bg-gray-700 shadow-sm text-rose-600 dark:text-rose-400 border border-rose-300/50 dark:border-rose-600/40'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              <span>🩺 Sakit</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('alpa')}
+              className={`py-2 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'alpa'
+                  ? 'bg-white dark:bg-gray-700 shadow-sm text-red-600 dark:text-red-400 border border-red-300/50 dark:border-red-600/40'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              <span>🚫 Alpa</span>
+            </button>
+          </div>
         </div>
 
-        {/* Baris 2: Pelanggaran Lain Melebar Memenuhi Kanan Kiri */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('pelanggaran')}
-          className={`w-full py-2 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            activeTab === 'pelanggaran'
-              ? 'bg-white dark:bg-gray-700 shadow-sm text-purple-600 dark:text-purple-400'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-          }`}
-        >
-          <span>⚠️ Pelanggaran Lain</span>
-        </button>
+        {/* Baris 2: Tab Pelanggaran Lain Terpisah Melebar Memenuhi Kanan Kiri */}
+        <div className={`p-1.5 rounded-2xl border transition-all shadow-xs ${
+          activeTab === 'pelanggaran'
+            ? 'bg-purple-50/80 dark:bg-purple-950/30 border-purple-300 dark:border-purple-700/60 ring-1 ring-purple-400/40'
+            : 'bg-gray-100/90 dark:bg-gray-800/90 border-gray-200/80 dark:border-gray-700/80'
+        }`}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('pelanggaran')}
+            className={`w-full py-2 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'pelanggaran'
+                ? 'bg-white dark:bg-gray-700 shadow-sm text-purple-600 dark:text-purple-400 border border-purple-300/50 dark:border-purple-600/40'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            <span>⚠️ Pelanggaran Lain</span>
+          </button>
+        </div>
       </div>
 
       {/* Daftar Konten Tabel */}
