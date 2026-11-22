@@ -511,9 +511,9 @@ export default function PenilaianRaportPage() {
       .then(d => {
         if (d.success && d.user) {
           setUserRole(d.user.role);
-          // Wali murid & santri langsung arahkan ke tab Raport
+          // Wali murid, santri & mode tamu langsung arahkan ke tab Raport
           const role = (d.user.role || '').toLowerCase();
-          if (role === 'wali_murid' || role === 'wali_alumni' || role === 'santri') {
+          if (role === 'wali_murid' || role === 'wali_alumni' || role === 'santri' || role === 'tamu') {
             setActiveTab('raport');
           }
         }
@@ -838,8 +838,8 @@ export default function PenilaianRaportPage() {
 
           {/* Kanan: Tab Switcher + Pintasan (selalu stack vertikal) */}
           <div className="flex flex-col gap-2 w-full md:w-auto">
-            {/* Switcher Tab: Hanya tampilkan tab Input untuk non-wali */}
-            {isWaliOrSantri ? (
+            {/* Switcher Tab: Hanya tampilkan tab Raport untuk wali santri dan mode tamu */}
+            {isWaliOrSantri || isTamu ? (
               <div className="w-full sm:w-auto max-w-md mx-auto md:mx-0 flex bg-black/35 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0">
                 <div className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm w-full text-center bg-amber-500 text-white shadow-md">
                   <GraduationCap size={16} />
@@ -891,7 +891,7 @@ export default function PenilaianRaportPage() {
       {/* ========================================================================= */}
       {/* TAB 1: INPUT NILAI & LEGER KELAS (HANYA UNTUK GURU / ADMIN / STAF)       */}
       {/* ========================================================================= */}
-      {!isWaliOrSantri && activeTab === 'input' && (
+      {!isWaliOrSantri && !isTamu && activeTab === 'input' && (
         <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
           {/* Petunjuk Penggunaan — Collapsible, dipindah ke atas filter */}
           <div className="bg-amber-50/60 dark:bg-amber-950/20 rounded-2xl border border-amber-200/60 dark:border-amber-800/40 overflow-hidden">
@@ -1679,7 +1679,7 @@ export default function PenilaianRaportPage() {
       {/* ========================================================================= */}
       {/* TAB 2: RAPORT SANTRI & CETAK RESMI                                        */}
       {/* ========================================================================= */}
-      {(isWaliOrSantri || activeTab === 'raport') && (
+      {(isWaliOrSantri || isTamu || activeTab === 'raport') && (
         <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
           {/* Header Kontrol Raport: Format Presisi HP (Pilih Santri di Atas Full-Width, Kelas & Semester Berdampingan 50%-50%, Tombol Print Rata Tengah) */}
           <div className="print:hidden bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
