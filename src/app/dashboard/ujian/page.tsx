@@ -2024,33 +2024,46 @@ export default function UjianCBTPage() {
 
           {/* Kanan: Tombol Navigasi + Pintasan (selalu stack vertikal) */}
           <div className="flex flex-col gap-2 w-full md:w-auto pt-2 md:pt-0">
-            {/* Menu Tombol Header: Berdampingan Presisi di HP, Responsif di PC */}
-            <div className={`grid ${isPengajarOrAdmin ? 'grid-cols-2' : 'grid-cols-1'} sm:flex sm:flex-row items-stretch sm:items-center justify-start md:justify-end gap-2.5 sm:gap-3 w-full`}>
-              {/* Tombol 1: Daftar Ujian */}
-              <button
-                type="button"
-                onClick={() => setMainTab('daftar')}
-                className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2 sm:gap-3 shadow-sm min-h-[68px] sm:min-h-[56px] cursor-pointer ${
-                  mainTab === 'daftar'
-                    ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
-                    : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
-                  <Play size={18} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
-                  <div className="flex flex-col items-center sm:items-start justify-center leading-tight text-center sm:text-left min-w-0">
-                    <span className="font-extrabold text-xs sm:text-sm leading-snug">Daftar Ujian</span>
-                    <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-1 whitespace-nowrap ${
-                      mainTab === 'daftar' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
-                    }`}>
+            {/* Mode Tamu / Wali / Santri: Tampilan ramping dan rapi berbingkai kaca seperti Raport Santri di Penilaian */}
+            {!isPengajarOrAdmin ? (
+              <div className="w-full sm:w-auto max-w-md mx-auto md:mx-0 flex bg-black/35 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0">
+                <div className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm w-full text-center bg-emerald-600 text-white shadow-md">
+                  <Play size={16} className="fill-white shrink-0" />
+                  <span>Daftar Ujian</span>
+                  {exams.filter((e) => e.status_sesi === 'buka').length > 0 && (
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-800/80 text-emerald-100 ml-1">
                       {exams.filter((e) => e.status_sesi === 'buka').length} Aktif
                     </span>
-                  </div>
+                  )}
                 </div>
-              </button>
+              </div>
+            ) : (
+              /* Menu Tombol Guru / Admin: Berdampingan Presisi di HP, Responsif di PC */
+              <div className="grid grid-cols-2 sm:flex sm:flex-row items-stretch sm:items-center justify-start md:justify-end gap-2.5 sm:gap-3 w-full">
+                {/* Tombol 1: Daftar Ujian */}
+                <button
+                  type="button"
+                  onClick={() => setMainTab('daftar')}
+                  className={`w-full sm:w-auto px-2.5 sm:px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all flex items-center justify-center sm:justify-start gap-2 sm:gap-3 shadow-sm min-h-[68px] sm:min-h-[56px] cursor-pointer ${
+                    mainTab === 'daftar'
+                      ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-400'
+                      : 'bg-emerald-950/60 text-emerald-100 hover:bg-emerald-900/80 border border-emerald-500/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
+                    <Play size={18} className={mainTab === 'daftar' ? 'text-emerald-700 fill-emerald-700 shrink-0' : 'text-emerald-300 shrink-0'} />
+                    <div className="flex flex-col items-center sm:items-start justify-center leading-tight text-center sm:text-left min-w-0">
+                      <span className="font-extrabold text-xs sm:text-sm leading-snug">Daftar Ujian</span>
+                      <span className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full mt-1 whitespace-nowrap ${
+                        mainTab === 'daftar' ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-800/80 text-emerald-200'
+                      }`}>
+                        {exams.filter((e) => e.status_sesi === 'buka').length} Aktif
+                      </span>
+                    </div>
+                  </div>
+                </button>
 
-              {/* Tombol 2: Kelola Ujian & Bank Soal */}
-              {isPengajarOrAdmin && (
+                {/* Tombol 2: Kelola Ujian & Bank Soal */}
                 <button
                   type="button"
                   onClick={() => setMainTab('kelola')}
@@ -2072,8 +2085,8 @@ export default function UjianCBTPage() {
                     </div>
                   </div>
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Pintasan ke Penilaian & Raport Digital */}
             <div className="pt-1 border-t border-emerald-700/40">
