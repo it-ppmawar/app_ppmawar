@@ -24,6 +24,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Parameter murid_id diperlukan' }, { status: 400 });
     }
 
+    // Batasi akses wali_murid / santri agar hanya dapat mengakses raport santri miliknya sendiri
+    if ((auth.role === 'wali_murid' || auth.role === 'santri') && auth.muridId && String(auth.muridId) !== String(muridId)) {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    }
+
     // 1. Ambil Profil Santri (dukung kelas_madin_id maupun kelas_madin_2_id)
     const [muridRows] = await pool.execute<RowDataPacket[]>(`
       SELECT 
@@ -34,7 +39,8 @@ export async function GET(request: Request) {
         COALESCE(kq.nama_kelas, '-') as nama_kelas_quran,
         COALESCE(k.nama_kamar, '-') as nama_kamar,
         COALESCE(k.nama_asrama, '-') as nama_asrama,
-        COALESCE(g.nama, g2.nama, '-') as wali_kelas
+        COALESCE(g.nama, g2.nama, '-') as wali_kelas,
+        COALESCE(m.kelas_madin_id, m.kelas_madin_2_id) as kelas_madin_id
       FROM murid m
       LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
       LEFT JOIN guru g ON km.guru_id = g.guru_id
@@ -64,6 +70,35 @@ export async function GET(request: Request) {
       nilaiRows = nRows;
     } catch (nilaiErr) {
       console.warn('Error fetching nilai_santri for raport:', nilaiErr);
+    }
+
+    // Jika santri belum memiliki nilai tersimpan, tetap sertakan daftar mata pelajaran kelasnya
+    if (nilaiRows.length === 0 && santri.kelas_madin_id) {
+      try {
+        const [mapelRows] = await pool.execute<RowDataPacket[]>(`
+          SELECT DISTINCT mata_pelajaran, '' as kitab
+          FROM jadwal_madin
+          WHERE kelas_madin_id = ? AND mata_pelajaran IS NOT NULL AND mata_pelajaran != ''
+          ORDER BY mata_pelajaran ASC
+        `, [santri.kelas_madin_id]);
+
+        if (mapelRows.length > 0) {
+          nilaiRows = mapelRows.map((r, idx) => ({
+            id: `default_${idx + 1}`,
+            mata_pelajaran: r.mata_pelajaran,
+            kitab: r.kitab || '-',
+            nilai_harian: null,
+            nilai_lisan: null,
+            nilai_uts: null,
+            nilai_uas: null,
+            nilai_akhir: '-',
+            predikat: '-',
+            catatan: 'Belum Ada Nilai',
+          })) as any;
+        }
+      } catch (jadwalErr) {
+        console.warn('Error fetching default mapel for empty raport:', jadwalErr);
+      }
     }
 
     // Hitung rata-rata nilai akhir

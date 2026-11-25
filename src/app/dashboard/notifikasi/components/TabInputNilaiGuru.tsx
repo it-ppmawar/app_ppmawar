@@ -23,7 +23,7 @@ Berikut kami sampaikan tautan pintasan resmi untuk Penginputan Nilai Santri & Le
 📝 *Tautan Pintasan Pengisian Nilai (Langsung Buka):*
 {link_input_nilai}
 
-⚠️ _Catatan: Tautan pintasan ini bersifat resmi, aman, dan berlaku selama {masa_berlaku} (sampai {batas_waktu}). Ustadz/Ustadzah dapat langsung memasukkan nilai Harian, UTS, UAS, dan catatan santri melalui tautan di atas._
+⚠️ _Catatan: Tautan pintasan ini bersifat resmi, aman, dan berlaku selama {masa_berlaku} (sampai {batas_waktu}). Ustadz/Ustadzah dapat langsung memasukkan nilai Harian, Ujian Lisan, UTS, UAS, dan catatan santri melalui tautan di atas._
 
 Demikian informasi ini kami sampaikan. Atas keikhlasan, dedikasi, dan bimbingan Ustadz/Ustadzah dalam mendidik para santri, kami haturkan jazakumullah khairan katsiran.
 

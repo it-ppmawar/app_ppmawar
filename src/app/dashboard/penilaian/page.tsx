@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import QuizBModal from './QuizBModal';
-import { calcNilaiAkhir, calcPredikat, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
+import { calcNilaiAkhir, calcPredikat, calcPredikatFromInput, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, Printer, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
@@ -421,6 +421,8 @@ export default function PenilaianRaportPage() {
   const [muridSearch, setMuridSearch] = useState<string>('');
   const [showMuridDropdown, setShowMuridDropdown] = useState(false);
   const muridComboRef = useRef<HTMLDivElement>(null);
+  const muridInputRef = useRef<HTMLInputElement>(null);
+  const initialSantriIdRef = useRef<string>('');
   const [loadingRaport, setLoadingRaport] = useState(false);
   const [savingRaportCatatan, setSavingRaportCatatan] = useState(false);
   const [editCatatan, setEditCatatan] = useState({
@@ -465,7 +467,7 @@ export default function PenilaianRaportPage() {
               !isEmptyScoreVal(n.nilai_lisan) ? n.nilai_lisan : '-',
               n.nilai_akhir,
               n.predikat,
-              Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan',
+              Number(n.nilai_akhir) >= 70 ? 'Tuntas' : Number(n.nilai_akhir) > 0 ? 'Perlu Bimbingan' : (n.catatan || 'Belum Dinilai'),
             ]
           : [
               i + 1,
@@ -474,7 +476,7 @@ export default function PenilaianRaportPage() {
               70,
               n.nilai_akhir,
               n.predikat,
-              Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan',
+              Number(n.nilai_akhir) >= 70 ? 'Tuntas' : Number(n.nilai_akhir) > 0 ? 'Perlu Bimbingan' : (n.catatan || 'Belum Dinilai'),
             ]
       ),
       [],
@@ -581,10 +583,18 @@ export default function PenilaianRaportPage() {
           let initialMapel = '';
           if (typeof window !== 'undefined') {
             const sp = new URLSearchParams(window.location.search);
+            const urlTab = (sp.get('tab') || '').toLowerCase();
+            const urlSantriId = sp.get('santri_id') || sp.get('murid_id') || '';
             const urlKelas = sp.get('kelas_id') || sp.get('kelas');
             const urlMapel = sp.get('mapel');
             const urlSem = sp.get('semester');
             const urlThn = sp.get('tahun_ajaran');
+            if (urlTab === 'raport' || urlTab === 'raport-santri' || urlSantriId) {
+              setActiveTab('raport');
+            }
+            if (urlSantriId) {
+              initialSantriIdRef.current = urlSantriId;
+            }
             if (urlSem) setSemester(urlSem);
             if (urlThn) setTahunAjaran(urlThn);
             if (urlKelas && kList.some((k: any) => String(k.kelas_id) === urlKelas)) {
@@ -654,6 +664,8 @@ export default function PenilaianRaportPage() {
     fetchMapel();
   }, [selectedKelas, isSemuaKelasMode]);
 
+  const isRaportAllSantri = activeTab === 'raport' && isSemuaKelasMode;
+
   // 2. Load Murid & Nilai saat Kelas / Mapel / Semester / Tahun berubah
   useEffect(() => {
     if (!selectedKelas) return;
@@ -666,6 +678,7 @@ export default function PenilaianRaportPage() {
           mapel: selectedMapel,
           semester,
           tahun_ajaran: tahunAjaran,
+          ...(isRaportAllSantri ? { for_raport: '1' } : {}),
         });
         const res = await fetch(`/api/penilaian/data?${query.toString()}`);
         const json = await res.json();
@@ -701,14 +714,17 @@ export default function PenilaianRaportPage() {
           });
           setScores(initialScores);
 
-          // Pertahankan pilihan santri hanya jika masih ada di kelas baru; default kosong agar pengguna memilih santri secara eksplisit
-          setSelectedMuridId(prev => {
-            if (prev && json.muridList.some((m: any) => String(m.murid_id) === prev)) {
-              return prev;
-            }
-            setRaportData(null);
-            return '';
-          });
+          // Jika datang dari tautan URL ?santri_id=..., terapkan sekali
+          const urlTargetId = initialSantriIdRef.current;
+          if (urlTargetId && json.muridList.some((m: any) => String(m.murid_id) === urlTargetId)) {
+            initialSantriIdRef.current = '';
+            setSelectedMuridId(urlTargetId);
+          } else {
+            // Pertahankan pilihan santri hanya jika masih ada di kelas baru; default kosong agar pengguna memilih santri secara eksplisit
+            setSelectedMuridId(prev => (
+              prev && json.muridList.some((m: any) => String(m.murid_id) === prev) ? prev : ''
+            ));
+          }
         }
       } catch (err) {
         console.error('Failed to fetch murid dan nilai', err);
@@ -718,7 +734,7 @@ export default function PenilaianRaportPage() {
     };
 
     fetchMuridDanNilai();
-  }, [selectedKelas, selectedMapel, semester, tahunAjaran, reloadTrigger]);
+  }, [selectedKelas, selectedMapel, semester, tahunAjaran, reloadTrigger, isRaportAllSantri]);
 
   // Untuk akun wali murid / santri yang hanya punya data anaknya sendiri, tampilkan raport otomatis
   useEffect(() => {
@@ -1858,15 +1874,19 @@ export default function PenilaianRaportPage() {
                   {/* Input pencarian */}
                   <div
                     className={`w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border ${showMuridDropdown ? 'border-amber-500 ring-2 ring-amber-500/30' : 'border-gray-200 dark:border-gray-600'} text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 shadow-xs cursor-text transition-all`}
-                    onClick={() => { setShowMuridDropdown(true); }}
+                    onClick={() => {
+                      setShowMuridDropdown(true);
+                      setTimeout(() => muridInputRef.current?.focus(), 0);
+                    }}
                   >
                     <Search size={14} className="text-gray-400 shrink-0" />
                     <input
+                      ref={muridInputRef}
                       type="text"
                       value={showMuridDropdown ? muridSearch : (muridList.find(m => String(m.murid_id) === selectedMuridId)?.nama || '')}
                       onChange={e => { setMuridSearch(e.target.value); setShowMuridDropdown(true); }}
                       onFocus={() => { setMuridSearch(''); setShowMuridDropdown(true); }}
-                      placeholder={muridList.length === 0 ? '(Belum ada data santri)' : 'Pilih atau ketik nama / NIS santri...'}
+                      placeholder={loadingMurid ? 'Memuat daftar santri...' : muridList.length === 0 ? '(Belum ada data santri)' : 'Pilih atau ketik nama / NIS santri...'}
                       className="flex-1 bg-transparent outline-none font-bold text-gray-800 dark:text-gray-100 placeholder:font-normal placeholder:text-gray-400 min-w-0"
                     />
                     {selectedMuridId && !showMuridDropdown && (
@@ -1931,10 +1951,11 @@ export default function PenilaianRaportPage() {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setSelectedMuridId(String(m.murid_id));
+                                      const nextId = String(m.murid_id);
                                       setMuridSearch('');
                                       setShowMuridDropdown(false);
-                                      fetchRaportDetail(String(m.murid_id));
+                                      setSelectedMuridId(nextId);
+                                      fetchRaportDetail(nextId);
                                     }}
                                     className={`w-full text-left px-3.5 py-2 flex items-center gap-2.5 transition-colors ${isSelected ? 'bg-amber-50 dark:bg-amber-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/60'}`}
                                   >
@@ -2089,9 +2110,24 @@ export default function PenilaianRaportPage() {
               )}
             </div>
           ) : !raportData ? (
-            <div className="p-16 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700">
+            <div className="p-16 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 space-y-4">
               <AlertCircle size={32} className="mx-auto text-gray-400 mb-3" />
-              <p className="font-bold">Silakan pilih santri untuk melihat raport.</p>
+              {selectedMuridId ? (
+                <>
+                  <p className="font-bold text-amber-700 dark:text-amber-400">Data raport belum dimuat.</p>
+                  <p className="text-xs text-gray-400 mt-1">Klik tombol di bawah untuk memuat raport santri ini.</p>
+                  <button
+                    type="button"
+                    onClick={() => fetchRaportDetail(selectedMuridId)}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-all active:scale-95"
+                  >
+                    <RefreshCw size={14} />
+                    <span>Muat Raport Santri</span>
+                  </button>
+                </>
+              ) : (
+                <p className="font-bold">Silakan pilih santri untuk melihat raport.</p>
+              )}
             </div>
           ) : (
             <div className="space-y-6">
@@ -2223,7 +2259,7 @@ export default function PenilaianRaportPage() {
                                   <td className="py-2 px-2 text-center font-bold text-gray-900 border-r border-gray-200">{n.nilai_akhir}</td>
                                   <td className="py-2 px-2 text-center font-black border-r border-gray-200">{n.predikat}</td>
                                   <td className="py-2 px-3 text-gray-600">
-                                    {Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan'}
+                                    {Number(n.nilai_akhir) >= 70 ? 'Tuntas' : Number(n.nilai_akhir) > 0 ? 'Perlu Bimbingan' : (n.catatan || 'Belum Dinilai')}
                                   </td>
                                 </tr>
                               ))
@@ -2236,10 +2272,12 @@ export default function PenilaianRaportPage() {
                                   Nilai Rata-Rata Akhir:
                                 </td>
                                 <td className="py-2.5 px-2 text-center font-black text-emerald-800 border-r border-gray-300">
-                                  {raportData.ringkasan_nilai.rata_rata}
+                                  {Number(raportData.ringkasan_nilai.rata_rata) > 0 ? raportData.ringkasan_nilai.rata_rata : '-'}
                                 </td>
                                 <td colSpan={2} className="py-2.5 px-3 text-xs text-gray-600">
-                                  Dari total {raportData.ringkasan_nilai.total_mapel} mata pelajaran
+                                  {Number(raportData.ringkasan_nilai.rata_rata) > 0
+                                    ? `Dari total ${raportData.ringkasan_nilai.total_mapel} mata pelajaran`
+                                    : 'Belum ada nilai akhir yang dihitung'}
                                 </td>
                               </tr>
                             </tfoot>
@@ -2626,7 +2664,7 @@ export default function PenilaianRaportPage() {
                                 return {
                                   ...item,
                                   nilai_akhir: val,
-                                  predikat: val ? calcPredikat(parseFloat(val) || 0) : '-',
+                                  predikat: calcPredikatFromInput(val, '-'),
                                 };
                               }));
                             }}

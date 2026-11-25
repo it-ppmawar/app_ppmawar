@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     const mapelName = searchParams.get('mapel');
     const semester = searchParams.get('semester') || '1';
     const tahunAjaran = searchParams.get('tahun_ajaran') || '2025/2026';
+    const forRaport = searchParams.get('for_raport') === '1';
 
     const isSemuaKelas = !kelasId || kelasId === 'SEMUA' || kelasId === 'all';
     const isSemuaMapel = !mapelName || mapelName === 'SEMUA' || mapelName === 'Semua Mapel';
@@ -160,7 +161,15 @@ export async function GET(request: Request) {
           const asr = (namaAsrama || payload.asrama || '').toLowerCase();
           const isPutra = asr === 'putra' || asr.includes('putra') || asr.includes('asrama a') || asr === 'a';
           const isPutri = asr === 'putri' || asr.includes('putri') || asr.includes('asrama b') || asr.includes('asrama c') || asr.includes('asrama d') || asr.includes('asrama e') || asr.includes('asrama f') || ['b', 'c', 'd', 'e', 'f'].includes(asr.trim());
-          if (isPutra) {
+          if (forRaport) {
+            if (isPutra) {
+              whereMurid = `WHERE (LOWER(COALESCE(km1.nama_kelas, km2.nama_kelas, '')) LIKE '%putra%' OR ((m.kelas_madin_id IS NULL AND m.kelas_madin_2_id IS NULL) AND m.jenis_kelamin = 'Laki-laki'))`;
+            } else if (isPutri) {
+              whereMurid = `WHERE (LOWER(COALESCE(km1.nama_kelas, km2.nama_kelas, '')) LIKE '%putri%' OR ((m.kelas_madin_id IS NULL AND m.kelas_madin_2_id IS NULL) AND m.jenis_kelamin = 'Perempuan'))`;
+            } else {
+              whereMurid = `WHERE 1=1`;
+            }
+          } else if (isPutra) {
             whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL) AND LOWER(COALESCE(km1.nama_kelas, km2.nama_kelas, '')) LIKE '%putra%'`;
           } else if (isPutri) {
             whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL) AND LOWER(COALESCE(km1.nama_kelas, km2.nama_kelas, '')) LIKE '%putri%'`;
@@ -175,8 +184,10 @@ export async function GET(request: Request) {
             whereMurid = `WHERE 0=1`;
           }
         } else {
-          // Admin: semua kelas
-          whereMurid = `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL)`;
+          // Admin: semua kelas (di tab Raport tampilkan seluruh santri meski belum diplot ke kelas madin)
+          whereMurid = forRaport
+            ? `WHERE 1=1`
+            : `WHERE (m.kelas_madin_id IS NOT NULL OR m.kelas_madin_2_id IS NOT NULL)`;
         }
       }
 

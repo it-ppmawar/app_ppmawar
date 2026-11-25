@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import QuizBModal from '@/app/dashboard/penilaian/QuizBModal';
-import { calcNilaiAkhir, calcPredikat, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
+import { calcNilaiAkhir, calcPredikat, calcPredikatFromInput, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
 import {
   Award, BookOpen, GraduationCap, Search, Filter,
   Save, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
@@ -1838,7 +1838,7 @@ function PenilaianInputContent() {
                                     return {
                                       ...row,
                                       nilai_akhir: val,
-                                      predikat: val !== '' ? calcPredikat(parseFloat(val) || 0) : '',
+                                      predikat: calcPredikatFromInput(val, ''),
                                     };
                                   })
                                 );

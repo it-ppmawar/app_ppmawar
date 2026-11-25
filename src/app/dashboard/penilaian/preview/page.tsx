@@ -202,7 +202,7 @@ function PreviewContent() {
                               )}
                               <td className="py-2 px-2 text-center font-bold text-gray-900 border-r border-gray-200">{n.nilai_akhir ?? '-'}</td>
                               <td className="py-2 px-2 text-center font-black border-r border-gray-200">{n.predikat ?? '-'}</td>
-                              <td className="py-2 px-3 text-gray-600">{Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan'}</td>
+                              <td className="py-2 px-3 text-gray-600">{Number(n.nilai_akhir) >= 70 ? 'Tuntas' : Number(n.nilai_akhir) > 0 ? 'Perlu Bimbingan' : (n.catatan || 'Belum Dinilai')}</td>
                             </tr>
                           ))
                         )}

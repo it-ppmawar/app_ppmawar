@@ -7,6 +7,14 @@ export function calcPredikat(score: number): string {
   return '-';
 }
 
+/** Konversi input nilai akhir (string/number) menjadi predikat A–E, membedakan angka 0 ('E') dari nilai kosong. */
+export function calcPredikatFromInput(val: unknown, emptyFallback = ''): string {
+  if (isEmptyScoreVal(val)) return emptyFallback;
+  const num = parseFloat(String(val));
+  if (isNaN(num)) return emptyFallback;
+  return num === 0 ? 'E' : calcPredikat(num);
+}
+
 export function isEmptyScoreVal(v: unknown): boolean {
   return v === null || v === undefined || String(v).trim() === '';
 }

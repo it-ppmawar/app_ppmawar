@@ -2362,7 +2362,7 @@ function NotifikasiContent() {
                                 <th className="px-4 py-3 font-bold rounded-l-xl">Nama Guru / Pengurus</th>
                                 <th className="px-4 py-3 font-bold">Kelas / Kamar</th>
                                 <th className="px-4 py-3 font-bold">Jam</th>
-                                <th className="px-4 py-3 font-bold text-center rounded-r-xl w-[224px] min-w-[224px]">Aksi Notifikasi</th>
+                                <th className="px-4 py-3 font-bold text-center rounded-r-xl w-[256px] min-w-[256px]">Aksi Notifikasi</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -2399,29 +2399,10 @@ function NotifikasiContent() {
                                     <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
                                       {r.jam_mulai.substring(0, 5)} – {r.jam_selesai.substring(0, 5)}
                                     </td>
-                                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                                    <td className="px-4 py-3 text-center whitespace-nowrap">
                                       {r.guru_whatsapp ? (
-                                        <div className="grid grid-cols-2 gap-1.5 w-[200px] ml-auto">
-                                          {/* Tombol Auto WA Scheduler */}
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              handleSingleScheduleWA(r);
-                                              handleScrollToNextReminder(idx + 1);
-                                            }}
-                                            disabled={isSendingSingle}
-                                            title="Jadwalkan otomatis via WA Scheduler"
-                                            className={`w-full inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 whitespace-nowrap ${
-                                              isSent 
-                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' 
-                                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                            }`}
-                                          >
-                                            {isSendingSingle ? <Loader2 size={12} className="animate-spin shrink-0" /> : <Zap size={12} className="shrink-0" />}
-                                            <span>{isSent ? 'Terjadwal' : 'Auto WA'}</span>
-                                          </button>
-
-                                          {/* Tombol Manual WA.me */}
+                                        <div className="grid grid-cols-2 gap-2 w-[228px] mx-auto">
+                                          {/* Tombol Manual WA.me (Diutamakan: Hijau Solid & Efek Terkirim) */}
                                           <a
                                             href={getWaGuruReminderLink(r)}
                                             target="_blank"
@@ -2431,11 +2412,42 @@ function NotifikasiContent() {
                                               handleScrollToNextReminder(idx + 1);
                                             }}
                                             title="Kirim manual via tautan wa.me"
-                                            className="w-full inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all whitespace-nowrap shadow-sm"
+                                            className={`w-full h-9 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-[1.02] active:scale-95 whitespace-nowrap border ${
+                                              isSent 
+                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' 
+                                                : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
+                                            }`}
                                           >
-                                            <MessageCircle size={12} className="text-[#25D366] shrink-0" />
-                                            <span>Manual</span>
+                                            {isSent ? (
+                                              <Check size={13} className="text-emerald-600 shrink-0" />
+                                            ) : (
+                                              <MessageCircle size={13} className="text-white shrink-0" />
+                                            )}
+                                            <span>{isSent ? 'Terkirim' : 'Manual'}</span>
                                           </a>
+
+                                          {/* Tombol Auto WA Scheduler */}
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              handleSingleScheduleWA(r);
+                                              handleScrollToNextReminder(idx + 1);
+                                            }}
+                                            disabled={isSendingSingle}
+                                            title="Jadwalkan otomatis via WA Scheduler"
+                                            className={`w-full h-9 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 whitespace-nowrap border ${
+                                              isSent 
+                                                ? 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-900/40 dark:text-gray-400 dark:border-gray-800' 
+                                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700'
+                                            }`}
+                                          >
+                                            {isSendingSingle ? (
+                                              <Loader2 size={13} className="animate-spin text-amber-500 shrink-0" />
+                                            ) : (
+                                              <Zap size={13} className={`shrink-0 ${isSent ? 'text-gray-400' : 'text-amber-500'}`} />
+                                            )}
+                                            <span>{isSent ? 'Terjadwal' : 'Auto WA'}</span>
+                                          </button>
                                         </div>
                                       ) : (
                                         <span className="text-[11px] text-gray-400 italic">No WA Kosong</span>
@@ -2495,22 +2507,7 @@ function NotifikasiContent() {
                                 <div className="grid grid-cols-2 gap-2">
                                   {r.guru_whatsapp ? (
                                     <>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          handleSingleScheduleWA(r);
-                                          handleScrollToNextReminder(idx + 1);
-                                        }}
-                                        disabled={isSendingSingle}
-                                        className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 disabled:opacity-50 ${
-                                          isSent
-                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                        }`}
-                                      >
-                                        {isSendingSingle ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
-                                        {isSent ? 'Terjadwal' : 'Auto WA'}
-                                      </button>
+                                      {/* Tombol Manual WA.me (Diutamakan: Hijau Solid & Efek Terkirim) */}
                                       <a
                                         href={getWaGuruReminderLink(r)}
                                         target="_blank"
@@ -2519,11 +2516,37 @@ function NotifikasiContent() {
                                           markReminderAsSent(reminderKey);
                                           handleScrollToNextReminder(idx + 1);
                                         }}
-                                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700/60 hover:bg-gray-200 transition-all active:scale-95"
+                                        className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 ${
+                                          isSent
+                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                        }`}
                                       >
-                                        <MessageCircle size={13} className="text-[#25D366]" />
-                                        Manual
+                                        {isSent ? <Check size={13} className="text-emerald-600" /> : <MessageCircle size={13} className="text-white" />}
+                                        <span>{isSent ? 'Terkirim' : 'Manual'}</span>
                                       </a>
+
+                                      {/* Tombol Auto WA */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleSingleScheduleWA(r);
+                                          handleScrollToNextReminder(idx + 1);
+                                        }}
+                                        disabled={isSendingSingle}
+                                        className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50 ${
+                                          isSent
+                                            ? 'bg-gray-50 text-gray-500 dark:bg-gray-900/40 dark:text-gray-400 border border-gray-200 dark:border-gray-800'
+                                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700'
+                                        }`}
+                                      >
+                                        {isSendingSingle ? (
+                                          <Loader2 size={13} className="animate-spin text-amber-500" />
+                                        ) : (
+                                          <Zap size={13} className={isSent ? 'text-gray-400' : 'text-amber-500'} />
+                                        )}
+                                        <span>{isSent ? 'Terjadwal' : 'Auto WA'}</span>
+                                      </button>
                                     </>
                                   ) : (
                                     <div className="col-span-2 bg-gray-50 dark:bg-gray-900 text-center py-2.5 rounded-xl text-xs text-gray-400 italic">
