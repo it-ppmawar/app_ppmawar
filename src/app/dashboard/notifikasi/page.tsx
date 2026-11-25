@@ -2019,7 +2019,7 @@ function NotifikasiContent() {
                     Pengingat
                   </span>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
                   <button
                     type="button"
                     onClick={() => setGuruCardTab('auto')}
@@ -2073,7 +2073,7 @@ function NotifikasiContent() {
                 </div>
                 <div className="flex flex-col gap-2">
                   {/* Baris 1: Rekap Absensi + Input & Leger Nilai berdampingan */}
-                  <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setGuruCardTab('rekap')}
@@ -2492,7 +2492,7 @@ function NotifikasiContent() {
                                 </div>
 
                                 {/* Tombol Aksi bertumpuk */}
-                                <div className="flex flex-col gap-2">
+                                <div className="grid grid-cols-2 gap-2">
                                   {r.guru_whatsapp ? (
                                     <>
                                       <button
@@ -2993,7 +2993,7 @@ function NotifikasiContent() {
                               </div>
                             </div>
 
-                            <div className="flex flex-col gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                               <button
                                 type="button"
                                 onClick={() => {
