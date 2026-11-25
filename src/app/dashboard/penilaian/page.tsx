@@ -2132,7 +2132,8 @@ export default function PenilaianRaportPage() {
           ) : (
             <div className="space-y-6">
               {/* LEMBAR RAPORT RESMI (TAMPILAN CETAK A4) */}
-              <div className="bg-white text-gray-900 rounded-3xl shadow-md border border-gray-200 p-8 sm:p-12 print:border-none print:shadow-none print:p-0 print:m-0 max-w-4xl mx-auto">
+              <div className="overflow-x-auto pb-4 print:overflow-visible">
+              <div className="bg-white text-gray-900 rounded-3xl shadow-md border border-gray-200 p-8 sm:p-12 print:border-none print:shadow-none print:p-0 print:m-0 max-w-4xl mx-auto min-w-[760px] print:min-w-0" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
                 {/* KOP RESMI PESANTREN */}
                 <div className="border-b-4 border-double border-gray-900 pb-4 mb-6 text-center">
                   <h3 className="text-xl sm:text-2xl font-black tracking-wider uppercase font-serif">
@@ -2142,7 +2143,7 @@ export default function PenilaianRaportPage() {
                     MADRASAH DINIYAH &amp; LEMBAGA TAHFIDZ AL-QUR'AN
                   </h4>
                   <p className="text-xs text-gray-600 mt-1 font-sans">
-                    Sugio - Lamongan - Jawa Timur | Website: ppmawar.or.id
+                    Simo - Lamongan - Jawa Timur | Website: ppmawar.or.id
                   </p>
                   <div className="mt-3 inline-block bg-gray-900 text-white font-bold text-xs sm:text-sm px-6 py-1 rounded-full uppercase tracking-widest">
                     LAPORAN HASIL BELAJAR SANTRI (RAPORT)
@@ -2179,34 +2180,37 @@ export default function PenilaianRaportPage() {
                   </div>
 
                   {/* Rincian Identitas Santri */}
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-xs sm:text-sm w-full">
-                    <div className="space-y-1.5">
-                      <div className="flex">
-                        <span className="w-32 font-bold text-gray-600">Nama Santri</span>
-                        <span className="font-black text-gray-900">: {raportData.santri.nama}</span>
-                      </div>
-                      <div className="flex">
-                        <span className="w-32 font-bold text-gray-600">Nomor Induk (NIS)</span>
-                        <span>: {raportData.santri.nis || '-'}</span>
-                      </div>
-                      <div className="flex">
-                        <span className="w-32 font-bold text-gray-600">Kelas Madin</span>
-                        <span>: {raportData.santri.nama_kelas_madin}</span>
-                      </div>
+                  <div className="flex-1 w-full text-xs sm:text-sm">
+                    {/* Nama Santri: 1 baris tersendiri full-width */}
+                    <div className="flex mb-2">
+                      <span className="w-32 font-bold text-gray-600">Nama Santri</span>
+                      <span className="font-black text-gray-900">: {raportData.santri.nama}</span>
                     </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5">
+                      <div className="space-y-1.5">
+                        <div className="flex">
+                          <span className="w-32 font-bold text-gray-600">Nomor Induk (NIS)</span>
+                          <span>: {raportData.santri.nis || '-'}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-32 font-bold text-gray-600">Kelas Madin</span>
+                          <span>: {raportData.santri.nama_kelas_madin}</span>
+                        </div>
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <div className="flex">
-                        <span className="w-32 font-bold text-gray-600">Semester / TA</span>
-                        <span className="font-bold">: {raportData.semester === '1' ? '1 (Ganjil)' : '2 (Genap)'} / {raportData.tahun_ajaran}</span>
-                      </div>
-                      <div className="flex">
-                        <span className="w-32 font-bold text-gray-600">Kamar / Asrama</span>
-                        <span>: {raportData.santri.nama_kamar} ({raportData.santri.nama_asrama})</span>
-                      </div>
-                      <div className="flex">
-                        <span className="w-32 font-bold text-gray-600">Wali Kelas</span>
-                        <span>: {raportData.santri.wali_kelas || '-'}</span>
+                      <div className="space-y-1.5">
+                        <div className="flex">
+                          <span className="w-32 font-bold text-gray-600">Semester / TA</span>
+                          <span className="font-bold">: {raportData.semester === '1' ? '1 (Ganjil)' : '2 (Genap)'} / {raportData.tahun_ajaran}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-32 font-bold text-gray-600">Kamar / Asrama</span>
+                          <span>: {raportData.santri.nama_kamar} ({raportData.santri.nama_asrama})</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-32 font-bold text-gray-600">Wali Kelas</span>
+                          <span>: {raportData.santri.wali_kelas || '-'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2383,12 +2387,14 @@ export default function PenilaianRaportPage() {
 
                   <div>
                     <p className="text-gray-500 mb-16">Kepala Madrasah Diniyah<br /><strong>PP. Matholi'ul Anwar</strong></p>
-                    <p className="font-bold border-t border-gray-400 mx-4 pt-1">KH. Ahmad Taufiq, M.Pd.I</p>
+                    <p className="font-bold border-t border-gray-400 mx-4 pt-1">{(raportData as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}</p>
                   </div>
                 </div>
               </div>
+              </div>
 
-              {/* FORM PENGISIAN CATATAN WALI KELAS & KEPRIBADIAN (Print-hidden) */}
+              {/* FORM PENGISIAN CATATAN WALI KELAS & KEPRIBADIAN (Print-hidden, hanya untuk guru/admin/staff) */}
+              {!isWaliOrSantri && !isTamu && (
               <div className="print:hidden bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
                   <h4 className="font-extrabold text-sm sm:text-base text-gray-800 dark:text-gray-100 flex items-center gap-2">
@@ -2464,6 +2470,7 @@ export default function PenilaianRaportPage() {
                   />
                 </div>
               </div>
+              )}
             </div>
           )}
         </div>

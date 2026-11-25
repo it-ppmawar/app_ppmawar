@@ -2402,7 +2402,30 @@ function NotifikasiContent() {
                                     <td className="px-4 py-3 text-center whitespace-nowrap">
                                       {r.guru_whatsapp ? (
                                         <div className="grid grid-cols-2 gap-2 w-[228px] mx-auto">
-                                          {/* Tombol Manual WA.me (Diutamakan: Hijau Solid & Efek Terkirim) */}
+                                          {/* Tombol Auto WA Scheduler */}
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              handleSingleScheduleWA(r);
+                                              handleScrollToNextReminder(idx + 1);
+                                            }}
+                                            disabled={isSendingSingle}
+                                            title="Jadwalkan otomatis via WA Scheduler"
+                                            className={`w-full h-9 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 whitespace-nowrap border ${
+                                              isSent 
+                                                ? 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-900/40 dark:text-gray-400 dark:border-gray-800' 
+                                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700'
+                                            }`}
+                                          >
+                                            {isSendingSingle ? (
+                                              <Loader2 size={13} className="animate-spin text-amber-500 shrink-0" />
+                                            ) : (
+                                              <Zap size={13} className={`shrink-0 ${isSent ? 'text-gray-400' : 'text-amber-500'}`} />
+                                            )}
+                                            <span>{isSent ? 'Terjadwal' : 'Auto WA'}</span>
+                                          </button>
+
+                                          {/* Tombol Manual WA.me (Di kanan: Akses Lebih Mudah & Cepat) */}
                                           <a
                                             href={getWaGuruReminderLink(r)}
                                             target="_blank"
@@ -2425,29 +2448,6 @@ function NotifikasiContent() {
                                             )}
                                             <span>{isSent ? 'Terkirim' : 'Manual'}</span>
                                           </a>
-
-                                          {/* Tombol Auto WA Scheduler */}
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              handleSingleScheduleWA(r);
-                                              handleScrollToNextReminder(idx + 1);
-                                            }}
-                                            disabled={isSendingSingle}
-                                            title="Jadwalkan otomatis via WA Scheduler"
-                                            className={`w-full h-9 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 whitespace-nowrap border ${
-                                              isSent 
-                                                ? 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-900/40 dark:text-gray-400 dark:border-gray-800' 
-                                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700'
-                                            }`}
-                                          >
-                                            {isSendingSingle ? (
-                                              <Loader2 size={13} className="animate-spin text-amber-500 shrink-0" />
-                                            ) : (
-                                              <Zap size={13} className={`shrink-0 ${isSent ? 'text-gray-400' : 'text-amber-500'}`} />
-                                            )}
-                                            <span>{isSent ? 'Terjadwal' : 'Auto WA'}</span>
-                                          </button>
                                         </div>
                                       ) : (
                                         <span className="text-[11px] text-gray-400 italic">No WA Kosong</span>
@@ -2507,25 +2507,6 @@ function NotifikasiContent() {
                                 <div className="grid grid-cols-2 gap-2">
                                   {r.guru_whatsapp ? (
                                     <>
-                                      {/* Tombol Manual WA.me (Diutamakan: Hijau Solid & Efek Terkirim) */}
-                                      <a
-                                        href={getWaGuruReminderLink(r)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={() => {
-                                          markReminderAsSent(reminderKey);
-                                          handleScrollToNextReminder(idx + 1);
-                                        }}
-                                        className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 ${
-                                          isSent
-                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                        }`}
-                                      >
-                                        {isSent ? <Check size={13} className="text-emerald-600" /> : <MessageCircle size={13} className="text-white" />}
-                                        <span>{isSent ? 'Terkirim' : 'Manual'}</span>
-                                      </a>
-
                                       {/* Tombol Auto WA */}
                                       <button
                                         type="button"
@@ -2547,6 +2528,25 @@ function NotifikasiContent() {
                                         )}
                                         <span>{isSent ? 'Terjadwal' : 'Auto WA'}</span>
                                       </button>
+
+                                      {/* Tombol Manual WA.me (Di kanan: Akses Mudah & Cepat) */}
+                                      <a
+                                        href={getWaGuruReminderLink(r)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => {
+                                          markReminderAsSent(reminderKey);
+                                          handleScrollToNextReminder(idx + 1);
+                                        }}
+                                        className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 ${
+                                          isSent
+                                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                        }`}
+                                      >
+                                        {isSent ? <Check size={13} className="text-emerald-600" /> : <MessageCircle size={13} className="text-white" />}
+                                        <span>{isSent ? 'Terkirim' : 'Manual'}</span>
+                                      </a>
                                     </>
                                   ) : (
                                     <div className="col-span-2 bg-gray-50 dark:bg-gray-900 text-center py-2.5 rounded-xl text-xs text-gray-400 italic">

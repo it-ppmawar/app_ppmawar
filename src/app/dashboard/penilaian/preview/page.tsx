@@ -91,8 +91,8 @@ function PreviewContent() {
       </div>
 
       {/* Konten Raport (A4 Print) */}
-      <div className="print:pt-0 pt-14 bg-gray-100 print:bg-white min-h-screen">
-        <div className="bg-white text-gray-900 max-w-4xl mx-auto p-8 sm:p-12 print:p-8 print:max-w-none shadow-md print:shadow-none">
+      <div className="print:pt-0 pt-14 bg-gray-100 print:bg-white min-h-screen overflow-x-auto">
+        <div className="bg-white text-gray-900 max-w-4xl mx-auto p-8 sm:p-12 print:p-8 print:max-w-none shadow-md print:shadow-none min-w-[760px] print:min-w-0" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
 
           {/* KOP RESMI PESANTREN */}
           <div className="border-b-4 border-double border-gray-900 pb-4 mb-6 text-center">
@@ -103,7 +103,7 @@ function PreviewContent() {
               MADRASAH DINIYAH &amp; LEMBAGA TAHFIDZ AL-QUR&apos;AN
             </h4>
             <p className="text-xs text-gray-600 mt-1 font-sans">
-              Sugio - Lamongan - Jawa Timur | Website: ppmawar.or.id
+              Simo - Lamongan - Jawa Timur | Website: ppmawar.or.id
             </p>
             <div className="mt-3 inline-block bg-gray-900 text-white font-bold text-xs sm:text-sm px-6 py-1 rounded-full uppercase tracking-widest">
               LAPORAN HASIL BELAJAR SANTRI (RAPORT)
@@ -135,16 +135,21 @@ function PreviewContent() {
               </div>
             </div>
 
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-xs sm:text-sm w-full">
-              <div className="space-y-1.5">
-                <div className="flex"><span className="w-36 font-bold text-gray-600">Nama Santri</span><span className="font-black text-gray-900">: {d.santri?.nama}</span></div>
-                <div className="flex"><span className="w-36 font-bold text-gray-600">Nomor Induk (NIS)</span><span>: {d.santri?.nis || '-'}</span></div>
-                <div className="flex"><span className="w-36 font-bold text-gray-600">Kelas Madin</span><span>: {d.santri?.nama_kelas_madin}</span></div>
+            <div className="flex-1 w-full text-xs sm:text-sm">
+              {/* Nama Santri: 1 baris tersendiri full-width */}
+              <div className="flex mb-2">
+                <span className="w-36 font-bold text-gray-600">Nama Santri</span><span className="font-black text-gray-900">: {d.santri?.nama}</span>
               </div>
-              <div className="space-y-1.5">
-                <div className="flex"><span className="w-36 font-bold text-gray-600">Semester / TA</span><span className="font-bold">: {semLabel} / {d.tahun_ajaran}</span></div>
-                <div className="flex"><span className="w-36 font-bold text-gray-600">Kamar / Asrama</span><span>: {d.santri?.nama_kamar} ({d.santri?.nama_asrama})</span></div>
-                <div className="flex"><span className="w-36 font-bold text-gray-600">Wali Kelas</span><span>: {d.santri?.wali_kelas || '-'}</span></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5">
+                <div className="space-y-1.5">
+                  <div className="flex"><span className="w-36 font-bold text-gray-600">Nomor Induk (NIS)</span><span>: {d.santri?.nis || '-'}</span></div>
+                  <div className="flex"><span className="w-36 font-bold text-gray-600">Kelas Madin</span><span>: {d.santri?.nama_kelas_madin}</span></div>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex"><span className="w-36 font-bold text-gray-600">Semester / TA</span><span className="font-bold">: {semLabel} / {d.tahun_ajaran}</span></div>
+                  <div className="flex"><span className="w-36 font-bold text-gray-600">Kamar / Asrama</span><span>: {d.santri?.nama_kamar} ({d.santri?.nama_asrama})</span></div>
+                  <div className="flex"><span className="w-36 font-bold text-gray-600">Wali Kelas</span><span>: {d.santri?.wali_kelas || '-'}</span></div>
+                </div>
               </div>
             </div>
           </div>
@@ -308,18 +313,18 @@ function PreviewContent() {
 
           {/* TANDA TANGAN */}
           <div className="grid grid-cols-3 gap-6 text-xs text-center mt-8">
-            {[
-              { label: 'Orang Tua / Wali', nama: '_________________' },
-              { label: 'Wali Kelas', nama: d.santri?.wali_kelas || '_________________' },
-              { label: 'Kepala Madrasah', nama: '_________________' },
-            ].map(item => (
-              <div key={item.label}>
-                <p className="text-gray-600">{item.label}</p>
-                <div className="mt-12 border-t border-gray-400 pt-1">
-                  <p className="font-bold text-gray-900">{item.nama}</p>
-                </div>
-              </div>
-            ))}
+            <div>
+              <p className="text-gray-500 mb-16">Mengetahui,<br /><strong>Orang Tua / Wali Santri</strong></p>
+              <p className="font-bold border-t border-gray-400 mx-4 pt-1">( ........................................ )</p>
+            </div>
+            <div>
+              <p className="text-gray-500 mb-16">Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br /><strong>Wali Kelas</strong></p>
+              <p className="font-bold border-t border-gray-400 mx-4 pt-1">{d.santri?.wali_kelas || '( ........................................ )'}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 mb-16">Kepala Madrasah Diniyah<br /><strong>PP. Matholi&apos;ul Anwar</strong></p>
+              <p className="font-bold border-t border-gray-400 mx-4 pt-1">{(d as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}</p>
+            </div>
           </div>
 
         </div>
