@@ -446,7 +446,7 @@ export default function TabInputNilaiGuru({
         </div>
 
         {/* Masa Berlaku Tautan */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-2 border-t border-amber-200/50 dark:border-amber-800/30 text-xs">
+        <div className="flex flex-col items-center sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-amber-200/50 dark:border-amber-800/30 text-xs">
           <div className="flex items-center gap-2">
             <Clock size={13} className="text-amber-600 dark:text-amber-400" />
             <span className="font-bold text-gray-700 dark:text-gray-300">Masa Berlaku Tautan:</span>
@@ -467,7 +467,7 @@ export default function TabInputNilaiGuru({
             />
             <span className="text-gray-500">Hari (Min. 1 Hari)</span>
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center justify-center gap-1.5 flex-wrap">
             <span className="text-[11px] text-gray-500">Pilihan Cepat:</span>
             {[1, 3, 7, 14, 30].map(d => (
               <button
@@ -878,7 +878,7 @@ export default function TabInputNilaiGuru({
                           {(item.nama || 'G')[0]}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
                             <h4 className="text-sm font-extrabold text-gray-900 dark:text-gray-100">
                               {item.nama || item.guru_nama}
                             </h4>
@@ -894,7 +894,7 @@ export default function TabInputNilaiGuru({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
                         {item.mapel_list.map((m: any, mIdx: number) => (
                           <span
                             key={mIdx}

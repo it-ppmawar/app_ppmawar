@@ -2071,37 +2071,41 @@ function NotifikasiContent() {
                     Laporan, Nilai &amp; Akun
                   </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setGuruCardTab('rekap')}
-                    className={`min-h-[52px] sm:min-h-[56px] py-2.5 sm:py-3 px-2 sm:px-2.5 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
-                      guruCardTab === 'rekap'
-                        ? 'bg-purple-600 text-white shadow-md font-extrabold'
-                        : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
-                    }`}
-                  >
-                    <Calendar size={16} className={`shrink-0 ${guruCardTab === 'rekap' ? 'text-white' : 'text-purple-500'}`} />
-                    <span className="leading-tight font-extrabold text-[11px] sm:text-xs">Rekap Absensi Guru</span>
-                  </button>
+                <div className="flex flex-col gap-2">
+                  {/* Baris 1: Rekap Absensi + Input & Leger Nilai berdampingan */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setGuruCardTab('rekap')}
+                      className={`min-h-[52px] sm:min-h-[56px] py-2.5 sm:py-3 px-2 sm:px-2.5 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                        guruCardTab === 'rekap'
+                          ? 'bg-purple-600 text-white shadow-md font-extrabold'
+                          : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
+                      }`}
+                    >
+                      <Calendar size={16} className={`shrink-0 ${guruCardTab === 'rekap' ? 'text-white' : 'text-purple-500'}`} />
+                      <span className="leading-tight font-extrabold text-[11px] sm:text-xs">Rekap Absensi Guru</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setGuruCardTab('input_nilai')}
-                    className={`min-h-[52px] sm:min-h-[56px] py-2.5 sm:py-3 px-2 sm:px-2.5 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
-                      guruCardTab === 'input_nilai'
-                        ? 'bg-amber-600 text-white shadow-md font-extrabold'
-                        : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
-                    }`}
-                  >
-                    <Award size={16} className={`shrink-0 ${guruCardTab === 'input_nilai' ? 'text-white' : 'text-amber-500'}`} />
-                    <span className="leading-tight font-extrabold text-[11px] sm:text-xs">Input &amp; Leger Nilai</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setGuruCardTab('input_nilai')}
+                      className={`min-h-[52px] sm:min-h-[56px] py-2.5 sm:py-3 px-2 sm:px-2.5 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                        guruCardTab === 'input_nilai'
+                          ? 'bg-amber-600 text-white shadow-md font-extrabold'
+                          : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
+                      }`}
+                    >
+                      <Award size={16} className={`shrink-0 ${guruCardTab === 'input_nilai' ? 'text-white' : 'text-amber-500'}`} />
+                      <span className="leading-tight font-extrabold text-[11px] sm:text-xs">Input &amp; Leger Nilai</span>
+                    </button>
+                  </div>
 
+                  {/* Baris 2: Info Akun Guru full-width */}
                   <button
                     type="button"
                     onClick={() => setGuruCardTab('info_akun')}
-                    className={`min-h-[52px] sm:min-h-[56px] py-2.5 sm:py-3 px-2 sm:px-2.5 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                    className={`w-full min-h-[52px] sm:min-h-[56px] py-2.5 sm:py-3 px-2 sm:px-2.5 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
                       guruCardTab === 'info_akun'
                         ? 'bg-emerald-600 text-white shadow-md font-extrabold'
                         : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
