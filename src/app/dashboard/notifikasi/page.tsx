@@ -2362,7 +2362,7 @@ function NotifikasiContent() {
                                 <th className="px-4 py-3 font-bold rounded-l-xl">Nama Guru / Pengurus</th>
                                 <th className="px-4 py-3 font-bold">Kelas / Kamar</th>
                                 <th className="px-4 py-3 font-bold">Jam</th>
-                                <th className="px-4 py-3 font-bold text-right rounded-r-xl">Aksi Notifikasi</th>
+                                <th className="px-4 py-3 font-bold text-center rounded-r-xl w-[224px] min-w-[224px]">Aksi Notifikasi</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -2399,9 +2399,9 @@ function NotifikasiContent() {
                                     <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
                                       {r.jam_mulai.substring(0, 5)} – {r.jam_selesai.substring(0, 5)}
                                     </td>
-                                    <td className="px-4 py-3 text-right">
+                                    <td className="px-4 py-3 text-right whitespace-nowrap">
                                       {r.guru_whatsapp ? (
-                                        <div className="inline-flex items-center gap-1.5">
+                                        <div className="grid grid-cols-2 gap-1.5 w-[200px] ml-auto">
                                           {/* Tombol Auto WA Scheduler */}
                                           <button
                                             type="button"
@@ -2411,14 +2411,14 @@ function NotifikasiContent() {
                                             }}
                                             disabled={isSendingSingle}
                                             title="Jadwalkan otomatis via WA Scheduler"
-                                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 ${
+                                            className={`w-full inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50 whitespace-nowrap ${
                                               isSent 
                                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' 
                                                 : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                                             }`}
                                           >
-                                            {isSendingSingle ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-                                            {isSent ? 'Terjadwal' : 'Auto WA'}
+                                            {isSendingSingle ? <Loader2 size={12} className="animate-spin shrink-0" /> : <Zap size={12} className="shrink-0" />}
+                                            <span>{isSent ? 'Terjadwal' : 'Auto WA'}</span>
                                           </button>
 
                                           {/* Tombol Manual WA.me */}
@@ -2431,10 +2431,10 @@ function NotifikasiContent() {
                                               handleScrollToNextReminder(idx + 1);
                                             }}
                                             title="Kirim manual via tautan wa.me"
-                                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+                                            className="w-full inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all whitespace-nowrap shadow-sm"
                                           >
-                                            <MessageCircle size={12} className="text-[#25D366]" />
-                                            Manual
+                                            <MessageCircle size={12} className="text-[#25D366] shrink-0" />
+                                            <span>Manual</span>
                                           </a>
                                         </div>
                                       ) : (

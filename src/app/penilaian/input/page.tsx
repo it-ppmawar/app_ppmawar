@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import QuizBModal from '@/app/dashboard/penilaian/QuizBModal';
+import { calcNilaiAkhir, calcPredikat, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
 import {
   Award, BookOpen, GraduationCap, Search, Filter,
   Save, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
@@ -55,15 +56,6 @@ const getFotoUrl = (fotoName: string | null, nis?: string) => {
   return `${baseUrl}${cleanFotoName}`;
 };
 
-function calcPredikat(score: number): string {
-  if (score >= 90) return 'A';
-  if (score >= 80) return 'B';
-  if (score >= 70) return 'C';
-  if (score >= 60) return 'D';
-  if (score > 0) return 'E';
-  return '-';
-}
-
 function PenilaianInputContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || searchParams.get('t') || '';
@@ -89,7 +81,7 @@ function PenilaianInputContent() {
 
   // Student list & Scores
   const [muridList, setMuridList] = useState<any[]>([]);
-  const [scores, setScores] = useState<Record<number, { harian: string; uts: string; uas: string; akhir: string; predikat: string; catatan: string }>>({});
+  const [scores, setScores] = useState<Record<number, { harian: string; lisan: string; uts: string; uas: string; akhir: string; predikat: string; catatan: string }>>({});
   const [loadingMurid, setLoadingMurid] = useState(false);
   const [savingScores, setSavingScores] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
@@ -269,24 +261,26 @@ function PenilaianInputContent() {
           const initialScores: Record<number, any> = {};
           json.muridList.forEach((m: any) => {
             const h = m.nilai_harian !== null && m.nilai_harian !== undefined && m.nilai_harian !== '' ? String(m.nilai_harian) : '';
+            const l = m.nilai_lisan !== null && m.nilai_lisan !== undefined && m.nilai_lisan !== '' ? String(m.nilai_lisan) : '';
             const u = m.nilai_uts !== null && m.nilai_uts !== undefined && m.nilai_uts !== '' ? String(m.nilai_uts) : '';
             const a = m.nilai_uas !== null && m.nilai_uas !== undefined && m.nilai_uas !== '' ? String(m.nilai_uas) : '';
             let akh = m.nilai_akhir !== null && m.nilai_akhir !== undefined && m.nilai_akhir !== '' ? String(m.nilai_akhir) : '';
             let pred = m.predikat || '';
 
-            if (!akh && (h || u || a)) {
-              const numH = parseFloat(h) || 0;
-              const numU = parseFloat(u) || 0;
-              const numA = parseFloat(a) || 0;
-              const autoFinal = Math.round((numH * 0.3 + numU * 0.3 + numA * 0.4) * 100) / 100;
-              akh = String(autoFinal);
-              pred = calcPredikat(autoFinal);
+            if (!akh && (h || l || u || a)) {
+              const autoFinal = calcNilaiAkhir({ harian: h, lisan: l, uts: u, uas: a });
+              if (autoFinal !== null) {
+                akh = String(autoFinal);
+                pred = autoFinal === 0 ? 'E' : calcPredikat(autoFinal);
+              }
             } else if (akh && !pred) {
-              pred = calcPredikat(parseFloat(akh));
+              const parsedAkh = parseFloat(akh);
+              pred = parsedAkh === 0 ? 'E' : calcPredikat(parsedAkh);
             }
 
             initialScores[m.murid_id] = {
               harian: h,
+              lisan: l,
               uts: u,
               uas: a,
               akhir: akh,
@@ -308,24 +302,23 @@ function PenilaianInputContent() {
   }, [selectedKelas, selectedMapel, semester, tahunAjaran, token, reloadTrigger]);
 
   // 4. Score Change Handler
-  const handleScoreChange = (muridId: number, field: 'harian' | 'uts' | 'uas' | 'akhir' | 'predikat' | 'catatan', val: string) => {
+  const handleScoreChange = (muridId: number, field: 'harian' | 'lisan' | 'uts' | 'uas' | 'akhir' | 'predikat' | 'catatan', val: string) => {
     setIsDirty(true);
     setScores(prev => {
-      const existing = prev[muridId] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+      const existing = prev[muridId] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
       const updated = { ...existing, [field]: val };
 
-      if (field === 'harian' || field === 'uts' || field === 'uas') {
-        const h = field === 'harian' ? val : existing.harian;
-        const u = field === 'uts' ? val : existing.uts;
-        const a = field === 'uas' ? val : existing.uas;
+      if (field === 'harian' || field === 'lisan' || field === 'uts' || field === 'uas') {
+        const autoFinal = calcNilaiAkhir({
+          harian: updated.harian,
+          lisan: updated.lisan,
+          uts: updated.uts,
+          uas: updated.uas,
+        });
 
-        if (h !== '' || u !== '' || a !== '') {
-          const numH = parseFloat(h) || 0;
-          const numU = parseFloat(u) || 0;
-          const numA = parseFloat(a) || 0;
-          const autoFinal = Math.round((numH * 0.3 + numU * 0.3 + numA * 0.4) * 100) / 100;
+        if (autoFinal !== null) {
           updated.akhir = String(autoFinal);
-          updated.predikat = calcPredikat(autoFinal);
+          updated.predikat = autoFinal === 0 ? 'E' : calcPredikat(autoFinal);
         } else {
           updated.akhir = '';
           updated.predikat = '';
@@ -335,7 +328,7 @@ function PenilaianInputContent() {
       if (field === 'akhir') {
         if (val !== '') {
           const numAkhir = parseFloat(val) || 0;
-          updated.predikat = calcPredikat(numAkhir);
+          updated.predikat = numAkhir === 0 ? 'E' : calcPredikat(numAkhir);
         } else {
           updated.predikat = '';
         }
@@ -346,19 +339,23 @@ function PenilaianInputContent() {
   };
 
   // 5. Terapkan Skor dari QuizB / CBT
-  const handleApplyQuizBScores = (appliedList: Array<{ murid_id: number; skor: number; targetField: 'harian' | 'uts' | 'uas'; quizTitle: string }>) => {
+  const handleApplyQuizBScores = (appliedList: Array<{ murid_id: number; skor: number; targetField: 'harian' | 'lisan' | 'uts' | 'uas'; quizTitle: string }>) => {
     setIsDirty(true);
     setScores(prev => {
       const next = { ...prev };
       for (const item of appliedList) {
-        const existing = next[item.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+        const existing = next[item.murid_id] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
         const updated = { ...existing, [item.targetField]: String(item.skor) };
-        const numH = parseFloat(updated.harian) || 0;
-        const numU = parseFloat(updated.uts) || 0;
-        const numA = parseFloat(updated.uas) || 0;
-        const autoFinal = Math.round((numH * 0.3 + numU * 0.3 + numA * 0.4) * 100) / 100;
-        updated.akhir = String(autoFinal);
-        updated.predikat = calcPredikat(autoFinal);
+        const autoFinal = calcNilaiAkhir({
+          harian: updated.harian,
+          lisan: updated.lisan,
+          uts: updated.uts,
+          uas: updated.uas,
+        });
+        if (autoFinal !== null) {
+          updated.akhir = String(autoFinal);
+          updated.predikat = autoFinal === 0 ? 'E' : calcPredikat(autoFinal);
+        }
         next[item.murid_id] = updated;
       }
       return next;
@@ -378,11 +375,12 @@ function PenilaianInputContent() {
     setSaveSuccessMsg('');
     try {
       const payloadScores = muridList.map(m => {
-        const s = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+        const s = scores[m.murid_id] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
         return {
           murid_id: m.murid_id,
           kelas_madin_id: m.kelas_madin_id,
           nilai_harian: s.harian !== '' ? s.harian : null,
+          nilai_lisan: s.lisan !== '' ? s.lisan : null,
           nilai_uts: s.uts !== '' ? s.uts : null,
           nilai_uas: s.uas !== '' ? s.uas : null,
           nilai_akhir: s.akhir !== '' ? s.akhir : null,
@@ -448,11 +446,32 @@ function PenilaianInputContent() {
     }
   };
 
+  const updateEditModalComponent = (idx: number, field: 'nilai_harian' | 'nilai_lisan' | 'nilai_uts' | 'nilai_uas', val: string) => {
+    setEditModalScores(prev =>
+      prev.map((row, rIdx) => {
+        if (rIdx !== idx) return row;
+        const nextRow = { ...row, [field]: val };
+        const autoFinal = calcNilaiAkhir({
+          harian: nextRow.nilai_harian,
+          lisan: nextRow.nilai_lisan,
+          uts: nextRow.nilai_uts,
+          uas: nextRow.nilai_uas,
+        });
+        return {
+          ...nextRow,
+          nilai_akhir: autoFinal !== null ? autoFinal : '',
+          predikat: autoFinal !== null ? (autoFinal === 0 ? 'E' : calcPredikat(autoFinal)) : '',
+        };
+      })
+    );
+  };
+
   const handleUpdateScoreInModal = async (scoreItem: any) => {
     if (!editingMurid) return;
     try {
       setSavingEditModal(true);
       const harian = scoreItem.nilai_harian !== null && scoreItem.nilai_harian !== '' ? Number(scoreItem.nilai_harian) : null;
+      const lisan = scoreItem.nilai_lisan !== null && scoreItem.nilai_lisan !== undefined && scoreItem.nilai_lisan !== '' ? Number(scoreItem.nilai_lisan) : null;
       const uts = scoreItem.nilai_uts !== null && scoreItem.nilai_uts !== '' ? Number(scoreItem.nilai_uts) : null;
       const uas = scoreItem.nilai_uas !== null && scoreItem.nilai_uas !== '' ? Number(scoreItem.nilai_uas) : null;
       const akhir = scoreItem.nilai_akhir !== null && scoreItem.nilai_akhir !== '' ? Number(scoreItem.nilai_akhir) : null;
@@ -471,6 +490,7 @@ function PenilaianInputContent() {
               murid_id: editingMurid.murid_id,
               kelas_madin_id: editingMurid.kelas_madin_id,
               nilai_harian: harian,
+              nilai_lisan: lisan,
               nilai_uts: uts,
               nilai_uas: uas,
               nilai_akhir: akhir,
@@ -522,7 +542,7 @@ function PenilaianInputContent() {
     const kelasObj = kelasList.find(k => String(k.kelas_id) === String(selectedKelas));
     const kelasNama = kelasObj?.nama_kelas || 'Kelas_Madin';
     const rows = filteredAndSortedMurid.map((m, idx) => {
-      const s = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+      const s = scores[m.murid_id] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
       return {
         No: idx + 1,
         'Nama Santri': m.nama,
@@ -530,9 +550,10 @@ function PenilaianInputContent() {
         Kelas: m.nama_kelas || kelasNama,
         Kamar: m.nama_kamar || '-',
         'Kehadiran (%)': m.kehadiran_persen ?? 100,
-        'Harian (30%)': s.harian || 0,
-        'UTS (30%)': s.uts || 0,
-        'UAS (40%)': s.uas || 0,
+        'Harian (30%/25%)': s.harian || 0,
+        'Ujian Lisan (25%)': !isEmptyScoreVal(s.lisan) ? s.lisan : '-',
+        'UTS (30%/25%)': s.uts || 0,
+        'UAS (40%/25%)': s.uas || 0,
         'Nilai Akhir': s.akhir || 0,
         Predikat: s.predikat || '-',
         Catatan: s.catatan || '',
@@ -576,6 +597,7 @@ function PenilaianInputContent() {
           (m.alamat || '').toLowerCase().includes(q) ||
           (m.nama_kamar || '').toLowerCase().includes(q) ||
           (s.harian || '').includes(q) ||
+          (s.lisan || '').includes(q) ||
           (s.uts || '').includes(q) ||
           (s.uas || '').includes(q) ||
           (s.akhir || '').includes(q) ||
@@ -592,10 +614,10 @@ function PenilaianInputContent() {
         if (sortField === 'kehadiran') {
           valA = Number(a.kehadiran_persen ?? 100);
           valB = Number(b.kehadiran_persen ?? 100);
-        } else if (['harian', 'uts', 'uas', 'akhir', 'predikat', 'catatan'].includes(sortField)) {
+        } else if (['harian', 'lisan', 'uts', 'uas', 'akhir', 'predikat', 'catatan'].includes(sortField)) {
           valA = scores[a.murid_id]?.[sortField as keyof typeof scores[number]] || '';
           valB = scores[b.murid_id]?.[sortField as keyof typeof scores[number]] || '';
-          if (['harian', 'uts', 'uas', 'akhir'].includes(sortField)) {
+          if (['harian', 'lisan', 'uts', 'uas', 'akhir'].includes(sortField)) {
             valA = parseFloat(valA) || 0;
             valB = parseFloat(valB) || 0;
           }
@@ -620,7 +642,7 @@ function PenilaianInputContent() {
     let terisi = 0;
     muridList.forEach(m => {
       const s = scores[m.murid_id];
-      if (s && (s.harian !== '' || s.uts !== '' || s.uas !== '' || s.akhir !== '')) {
+      if (s && (s.harian !== '' || s.lisan !== '' || s.uts !== '' || s.uas !== '' || s.akhir !== '')) {
         terisi++;
       }
     });
@@ -1009,7 +1031,7 @@ function PenilaianInputContent() {
               <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">
                 {isLegerMode
                   ? 'Mode Leger Kolektif: Menampilkan rata-rata akumulasi nilai santri & presensi dari seluruh mata pelajaran kelas ini.'
-                  : 'Kalkulasi otomatis: Harian (30%) + UTS (30%) + UAS (40%). Nilai Akhir & Predikat fleksibel dapat diubah manual.'}
+                  : 'Kalkulasi otomatis: Harian, Lisan, UTS, UAS (25% masing-masing jika Lisan diisi, atau 30% + 30% + 40% jika kosong). Nilai Akhir & Predikat fleksibel dapat diubah manual.'}
               </p>
             </div>
 
@@ -1118,7 +1140,7 @@ function PenilaianInputContent() {
               {/* Mobile Touch-Friendly Card View */}
               <div className="md:hidden space-y-3">
                 {filteredAndSortedMurid.map((m, idx) => {
-                  const s = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+                  const s = scores[m.murid_id] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
                   const fotoUrl = getFotoUrl(m.foto, m.nis);
 
                   return (
@@ -1174,7 +1196,7 @@ function PenilaianInputContent() {
                       </div>
 
                       {/* Score Inputs */}
-                      <div className="grid grid-cols-5 gap-1.5 pt-1">
+                      <div className="grid grid-cols-3 gap-2 pt-1">
                         <div>
                           <label className="block text-[9px] text-center text-slate-500 dark:text-gray-400 mb-0.5">Harian</label>
                           <input
@@ -1185,6 +1207,18 @@ function PenilaianInputContent() {
                             onChange={e => handleScoreChange(m.murid_id, 'harian', e.target.value)}
                             className="w-full py-2 text-center text-xs font-bold rounded-xl bg-white dark:bg-gray-950 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white disabled:opacity-60"
                             placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] text-center text-amber-600 dark:text-amber-400 mb-0.5">Lisan</label>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            disabled={isLegerMode}
+                            value={s.lisan}
+                            onChange={e => handleScoreChange(m.murid_id, 'lisan', e.target.value)}
+                            className="w-full py-2 text-center text-xs font-bold rounded-xl bg-white dark:bg-gray-950 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white disabled:opacity-60"
+                            placeholder="-"
                           />
                         </div>
                         <div>
@@ -1284,19 +1318,25 @@ function PenilaianInputContent() {
                       <th className="py-3 px-2 text-center w-20">
                         <button type="button" onClick={() => handleSort('harian')} className="inline-flex flex-col items-center hover:text-amber-600 dark:hover:text-amber-400">
                           <span className="flex items-center gap-1">Harian {renderSortIcon('harian')}</span>
-                          <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">(30%)</span>
+                          <span className="text-[9px] text-slate-500 dark:text-gray-400 font-normal">(30%/25%)</span>
+                        </button>
+                      </th>
+                      <th className="py-3 px-2 text-center w-20">
+                        <button type="button" onClick={() => handleSort('lisan')} className="inline-flex flex-col items-center hover:text-amber-600 dark:hover:text-amber-400">
+                          <span className="flex items-center gap-1">Lisan {renderSortIcon('lisan')}</span>
+                          <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">(25%)</span>
                         </button>
                       </th>
                       <th className="py-3 px-2 text-center w-20">
                         <button type="button" onClick={() => handleSort('uts')} className="inline-flex flex-col items-center hover:text-amber-600 dark:hover:text-amber-400">
                           <span className="flex items-center gap-1">UTS {renderSortIcon('uts')}</span>
-                          <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">(30%)</span>
+                          <span className="text-[9px] text-slate-500 dark:text-gray-400 font-normal">(30%/25%)</span>
                         </button>
                       </th>
                       <th className="py-3 px-2 text-center w-20">
                         <button type="button" onClick={() => handleSort('uas')} className="inline-flex flex-col items-center hover:text-amber-600 dark:hover:text-amber-400">
                           <span className="flex items-center gap-1">UAS {renderSortIcon('uas')}</span>
-                          <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">(40%)</span>
+                          <span className="text-[9px] text-slate-500 dark:text-gray-400 font-normal">(40%/25%)</span>
                         </button>
                       </th>
                       <th className="py-3 px-2 text-center w-24 bg-amber-50/80 dark:bg-amber-500/10 border-x border-amber-200/80 dark:border-amber-500/20 text-amber-700 dark:text-amber-300 font-black">
@@ -1315,7 +1355,7 @@ function PenilaianInputContent() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-gray-800/80">
                     {filteredAndSortedMurid.map((m, idx) => {
-                      const s = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+                      const s = scores[m.murid_id] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
                       const fotoUrl = getFotoUrl(m.foto, m.nis);
 
                       return (
@@ -1394,7 +1434,7 @@ function PenilaianInputContent() {
                             </span>
                           </td>
 
-                          {/* Harian (30%) */}
+                          {/* Harian */}
                           <td className="py-2 px-1 text-center">
                             <input
                               type="number"
@@ -1409,7 +1449,22 @@ function PenilaianInputContent() {
                             />
                           </td>
 
-                          {/* UTS (30%) */}
+                          {/* Lisan (25%) */}
+                          <td className="py-2 px-1 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="any"
+                              disabled={isLegerMode}
+                              value={s.lisan}
+                              onChange={e => handleScoreChange(m.murid_id, 'lisan', e.target.value)}
+                              className="w-16 px-1.5 py-1.5 text-center text-xs font-bold rounded-xl bg-slate-50 dark:bg-gray-900/90 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                              placeholder="-"
+                            />
+                          </td>
+
+                          {/* UTS */}
                           <td className="py-2 px-1 text-center">
                             <input
                               type="number"
@@ -1424,7 +1479,7 @@ function PenilaianInputContent() {
                             />
                           </td>
 
-                          {/* UAS (40%) */}
+                          {/* UAS */}
                           <td className="py-2 px-1 text-center">
                             <input
                               type="number"
@@ -1510,7 +1565,7 @@ function PenilaianInputContent() {
             <Sparkles size={14} /> Tips Pengisian Nilai untuk Dewan Guru:
           </p>
           <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-slate-600 dark:text-gray-400">
-            <li>Ketik nilai pada kolom <b>Harian, UTS, atau UAS</b>, sistem akan menghitung Nilai Akhir secara otomatis (bobot 30% Harian + 30% UTS + 40% UAS).</li>
+            <li>Ketik nilai pada kolom <b>Harian, Lisan, UTS, atau UAS</b>, sistem akan menghitung Nilai Akhir secara otomatis (bobot 25% masing-masing jika Lisan diisi, atau 30% Harian + 30% UTS + 40% UAS jika Lisan kosong).</li>
             <li>Jika ingin melihat akumulasi rata-rata seluruh mapel di kelas, pilih <b>&quot;Semua Mapel&quot;</b> pada filter Mata Pelajaran untuk Mode Leger Kolektif.</li>
             <li>Jangan lupa menekan tombol <b>&quot;Simpan Nilai&quot;</b> setelah selesai menginput nilai.</li>
           </ul>
@@ -1634,9 +1689,9 @@ function PenilaianInputContent() {
                       <Save size={12} /> Simpan
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     <div>
-                      <label className="block text-[10px] text-slate-500 dark:text-gray-400 mb-1">Harian (30%)</label>
+                      <label className="block text-[10px] text-slate-500 dark:text-gray-400 mb-1">Harian (30%/25%)</label>
                       <input
                         type="number"
                         value={scores[editingMurid.murid_id]?.harian || ''}
@@ -1645,7 +1700,17 @@ function PenilaianInputContent() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-slate-500 dark:text-gray-400 mb-1">UTS (30%)</label>
+                      <label className="block text-[10px] text-amber-600 dark:text-amber-400 mb-1">Lisan (25%)</label>
+                      <input
+                        type="number"
+                        value={scores[editingMurid.murid_id]?.lisan || ''}
+                        onChange={e => handleScoreChange(editingMurid.murid_id, 'lisan', e.target.value)}
+                        placeholder="-"
+                        className="w-full px-2 py-1.5 rounded-xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white text-center font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-500 dark:text-gray-400 mb-1">UTS (30%/25%)</label>
                       <input
                         type="number"
                         value={scores[editingMurid.murid_id]?.uts || ''}
@@ -1654,7 +1719,7 @@ function PenilaianInputContent() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-slate-500 dark:text-gray-400 mb-1">UAS (40%)</label>
+                      <label className="block text-[10px] text-slate-500 dark:text-gray-400 mb-1">UAS (40%/25%)</label>
                       <input
                         type="number"
                         value={scores[editingMurid.murid_id]?.uas || ''}
@@ -1739,8 +1804,8 @@ function PenilaianInputContent() {
                             </button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-[11px]">
-                          {(['nilai_harian', 'nilai_uts', 'nilai_uas'] as const).map(f => (
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-[11px]">
+                          {(['nilai_harian', 'nilai_lisan', 'nilai_uts', 'nilai_uas'] as const).map(f => (
                             <div key={f}>
                               <label className="block text-[9px] text-slate-500 dark:text-gray-500 mb-0.5 uppercase">
                                 {f.replace('nilai_', '')}
@@ -1751,25 +1816,8 @@ function PenilaianInputContent() {
                                 max="100"
                                 step="any"
                                 value={item[f] ?? ''}
-                                onChange={e => {
-                                  const val = e.target.value;
-                                  setEditModalScores(prev =>
-                                    prev.map((row, rIdx) => {
-                                      if (rIdx !== idx) return row;
-                                      const nextRow = { ...row, [f]: val };
-                                      const h = parseFloat(nextRow.nilai_harian) || 0;
-                                      const u = parseFloat(nextRow.nilai_uts) || 0;
-                                      const a = parseFloat(nextRow.nilai_uas) || 0;
-                                      const hasComponent = nextRow.nilai_harian !== '' || nextRow.nilai_uts !== '' || nextRow.nilai_uas !== '';
-                                      const akhir = hasComponent ? Math.round((h * 0.3 + u * 0.3 + a * 0.4) * 100) / 100 : '';
-                                      return {
-                                        ...nextRow,
-                                        nilai_akhir: akhir,
-                                        predikat: akhir !== '' ? calcPredikat(Number(akhir)) : '',
-                                      };
-                                    })
-                                  );
-                                }}
+                                placeholder={f === 'nilai_lisan' ? '-' : '0'}
+                                onChange={e => updateEditModalComponent(idx, f, e.target.value)}
                                 className="w-full px-1.5 py-1 rounded-xl bg-white dark:bg-gray-950 border border-slate-200 dark:border-gray-700 text-center font-bold text-slate-900 dark:text-gray-100"
                               />
                             </div>

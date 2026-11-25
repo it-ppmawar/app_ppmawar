@@ -3,10 +3,11 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { resolvePenilaianAuth } from '@/lib/auth/penilaianAuth';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
+import { calcNilaiAkhir, calcPredikat, isEmptyScoreVal, parseClampedScore } from '@/lib/penilaian/calcNilai';
 
 export const dynamic = 'force-dynamic';
 
-const isEmptyVal = (v: any) => v === null || v === undefined || String(v).trim() === '';
+const isEmptyVal = isEmptyScoreVal;
 
 async function getGuruScope(guruId: number | string) {
   const [waliRows] = await pool.execute<RowDataPacket[]>(
@@ -94,14 +95,6 @@ export async function POST(request: Request) {
       }
     }
 
-    const calcPredikat = (score: number) => {
-      if (score >= 90) return 'A';
-      if (score >= 80) return 'B';
-      if (score >= 70) return 'C';
-      if (score >= 60) return 'D';
-      return 'E';
-    };
-
     let savedCount = 0;
 
     // Upsert setiap nilai dengan dukungan manual override dari guru
@@ -111,6 +104,7 @@ export async function POST(request: Request) {
       // Lewati baris yang benar-benar belum diisi sama sekali agar tidak menuliskan nilai 0/E palsu
       if (
         isEmptyVal(item.nilai_harian) &&
+        isEmptyVal(item.nilai_lisan) &&
         isEmptyVal(item.nilai_uts) &&
         isEmptyVal(item.nilai_uas) &&
         isEmptyVal(item.nilai_akhir) &&
@@ -119,25 +113,36 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const rawH = !isEmptyVal(item.nilai_harian) ? Number(item.nilai_harian) : 0;
-      const rawU = !isEmptyVal(item.nilai_uts) ? Number(item.nilai_uts) : 0;
-      const rawA = !isEmptyVal(item.nilai_uas) ? Number(item.nilai_uas) : 0;
-      const harian = isNaN(rawH) ? 0 : Math.min(Math.max(rawH, 0), 100);
-      const uts = isNaN(rawU) ? 0 : Math.min(Math.max(rawU, 0), 100);
-      const uas = isNaN(rawA) ? 0 : Math.min(Math.max(rawA, 0), 100);
+      const harian = !isEmptyVal(item.nilai_harian) ? parseClampedScore(item.nilai_harian) : 0;
+      const lisan = !isEmptyVal(item.nilai_lisan) ? parseClampedScore(item.nilai_lisan) : null;
+      const uts = !isEmptyVal(item.nilai_uts) ? parseClampedScore(item.nilai_uts) : 0;
+      const uas = !isEmptyVal(item.nilai_uas) ? parseClampedScore(item.nilai_uas) : 0;
 
       // Fleksibilitas: Jika pengguna/guru mengisi atau mengubah nilai_akhir secara manual, gunakan nilai manual tersebut.
-      // Jika tidak diisi manual, gunakan kalkulasi otomatis 30% Harian + 30% UTS + 40% UAS.
+      // Jika tidak diisi manual, gunakan kalkulasi dinamis (25% masing-masing jika Lisan diisi, atau 30/30/40 jika kosong).
       let nilaiAkhir = 0;
       if (!isEmptyVal(item.nilai_akhir)) {
-        const rawAkh = Number(item.nilai_akhir);
-        nilaiAkhir = isNaN(rawAkh) ? 0 : Math.min(Math.max(rawAkh, 0), 100);
-      } else if (!isEmptyVal(item.nilai_harian) || !isEmptyVal(item.nilai_uts) || !isEmptyVal(item.nilai_uas)) {
-        nilaiAkhir = Math.round((harian * 0.3 + uts * 0.3 + uas * 0.4) * 100) / 100;
+        nilaiAkhir = parseClampedScore(item.nilai_akhir);
+      } else {
+        const autoFinal = calcNilaiAkhir({
+          harian: item.nilai_harian,
+          lisan: item.nilai_lisan,
+          uts: item.nilai_uts,
+          uas: item.nilai_uas,
+        });
+        nilaiAkhir = autoFinal ?? 0;
       }
 
       // Predikat: gunakan predikat yang diubah manual guru jika ada, atau hitung otomatis
-      const predikat = item.predikat ? String(item.predikat).trim().toUpperCase() : calcPredikat(nilaiAkhir);
+      const hasAnyComponent =
+        !isEmptyVal(item.nilai_harian) ||
+        !isEmptyVal(item.nilai_lisan) ||
+        !isEmptyVal(item.nilai_uts) ||
+        !isEmptyVal(item.nilai_uas) ||
+        !isEmptyVal(item.nilai_akhir);
+      const predikat = item.predikat
+        ? String(item.predikat).trim().toUpperCase()
+        : (hasAnyComponent ? (nilaiAkhir === 0 ? 'E' : calcPredikat(nilaiAkhir)) : '-');
 
       const targetKelasId = (kelas_id === 'SEMUA' || kelas_id === 'all')
         ? (item.kelas_madin_id || null)
@@ -166,13 +171,14 @@ export async function POST(request: Request) {
 
       await pool.execute(`
         INSERT INTO nilai_santri 
-          (murid_id, kelas_madin_id, kurikulum_id, mata_pelajaran, kitab, semester, tahun_ajaran, nilai_harian, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan, guru_id)
-        VALUES (?, COALESCE(?, (SELECT kelas_madin_id FROM murid WHERE murid_id = ? LIMIT 1)), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (murid_id, kelas_madin_id, kurikulum_id, mata_pelajaran, kitab, semester, tahun_ajaran, nilai_harian, nilai_lisan, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan, guru_id)
+        VALUES (?, COALESCE(?, (SELECT kelas_madin_id FROM murid WHERE murid_id = ? LIMIT 1)), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           kelas_madin_id = VALUES(kelas_madin_id),
           kurikulum_id = VALUES(kurikulum_id),
           kitab = VALUES(kitab),
           nilai_harian = VALUES(nilai_harian),
+          nilai_lisan = VALUES(nilai_lisan),
           nilai_uts = VALUES(nilai_uts),
           nilai_uas = VALUES(nilai_uas),
           nilai_akhir = VALUES(nilai_akhir),
@@ -190,6 +196,7 @@ export async function POST(request: Request) {
         semester,
         tahun_ajaran,
         harian,
+        lisan,
         uts,
         uas,
         nilaiAkhir,

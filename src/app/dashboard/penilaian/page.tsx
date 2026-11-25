@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import QuizBModal from './QuizBModal';
+import { calcNilaiAkhir, calcPredikat, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, Printer, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
@@ -80,7 +81,7 @@ export default function PenilaianRaportPage() {
 
   // State Tabel Input Nilai
   const [muridList, setMuridList] = useState<any[]>([]);
-  const [scores, setScores] = useState<Record<number, { harian: string; uts: string; uas: string; akhir: string; predikat: string; catatan: string }>>({});
+  const [scores, setScores] = useState<Record<number, { harian: string; lisan: string; uts: string; uas: string; akhir: string; predikat: string; catatan: string }>>({});
   const [loadingMurid, setLoadingMurid] = useState(false);
   const [savingScores, setSavingScores] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
@@ -204,6 +205,7 @@ export default function PenilaianRaportPage() {
     try {
       setSavingEditModal(true);
       const harian = scoreItem.nilai_harian !== null && scoreItem.nilai_harian !== '' ? Number(scoreItem.nilai_harian) : null;
+      const lisan = scoreItem.nilai_lisan !== null && scoreItem.nilai_lisan !== undefined && scoreItem.nilai_lisan !== '' ? Number(scoreItem.nilai_lisan) : null;
       const uts = scoreItem.nilai_uts !== null && scoreItem.nilai_uts !== '' ? Number(scoreItem.nilai_uts) : null;
       const uas = scoreItem.nilai_uas !== null && scoreItem.nilai_uas !== '' ? Number(scoreItem.nilai_uas) : null;
       const akhir = scoreItem.nilai_akhir !== null && scoreItem.nilai_akhir !== '' ? Number(scoreItem.nilai_akhir) : null;
@@ -218,6 +220,7 @@ export default function PenilaianRaportPage() {
             murid_id: editModalSantri.murid_id,
             kelas_madin_id: editModalSantri.kelas_madin_id,
             nilai_harian: harian,
+            nilai_lisan: lisan,
             nilai_uts: uts,
             nilai_uas: uas,
             nilai_akhir: akhir,
@@ -246,25 +249,29 @@ export default function PenilaianRaportPage() {
     }
   };
 
-  const handleApplyQuizBScores = (appliedList: Array<{ murid_id: number; skor: number; targetField: 'harian' | 'uts' | 'uas'; quizTitle: string }>) => {
+  const handleApplyQuizBScores = (appliedList: Array<{ murid_id: number; skor: number; targetField: 'harian' | 'lisan' | 'uts' | 'uas'; quizTitle: string }>) => {
     setScores(prev => {
       const next = { ...prev };
       appliedList.forEach(item => {
-        const existing = next[item.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+        const existing = next[item.murid_id] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
         const valStr = String(item.skor);
         const updated = { ...existing };
 
         if (item.targetField === 'harian') updated.harian = valStr;
+        else if (item.targetField === 'lisan') updated.lisan = valStr;
         else if (item.targetField === 'uts') updated.uts = valStr;
         else if (item.targetField === 'uas') updated.uas = valStr;
 
-        const h = item.targetField === 'harian' ? item.skor : (parseFloat(updated.harian) || 0);
-        const u = item.targetField === 'uts' ? item.skor : (parseFloat(updated.uts) || 0);
-        const a = item.targetField === 'uas' ? item.skor : (parseFloat(updated.uas) || 0);
-
-        const autoFinal = Math.round((h * 0.3 + u * 0.3 + a * 0.4) * 100) / 100;
-        updated.akhir = String(autoFinal);
-        updated.predikat = calcPredikat(autoFinal);
+        const autoFinal = calcNilaiAkhir({
+          harian: updated.harian,
+          lisan: updated.lisan,
+          uts: updated.uts,
+          uas: updated.uas,
+        });
+        if (autoFinal !== null) {
+          updated.akhir = String(autoFinal);
+          updated.predikat = autoFinal === 0 ? 'E' : calcPredikat(autoFinal);
+        }
 
         const note = `QuizB: ${item.quizTitle} (${item.skor})`;
         updated.catatan = updated.catatan ? `${updated.catatan}; ${note}` : note;
@@ -275,12 +282,30 @@ export default function PenilaianRaportPage() {
     });
   };
 
+  const updateEditModalComponent = (sIdx: number, field: 'nilai_harian' | 'nilai_lisan' | 'nilai_uts' | 'nilai_uas', val: string) => {
+    setEditModalScores(prev => prev.map((item, idx) => {
+      if (idx !== sIdx) return item;
+      const nextItem = { ...item, [field]: val };
+      const autoFinal = calcNilaiAkhir({
+        harian: nextItem.nilai_harian,
+        lisan: nextItem.nilai_lisan,
+        uts: nextItem.nilai_uts,
+        uas: nextItem.nilai_uas,
+      });
+      return {
+        ...nextItem,
+        nilai_akhir: autoFinal !== null ? autoFinal : '',
+        predikat: autoFinal !== null ? (autoFinal === 0 ? 'E' : calcPredikat(autoFinal)) : '-',
+      };
+    }));
+  };
+
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
-      setSortOrder(['harian', 'uts', 'uas', 'akhir', 'kehadiran'].includes(field) ? 'desc' : 'asc');
+      setSortOrder(['harian', 'lisan', 'uts', 'uas', 'akhir', 'kehadiran'].includes(field) ? 'desc' : 'asc');
     }
   };
 
@@ -315,6 +340,12 @@ export default function PenilaianRaportPage() {
       } else if (sortField === 'harian') {
         const rawA = curA.harian !== undefined && curA.harian !== '' ? curA.harian : a.nilai_harian;
         const rawB = curB.harian !== undefined && curB.harian !== '' ? curB.harian : b.nilai_harian;
+        const numA = rawA !== null && rawA !== undefined && rawA !== '' && rawA !== '-' ? parseFloat(String(rawA)) : -1;
+        const numB = rawB !== null && rawB !== undefined && rawB !== '' && rawB !== '-' ? parseFloat(String(rawB)) : -1;
+        res = numA - numB;
+      } else if (sortField === 'lisan') {
+        const rawA = curA.lisan !== undefined && curA.lisan !== '' ? curA.lisan : a.nilai_lisan;
+        const rawB = curB.lisan !== undefined && curB.lisan !== '' ? curB.lisan : b.nilai_lisan;
         const numA = rawA !== null && rawA !== undefined && rawA !== '' && rawA !== '-' ? parseFloat(String(rawA)) : -1;
         const numB = rawB !== null && rawB !== undefined && rawB !== '' && rawB !== '-' ? parseFloat(String(rawB)) : -1;
         res = numA - numB;
@@ -369,6 +400,7 @@ export default function PenilaianRaportPage() {
         m.jenis_kelamin || '',
         String(m.kehadiran_persen ?? ''),
         String(cur.harian ?? m.nilai_harian ?? ''),
+        String(cur.lisan ?? m.nilai_lisan ?? ''),
         String(cur.uts ?? m.nilai_uts ?? ''),
         String(cur.uas ?? m.nilai_uas ?? ''),
         String(cur.akhir ?? m.nilai_akhir ?? ''),
@@ -384,6 +416,7 @@ export default function PenilaianRaportPage() {
   // State Raport
   const [selectedMuridId, setSelectedMuridId] = useState<string>('');
   const [raportData, setRaportData] = useState<any>(null);
+  const [raportError, setRaportError] = useState<string | null>(null);
   // Searchable combobox Pilih Santri (tab Raport)
   const [muridSearch, setMuridSearch] = useState<string>('');
   const [showMuridDropdown, setShowMuridDropdown] = useState(false);
@@ -399,19 +432,12 @@ export default function PenilaianRaportPage() {
     status_kelulusan: 'Naik Kelas',
   });
 
-  // Helper kalkulasi predikat otomatis
-  const calcPredikat = (score: number) => {
-    if (score >= 90) return 'A';
-    if (score >= 80) return 'B';
-    if (score >= 70) return 'C';
-    if (score >= 60) return 'D';
-    return 'E';
-  };
-
   // Export Raport Santri ke Excel
   const handleExportRaportExcel = () => {
     if (!raportData) return;
     const wb = XLSX.utils.book_new();
+    const listNilai = Array.isArray(raportData.nilai) ? raportData.nilai : [];
+    const hasLisan = listNilai.some((n: any) => !isEmptyScoreVal(n.nilai_lisan));
 
     // Sheet 1: Nilai Akademik
     const nilaiRows = [
@@ -426,18 +452,35 @@ export default function PenilaianRaportPage() {
       ['Semester / Tahun Ajaran', `${raportData.semester === '1' ? 'Semester 1 (Ganjil)' : 'Semester 2 (Genap)'} / ${raportData.tahun_ajaran}`],
       [],
       ['A. NILAI HASIL BELAJAR'],
-      ['No', 'Mata Pelajaran', 'Kitab yang Dipelajari', 'KKM', 'Nilai Akhir', 'Predikat', 'Keterangan'],
-      ...(raportData.nilai || []).map((n: any, i: number) => [
-        i + 1,
-        n.mata_pelajaran,
-        n.kitab || '-',
-        70,
-        n.nilai_akhir,
-        n.predikat,
-        Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan',
-      ]),
+      hasLisan
+        ? ['No', 'Mata Pelajaran', 'Kitab yang Dipelajari', 'KKM', 'Ujian Lisan', 'Nilai Akhir', 'Predikat', 'Keterangan']
+        : ['No', 'Mata Pelajaran', 'Kitab yang Dipelajari', 'KKM', 'Nilai Akhir', 'Predikat', 'Keterangan'],
+      ...listNilai.map((n: any, i: number) =>
+        hasLisan
+          ? [
+              i + 1,
+              n.mata_pelajaran,
+              n.kitab || '-',
+              70,
+              !isEmptyScoreVal(n.nilai_lisan) ? n.nilai_lisan : '-',
+              n.nilai_akhir,
+              n.predikat,
+              Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan',
+            ]
+          : [
+              i + 1,
+              n.mata_pelajaran,
+              n.kitab || '-',
+              70,
+              n.nilai_akhir,
+              n.predikat,
+              Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan',
+            ]
+      ),
       [],
-      ['', '', '', 'Nilai Rata-Rata Akhir:', raportData.ringkasan_nilai?.rata_rata, '', `Dari ${raportData.ringkasan_nilai?.total_mapel} mata pelajaran`],
+      hasLisan
+        ? ['', '', '', '', 'Nilai Rata-Rata Akhir:', raportData.ringkasan_nilai?.rata_rata, '', `Dari ${raportData.ringkasan_nilai?.total_mapel} mata pelajaran`]
+        : ['', '', '', 'Nilai Rata-Rata Akhir:', raportData.ringkasan_nilai?.rata_rata, '', `Dari ${raportData.ringkasan_nilai?.total_mapel} mata pelajaran`],
       [],
       ['B. REKAPITULASI PRESENSI'],
       ['Hadir', raportData.rekap_absensi?.hadir + ' kali'],
@@ -457,7 +500,9 @@ export default function PenilaianRaportPage() {
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(nilaiRows);
-    ws['!cols'] = [{ wch: 28 }, { wch: 28 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 10 }, { wch: 20 }];
+    ws['!cols'] = hasLisan
+      ? [{ wch: 28 }, { wch: 28 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 20 }]
+      : [{ wch: 28 }, { wch: 28 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 10 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(wb, ws, 'Raport Santri');
 
     const namaSantri = (raportData.santri.nama || 'Santri').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_');
@@ -629,23 +674,24 @@ export default function PenilaianRaportPage() {
           const initialScores: Record<number, any> = {};
           json.muridList.forEach((m: any) => {
             const h = m.nilai_harian !== null && m.nilai_harian !== undefined && m.nilai_harian !== '' ? String(m.nilai_harian) : '';
+            const l = m.nilai_lisan !== null && m.nilai_lisan !== undefined && m.nilai_lisan !== '' ? String(m.nilai_lisan) : '';
             const u = m.nilai_uts !== null && m.nilai_uts !== undefined && m.nilai_uts !== '' ? String(m.nilai_uts) : '';
             const a = m.nilai_uas !== null && m.nilai_uas !== undefined && m.nilai_uas !== '' ? String(m.nilai_uas) : '';
             let finalVal = m.nilai_akhir !== null && m.nilai_akhir !== undefined && m.nilai_akhir !== '' ? String(m.nilai_akhir) : '';
             let pred = m.predikat || '';
 
             // Jika belum ada nilai akhir tersimpan tetapi komponen terisi, hitung preview
-            if (!finalVal && (h || u || a)) {
-              const numH = parseFloat(h) || 0;
-              const numU = parseFloat(u) || 0;
-              const numA = parseFloat(a) || 0;
-              const autoFinal = Math.round((numH * 0.3 + numU * 0.3 + numA * 0.4) * 100) / 100;
-              finalVal = String(autoFinal);
-              pred = calcPredikat(autoFinal);
+            if (!finalVal && (h || l || u || a)) {
+              const autoFinal = calcNilaiAkhir({ harian: h, lisan: l, uts: u, uas: a });
+              if (autoFinal !== null) {
+                finalVal = String(autoFinal);
+                pred = autoFinal === 0 ? 'E' : calcPredikat(autoFinal);
+              }
             }
 
             initialScores[m.murid_id] = {
               harian: h,
+              lisan: l,
               uts: u,
               uas: a,
               akhir: finalVal,
@@ -655,13 +701,14 @@ export default function PenilaianRaportPage() {
           });
           setScores(initialScores);
 
-          // Sinkronkan murid pertama untuk raport jika belum ada murid yang dipilih atau berpindah kelas
-          if (json.muridList.length > 0) {
-            setSelectedMuridId(String(json.muridList[0].murid_id));
-          } else {
-            setSelectedMuridId('');
+          // Pertahankan pilihan santri hanya jika masih ada di kelas baru; default kosong agar pengguna memilih santri secara eksplisit
+          setSelectedMuridId(prev => {
+            if (prev && json.muridList.some((m: any) => String(m.murid_id) === prev)) {
+              return prev;
+            }
             setRaportData(null);
-          }
+            return '';
+          });
         }
       } catch (err) {
         console.error('Failed to fetch murid dan nilai', err);
@@ -672,6 +719,13 @@ export default function PenilaianRaportPage() {
 
     fetchMuridDanNilai();
   }, [selectedKelas, selectedMapel, semester, tahunAjaran, reloadTrigger]);
+
+  // Untuk akun wali murid / santri yang hanya punya data anaknya sendiri, tampilkan raport otomatis
+  useEffect(() => {
+    if (isWaliOrSantri && !selectedMuridId && muridList.length > 0) {
+      setSelectedMuridId(String(muridList[0].murid_id));
+    }
+  }, [isWaliOrSantri, muridList, selectedMuridId]);
 
   // 2b. Animasi Progress Bar saat loadingMurid (seperti billing page)
   useEffect(() => {
@@ -695,8 +749,13 @@ export default function PenilaianRaportPage() {
 
   // 3. Load Raport Detail Santri
   const fetchRaportDetail = async (mId: string) => {
-    if (!mId) return;
+    if (!mId) {
+      setRaportData(null);
+      setRaportError(null);
+      return;
+    }
     setLoadingRaport(true);
+    setRaportError(null);
     try {
       const query = new URLSearchParams({
         murid_id: mId,
@@ -717,39 +776,48 @@ export default function PenilaianRaportPage() {
             status_kelulusan: json.data.catatan.status_kelulusan || 'Naik Kelas',
           });
         }
+      } else {
+        setRaportData(null);
+        setRaportError(json.error || 'Gagal memuat data raport santri.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch raport', err);
+      setRaportData(null);
+      setRaportError(err?.message || 'Terjadi kendala koneksi saat memuat raport.');
     } finally {
       setLoadingRaport(false);
     }
   };
 
   useEffect(() => {
-    if (activeTab === 'raport' && selectedMuridId) {
-      fetchRaportDetail(selectedMuridId);
+    if (activeTab === 'raport') {
+      if (selectedMuridId) {
+        fetchRaportDetail(selectedMuridId);
+      } else {
+        setRaportData(null);
+        setRaportError(null);
+      }
     }
   }, [activeTab, selectedMuridId, semester, tahunAjaran]);
 
   // Handle Score Input dengan otomatisasi sekaligus fleksibilitas manual override
-  const handleScoreChange = (muridId: number, field: 'harian' | 'uts' | 'uas' | 'akhir' | 'predikat' | 'catatan', val: string) => {
+  const handleScoreChange = (muridId: number, field: 'harian' | 'lisan' | 'uts' | 'uas' | 'akhir' | 'predikat' | 'catatan', val: string) => {
     setScores(prev => {
-      const existing = prev[muridId] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+      const existing = prev[muridId] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
       const updated = { ...existing, [field]: val };
 
-      // Jika yang diubah adalah komponen Harian, UTS, atau UAS, hitung otomatis nilai akhir & predikat jika belum dioverride manual
-      if (field === 'harian' || field === 'uts' || field === 'uas') {
-        const h = field === 'harian' ? val : existing.harian;
-        const u = field === 'uts' ? val : existing.uts;
-        const a = field === 'uas' ? val : existing.uas;
+      // Jika yang diubah adalah komponen Harian, Lisan, UTS, atau UAS, hitung otomatis nilai akhir & predikat
+      if (field === 'harian' || field === 'lisan' || field === 'uts' || field === 'uas') {
+        const autoFinal = calcNilaiAkhir({
+          harian: updated.harian,
+          lisan: updated.lisan,
+          uts: updated.uts,
+          uas: updated.uas,
+        });
 
-        if (h !== '' || u !== '' || a !== '') {
-          const numH = parseFloat(h) || 0;
-          const numU = parseFloat(u) || 0;
-          const numA = parseFloat(a) || 0;
-          const autoFinal = Math.round((numH * 0.3 + numU * 0.3 + numA * 0.4) * 100) / 100;
+        if (autoFinal !== null) {
           updated.akhir = String(autoFinal);
-          updated.predikat = calcPredikat(autoFinal);
+          updated.predikat = autoFinal === 0 ? 'E' : calcPredikat(autoFinal);
         } else {
           updated.akhir = '';
           updated.predikat = '';
@@ -760,7 +828,7 @@ export default function PenilaianRaportPage() {
       if (field === 'akhir') {
         const numAkhir = parseFloat(val);
         if (!isNaN(numAkhir)) {
-          updated.predikat = calcPredikat(numAkhir);
+          updated.predikat = numAkhir === 0 ? 'E' : calcPredikat(numAkhir);
         }
       }
 
@@ -777,10 +845,11 @@ export default function PenilaianRaportPage() {
     setSaveSuccessMsg('');
     try {
       const payloadScores = muridList.map(m => {
-        const s = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+        const s = scores[m.murid_id] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
         return {
           murid_id: m.murid_id,
           nilai_harian: s.harian !== '' ? s.harian : null,
+          nilai_lisan: s.lisan !== '' ? s.lisan : null,
           nilai_uts: s.uts !== '' ? s.uts : null,
           nilai_uas: s.uas !== '' ? s.uas : null,
           nilai_akhir: s.akhir !== '' ? s.akhir : null,
@@ -863,12 +932,24 @@ export default function PenilaianRaportPage() {
               Penilaian &amp; Raport Digital
             </h1>
             <p className="text-amber-100/80 text-xs sm:text-sm mt-1 max-w-xl mx-auto md:mx-0">
-              Pusat input nilai harian, UTS, UAS, otomatisasi rekap presensi &amp; kedisiplinan, serta cetak lembar raport resmi santri.
+              Pusat input nilai harian, ujian lisan, UTS, UAS, otomatisasi rekap presensi &amp; kedisiplinan, serta cetak lembar raport resmi santri.
             </p>
           </div>
 
-          {/* Kanan: Tab Switcher + Pintasan (selalu stack vertikal) */}
+          {/* Kanan: Pintasan Portal Ujian (Atas) + Tab Switcher + Siaran WA */}
           <div className="flex flex-col gap-2 w-full md:w-auto">
+            {/* Pintasan ke Portal Ujian Santri Digital — Dipindah ke Atas Tab */}
+            <div className="pb-1 border-b border-amber-700/40">
+              <a
+                href="/dashboard/ujian"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/35 border border-teal-400/30 text-teal-200 hover:text-white text-xs font-bold transition-all"
+              >
+                <ShieldCheck size={14} className="shrink-0" />
+                <span>Portal Ujian Santri Digital</span>
+                <ChevronRight size={13} className="shrink-0 opacity-70" />
+              </a>
+            </div>
+
             {/* Switcher Tab: Hanya tampilkan tab Raport untuk wali santri dan mode tamu */}
             {isWaliOrSantri || isTamu ? (
               <div className="w-full sm:w-auto max-w-md mx-auto md:mx-0 flex bg-black/35 p-1.5 rounded-2xl backdrop-blur-md border border-white/10 shrink-0">
@@ -917,18 +998,6 @@ export default function PenilaianRaportPage() {
                 </a>
               </div>
             )}
-
-            {/* Pintasan ke Portal Ujian Santri Digital */}
-            <div className="pt-1 border-t border-amber-700/40">
-              <a
-                href="/dashboard/ujian"
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/35 border border-teal-400/30 text-teal-200 hover:text-white text-xs font-bold transition-all"
-              >
-                <ShieldCheck size={14} className="shrink-0" />
-                <span>Portal Ujian Santri Digital</span>
-                <ChevronRight size={13} className="shrink-0 opacity-70" />
-              </a>
-            </div>
           </div>
         </div>
       </div>
@@ -958,7 +1027,7 @@ export default function PenilaianRaportPage() {
               <div className="px-4 pb-4 text-xs text-amber-900 dark:text-amber-200">
                 <ol className="list-decimal list-inside space-y-1 text-amber-800/90 dark:text-amber-300/90 pl-1 leading-relaxed">
                   <li>Pilih <strong>Kelas Madin</strong> dan <strong>Mata Pelajaran</strong> pada filter di bawah (daftar santri akan langsung muncul di tabel bawah).</li>
-                  <li>Ketik nilai pada kolom <strong>Harian (30%)</strong>, <strong>UTS (30%)</strong>, dan <strong>UAS (40%)</strong>. Nilai Akhir &amp; Predikat terhitung otomatis seketika, dan dapat diedit manual bila diperlukan.</li>
+                  <li>Ketik nilai pada kolom <strong>Harian</strong>, <strong>Ujian Lisan</strong>, <strong>UTS</strong>, dan <strong>UAS</strong> (bobot 25% masing-masing jika Lisan diisi, atau 30% Harian + 30% UTS + 40% UAS jika Lisan kosong). Nilai Akhir &amp; Predikat terhitung otomatis seketika, dan dapat diedit manual bila diperlukan.</li>
                   <li>Klik tombol <strong>&quot;Simpan Semua Nilai&quot;</strong> di kanan atas tabel untuk menyimpan seluruh nilai santri sekelas sekaligus.</li>
                   <li>Beralih ke tab <strong>&quot;Raport Santri&quot;</strong> untuk melihat atau mencetak lembar raport resmi yang telah terintegrasi dengan data presensi dan kedisiplinan santri.</li>
                 </ol>
@@ -1121,7 +1190,7 @@ export default function PenilaianRaportPage() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 sm:mt-0.5 max-w-xl mx-auto sm:mx-0">
                   {isLegerMode
                     ? 'Mode Leger Kolektif: Menampilkan rata-rata akumulasi nilai santri & presensi seluruh sesi dari semua mata pelajaran kelas ini.'
-                    : 'Kalkulasi otomatis: Harian (30%) + UTS (30%) + UAS (40%). Nilai Akhir & Predikat fleksibel dapat diubah manual.'}
+                    : 'Kalkulasi otomatis: Harian, Lisan, UTS, UAS (25% masing-masing jika Lisan diisi, atau 30% + 30% + 40% jika kosong). Nilai Akhir & Predikat fleksibel dapat diubah manual.'}
                 </p>
               </div>
 
@@ -1375,13 +1444,39 @@ export default function PenilaianRaportPage() {
                           className="py-3.5 px-2 w-24 text-center cursor-pointer select-none hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
                           title="Klik untuk mengurutkan Nilai Harian"
                         >
-                          <div className="inline-flex items-center justify-center gap-1">
-                            <span>{isLegerMode ? 'Harian (Rerata)' : 'Harian (30%)'}</span>
-                            {sortField === 'harian' ? (
-                              sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
-                            ) : (
-                              <ArrowUpDown size={11} className="opacity-30" />
-                            )}
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="inline-flex items-center gap-1">
+                              <span>Harian</span>
+                              {sortField === 'harian' ? (
+                                sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
+                              ) : (
+                                <ArrowUpDown size={11} className="opacity-30" />
+                              )}
+                            </div>
+                            <span className="text-[10px] font-normal text-gray-500 dark:text-gray-400">
+                              {isLegerMode ? '(Rerata)' : '(30% / 25%)'}
+                            </span>
+                          </div>
+                        </th>
+
+                        {/* Kolom Ujian Lisan */}
+                        <th
+                          onClick={() => handleSort('lisan')}
+                          className="py-3.5 px-2 w-24 text-center cursor-pointer select-none hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                          title="Klik untuk mengurutkan Nilai Ujian Lisan"
+                        >
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="inline-flex items-center gap-1">
+                              <span>Lisan</span>
+                              {sortField === 'lisan' ? (
+                                sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
+                              ) : (
+                                <ArrowUpDown size={11} className="opacity-30" />
+                              )}
+                            </div>
+                            <span className="text-[10px] font-normal text-amber-600 dark:text-amber-400">
+                              {isLegerMode ? '(Rerata)' : '(25%)'}
+                            </span>
                           </div>
                         </th>
 
@@ -1391,13 +1486,18 @@ export default function PenilaianRaportPage() {
                           className="py-3.5 px-2 w-24 text-center cursor-pointer select-none hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
                           title="Klik untuk mengurutkan Nilai UTS"
                         >
-                          <div className="inline-flex items-center justify-center gap-1">
-                            <span>{isLegerMode ? 'UTS (Rerata)' : 'UTS (30%)'}</span>
-                            {sortField === 'uts' ? (
-                              sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
-                            ) : (
-                              <ArrowUpDown size={11} className="opacity-30" />
-                            )}
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="inline-flex items-center gap-1">
+                              <span>UTS</span>
+                              {sortField === 'uts' ? (
+                                sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
+                              ) : (
+                                <ArrowUpDown size={11} className="opacity-30" />
+                              )}
+                            </div>
+                            <span className="text-[10px] font-normal text-gray-500 dark:text-gray-400">
+                              {isLegerMode ? '(Rerata)' : '(30% / 25%)'}
+                            </span>
                           </div>
                         </th>
 
@@ -1407,13 +1507,18 @@ export default function PenilaianRaportPage() {
                           className="py-3.5 px-2 w-24 text-center cursor-pointer select-none hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
                           title="Klik untuk mengurutkan Nilai UAS"
                         >
-                          <div className="inline-flex items-center justify-center gap-1">
-                            <span>{isLegerMode ? 'UAS (Rerata)' : 'UAS (40%)'}</span>
-                            {sortField === 'uas' ? (
-                              sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
-                            ) : (
-                              <ArrowUpDown size={11} className="opacity-30" />
-                            )}
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="inline-flex items-center gap-1">
+                              <span>UAS</span>
+                              {sortField === 'uas' ? (
+                                sortOrder === 'asc' ? <ArrowUp size={12} className="text-amber-600 dark:text-amber-400" /> : <ArrowDown size={12} className="text-amber-600 dark:text-amber-400" />
+                              ) : (
+                                <ArrowUpDown size={11} className="opacity-30" />
+                              )}
+                            </div>
+                            <span className="text-[10px] font-normal text-gray-500 dark:text-gray-400">
+                              {isLegerMode ? '(Rerata)' : '(40% / 25%)'}
+                            </span>
                           </div>
                         </th>
 
@@ -1474,7 +1579,7 @@ export default function PenilaianRaportPage() {
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                       {filteredAndSortedMurid.length === 0 ? (
                         <tr>
-                          <td colSpan={12} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                          <td colSpan={13} className="py-10 text-center text-gray-500 dark:text-gray-400">
                             <AlertCircle size={24} className="mx-auto text-amber-500 mb-2" />
                             <p className="font-semibold text-xs sm:text-sm">Tidak ditemukan data santri yang cocok dengan &quot;{searchQuery}&quot;</p>
                             <button
@@ -1488,7 +1593,7 @@ export default function PenilaianRaportPage() {
                         </tr>
                       ) : (
                         filteredAndSortedMurid.map((m, idx) => {
-                      const cur = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+                      const cur = scores[m.murid_id] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
                       const fotoUrl = getFotoUrl(m.foto);
 
                       return (
@@ -1575,6 +1680,9 @@ export default function PenilaianRaportPage() {
                               <td className="py-3 px-2 text-center font-semibold text-gray-700 dark:text-gray-300">
                                 {cur.harian !== '' ? cur.harian : '-'}
                               </td>
+                              <td className="py-3 px-2 text-center font-semibold text-amber-700 dark:text-amber-300">
+                                {cur.lisan !== '' ? cur.lisan : '-'}
+                              </td>
                               <td className="py-3 px-2 text-center font-semibold text-gray-700 dark:text-gray-300">
                                 {cur.uts !== '' ? cur.uts : '-'}
                               </td>
@@ -1612,7 +1720,19 @@ export default function PenilaianRaportPage() {
                                   value={cur.harian}
                                   onChange={(e) => handleScoreChange(m.murid_id, 'harian', e.target.value)}
                                   placeholder="0"
-                                  className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                  className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                />
+                              </td>
+                              <td className="py-2 px-2 text-center">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="any"
+                                  value={cur.lisan}
+                                  onChange={(e) => handleScoreChange(m.murid_id, 'lisan', e.target.value)}
+                                  placeholder="-"
+                                  className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                                 />
                               </td>
                               <td className="py-2 px-2 text-center">
@@ -1624,7 +1744,7 @@ export default function PenilaianRaportPage() {
                                   value={cur.uts}
                                   onChange={(e) => handleScoreChange(m.murid_id, 'uts', e.target.value)}
                                   placeholder="0"
-                                  className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                  className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                                 />
                               </td>
                               <td className="py-2 px-2 text-center">
@@ -1636,7 +1756,7 @@ export default function PenilaianRaportPage() {
                                   value={cur.uas}
                                   onChange={(e) => handleScoreChange(m.murid_id, 'uas', e.target.value)}
                                   placeholder="0"
-                                  className="w-18 sm:w-20 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                  className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                                 />
                               </td>
                               {/* NILAI AKHIR (DAPAT DIUBAH MANUAL OLEH PENGGUNA/GURU) */}
@@ -1695,7 +1815,7 @@ export default function PenilaianRaportPage() {
                                   <Edit3 size={13} />
                                   <span className="hidden sm:inline">Edit</span>
                                 </button>
-                                {((isLegerMode && (m.total_mapel_dinilai || 0) > 0) || (!isLegerMode && (cur.harian !== '' || cur.uts !== '' || cur.uas !== '' || cur.akhir !== ''))) && (
+                                {((isLegerMode && (m.total_mapel_dinilai || 0) > 0) || (!isLegerMode && (cur.harian !== '' || cur.lisan !== '' || cur.uts !== '' || cur.uas !== '' || cur.akhir !== ''))) && (
                                   <button
                                     type="button"
                                     onClick={() => handleQuickResetScore(m)}
@@ -1746,13 +1866,31 @@ export default function PenilaianRaportPage() {
                       value={showMuridDropdown ? muridSearch : (muridList.find(m => String(m.murid_id) === selectedMuridId)?.nama || '')}
                       onChange={e => { setMuridSearch(e.target.value); setShowMuridDropdown(true); }}
                       onFocus={() => { setMuridSearch(''); setShowMuridDropdown(true); }}
-                      placeholder={muridList.length === 0 ? '(Belum ada data santri)' : 'Ketik nama atau NIS santri...'}
+                      placeholder={muridList.length === 0 ? '(Belum ada data santri)' : 'Pilih atau ketik nama / NIS santri...'}
                       className="flex-1 bg-transparent outline-none font-bold text-gray-800 dark:text-gray-100 placeholder:font-normal placeholder:text-gray-400 min-w-0"
                     />
                     {selectedMuridId && !showMuridDropdown && (
-                      <span className="text-[10px] font-semibold text-gray-400 shrink-0">
-                        {muridList.find(m => String(m.murid_id) === selectedMuridId)?.nis || ''}
-                      </span>
+                      <>
+                        <span className="text-[10px] font-semibold text-gray-400 shrink-0">
+                          {muridList.find(m => String(m.murid_id) === selectedMuridId)?.nis || ''}
+                        </span>
+                        {!isWaliOrSantri && (
+                          <button
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setSelectedMuridId('');
+                              setMuridSearch('');
+                              setRaportData(null);
+                              setRaportError(null);
+                            }}
+                            title="Kosongkan pilihan santri"
+                            className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded transition-colors shrink-0"
+                          >
+                            <X size={13} />
+                          </button>
+                        )}
+                      </>
                     )}
                     <ChevronDown size={14} className={`text-gray-400 shrink-0 transition-transform duration-200 ${showMuridDropdown ? 'rotate-180 text-amber-500' : ''}`} />
                   </div>
@@ -1935,6 +2073,21 @@ export default function PenilaianRaportPage() {
               <p className="font-bold">Menyiapkan Lembar Raport Santri...</p>
               <p className="text-xs text-gray-400 mt-1">Menyinkronkan nilai, rekap absensi, dan poin kedisiplinan</p>
             </div>
+          ) : raportError ? (
+            <div className="p-12 sm:p-16 text-center text-rose-600 dark:text-rose-400 bg-white dark:bg-gray-800 rounded-3xl border border-rose-200 dark:border-rose-800 space-y-3">
+              <AlertCircle size={32} className="mx-auto" />
+              <p className="font-bold text-sm sm:text-base">{raportError}</p>
+              {selectedMuridId && (
+                <button
+                  type="button"
+                  onClick={() => fetchRaportDetail(selectedMuridId)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-all"
+                >
+                  <RefreshCw size={13} />
+                  <span>Muat Ulang Raport</span>
+                </button>
+              )}
+            </div>
           ) : !raportData ? (
             <div className="p-16 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700">
               <AlertCircle size={32} className="mx-auto text-gray-400 mb-3" />
@@ -2024,64 +2177,78 @@ export default function PenilaianRaportPage() {
                 </div>
 
                 {/* TABEL A: HASIL BELAJAR / NILAI AKADEMIK */}
-                <div className="mb-6">
-                  <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2 flex items-center gap-1.5">
-                    <BookOpen size={14} /> A. Nilai Hasil Belajar (Madrasah Diniyah)
-                  </h5>
-                  <div className="border border-gray-300 rounded-xl overflow-hidden">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-gray-100 border-b border-gray-300 font-bold text-gray-800">
-                          <th className="py-2.5 px-3 w-10 text-center border-r border-gray-300">No</th>
-                          <th className="py-2.5 px-3 border-r border-gray-300">Mata Pelajaran</th>
-                          <th className="py-2.5 px-3 border-r border-gray-300">Kitab yang Dipelajari</th>
-                          <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">KKM</th>
-                          <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">Nilai</th>
-                          <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">Predikat</th>
-                          <th className="py-2.5 px-3">Keterangan</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {raportData.nilai.length === 0 ? (
-                          <tr>
-                            <td colSpan={7} className="py-4 text-center text-gray-500 italic">
-                              Belum ada nilai yang diinput untuk santri ini pada semester ini.
-                            </td>
-                          </tr>
-                        ) : (
-                          raportData.nilai.map((n: any, idx: number) => (
-                            <tr key={n.id} className="hover:bg-gray-50">
-                              <td className="py-2 px-3 text-center border-r border-gray-200">{idx + 1}</td>
-                              <td className="py-2 px-3 font-bold border-r border-gray-200">{n.mata_pelajaran}</td>
-                              <td className="py-2 px-3 italic text-gray-700 border-r border-gray-200">{n.kitab || '-'}</td>
-                              <td className="py-2 px-2 text-center border-r border-gray-200">70</td>
-                              <td className="py-2 px-2 text-center font-bold text-gray-900 border-r border-gray-200">{n.nilai_akhir}</td>
-                              <td className="py-2 px-2 text-center font-black border-r border-gray-200">{n.predikat}</td>
-                              <td className="py-2 px-3 text-gray-600">
-                                {Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan'}
-                              </td>
+                {(() => {
+                  const listNilai = Array.isArray(raportData.nilai) ? raportData.nilai : [];
+                  const hasLisan = listNilai.some((n: any) => !isEmptyScoreVal(n.nilai_lisan));
+                  return (
+                    <div className="mb-6">
+                      <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2 flex items-center gap-1.5">
+                        <BookOpen size={14} /> A. Nilai Hasil Belajar (Madrasah Diniyah)
+                      </h5>
+                      <div className="border border-gray-300 rounded-xl overflow-hidden">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-gray-100 border-b border-gray-300 font-bold text-gray-800">
+                              <th className="py-2.5 px-3 w-10 text-center border-r border-gray-300">No</th>
+                              <th className="py-2.5 px-3 border-r border-gray-300">Mata Pelajaran</th>
+                              <th className="py-2.5 px-3 border-r border-gray-300">Kitab yang Dipelajari</th>
+                              <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">KKM</th>
+                              {hasLisan && (
+                                <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">Lisan</th>
+                              )}
+                              <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">Nilai</th>
+                              <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">Predikat</th>
+                              <th className="py-2.5 px-3">Keterangan</th>
                             </tr>
-                          ))
-                        )}
-                      </tbody>
-                      {raportData.nilai.length > 0 && (
-                        <tfoot>
-                          <tr className="bg-gray-100 font-bold border-t border-gray-300">
-                            <td colSpan={4} className="py-2.5 px-3 text-right border-r border-gray-300 uppercase">
-                              Nilai Rata-Rata Akhir:
-                            </td>
-                            <td className="py-2.5 px-2 text-center font-black text-emerald-800 border-r border-gray-300">
-                              {raportData.ringkasan_nilai.rata_rata}
-                            </td>
-                            <td colSpan={2} className="py-2.5 px-3 text-xs text-gray-600">
-                              Dari total {raportData.ringkasan_nilai.total_mapel} mata pelajaran
-                            </td>
-                          </tr>
-                        </tfoot>
-                      )}
-                    </table>
-                  </div>
-                </div>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {listNilai.length === 0 ? (
+                              <tr>
+                                <td colSpan={hasLisan ? 8 : 7} className="py-4 text-center text-gray-500 italic">
+                                  Belum ada nilai yang diinput untuk santri ini pada semester ini.
+                                </td>
+                              </tr>
+                            ) : (
+                              listNilai.map((n: any, idx: number) => (
+                                <tr key={n.id} className="hover:bg-gray-50">
+                                  <td className="py-2 px-3 text-center border-r border-gray-200">{idx + 1}</td>
+                                  <td className="py-2 px-3 font-bold border-r border-gray-200">{n.mata_pelajaran}</td>
+                                  <td className="py-2 px-3 italic text-gray-700 border-r border-gray-200">{n.kitab || '-'}</td>
+                                  <td className="py-2 px-2 text-center border-r border-gray-200">70</td>
+                                  {hasLisan && (
+                                    <td className="py-2 px-2 text-center font-semibold text-gray-800 border-r border-gray-200">
+                                      {!isEmptyScoreVal(n.nilai_lisan) ? n.nilai_lisan : '-'}
+                                    </td>
+                                  )}
+                                  <td className="py-2 px-2 text-center font-bold text-gray-900 border-r border-gray-200">{n.nilai_akhir}</td>
+                                  <td className="py-2 px-2 text-center font-black border-r border-gray-200">{n.predikat}</td>
+                                  <td className="py-2 px-3 text-gray-600">
+                                    {Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan'}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                          {listNilai.length > 0 && (
+                            <tfoot>
+                              <tr className="bg-gray-100 font-bold border-t border-gray-300">
+                                <td colSpan={hasLisan ? 5 : 4} className="py-2.5 px-3 text-right border-r border-gray-300 uppercase">
+                                  Nilai Rata-Rata Akhir:
+                                </td>
+                                <td className="py-2.5 px-2 text-center font-black text-emerald-800 border-r border-gray-300">
+                                  {raportData.ringkasan_nilai.rata_rata}
+                                </td>
+                                <td colSpan={2} className="py-2.5 px-3 text-xs text-gray-600">
+                                  Dari total {raportData.ringkasan_nilai.total_mapel} mata pelajaran
+                                </td>
+                              </tr>
+                            </tfoot>
+                          )}
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* SINKRONISASI 1: TABEL B & C (PRESENSI & KEDISIPLINAN OTOMATIS) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -2422,90 +2589,27 @@ export default function PenilaianRaportPage() {
                       </div>
 
                       {/* Baris Input Nilai */}
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
-                        <div>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Harian (30%)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="any"
-                            value={score.nilai_harian ?? ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setEditModalScores(prev => prev.map((item, idx) => {
-                                if (idx !== sIdx) return item;
-                                const h = parseFloat(val) || 0;
-                                const u = parseFloat(item.nilai_uts) || 0;
-                                const a = parseFloat(item.nilai_uas) || 0;
-                                const akhir = Math.round((h * 0.3 + u * 0.3 + a * 0.4) * 100) / 100;
-                                return {
-                                  ...item,
-                                  nilai_harian: val,
-                                  nilai_akhir: akhir,
-                                  predikat: calcPredikat(akhir),
-                                };
-                              }));
-                            }}
-                            className="w-full text-center py-1.5 px-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-amber-500"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">UTS (30%)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="any"
-                            value={score.nilai_uts ?? ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setEditModalScores(prev => prev.map((item, idx) => {
-                                if (idx !== sIdx) return item;
-                                const h = parseFloat(item.nilai_harian) || 0;
-                                const u = parseFloat(val) || 0;
-                                const a = parseFloat(item.nilai_uas) || 0;
-                                const akhir = Math.round((h * 0.3 + u * 0.3 + a * 0.4) * 100) / 100;
-                                return {
-                                  ...item,
-                                  nilai_uts: val,
-                                  nilai_akhir: akhir,
-                                  predikat: calcPredikat(akhir),
-                                };
-                              }));
-                            }}
-                            className="w-full text-center py-1.5 px-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-amber-500"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">UAS (40%)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="any"
-                            value={score.nilai_uas ?? ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setEditModalScores(prev => prev.map((item, idx) => {
-                                if (idx !== sIdx) return item;
-                                const h = parseFloat(item.nilai_harian) || 0;
-                                const u = parseFloat(item.nilai_uts) || 0;
-                                const a = parseFloat(val) || 0;
-                                const akhir = Math.round((h * 0.3 + u * 0.3 + a * 0.4) * 100) / 100;
-                                return {
-                                  ...item,
-                                  nilai_uas: val,
-                                  nilai_akhir: akhir,
-                                  predikat: calcPredikat(akhir),
-                                };
-                              }));
-                            }}
-                            className="w-full text-center py-1.5 px-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-amber-500"
-                          />
-                        </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center">
+                        {([
+                          { field: 'nilai_harian', label: 'Harian (30%/25%)', placeholder: '0' },
+                          { field: 'nilai_lisan', label: 'Lisan (25%)', placeholder: '-' },
+                          { field: 'nilai_uts', label: 'UTS (30%/25%)', placeholder: '0' },
+                          { field: 'nilai_uas', label: 'UAS (40%/25%)', placeholder: '0' },
+                        ] as const).map(({ field, label, placeholder }) => (
+                          <div key={field}>
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{label}</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="any"
+                              value={score[field] ?? ''}
+                              placeholder={placeholder}
+                              onChange={(e) => updateEditModalComponent(sIdx, field, e.target.value)}
+                              className="w-full text-center py-1.5 px-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-amber-500"
+                            />
+                          </div>
+                        ))}
 
                         <div>
                           <label className="block text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase mb-1">Akhir</label>

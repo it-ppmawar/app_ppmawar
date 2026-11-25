@@ -2,17 +2,9 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
+import { calcNilaiAkhir, calcPredikat } from '@/lib/penilaian/calcNilai';
 
 export const dynamic = 'force-dynamic';
-
-function calcPredikat(score: number): string {
-  if (score >= 90) return 'A';
-  if (score >= 80) return 'B';
-  if (score >= 70) return 'C';
-  if (score >= 60) return 'D';
-  if (score > 0) return 'E';
-  return '-';
-}
 
 function cleanString(str: string): string {
   return (str || '')
@@ -151,7 +143,7 @@ export async function POST(request: Request) {
 
         // Ambil nilai eksisting bila ada
         const [existingRows] = await pool.execute<RowDataPacket[]>(
-          `SELECT id, nilai_harian, nilai_uts, nilai_uas, catatan 
+          `SELECT id, nilai_harian, nilai_lisan, nilai_uts, nilai_uas, catatan 
            FROM nilai_santri 
            WHERE murid_id = ? AND mata_pelajaran = ? AND semester = ? AND tahun_ajaran = ? 
            LIMIT 1`,
@@ -159,6 +151,7 @@ export async function POST(request: Request) {
         );
 
         let harian = 0;
+        let lisan: number | null = null;
         let uts = 0;
         let uas = 0;
         let catatan = `QuizB: ${quiz_title || 'Kuis Online'} (${scoreVal})`;
@@ -166,6 +159,7 @@ export async function POST(request: Request) {
         if (existingRows.length > 0) {
           const ex = existingRows[0];
           harian = ex.nilai_harian !== null ? Number(ex.nilai_harian) : 0;
+          lisan = ex.nilai_lisan !== null && ex.nilai_lisan !== undefined ? Number(ex.nilai_lisan) : null;
           uts = ex.nilai_uts !== null ? Number(ex.nilai_uts) : 0;
           uas = ex.nilai_uas !== null ? Number(ex.nilai_uas) : 0;
           if (ex.catatan) {
@@ -178,22 +172,25 @@ export async function POST(request: Request) {
           uts = scoreVal;
         } else if (target_field === 'uas') {
           uas = scoreVal;
+        } else if (target_field === 'lisan') {
+          lisan = scoreVal;
         } else {
           // Default ke harian
           harian = scoreVal;
         }
 
-        const nilaiAkhir = Math.round((harian * 0.3 + uts * 0.3 + uas * 0.4) * 100) / 100;
+        const nilaiAkhir = calcNilaiAkhir({ harian, lisan, uts, uas }) ?? 0;
         const predikat = calcPredikat(nilaiAkhir);
 
         // Upsert nilai_santri
         await pool.execute(
           `INSERT INTO nilai_santri 
-            (murid_id, kelas_madin_id, mata_pelajaran, semester, tahun_ajaran, nilai_harian, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (murid_id, kelas_madin_id, mata_pelajaran, semester, tahun_ajaran, nilai_harian, nilai_lisan, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE
              kelas_madin_id = VALUES(kelas_madin_id),
              nilai_harian = VALUES(nilai_harian),
+             nilai_lisan = VALUES(nilai_lisan),
              nilai_uts = VALUES(nilai_uts),
              nilai_uas = VALUES(nilai_uas),
              nilai_akhir = VALUES(nilai_akhir),
@@ -207,6 +204,7 @@ export async function POST(request: Request) {
             semester,
             tahun_ajaran,
             harian,
+            lisan,
             uts,
             uas,
             nilaiAkhir,

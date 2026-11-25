@@ -17,7 +17,7 @@ interface QuizBModalProps {
   muridList: any[];
   userRole?: string;
   quickToken?: string;
-  onApplyScores: (appliedList: Array<{ murid_id: number; skor: number; targetField: 'harian' | 'uts' | 'uas'; quizTitle: string }>) => void;
+  onApplyScores: (appliedList: Array<{ murid_id: number; skor: number; targetField: 'harian' | 'lisan' | 'uts' | 'uas'; quizTitle: string }>) => void;
 }
 
 function matchQuizWithMapels(quiz: any, mapelList: string[]): boolean {
@@ -65,7 +65,7 @@ export default function QuizBModal({
   const [bridgeUrl, setBridgeUrl] = useState('');
   const [quizzes, setQuizzes] = useState<any[]>([]);
   const [selectedQuizId, setSelectedQuizId] = useState('');
-  const [targetField, setTargetField] = useState<'harian' | 'uts' | 'uas'>('harian');
+  const [targetField, setTargetField] = useState<'harian' | 'lisan' | 'uts' | 'uas'>('harian');
   
   // State Preview Match
   const [previewing, setPreviewing] = useState(false);
@@ -73,7 +73,7 @@ export default function QuizBModal({
 
   // State Manual Paste
   const [rawText, setRawText] = useState('');
-  const [manualTargetField, setManualTargetField] = useState<'harian' | 'uts' | 'uas'>('harian');
+  const [manualTargetField, setManualTargetField] = useState<'harian' | 'lisan' | 'uts' | 'uas'>('harian');
   const [manualQuizTitle, setManualQuizTitle] = useState('Quiz Online');
 
   // State Config & Webhook
@@ -284,7 +284,7 @@ export default function QuizBModal({
   };
 
   // 4. Terapkan Nilai ke Tabel Penilaian
-  const handleApplyToTable = (chosenTargetField: 'harian' | 'uts' | 'uas', quizTitle: string) => {
+  const handleApplyToTable = (chosenTargetField: 'harian' | 'lisan' | 'uts' | 'uas', quizTitle: string) => {
     if (!previewResult || !previewResult.matched || previewResult.matched.length === 0) {
       alert('Tidak ada santri yang cocok untuk diterapkan nilainya.');
       return;
@@ -594,9 +594,10 @@ export default function QuizBModal({
                     onChange={(e) => setTargetField(e.target.value as any)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
                   >
-                    <option value="harian">Nilai Harian (Bobot 30%)</option>
-                    <option value="uts">Nilai UTS (Bobot 30%)</option>
-                    <option value="uas">Nilai UAS (Bobot 40%)</option>
+                    <option value="harian">Nilai Harian (25% / 30%)</option>
+                    <option value="lisan">Nilai Ujian Lisan (25%)</option>
+                    <option value="uts">Nilai UTS (25% / 30%)</option>
+                    <option value="uas">Nilai UAS (25% / 40%)</option>
                   </select>
                   <p className="text-[11px] text-gray-400 mt-1">
                     Kolom target di rapor santri
@@ -656,9 +657,10 @@ export default function QuizBModal({
                     onChange={(e) => setManualTargetField(e.target.value as any)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
                   >
-                    <option value="harian">Nilai Harian (Bobot 30%)</option>
-                    <option value="uts">Nilai UTS (Bobot 30%)</option>
-                    <option value="uas">Nilai UAS (Bobot 40%)</option>
+                    <option value="harian">Nilai Harian (25% / 30%)</option>
+                    <option value="lisan">Nilai Ujian Lisan (25%)</option>
+                    <option value="uts">Nilai UTS (25% / 30%)</option>
+                    <option value="uas">Nilai UAS (25% / 40%)</option>
                   </select>
                 </div>
               </div>
@@ -844,7 +846,7 @@ export default function QuizBModal({
   );
 
   // Helper Render Tabel Preview Pencocokan Santri
-  function renderPreviewTable(targetCol: 'harian' | 'uts' | 'uas', qTitle: string) {
+  function renderPreviewTable(targetCol: 'harian' | 'lisan' | 'uts' | 'uas', qTitle: string) {
     if (!previewResult) return null;
 
     return (

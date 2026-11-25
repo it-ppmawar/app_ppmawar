@@ -18,6 +18,7 @@ export async function ensurePenilaianDB() {
         semester VARCHAR(10) NOT NULL DEFAULT '1',
         tahun_ajaran VARCHAR(20) NOT NULL DEFAULT '2025/2026',
         nilai_harian DECIMAL(5,2) DEFAULT 0,
+        nilai_lisan DECIMAL(5,2) NULL DEFAULT NULL,
         nilai_uts DECIMAL(5,2) DEFAULT 0,
         nilai_uas DECIMAL(5,2) DEFAULT 0,
         nilai_akhir DECIMAL(5,2) DEFAULT 0,
@@ -30,6 +31,17 @@ export async function ensurePenilaianDB() {
         UNIQUE KEY uq_murid_mapel_sem (murid_id, mata_pelajaran, semester, tahun_ajaran)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // Migrasi kolom baru: nilai_lisan (jika tabel nilai_santri sudah ada sebelumnya)
+    try {
+      await pool.execute(
+        'ALTER TABLE `nilai_santri` ADD COLUMN `nilai_lisan` DECIMAL(5,2) NULL DEFAULT NULL AFTER `nilai_harian`'
+      );
+    } catch (colErr: any) {
+      if (colErr?.errno !== 1060 && colErr?.code !== 'ER_DUP_FIELDNAME') {
+        console.warn('Migration check nilai_lisan warning:', colErr?.message);
+      }
+    }
 
     // 2. Tabel raport_catatan (catatan wali kelas, kepribadian, tahfidz)
     await pool.execute(`

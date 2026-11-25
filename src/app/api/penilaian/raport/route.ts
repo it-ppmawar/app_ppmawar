@@ -24,20 +24,22 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Parameter murid_id diperlukan' }, { status: 400 });
     }
 
-    // 1. Ambil Profil Santri
+    // 1. Ambil Profil Santri (dukung kelas_madin_id maupun kelas_madin_2_id)
     const [muridRows] = await pool.execute<RowDataPacket[]>(`
       SELECT 
         m.murid_id, m.nama, m.nis, m.jenis_kelamin, m.nama_wali, COALESCE(m.no_wali, '') as no_hp_wali,
         COALESCE(m.foto, '') as foto,
-        COALESCE(km.nama_kelas, '-') as nama_kelas_madin,
-        COALESCE(km.nama_kelas, '-') as tingkat_madin,
+        COALESCE(km.nama_kelas, km2.nama_kelas, '-') as nama_kelas_madin,
+        COALESCE(km.nama_kelas, km2.nama_kelas, '-') as tingkat_madin,
         COALESCE(kq.nama_kelas, '-') as nama_kelas_quran,
         COALESCE(k.nama_kamar, '-') as nama_kamar,
         COALESCE(k.nama_asrama, '-') as nama_asrama,
-        COALESCE(g.nama, '-') as wali_kelas
+        COALESCE(g.nama, g2.nama, '-') as wali_kelas
       FROM murid m
       LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
       LEFT JOIN guru g ON km.guru_id = g.guru_id
+      LEFT JOIN kelas_madin km2 ON m.kelas_madin_2_id = km2.kelas_id
+      LEFT JOIN guru g2 ON km2.guru_id = g2.guru_id
       LEFT JOIN kelas_quran kq ON m.kelas_quran_id = kq.id
       LEFT JOIN kamar k ON m.kamar_id = k.kamar_id
       WHERE m.murid_id = ?
@@ -50,13 +52,19 @@ export async function GET(request: Request) {
     const santri = muridRows[0];
 
     // 2. Ambil Nilai Akademik Santri untuk semester & tahun ajaran ini
-    const [nilaiRows] = await pool.execute<RowDataPacket[]>(`
-      SELECT 
-        id, mata_pelajaran, kitab, nilai_harian, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
-      FROM nilai_santri
-      WHERE murid_id = ? AND semester = ? AND tahun_ajaran = ?
-      ORDER BY mata_pelajaran ASC
-    `, [muridId, semester, tahunAjaran]);
+    let nilaiRows: RowDataPacket[] = [];
+    try {
+      const [nRows] = await pool.execute<RowDataPacket[]>(`
+        SELECT 
+          id, mata_pelajaran, kitab, nilai_harian, nilai_lisan, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
+        FROM nilai_santri
+        WHERE murid_id = ? AND semester = ? AND tahun_ajaran = ?
+        ORDER BY mata_pelajaran ASC
+      `, [muridId, semester, tahunAjaran]);
+      nilaiRows = nRows;
+    } catch (nilaiErr) {
+      console.warn('Error fetching nilai_santri for raport:', nilaiErr);
+    }
 
     // Hitung rata-rata nilai akhir
     let totalNilai = 0;
@@ -65,54 +73,74 @@ export async function GET(request: Request) {
     });
     const rataRata = nilaiRows.length > 0 ? (totalNilai / nilaiRows.length).toFixed(2) : '0.00';
 
-    // 3. SINKRONISASI OTOMATIS: Rekapitulasi Absensi dari database
-    const [absenRows] = await pool.execute<RowDataPacket[]>(`
-      SELECT 
-        SUM(CASE WHEN LOWER(status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
-        SUM(CASE WHEN LOWER(status) = 'izin' THEN 1 ELSE 0 END) as izin,
-        SUM(CASE WHEN LOWER(status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
-        SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') OR status = '' OR status IS NULL THEN 1 ELSE 0 END) as alpha,
-        COUNT(*) as total_sesi
-      FROM absensi
-      WHERE murid_id = ?
-    `, [muridId]);
+    // 3. SINKRONISASI OTOMATIS: Rekapitulasi Absensi dari database (aman terhadap tabel/record kosong)
+    let hadirCount = 0;
+    let izinCount = 0;
+    let sakitCount = 0;
+    let alphaCount = 0;
+    try {
+      const [absenRows] = await pool.execute<RowDataPacket[]>(`
+        SELECT 
+          SUM(CASE WHEN LOWER(status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+          SUM(CASE WHEN LOWER(status) = 'izin' THEN 1 ELSE 0 END) as izin,
+          SUM(CASE WHEN LOWER(status) = 'sakit' THEN 1 ELSE 0 END) as sakit,
+          SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') OR status = '' OR status IS NULL THEN 1 ELSE 0 END) as alpha,
+          COUNT(*) as total_sesi
+        FROM absensi
+        WHERE murid_id = ?
+      `, [muridId]);
+      hadirCount = Number(absenRows[0]?.hadir || 0);
+      izinCount = Number(absenRows[0]?.izin || 0);
+      sakitCount = Number(absenRows[0]?.sakit || 0);
+      alphaCount = Number(absenRows[0]?.alpha || 0);
+    } catch (absenErr) {
+      console.warn('Error fetching absensi for raport:', absenErr);
+    }
 
-    const hadirCount = Number(absenRows[0]?.hadir || 0);
-    const izinCount = Number(absenRows[0]?.izin || 0);
-    const sakitCount = Number(absenRows[0]?.sakit || 0);
-    const alphaCount = Number(absenRows[0]?.alpha || 0);
     const totalAbsensi = hadirCount + izinCount + sakitCount + alphaCount;
     const persentaseHadir = totalAbsensi > 0 ? Math.round((hadirCount / totalAbsensi) * 100) : 100;
 
-    // 4. SINKRONISASI OTOMATIS: Catatan Kedisiplinan / Ketertiban
-    const [pelanggaranRows] = await pool.execute<RowDataPacket[]>(`
-      SELECT 
-        pelanggaran_id, jenis, poin, deskripsi, tindakan, DATE_FORMAT(tanggal, '%Y-%m-%d') as tanggal
-      FROM pelanggaran
-      WHERE murid_id = ?
-      ORDER BY tanggal DESC
-      LIMIT 10
-    `, [muridId]);
+    // 4. SINKRONISASI OTOMATIS: Catatan Kedisiplinan / Ketertiban (tabel pelanggaran: pelanggaran_id, murid_id, jenis, deskripsi, tanggal)
+    let pelanggaranRows: RowDataPacket[] = [];
+    try {
+      const [pRows] = await pool.execute<RowDataPacket[]>(`
+        SELECT 
+          pelanggaran_id, jenis, deskripsi, DATE_FORMAT(tanggal, '%Y-%m-%d') as tanggal
+        FROM pelanggaran
+        WHERE murid_id = ?
+        ORDER BY tanggal DESC
+        LIMIT 10
+      `, [muridId]);
+      pelanggaranRows = pRows;
+    } catch (pelErr) {
+      console.warn('Error fetching pelanggaran for raport:', pelErr);
+    }
 
     let totalPoinPelanggaran = 0;
     pelanggaranRows.forEach(p => {
-      totalPoinPelanggaran += Number(p.poin || 0);
+      totalPoinPelanggaran += Number((p as any).poin || 0);
     });
 
     // Predikat Kedisiplinan Otomatis
     let predikatKedisiplinan = 'Sangat Baik';
-    if (totalPoinPelanggaran > 50) predikatKedisiplinan = 'Kurang (Perlu Pembinaan)';
-    else if (totalPoinPelanggaran > 25) predikatKedisiplinan = 'Cukup';
-    else if (totalPoinPelanggaran > 10) predikatKedisiplinan = 'Baik';
+    if (totalPoinPelanggaran > 50 || pelanggaranRows.length >= 5) predikatKedisiplinan = 'Kurang (Perlu Pembinaan)';
+    else if (totalPoinPelanggaran > 25 || pelanggaranRows.length >= 3) predikatKedisiplinan = 'Cukup';
+    else if (totalPoinPelanggaran > 10 || pelanggaranRows.length >= 1) predikatKedisiplinan = 'Baik';
 
     // 5. Ambil Catatan Raport & Kepribadian (raport_catatan)
-    const [catatanRows] = await pool.execute<RowDataPacket[]>(`
-      SELECT 
-        catatan_wali_kelas, akhlak, kerajinan, kebersihan, tahfidz_hafalan, status_kelulusan
-      FROM raport_catatan
-      WHERE murid_id = ? AND semester = ? AND tahun_ajaran = ?
-      LIMIT 1
-    `, [muridId, semester, tahunAjaran]);
+    let catatanRows: RowDataPacket[] = [];
+    try {
+      const [cRows] = await pool.execute<RowDataPacket[]>(`
+        SELECT 
+          catatan_wali_kelas, akhlak, kerajinan, kebersihan, tahfidz_hafalan, status_kelulusan
+        FROM raport_catatan
+        WHERE murid_id = ? AND semester = ? AND tahun_ajaran = ?
+        LIMIT 1
+      `, [muridId, semester, tahunAjaran]);
+      catatanRows = cRows;
+    } catch (catErr) {
+      console.warn('Error fetching raport_catatan:', catErr);
+    }
 
     const catatan = catatanRows[0] || {
       catatan_wali_kelas: 'Tingkatkan terus semangat belajar dan ibadah, pertahankan prestasi yang telah diraih.',

@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 import { ensureUjianDB } from '@/lib/ensureUjianDB';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
+import { calcNilaiAkhir, calcPredikat } from '@/lib/penilaian/calcNilai';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,15 +23,6 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return Math.round(R * c);
-}
-
-function calcPredikat(score: number): string {
-  if (score >= 90) return 'A';
-  if (score >= 80) return 'B';
-  if (score >= 70) return 'C';
-  if (score >= 60) return 'D';
-  if (score > 0) return 'E';
-  return '-';
 }
 
 export async function POST(request: Request) {
@@ -394,7 +386,7 @@ export async function POST(request: Request) {
       if (!hasEssay && !is_disqualified) {
         try {
           const [existingNilai] = await pool.execute<RowDataPacket[]>(
-            `SELECT id, nilai_harian, nilai_uts, nilai_uas, catatan 
+            `SELECT id, nilai_harian, nilai_lisan, nilai_uts, nilai_uas, catatan 
              FROM nilai_santri 
              WHERE murid_id = ? AND mata_pelajaran = ? AND semester = ? AND tahun_ajaran = ? 
              LIMIT 1`,
@@ -402,6 +394,7 @@ export async function POST(request: Request) {
           );
 
           let harian = 0;
+          let lisan: number | null = null;
           let uts = 0;
           let uas = 0;
           let catatanBaru = `CBT: ${exam.judul} (${finalScore})`;
@@ -409,6 +402,7 @@ export async function POST(request: Request) {
           if (existingNilai.length > 0) {
             const ex = existingNilai[0];
             harian = ex.nilai_harian !== null ? Number(ex.nilai_harian) : 0;
+            lisan = ex.nilai_lisan !== null && ex.nilai_lisan !== undefined ? Number(ex.nilai_lisan) : null;
             uts = ex.nilai_uts !== null ? Number(ex.nilai_uts) : 0;
             uas = ex.nilai_uas !== null ? Number(ex.nilai_uas) : 0;
             if (ex.catatan) {
@@ -425,7 +419,7 @@ export async function POST(request: Request) {
             harian = finalScore;
           }
 
-          const nilaiAkhir = Math.round((harian * 0.3 + uts * 0.3 + uas * 0.4) * 100) / 100;
+          const nilaiAkhir = calcNilaiAkhir({ harian, lisan, uts, uas }) ?? 0;
           const predikat = calcPredikat(nilaiAkhir);
 
           await pool.execute(

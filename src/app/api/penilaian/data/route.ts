@@ -3,17 +3,9 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { resolvePenilaianAuth } from '@/lib/auth/penilaianAuth';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
+import { calcPredikat } from '@/lib/penilaian/calcNilai';
 
 export const dynamic = 'force-dynamic';
-
-function calcPredikat(score: number): string {
-  if (score >= 90) return 'A';
-  if (score >= 80) return 'B';
-  if (score >= 70) return 'C';
-  if (score >= 60) return 'D';
-  if (score > 0) return 'E';
-  return '-';
-}
 
 export async function GET(request: Request) {
   try {
@@ -256,6 +248,7 @@ export async function GET(request: Request) {
           let avgQuery = `SELECT 
               murid_id,
               AVG(CASE WHEN nilai_harian IS NOT NULL AND nilai_harian != '' THEN CAST(nilai_harian AS DECIMAL(5,2)) END) as avg_harian,
+              AVG(CASE WHEN nilai_lisan IS NOT NULL THEN CAST(nilai_lisan AS DECIMAL(5,2)) END) as avg_lisan,
               AVG(CASE WHEN nilai_uts IS NOT NULL AND nilai_uts != '' THEN CAST(nilai_uts AS DECIMAL(5,2)) END) as avg_uts,
               AVG(CASE WHEN nilai_uas IS NOT NULL AND nilai_uas != '' THEN CAST(nilai_uas AS DECIMAL(5,2)) END) as avg_uas,
               AVG(CASE WHEN nilai_akhir IS NOT NULL AND nilai_akhir != '' THEN CAST(nilai_akhir AS DECIMAL(5,2)) END) as avg_akhir,
@@ -282,6 +275,7 @@ export async function GET(request: Request) {
             const att = attendanceMap[m.murid_id] || { persen: 100, hadir: 0, total: 0 };
             const totalMapel = r ? Number(r.total_mapel_dinilai || 0) : 0;
             const harian = r && r.avg_harian !== null ? Number(r.avg_harian).toFixed(1) : '';
+            const lisan = r && r.avg_lisan !== null ? Number(r.avg_lisan).toFixed(1) : '';
             const uts = r && r.avg_uts !== null ? Number(r.avg_uts).toFixed(1) : '';
             const uas = r && r.avg_uas !== null ? Number(r.avg_uas).toFixed(1) : '';
             const akhir = r && r.avg_akhir !== null ? Number(r.avg_akhir).toFixed(1) : '';
@@ -302,6 +296,7 @@ export async function GET(request: Request) {
               kehadiran_total: att.total,
               kehadiran_hadir: att.hadir,
               nilai_harian: harian,
+              nilai_lisan: lisan,
               nilai_uts: uts,
               nilai_uas: uas,
               nilai_akhir: akhir,
@@ -315,7 +310,7 @@ export async function GET(request: Request) {
           // MODE INPUT MAPEL SPESIFIK: Ambil nilai spesifik mapel tersebut
           let existingScoresMap: Record<number, any> = {};
           try {
-            const scoreQuery = `SELECT murid_id, nilai_harian, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
+            const scoreQuery = `SELECT murid_id, nilai_harian, nilai_lisan, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
                FROM nilai_santri
                WHERE mata_pelajaran = ? AND semester = ? AND tahun_ajaran = ? AND murid_id IN (${placeholders})`;
             const scoreParams = [mapelName, semester, tahunAjaran, ...muridIds];
@@ -346,6 +341,7 @@ export async function GET(request: Request) {
               kehadiran_total: att.total,
               kehadiran_hadir: att.hadir,
               nilai_harian: score.nilai_harian !== undefined && score.nilai_harian !== null ? Number(score.nilai_harian) : '',
+              nilai_lisan: score.nilai_lisan !== undefined && score.nilai_lisan !== null ? Number(score.nilai_lisan) : '',
               nilai_uts: score.nilai_uts !== undefined && score.nilai_uts !== null ? Number(score.nilai_uts) : '',
               nilai_uas: score.nilai_uas !== undefined && score.nilai_uas !== null ? Number(score.nilai_uas) : '',
               nilai_akhir: score.nilai_akhir !== undefined && score.nilai_akhir !== null ? Number(score.nilai_akhir) : '',

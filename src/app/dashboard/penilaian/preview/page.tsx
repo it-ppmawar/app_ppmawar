@@ -150,68 +150,159 @@ function PreviewContent() {
           </div>
 
           {/* TABEL NILAI AKADEMIK */}
-          <div className="mb-6">
-            <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2 flex items-center gap-1.5">
-              <BookOpen size={14} /> A. Nilai Hasil Belajar (Madrasah Diniyah)
-            </h5>
-            <div className="border border-gray-300 rounded-xl overflow-hidden">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gray-100 border-b border-gray-300 font-bold text-gray-800">
-                    <th className="py-2.5 px-3 w-10 text-center border-r border-gray-300">No</th>
-                    <th className="py-2.5 px-3 border-r border-gray-300">Mata Pelajaran</th>
-                    <th className="py-2.5 px-3 border-r border-gray-300">Kitab</th>
-                    <th className="py-2.5 px-2 w-14 text-center border-r border-gray-300">KKM</th>
-                    <th className="py-2.5 px-2 w-14 text-center border-r border-gray-300">Nilai</th>
-                    <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">Predikat</th>
-                    <th className="py-2.5 px-3">Keterangan</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {d.nilai?.length === 0 ? (
-                    <tr><td colSpan={7} className="py-4 text-center text-gray-500 italic">Belum ada nilai yang diinput.</td></tr>
-                  ) : (
-                    d.nilai?.map((n: any, idx: number) => (
-                      <tr key={n.id} className="hover:bg-gray-50">
-                        <td className="py-2 px-3 text-center border-r border-gray-200">{idx + 1}</td>
-                        <td className="py-2 px-3 font-bold border-r border-gray-200">{n.mata_pelajaran}</td>
-                        <td className="py-2 px-3 italic text-gray-700 border-r border-gray-200">{n.kitab || '-'}</td>
-                        <td className="py-2 px-2 text-center border-r border-gray-200">70</td>
-                        <td className="py-2 px-2 text-center font-bold text-gray-900 border-r border-gray-200">{n.nilai_akhir ?? '-'}</td>
-                        <td className="py-2 px-2 text-center font-black border-r border-gray-200">{n.predikat ?? '-'}</td>
-                        <td className="py-2 px-3 text-gray-600">{Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan'}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {(() => {
+            const nilaiList = Array.isArray(d.nilai) ? d.nilai : [];
+            const hasLisan = nilaiList.some(
+              (n: any) => n.nilai_lisan !== null && n.nilai_lisan !== undefined && String(n.nilai_lisan).trim() !== ''
+            );
+            const abs = d.rekap_absensi || d.absensi;
 
-          {/* REKAP ABSENSI */}
-          {d.absensi && (
-            <div className="mb-6">
-              <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">B. Rekap Kehadiran</h5>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center text-xs">
-                {[
-                  { label: 'Total Pertemuan', val: d.absensi.total ?? 0 },
-                  { label: 'Hadir', val: d.absensi.hadir ?? 0 },
-                  { label: 'Izin', val: d.absensi.izin ?? 0 },
-                  { label: 'Sakit', val: d.absensi.sakit ?? 0 },
-                  { label: 'Alpa', val: d.absensi.alpa ?? 0 },
-                ].map(item => (
-                  <div key={item.label} className="border border-gray-200 rounded-xl p-2">
-                    <p className="font-black text-base text-gray-900">{item.val}</p>
-                    <p className="text-gray-500 text-[10px]">{item.label}</p>
+            return (
+              <>
+                <div className="mb-6">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2 flex items-center gap-1.5">
+                    <BookOpen size={14} /> A. Nilai Hasil Belajar (Madrasah Diniyah)
+                  </h5>
+                  <div className="border border-gray-300 rounded-xl overflow-hidden">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-gray-100 border-b border-gray-300 font-bold text-gray-800">
+                          <th className="py-2.5 px-3 w-10 text-center border-r border-gray-300">No</th>
+                          <th className="py-2.5 px-3 border-r border-gray-300">Mata Pelajaran</th>
+                          <th className="py-2.5 px-3 border-r border-gray-300">Kitab</th>
+                          <th className="py-2.5 px-2 w-14 text-center border-r border-gray-300">KKM</th>
+                          {hasLisan && (
+                            <th className="py-2.5 px-2 w-14 text-center border-r border-gray-300">Lisan</th>
+                          )}
+                          <th className="py-2.5 px-2 w-14 text-center border-r border-gray-300">Nilai</th>
+                          <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">Predikat</th>
+                          <th className="py-2.5 px-3">Keterangan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {nilaiList.length === 0 ? (
+                          <tr>
+                            <td colSpan={hasLisan ? 8 : 7} className="py-4 text-center text-gray-500 italic">
+                              Belum ada nilai yang diinput untuk santri ini pada semester ini.
+                            </td>
+                          </tr>
+                        ) : (
+                          nilaiList.map((n: any, idx: number) => (
+                            <tr key={n.id} className="hover:bg-gray-50">
+                              <td className="py-2 px-3 text-center border-r border-gray-200">{idx + 1}</td>
+                              <td className="py-2 px-3 font-bold border-r border-gray-200">{n.mata_pelajaran}</td>
+                              <td className="py-2 px-3 italic text-gray-700 border-r border-gray-200">{n.kitab || '-'}</td>
+                              <td className="py-2 px-2 text-center border-r border-gray-200">70</td>
+                              {hasLisan && (
+                                <td className="py-2 px-2 text-center font-semibold text-gray-800 border-r border-gray-200">
+                                  {n.nilai_lisan !== null && n.nilai_lisan !== undefined && String(n.nilai_lisan).trim() !== ''
+                                    ? n.nilai_lisan
+                                    : '-'}
+                                </td>
+                              )}
+                              <td className="py-2 px-2 text-center font-bold text-gray-900 border-r border-gray-200">{n.nilai_akhir ?? '-'}</td>
+                              <td className="py-2 px-2 text-center font-black border-r border-gray-200">{n.predikat ?? '-'}</td>
+                              <td className="py-2 px-3 text-gray-600">{Number(n.nilai_akhir) >= 70 ? 'Tuntas' : 'Perlu Bimbingan'}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                      {nilaiList.length > 0 && (
+                        <tfoot>
+                          <tr className="bg-gray-100 font-bold border-t border-gray-300">
+                            <td colSpan={hasLisan ? 5 : 4} className="py-2.5 px-3 text-right border-r border-gray-300 uppercase">
+                              Nilai Rata-Rata Akhir:
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-black text-emerald-800 border-r border-gray-300">
+                              {d.ringkasan_nilai?.rata_rata ?? '0.00'}
+                            </td>
+                            <td colSpan={2} className="py-2.5 px-3 text-xs text-gray-600">
+                              Dari total {d.ringkasan_nilai?.total_mapel ?? nilaiList.length} mata pelajaran
+                            </td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+
+                {/* REKAP ABSENSI & KEDISIPLINAN */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  {abs && (
+                    <div>
+                      <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">B. Rekap Kehadiran (Otomatis)</h5>
+                      <div className="border border-gray-300 rounded-xl overflow-hidden text-xs">
+                        <table className="w-full">
+                          <tbody className="divide-y divide-gray-200">
+                            <tr>
+                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Hadir</td>
+                              <td className="py-2 px-3 font-bold text-emerald-700">{abs.hadir ?? 0} kali</td>
+                            </tr>
+                            <tr>
+                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Izin</td>
+                              <td className="py-2 px-3 font-bold text-amber-700">{abs.izin ?? 0} kali</td>
+                            </tr>
+                            <tr>
+                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Sakit</td>
+                              <td className="py-2 px-3 font-bold text-blue-700">{abs.sakit ?? 0} kali</td>
+                            </tr>
+                            <tr>
+                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Alpha / Tanpa Keterangan</td>
+                              <td className="py-2 px-3 font-bold text-rose-700">{abs.alpha ?? abs.alpa ?? 0} kali</td>
+                            </tr>
+                            <tr className="bg-gray-100 font-bold">
+                              <td className="py-2 px-3 border-r border-gray-200">Persentase Kehadiran</td>
+                              <td className="py-2 px-3 font-black text-gray-900">{abs.persentase ?? 100}%</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {d.rekap_kedisiplinan && (
+                    <div>
+                      <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">C. Kedisiplinan &amp; Kepribadian</h5>
+                      <div className="border border-gray-300 rounded-xl overflow-hidden text-xs">
+                        <table className="w-full">
+                          <tbody className="divide-y divide-gray-200">
+                            <tr>
+                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Predikat Kedisiplinan</td>
+                              <td className="py-2 px-3 font-black text-emerald-800">{d.rekap_kedisiplinan.predikat}</td>
+                            </tr>
+                            <tr>
+                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Catatan Pelanggaran</td>
+                              <td className="py-2 px-3 text-gray-600 italic">
+                                {!d.rekap_kedisiplinan.riwayat || d.rekap_kedisiplinan.riwayat.length === 0
+                                  ? 'Tidak ada catatan pelanggaran (Disiplin baik).'
+                                  : `${d.rekap_kedisiplinan.riwayat[0].jenis} (${d.rekap_kedisiplinan.riwayat[0].deskripsi || '-'})`}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Predikat Akhlak</td>
+                              <td className="py-2 px-3 font-bold text-gray-800">{d.catatan?.akhlak || 'Baik'}</td>
+                            </tr>
+                            <tr>
+                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Capaian Tahfidz</td>
+                              <td className="py-2 px-3 font-bold text-gray-800">{d.catatan?.tahfidz_hafalan || '-'}</td>
+                            </tr>
+                            <tr className="bg-gray-100 font-bold">
+                              <td className="py-2 px-3 border-r border-gray-200">Keputusan Akhir</td>
+                              <td className="py-2 px-3 font-black text-emerald-800">{d.catatan?.status_kelulusan || '-'}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
 
           {/* CATATAN WALI KELAS */}
           <div className="mb-6 border border-gray-200 rounded-xl p-4">
-            <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">C. Catatan Wali Kelas</h5>
+            <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">D. Catatan Wali Kelas</h5>
             <p className="text-xs text-gray-700 min-h-[48px] whitespace-pre-wrap">{d.catatan?.catatan_wali_kelas || '-'}</p>
           </div>
 
