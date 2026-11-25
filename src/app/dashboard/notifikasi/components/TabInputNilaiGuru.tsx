@@ -447,25 +447,29 @@ export default function TabInputNilaiGuru({
 
         {/* Masa Berlaku Tautan */}
         <div className="flex flex-col items-center sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-amber-200/50 dark:border-amber-800/30 text-xs">
-          <div className="flex items-center gap-2">
-            <Clock size={13} className="text-amber-600 dark:text-amber-400" />
-            <span className="font-bold text-gray-700 dark:text-gray-300">Masa Berlaku Tautan:</span>
-            <input
-              type="number"
-              min={1}
-              max={90}
-              value={expiryDays}
-              onChange={e => {
-                const val = parseInt(e.target.value, 10);
-                setExpiryDays(isNaN(val) ? ('' as any) : val);
-              }}
-              onBlur={() => {
-                if (!expiryDays || expiryDays < 1) setExpiryDays(1);
-                else if (expiryDays > 90) setExpiryDays(90);
-              }}
-              className="w-14 px-2 py-0.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-center font-bold text-xs"
-            />
-            <span className="text-gray-500">Hari (Min. 1 Hari)</span>
+          <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-center sm:text-left">
+            <div className="flex items-center justify-center gap-1.5">
+              <Clock size={13} className="text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="font-bold text-gray-700 dark:text-gray-300">Masa Berlaku Tautan:</span>
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={90}
+                value={expiryDays}
+                onChange={e => {
+                  const val = parseInt(e.target.value, 10);
+                  setExpiryDays(isNaN(val) ? ('' as any) : val);
+                }}
+                onBlur={() => {
+                  if (!expiryDays || expiryDays < 1) setExpiryDays(1);
+                  else if (expiryDays > 90) setExpiryDays(90);
+                }}
+                className="w-14 px-2 py-0.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-center font-bold text-xs"
+              />
+              <span className="text-gray-500 whitespace-nowrap">Hari (Min. 1 Hari)</span>
+            </div>
           </div>
           <div className="flex items-center justify-center gap-1.5 flex-wrap">
             <span className="text-[11px] text-gray-500">Pilihan Cepat:</span>
