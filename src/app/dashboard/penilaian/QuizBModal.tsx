@@ -16,6 +16,7 @@ interface QuizBModalProps {
   tahunAjaran: string;
   muridList: any[];
   userRole?: string;
+  quickToken?: string;
   onApplyScores: (appliedList: Array<{ murid_id: number; skor: number; targetField: 'harian' | 'uts' | 'uas'; quizTitle: string }>) => void;
 }
 
@@ -52,6 +53,7 @@ export default function QuizBModal({
   tahunAjaran,
   muridList,
   userRole,
+  quickToken,
   onApplyScores,
 }: QuizBModalProps) {
   const [activeTab, setActiveTab] = useState<'fetch' | 'manual' | 'config' | 'logs'>('fetch');
@@ -98,14 +100,18 @@ export default function QuizBModal({
         setActiveTab('fetch');
       }
       loadInitialData();
-      loadSettings();
+      if (!quickToken) {
+        loadSettings();
+      }
     }
-  }, [isOpen, userRole]);
+  }, [isOpen, userRole, quickToken]);
 
   const loadInitialData = async () => {
     setLoadingFetch(true);
     try {
-      const res = await fetch('/api/quizb/fetch');
+      const headers: Record<string, string> = {};
+      if (quickToken) headers['x-token'] = quickToken;
+      const res = await fetch('/api/quizb/fetch', { headers });
       const data = await res.json();
       if (data.success) {
         setBridgeConnected(data.bridge_connected || false);
@@ -170,13 +176,16 @@ export default function QuizBModal({
     const qTitle = selQuiz ? selQuiz.title : `Quiz #${selectedQuizId}`;
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (quickToken) headers['x-token'] = quickToken;
       const res = await fetch('/api/quizb/fetch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           quiz_id: selectedQuizId,
           quiz_title: qTitle,
           kelas_id: selectedKelas,
+          ...(quickToken ? { token: quickToken } : {}),
         }),
       });
       const data = await res.json();
@@ -248,14 +257,17 @@ export default function QuizBModal({
     }
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (quickToken) headers['x-token'] = quickToken;
       const res = await fetch('/api/quizb/fetch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           quiz_id: 'manual_' + Date.now(),
           quiz_title: manualQuizTitle,
           scores_raw: parsedScores,
           kelas_id: selectedKelas,
+          ...(quickToken ? { token: quickToken } : {}),
         }),
       });
       const data = await res.json();

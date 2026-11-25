@@ -109,10 +109,11 @@ export default function PenilaianRaportPage() {
     setLoadingEditModal(true);
     setModalFeedback(null);
     try {
-      const res = await fetch(`/api/penilaian/raport?murid_id=${santri.murid_id}&semester=${semester}&tahun_ajaran=${tahunAjaran}&t=${Date.now()}`);
+      const res = await fetch(`/api/penilaian/raport?murid_id=${santri.murid_id}&semester=${semester}&tahun_ajaran=${encodeURIComponent(tahunAjaran)}&t=${Date.now()}`);
       const data = await res.json();
-      if (data.success && Array.isArray(data.nilai)) {
-        setEditModalScores(data.nilai);
+      const nilaiArr = Array.isArray(data?.data?.nilai) ? data.data.nilai : (Array.isArray(data?.nilai) ? data.nilai : null);
+      if (data.success && nilaiArr) {
+        setEditModalScores(nilaiArr);
       } else {
         setEditModalScores([]);
       }
@@ -132,7 +133,7 @@ export default function PenilaianRaportPage() {
 
     try {
       setSavingScores(true);
-      const url = `/api/penilaian/save?murid_id=${santri.murid_id}&semester=${semester}&tahun_ajaran=${tahunAjaran}${!isLegerMode && selectedMapel ? `&mapel=${encodeURIComponent(selectedMapel)}` : ''}`;
+      const url = `/api/penilaian/save?murid_id=${santri.murid_id}&semester=${semester}&tahun_ajaran=${encodeURIComponent(tahunAjaran)}${!isLegerMode && selectedMapel ? `&mapel=${encodeURIComponent(selectedMapel)}` : ''}`;
       const res = await fetch(url, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
@@ -155,7 +156,7 @@ export default function PenilaianRaportPage() {
 
     try {
       setSavingEditModal(true);
-      const url = `/api/penilaian/save?id=${scoreItem.id}&murid_id=${editModalSantri.murid_id}&mapel=${encodeURIComponent(scoreItem.mata_pelajaran)}&semester=${semester}&tahun_ajaran=${tahunAjaran}`;
+      const url = `/api/penilaian/save?id=${scoreItem.id}&murid_id=${editModalSantri.murid_id}&mapel=${encodeURIComponent(scoreItem.mata_pelajaran)}&semester=${semester}&tahun_ajaran=${encodeURIComponent(tahunAjaran)}`;
       const res = await fetch(url, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
@@ -178,7 +179,7 @@ export default function PenilaianRaportPage() {
 
     try {
       setSavingEditModal(true);
-      const url = `/api/penilaian/save?murid_id=${editModalSantri.murid_id}&semester=${semester}&tahun_ajaran=${tahunAjaran}`;
+      const url = `/api/penilaian/save?murid_id=${editModalSantri.murid_id}&semester=${semester}&tahun_ajaran=${encodeURIComponent(tahunAjaran)}`;
       const res = await fetch(url, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
@@ -530,8 +531,31 @@ export default function PenilaianRaportPage() {
         if (json.success) {
           const kList = json.kelas || [];
           setKelasList(kList);
-          if (kList.length > 0) {
+
+          let initialKelas = '';
+          let initialMapel = '';
+          if (typeof window !== 'undefined') {
+            const sp = new URLSearchParams(window.location.search);
+            const urlKelas = sp.get('kelas_id') || sp.get('kelas');
+            const urlMapel = sp.get('mapel');
+            const urlSem = sp.get('semester');
+            const urlThn = sp.get('tahun_ajaran');
+            if (urlSem) setSemester(urlSem);
+            if (urlThn) setTahunAjaran(urlThn);
+            if (urlKelas && kList.some((k: any) => String(k.kelas_id) === urlKelas)) {
+              initialKelas = urlKelas;
+            }
+            if (urlMapel) initialMapel = urlMapel;
+          }
+
+          if (initialKelas) {
+            setSelectedKelas(initialKelas);
+          } else if (kList.length > 0) {
             setSelectedKelas(String(kList[0].kelas_id));
+          }
+
+          if (initialMapel) {
+            setSelectedMapel(initialMapel);
           }
         }
       } catch (err) {
@@ -562,7 +586,14 @@ export default function PenilaianRaportPage() {
           const mList = json.kurikulum || [];
           setKurikulumList(mList);
           if (!isCustomMapel) {
-            if (mList.length > 0) {
+            const urlMapel = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('mapel') : null;
+            const matchMapel = urlMapel && mList.some((m: any) => m.mata_pelajaran === urlMapel) ? urlMapel : null;
+
+            if (matchMapel) {
+              setSelectedMapel(matchMapel);
+              const found = mList.find((k: any) => k.mata_pelajaran === matchMapel);
+              if (found) setSelectedKitab(found.kitab || '');
+            } else if (mList.length > 0) {
               setSelectedMapel(mList[0].mata_pelajaran);
               setSelectedKitab(mList[0].kitab || '');
             } else {
@@ -870,6 +901,20 @@ export default function PenilaianRaportPage() {
                   <GraduationCap size={16} />
                   <span>Raport Santri</span>
                 </button>
+              </div>
+            )}
+
+            {/* Pintasan ke halaman notifikasi: Siaran WA Input & Leger Nilai Guru (Admin/Staff) */}
+            {(userRole === 'admin' || userRole === 'staff') && (
+              <div className="pt-1 border-t border-amber-700/40">
+                <a
+                  href="/dashboard/notifikasi?guru_tab=input_nilai"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/30 text-amber-200 hover:text-white text-xs font-bold transition-all"
+                >
+                  <Award size={14} className="shrink-0" />
+                  <span>Siaran WA Input Nilai ke Guru</span>
+                  <ChevronRight size={13} className="shrink-0 opacity-70" />
+                </a>
               </div>
             )}
 

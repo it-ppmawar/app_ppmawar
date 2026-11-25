@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
-import { cookies } from 'next/headers';
-import { verifyToken } from '@/lib/auth/jwt';
+import { resolvePenilaianAuth } from '@/lib/auth/penilaianAuth';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
 
 export const dynamic = 'force-dynamic';
@@ -20,19 +19,16 @@ export async function GET(request: Request) {
   try {
     await ensurePenilaianDB();
 
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const payload = verifyToken(token) as any;
-    if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
-
-    const { role, guruId, muridId, userId, username } = payload;
-    const tokenAsrama = payload.namaAsrama || null;
-    const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
-    const namaAsrama = await resolveAsrama(userId, role, username || '', tokenAsrama);
+    const auth = await resolvePenilaianAuth(request);
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
 
     const { searchParams } = new URL(request.url);
+    const { payload, role, guruId, muridId, userId, username } = auth;
+    const tokenAsrama = payload.namaAsrama || null;
+    const { resolveAsrama } = await import('@/lib/auth/resolveAsrama');
+    const namaAsrama = await resolveAsrama(Number(userId || 0), role, username || '', tokenAsrama);
     const kelasId = searchParams.get('kelas_id') || 'SEMUA';
     const mapelName = searchParams.get('mapel');
     const semester = searchParams.get('semester') || '1';
@@ -319,15 +315,10 @@ export async function GET(request: Request) {
           // MODE INPUT MAPEL SPESIFIK: Ambil nilai spesifik mapel tersebut
           let existingScoresMap: Record<number, any> = {};
           try {
-            let scoreQuery = `SELECT murid_id, nilai_harian, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
+            const scoreQuery = `SELECT murid_id, nilai_harian, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
                FROM nilai_santri
                WHERE mata_pelajaran = ? AND semester = ? AND tahun_ajaran = ? AND murid_id IN (${placeholders})`;
-            let scoreParams = [mapelName, semester, tahunAjaran, ...muridIds];
-
-            if (!isSemuaKelas) {
-              scoreQuery += ` AND kelas_madin_id = ?`;
-              scoreParams.push(kelasId);
-            }
+            const scoreParams = [mapelName, semester, tahunAjaran, ...muridIds];
 
             const [scoreRows] = await pool.execute<RowDataPacket[]>(scoreQuery, scoreParams);
             scoreRows.forEach((r: any) => {

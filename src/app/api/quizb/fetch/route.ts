@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
-import { cookies } from 'next/headers';
-import { verifyToken } from '@/lib/auth/jwt';
+import { resolvePenilaianAuth } from '@/lib/auth/penilaianAuth';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
 
 export const dynamic = 'force-dynamic';
@@ -19,15 +18,14 @@ export async function GET(request: Request) {
   try {
     await ensurePenilaianDB();
 
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await resolvePenilaianAuth(request, {
+      allowedRoles: ['admin', 'staff', 'guru'],
+    });
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
 
-    const payload = verifyToken(token) as any;
-    if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
-
-    const { role, guruId } = payload;
-    const roleLower = (role || '').toLowerCase();
+    const { role: roleLower, guruId } = auth;
 
     // Ambil daftar mapel yang diizinkan user berdasarkan RBAC dari jadwal_madin & jadwal_quran
     let allowedMapel: string[] = [];
@@ -279,14 +277,16 @@ export async function POST(request: Request) {
   try {
     await ensurePenilaianDB();
 
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const payload = verifyToken(token) as any;
-    if (!payload) return NextResponse.json({ error: 'Token invalid' }, { status: 401 });
-
     const body = await request.json();
+    const auth = await resolvePenilaianAuth(request, {
+      bodyToken: body?.token,
+      allowedRoles: ['admin', 'staff', 'guru'],
+    });
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    const { payload } = auth;
     const {
       quiz_id,
       quiz_title,

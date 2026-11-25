@@ -11,6 +11,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { formatHariTanggalPesantren, formatHariPesantren } from '@/lib/formatHariPesantren';
 import CardSiaranWaManual from './components/CardSiaranWaManual';
 import TabRekapGuru, { DEFAULT_REKAP_GURU_TEMPLATE } from './components/TabRekapGuru';
+import TabInputNilaiGuru, { DEFAULT_INPUT_NILAI_GURU_TEMPLATE } from './components/TabInputNilaiGuru';
 
 function SortButton<T extends string>({
   field, label, current, dir, onSort, color = 'amber',
@@ -111,8 +112,12 @@ function NotifikasiContent() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Tab aktif pada kartu terpadu Admin/Staff: 'auto' | 'manual' | 'rekap' | 'info_akun'
-  const [guruCardTab, setGuruCardTab] = useState<'auto' | 'manual' | 'rekap' | 'info_akun'>('auto');
+  // Tab aktif pada kartu terpadu Admin/Staff: 'auto' | 'manual' | 'rekap' | 'input_nilai' | 'info_akun'
+  const rawGuruTab = searchParams.get('guru_tab');
+  const initGuruTab = (['auto', 'manual', 'rekap', 'input_nilai', 'info_akun'] as const).includes(rawGuruTab as any)
+    ? (rawGuruTab as 'auto' | 'manual' | 'rekap' | 'input_nilai' | 'info_akun')
+    : 'auto';
+  const [guruCardTab, setGuruCardTab] = useState<'auto' | 'manual' | 'rekap' | 'input_nilai' | 'info_akun'>(initGuruTab);
   const [manualMode, setManualMode] = useState<'absensi' | 'rekapitulasi' | 'info_akun' | 'pembayaran'>('absensi');
 
   // State untuk Tab Tagihan & Pembayaran
@@ -158,6 +163,7 @@ function NotifikasiContent() {
   const defaultGuruInfoTemplate = `Assalamu'alaikum Warohmatullah, Ustadz/Ustadzah *{nama_guru}*.\n\nBerikut kami sampaikan informasi login default untuk mengakses aplikasi absensi PPMA:\n\n* Username: *{username}*\n* Password: *${"{password}"}*\n\nSilakan akses aplikasi pada tautan berikut: https://app.ppmawar.or.id/\n\nDemi keamanan akun, kami sarankan Anda untuk langsung mengubah password setelah berhasil login di halaman Profil.\n\nAtas perhatiannya kami ucapkan terima kasih.\n\nWassalamu'alaikum Warohmatullah.`;
 
   const defaultRekapGuruTemplate = DEFAULT_REKAP_GURU_TEMPLATE;
+  const defaultInputNilaiGuruTemplate = DEFAULT_INPUT_NILAI_GURU_TEMPLATE;
 
   const [pesanWaliTemplate, setPesanWaliTemplate] = useState(defaultWaliTemplate);
   const [pesanWaliInfoTemplate, setPesanWaliInfoTemplate] = useState(defaultWaliInfoTemplate);
@@ -165,6 +171,7 @@ function NotifikasiContent() {
   const [pesanGuruInfoTemplate, setPesanGuruInfoTemplate] = useState(defaultGuruInfoTemplate);
   const [pesanBillingTemplate, setPesanBillingTemplate] = useState(defaultBillingTemplate);
   const [pesanRekapGuruTemplate, setPesanRekapGuruTemplate] = useState(defaultRekapGuruTemplate);
+  const [pesanInputNilaiGuruTemplate, setPesanInputNilaiGuruTemplate] = useState(defaultInputNilaiGuruTemplate);
 
   const defaultKepalaMadinTemplate = `Assalamu'alaikum Warohmatullah,\n\nYth. *Kepala Madrasah Diniyah (Madin)*\n*{nama_kepala}*\nPondok Pesantren Matholi'ul Anwar\n\nBerikut kami sampaikan Laporan Rekapitulasi Kehadiran Dewan Guru Madin untuk periode {bulan_tahun}:\n\n📊 *Ringkasan Presensi Dewan Guru Madin:*\n• Total Dewan Guru: {total_guru} Guru\n• Rata-rata Kehadiran: {avg_kehadiran}%\n{ringkasan_kehadiran}\n\n🔗 *Link Preview Detail Evaluasi Dewan Guru:*\n{link_laporan}\n\nTautan di atas berisi daftar lengkap kehadiran masing-masing guru, rincian jadwal kelas yang diampu, serta fitur ekspor/cetak laporan resmi untuk evaluasi madrasah.\n\nWassalamu'alaikum Warohmatullah,\n_Pengurus PP. Matholi'ul Anwar_`;
 
@@ -480,6 +487,9 @@ function NotifikasiContent() {
         }
       }
 
+      const storedInputNilai = localStorage.getItem('wa_template_input_nilai_guru');
+      if (storedInputNilai) setPesanInputNilaiGuruTemplate(storedInputNilai);
+
       const storedKepalaMadin = localStorage.getItem('wa_template_kepala_madin');
       if (storedKepalaMadin) {
         if (!storedKepalaMadin.includes('{nama_kepala}')) {
@@ -555,6 +565,10 @@ function NotifikasiContent() {
               setPesanRekapGuruTemplate(t.wa_template_guru_rekap);
               if (typeof window !== 'undefined') localStorage.setItem('wa_template_guru_rekap', t.wa_template_guru_rekap);
             }
+          }
+          if (t.wa_template_input_nilai_guru) {
+            setPesanInputNilaiGuruTemplate(t.wa_template_input_nilai_guru);
+            if (typeof window !== 'undefined') localStorage.setItem('wa_template_input_nilai_guru', t.wa_template_input_nilai_guru);
           }
           if (t.wa_template_kepala_madin) {
             let tmpl = t.wa_template_kepala_madin;
@@ -727,6 +741,22 @@ function NotifikasiContent() {
       };
     }
   }, [isRemindParam, role, searchParams, loadingReminders]);
+
+  // Auto-buka kartu guru & tab yang sesuai jika ada URL param guru_tab
+  useEffect(() => {
+    const guruTabParam = searchParams.get('guru_tab');
+    if (guruTabParam && ['auto', 'manual', 'rekap', 'input_nilai', 'info_akun'].includes(guruTabParam)) {
+      if (role === 'admin' || role === 'staff') {
+        setIsGuruCardOpen(true);
+        setGuruCardTab(guruTabParam as any);
+        const timer = setTimeout(() => {
+          const el = document.getElementById('pengingat-guru-aktif');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 350);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [searchParams, role]);
 
   const fetchActiveReminders = () => {
     setLoadingReminders(true);
@@ -2038,14 +2068,14 @@ function NotifikasiContent() {
                 <div className="flex items-center gap-1.5 mb-2 px-1">
                   <span className="w-1.5 h-3.5 bg-purple-500 rounded-full"></span>
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-purple-700 dark:text-purple-400">
-                    Laporan & Akun
+                    Laporan, Nilai &amp; Akun
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setGuruCardTab('rekap')}
-                    className={`min-h-[52px] sm:min-h-[56px] py-3 px-2 sm:px-3 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                    className={`min-h-[52px] sm:min-h-[56px] py-2.5 sm:py-3 px-2 sm:px-2.5 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
                       guruCardTab === 'rekap'
                         ? 'bg-purple-600 text-white shadow-md font-extrabold'
                         : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
@@ -2057,8 +2087,21 @@ function NotifikasiContent() {
 
                   <button
                     type="button"
+                    onClick={() => setGuruCardTab('input_nilai')}
+                    className={`min-h-[52px] sm:min-h-[56px] py-2.5 sm:py-3 px-2 sm:px-2.5 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                      guruCardTab === 'input_nilai'
+                        ? 'bg-amber-600 text-white shadow-md font-extrabold'
+                        : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
+                    }`}
+                  >
+                    <Award size={16} className={`shrink-0 ${guruCardTab === 'input_nilai' ? 'text-white' : 'text-amber-500'}`} />
+                    <span className="leading-tight font-extrabold text-[11px] sm:text-xs">Input &amp; Leger Nilai</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => setGuruCardTab('info_akun')}
-                    className={`min-h-[52px] sm:min-h-[56px] py-3 px-2 sm:px-3 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
+                    className={`min-h-[52px] sm:min-h-[56px] py-2.5 sm:py-3 px-2 sm:px-2.5 font-bold rounded-xl transition-all text-center flex items-center justify-center gap-1.5 shadow-sm ${
                       guruCardTab === 'info_akun'
                         ? 'bg-emerald-600 text-white shadow-md font-extrabold'
                         : 'bg-white dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700/80'
@@ -2110,7 +2153,7 @@ function NotifikasiContent() {
                 </button>
               </div>
             </div>
-          ) : guruCardTab === 'rekap' ? null : (
+          ) : (guruCardTab === 'rekap' || guruCardTab === 'input_nilai') ? null : (
             <div className="mx-6 mt-5 mb-1 bg-amber-50/30 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30 rounded-xl p-4">
               <label className="block text-xs font-bold text-amber-800 dark:text-amber-400 mb-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <span>Edit Templat Pesan Guru</span>
@@ -2738,6 +2781,20 @@ function NotifikasiContent() {
                 handleSendKepalaMadinWA={handleSendKepalaMadin}
                 rekapExpiryDays={rekapMassalExpiryDays}
                 setRekapExpiryDays={setRekapMassalExpiryDays}
+              />
+            </div>
+          )}
+
+          {/* ---- TAB: Input & Leger Nilai Guru ---- */}
+          {guruCardTab === 'input_nilai' && (
+            <div className="p-6 pt-4 animate-[fadeIn_0.3s_ease-out]">
+              <TabInputNilaiGuru
+                guruList={guruList}
+                pesanInputNilaiTemplate={pesanInputNilaiGuruTemplate}
+                setPesanInputNilaiTemplate={setPesanInputNilaiGuruTemplate}
+                saveTemplate={saveTemplate}
+                resetTemplate={resetTemplate}
+                saveStatus={saveStatus}
               />
             </div>
           )}
