@@ -8,7 +8,7 @@ import {
   Award, BookOpen, GraduationCap, Search, Filter,
   Save, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
   Sparkles, Download, Edit3, ArrowUpDown, ArrowUp, ArrowDown,
-  X, Trash2, Check, Clock, Phone, ShieldCheck
+  X, Trash2, Check, Clock, Phone, ShieldCheck, Sun, Moon
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -36,8 +36,11 @@ const getAvatarColor = (nama: string): string => {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
-const getFotoUrl = (fotoName: string | null) => {
-  if (!fotoName || fotoName === '-') return '';
+const getFotoUrl = (fotoName: string | null, nis?: string) => {
+  if (!fotoName || fotoName === '-') {
+    if (nis) return `https://mawar.smartpesantren.id/sekretariat/berkas/Berkas_2026_${nis}.jpg`;
+    return '';
+  }
   if (fotoName.startsWith('http://') || fotoName.startsWith('https://')) {
     return fotoName;
   }
@@ -108,8 +111,42 @@ function PenilaianInputContent() {
   const [savingEditModal, setSavingEditModal] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Zoom foto
+  // Zoom foto & Logo + Theme state
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+  const [guruFotoError, setGuruFotoError] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
+  const logoRef = useRef<HTMLImageElement>(null);
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    if (logoRef.current?.complete) {
+      setLogoLoaded(true);
+    }
+  }, [loadingAuth]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        setIsDark(true);
+        document.documentElement.classList.add('dark');
+      } else {
+        setIsDark(false);
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDark) {
+      document.documentElement.classList.remove('dark');
+      localStorage.theme = 'light';
+      setIsDark(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.theme = 'dark';
+      setIsDark(true);
+    }
+  };
 
   // Guard unsaved changes saat tutup tab
   useEffect(() => {
@@ -597,141 +634,205 @@ function PenilaianInputContent() {
 
   if (loadingAuth) {
     return (
-      <div className="min-h-screen bg-[#070d1e] text-white flex flex-col items-center justify-center p-4">
-        <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4">
-          <RefreshCw size={30} className="animate-spin text-amber-400" />
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-white flex flex-col items-center justify-center p-4 transition-colors">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-8 shadow-sm flex flex-col items-center max-w-sm w-full text-center">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 flex items-center justify-center mb-4">
+            <RefreshCw size={30} className="animate-spin text-amber-600 dark:text-amber-400" />
+          </div>
+          <p className="text-base font-bold text-slate-900 dark:text-gray-100">Memverifikasi Tautan Pintasan Input Nilai...</p>
+          <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">Sistem Penilaian PP. Matholi&apos;ul Anwar</p>
         </div>
-        <p className="text-base font-bold text-gray-200">Memverifikasi Tautan Pintasan Input Nilai...</p>
-        <p className="text-xs text-gray-400 mt-1">Sistem Penilaian PP. Matholi&apos;ul Anwar</p>
       </div>
     );
   }
 
   if (authError) {
     return (
-      <div className="min-h-screen bg-[#070d1e] text-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-3xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-4 text-red-400">
-          <AlertCircle size={32} />
-        </div>
-        <h2 className="text-xl font-bold text-red-400 mb-2">Tautan Tidak Dapat Diakses</h2>
-        <p className="text-sm text-gray-300 max-w-md mb-6">{authError}</p>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Link
-            href="/dashboard/penilaian"
-            className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition-all shadow-md"
-          >
-            Masuk Lewat Halaman Login
-          </Link>
-          <a
-            href="https://wa.me/628133129223"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-5 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold text-xs border border-gray-700 transition-all flex items-center justify-center gap-1.5"
-          >
-            <Phone size={14} className="text-emerald-400" /> Hubungi Admin Pesantren
-          </a>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-white flex flex-col items-center justify-center p-4 sm:p-6 text-center transition-colors">
+        <div className="bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/40 rounded-3xl p-7 sm:p-8 shadow-sm max-w-md w-full flex flex-col items-center">
+          <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 flex items-center justify-center mb-4 text-red-500 dark:text-red-400">
+            <AlertCircle size={32} />
+          </div>
+          <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">Tautan Tidak Dapat Diakses</h2>
+          <p className="text-sm text-slate-600 dark:text-gray-300 max-w-md mb-6">{authError}</p>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <Link
+              href="/dashboard/penilaian"
+              className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition-all shadow-md"
+            >
+              Masuk Lewat Halaman Login
+            </Link>
+            <a
+              href="https://wa.me/628133129223"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200 font-bold text-xs border border-slate-200 dark:border-gray-700 transition-all flex items-center justify-center gap-1.5"
+            >
+              <Phone size={14} className="text-emerald-500 dark:text-emerald-400" /> Hubungi Admin Pesantren
+            </a>
+          </div>
         </div>
       </div>
     );
   }
 
+  const guruFotoUrl = getFotoUrl(guruInfo?.foto);
+
   return (
-    <div className="min-h-screen bg-[#080f21] text-gray-100 flex flex-col font-sans pb-24 selection:bg-amber-500 selection:text-white">
-      {/* Top Navbar Header */}
-      <header className="sticky top-0 z-40 bg-[#0c162e]/95 backdrop-blur-md border-b border-gray-800 px-4 sm:px-8 py-3 flex items-center justify-between shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center shadow-md shadow-amber-600/20 text-white font-serif font-black text-base">
-            م
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 selection:bg-amber-500 selection:text-white ${!isLegerMode ? 'pb-28' : 'pb-12'}`}>
+      {/* Top Floating App Bar — Serasi dengan Pintasan Absensi & Rekapitulasi */}
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-4 py-1 shadow-xs rounded-b-2xl transition-colors min-h-[58px] h-[58px] flex items-center">
+        <div className="w-full max-w-7xl mx-auto flex items-center justify-between gap-2">
+          {/* Pojok Kiri: Logo Lembaga */}
+          <div className="flex items-center justify-start shrink-0">
+            <div className="relative w-[46px] h-[52px] flex items-center justify-center filter drop-shadow-xs shrink-0">
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
+                <polygon
+                  points="50,1 86,15 99,50 86,85 50,99 14,85 1,50 14,15"
+                  strokeLinejoin="round"
+                  strokeWidth="3.5"
+                  className="fill-white stroke-slate-200 dark:stroke-slate-700/80"
+                />
+              </svg>
+              <div
+                className="relative z-10 w-full h-full flex items-center justify-center p-1.5 pt-1.5"
+                style={{ clipPath: 'polygon(50% 1%, 86% 15%, 99% 50%, 86% 85%, 50% 99%, 14% 85%, 1% 50%, 14% 15%)' }}
+              >
+                {!logoLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="h-[75%] w-[75%] rounded-full bg-white/40 animate-pulse" />
+                  </div>
+                )}
+                <img
+                  ref={logoRef}
+                  src="/logo.png"
+                  alt="Logo Lembaga"
+                  fetchPriority="high"
+                  decoding="async"
+                  onLoad={() => setLogoLoaded(true)}
+                  className={`h-[82%] w-auto object-contain translate-y-[1px] transition-opacity duration-500 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
+                />
+              </div>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xs sm:text-sm font-extrabold tracking-wide text-white uppercase flex items-center gap-2">
-              <span>PP. Matholi&apos;ul Anwar</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-semibold lowercase">
-                input &amp; leger nilai
+
+          {/* Teks Rata Tengah */}
+          <div className="min-w-0 flex-1 flex flex-col items-center justify-center text-center">
+            <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+              <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                Input &amp; Leger Nilai
+              </h1>
+              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800/60 rounded-md shrink-0">
+                (Guru Madin)
               </span>
-            </h1>
-            <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium">
-              Penilaian &amp; Raport Digital — Pintasan Pengajar
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 text-center font-medium max-w-full">
+              {guruInfo?.nama || "PP. Matholi'ul Anwar"}
             </p>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {isDirty && (
-            <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
-              <Clock size={11} /> Belum Disimpan
-            </span>
-          )}
-          {!isLegerMode && (
+          {/* Pojok Kanan: Tombol Mode Gelap / Terang */}
+          <div className="flex items-center justify-end shrink-0">
             <button
               type="button"
-              onClick={handleSaveScores}
-              disabled={savingScores || muridList.length === 0}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white shadow-md shadow-amber-500/25 transition-all active:scale-95 disabled:opacity-50"
+              onClick={toggleTheme}
+              className="relative w-[44px] h-[50px] flex items-center justify-center transition-transform active:scale-95 hover:scale-105 focus:outline-none cursor-pointer group shrink-0"
+              aria-label="Toggle Mode Gelap/Terang"
+              title={isDark ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'}
             >
-              {savingScores ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
-              <span>{savingScores ? 'Menyimpan...' : 'Simpan Nilai'}</span>
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none transition-all duration-300">
+                <polygon
+                  points="50,1 86,15 99,50 86,85 50,99 14,85 1,50 14,15"
+                  strokeLinejoin="round"
+                  strokeWidth="3.5"
+                  className="fill-slate-100 group-hover:fill-slate-200 dark:fill-slate-800 dark:group-hover:fill-slate-700 stroke-slate-200 dark:stroke-slate-700/80"
+                />
+              </svg>
+              <span className="relative z-10">
+                {isDark ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} className="text-indigo-600 dark:text-indigo-400" />}
+              </span>
             </button>
-          )}
+          </div>
         </div>
       </header>
 
       {/* Main Container */}
       <main className="max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-4">
 
-        {/* Hero & Banner Profil Guru (Paduan Foto 1 & Foto 4) */}
-        <section className="bg-gradient-to-r from-[#853f06] via-[#5c2c09] to-[#0d1b3e] border border-amber-500/30 rounded-2xl p-4 sm:p-6 shadow-xl shadow-black/30 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-72 h-72 bg-amber-400/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+        {/* Hero & Banner Profil Guru (Urutan data selaras Rekapitulasi Foto 5 & Rapat Kiri Sejajar Foto Guru) */}
+        <section className="bg-gradient-to-br from-amber-50/90 via-white to-orange-50/50 dark:from-[#853f06] dark:via-[#5c2c09] dark:to-[#0d1b3e] border border-amber-200/80 dark:border-amber-500/30 rounded-3xl p-4 sm:p-6 shadow-xs dark:shadow-xl dark:shadow-black/30 relative overflow-hidden transition-colors">
+          <div className="absolute top-0 right-0 w-72 h-72 bg-amber-200/30 dark:bg-amber-400/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
-            <div className="flex items-start sm:items-center gap-3.5">
-              <div
-                className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-extrabold text-white text-lg shadow-md shrink-0 border border-white/20"
-                style={{ backgroundColor: getAvatarColor(guruInfo?.nama || 'Guru') }}
-              >
-                {getInitials(guruInfo?.nama || 'Guru')}
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-md bg-amber-500/25 text-amber-200 border border-amber-400/40 inline-flex items-center gap-1">
+            <div className="flex-1 min-w-0">
+              {/* Baris Atas: Foto / Inisial Guru + Badge Dokumen Resmi & Nama */}
+              <div className="flex items-center gap-3.5">
+                <div
+                  onClick={() => guruFotoUrl && !guruFotoError && setZoomPhoto(guruFotoUrl)}
+                  className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center font-extrabold text-white text-xl shadow-md shrink-0 border-2 border-amber-200/80 dark:border-white/20 overflow-hidden select-none ${
+                    guruFotoUrl && !guruFotoError ? 'cursor-pointer hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all' : ''
+                  }`}
+                  style={{ backgroundColor: getAvatarColor(guruInfo?.nama || 'Guru') }}
+                  title={guruFotoUrl && !guruFotoError ? 'Klik untuk memperbesar foto' : (guruInfo?.nama || 'Guru')}
+                >
+                  <span>{getInitials(guruInfo?.nama || 'Guru')}</span>
+                  {guruFotoUrl && !guruFotoError && (
+                    <img
+                      src={guruFotoUrl}
+                      alt={guruInfo?.nama || 'Guru'}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={() => setGuruFotoError(true)}
+                    />
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300/70 dark:bg-amber-500/25 dark:text-amber-200 dark:border-amber-400/40 mb-1">
                     <ShieldCheck size={11} /> Dokumen Resmi Penilaian
+                  </div>
+                  <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-tight truncate">
+                    {guruInfo?.nama || 'Ustadz / Ustadzah'}
+                  </h2>
+                </div>
+              </div>
+
+              {/* Ruang Bawah Foto/Inisial: Rapat ke Ujung Kiri Sejajar Foto Guru (Urutan Data Selaras Foto 5) */}
+              <div className="mt-3 space-y-2">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-amber-100/90">
+                  <span className="font-mono">
+                    NIP: <strong className="text-slate-900 dark:text-white">{guruInfo?.nip || '-'}</strong>
                   </span>
-                  <span className="text-[10px] text-amber-100/80 font-mono">
-                    NIP: {guruInfo?.nip || '-'}
+                  <span>
+                    Tugas: <strong className="text-slate-900 dark:text-white">Pengajar {totalMapelDiampu || (guruInfo?.classes?.length || 0)} Mapel / {(guruInfo?.classes?.length || 0)} Kelas Madin</strong>
                   </span>
-                  {guruInfo?.exp_date_formatted && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-black/25 text-amber-200 border border-white/10 inline-flex items-center gap-1">
-                      <Calendar size={10} /> Tautan berlaku s/d: {guruInfo.exp_date_formatted}
+                  {guruInfo?.no_hp && (
+                    <span className="font-mono">
+                      No. WA: <strong className="text-slate-900 dark:text-white">{guruInfo.no_hp}</strong>
                     </span>
                   )}
                 </div>
-                <h2 className="text-base sm:text-xl font-black text-white leading-tight">
-                  {guruInfo?.nama || 'Ustadz / Ustadzah'}
-                </h2>
-                <p className="text-xs text-amber-100/90 flex items-center gap-2 flex-wrap">
-                  <span>Pengajar {totalMapelDiampu || (guruInfo?.classes?.length || 0)} Mapel / {(guruInfo?.classes?.length || 0)} Kelas Madin</span>
-                  {guruInfo?.no_hp && (
-                    <>
-                      <span className="opacity-50">•</span>
-                      <span>WA: {guruInfo.no_hp}</span>
-                    </>
-                  )}
-                </p>
+
+                {guruInfo?.exp_date_formatted && (
+                  <div className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-xl bg-white/80 dark:bg-black/25 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-white/15 font-medium shadow-2xs">
+                    <Calendar size={12} className="text-amber-600 dark:text-amber-300 shrink-0" />
+                    <span>Tautan berlaku s/d: <strong className="font-bold text-slate-900 dark:text-white">{guruInfo.exp_date_formatted}</strong></span>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between w-full lg:w-auto pt-3 lg:pt-0 border-t lg:border-t-0 border-white/15 gap-2">
+            <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between w-full lg:w-auto pt-3 lg:pt-0 border-t lg:border-t-0 border-amber-200/70 dark:border-white/15 gap-2">
               <div className="text-left lg:text-right">
-                <span className="text-[10px] text-amber-200/80 uppercase font-bold block">
+                <span className="text-[10px] text-amber-800/80 dark:text-amber-200/80 uppercase font-bold block">
                   {isLegerMode ? 'Santri pada Leger Kelas' : 'Progres Pengisian Mapel Ini'}
                 </span>
-                <span className="text-xs sm:text-sm font-extrabold text-white">
+                <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white">
                   {stats.terisi} dari {stats.total} Santri ({stats.persen}%)
                 </span>
               </div>
-              <div className="w-28 sm:w-40 h-2.5 bg-black/30 rounded-full overflow-hidden border border-white/15">
+              <div className="w-28 sm:w-40 h-2.5 bg-amber-200/60 dark:bg-black/30 rounded-full overflow-hidden border border-amber-300/60 dark:border-white/15">
                 <div
-                  className="h-full bg-gradient-to-r from-amber-400 to-emerald-400 transition-all duration-500 rounded-full"
+                  className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 dark:from-amber-400 dark:to-emerald-400 transition-all duration-500 rounded-full"
                   style={{ width: `${stats.persen}%` }}
                 />
               </div>
@@ -741,23 +842,23 @@ function PenilaianInputContent() {
 
         {/* Notifikasi Sukses Simpan */}
         {saveSuccessMsg && (
-          <div className="bg-emerald-950/50 border border-emerald-500/50 rounded-2xl p-4 flex items-center gap-3 text-emerald-300 text-xs sm:text-sm animate-[fadeIn_0.3s_ease-out] shadow-lg">
-            <CheckCircle size={20} className="shrink-0 text-emerald-400" />
+          <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-500/50 rounded-2xl p-4 flex items-center gap-3 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm animate-[fadeIn_0.3s_ease-out] shadow-sm">
+            <CheckCircle size={20} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
             <p className="font-bold flex-1">{saveSuccessMsg}</p>
             <button
               type="button"
               onClick={() => setSaveSuccessMsg('')}
-              className="text-emerald-400 hover:text-white"
+              className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-white"
             >
               <X size={16} />
             </button>
           </div>
         )}
 
-        {/* Filter Kelas, Mapel, Semester, Tahun Ajaran (Persis Foto 1) */}
-        <section className="bg-[#0b1429] border border-gray-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-3">
-          <div className="flex items-center justify-between border-b border-gray-800 pb-2.5">
-            <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider">
+        {/* Filter Kelas, Mapel, Semester, Tahun Ajaran */}
+        <section className="bg-white dark:bg-[#0b1429] border border-slate-200/80 dark:border-gray-800 rounded-3xl p-4 sm:p-5 shadow-xs dark:shadow-lg space-y-3 transition-colors">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-800 pb-2.5">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
               <Filter size={13} />
               <span>Filter Kelas &amp; Mata Pelajaran</span>
             </div>
@@ -777,7 +878,7 @@ function PenilaianInputContent() {
                     setSelectedKitab(firstSpecific.kitab || '');
                   }
                 }}
-                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/30 flex items-center gap-1 transition-all"
+                className="text-[11px] font-bold text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 bg-amber-50 dark:bg-amber-500/10 px-3 py-1 rounded-full border border-amber-200 dark:border-amber-500/30 flex items-center gap-1 transition-all cursor-pointer"
               >
                 <Edit3 size={12} />
                 <span>{isCustomMapel ? 'Pilih Mapel dari Jadwal' : 'Ketik Mapel Khusus'}</span>
@@ -788,11 +889,11 @@ function PenilaianInputContent() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Kelas Madin */}
             <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">Kelas Madin</label>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-400 mb-1">Kelas Madin</label>
               <select
                 value={selectedKelas}
                 onChange={e => setSelectedKelas(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs sm:text-sm font-semibold text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
               >
                 {kelasList.map(k => (
                   <option key={k.kelas_id} value={String(k.kelas_id)}>
@@ -804,7 +905,7 @@ function PenilaianInputContent() {
 
             {/* Mata Pelajaran */}
             <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-400 mb-1">
                 Mata Pelajaran {selectedKitab ? `(${selectedKitab})` : ''}
               </label>
               {isCustomMapel ? (
@@ -815,14 +916,14 @@ function PenilaianInputContent() {
                     value={selectedMapel}
                     onChange={e => setSelectedMapel(e.target.value)}
                     placeholder="Nama Pelajaran / Fan (misal: Imla')"
-                    className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-amber-500/50 text-xs sm:text-sm font-semibold text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-gray-900 border border-amber-400 dark:border-amber-500/50 text-xs sm:text-sm font-semibold text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                   />
                   <input
                     type="text"
                     value={selectedKitab}
                     onChange={e => setSelectedKitab(e.target.value)}
                     placeholder="Nama Kitab / Rujukan (Opsional)"
-                    className="w-full px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-700 text-xs font-semibold text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-xs font-semibold text-slate-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                   />
                 </div>
               ) : (
@@ -833,7 +934,7 @@ function PenilaianInputContent() {
                     const found = kurikulumList.find(m => m.mata_pelajaran === e.target.value);
                     if (found) setSelectedKitab(found.kitab || '');
                   }}
-                  className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs sm:text-sm font-semibold text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                 >
                   {kurikulumList.length === 0 ? (
                     <option value="Semua Mapel">Semua Mapel (Mode Leger)</option>
@@ -850,11 +951,11 @@ function PenilaianInputContent() {
 
             {/* Semester */}
             <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">Semester</label>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-400 mb-1">Semester</label>
               <select
                 value={semester}
                 onChange={e => setSemester(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs sm:text-sm font-semibold text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
               >
                 <option value="1">Semester 1 (Ganjil)</option>
                 <option value="2">Semester 2 (Genap)</option>
@@ -863,11 +964,11 @@ function PenilaianInputContent() {
 
             {/* Tahun Ajaran */}
             <div>
-              <label className="block text-[11px] font-bold text-gray-400 mb-1">Tahun Ajaran</label>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-400 mb-1">Tahun Ajaran</label>
               <select
                 value={tahunAjaran}
                 onChange={e => setTahunAjaran(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-700 text-xs sm:text-sm font-semibold text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
               >
                 <option value="2024/2025">2024/2025</option>
                 <option value="2025/2026">2025/2026</option>
@@ -877,43 +978,44 @@ function PenilaianInputContent() {
           </div>
         </section>
 
-        {/* Section Heading & Actions (Persis Foto 1) */}
-        <section className="bg-[#0b1429] border border-gray-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-4">
+        {/* Section Heading & Actions */}
+        <section className="bg-white dark:bg-[#0b1429] border border-slate-200/80 dark:border-gray-800 rounded-3xl p-4 sm:p-5 shadow-xs dark:shadow-lg space-y-4 transition-colors">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
-              <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2 flex-wrap">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
                 <span>
                   {isLegerMode
                     ? 'Daftar Santri — Semua Mata Pelajaran'
                     : `Daftar Santri — ${selectedMapel || 'Mata Pelajaran'}`}
                 </span>
                 {selectedKitab && !isLegerMode && (
-                  <span className="text-xs sm:text-sm font-semibold text-amber-400">
+                  <span className="text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400">
                     ({selectedKitab})
                   </span>
                 )}
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/30 font-bold">
                   {filteredAndSortedMurid.length} Santri
                 </span>
                 {isLegerMode && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold inline-flex items-center gap-1">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30 font-bold inline-flex items-center gap-1">
                     <Sparkles size={10} /> Leger Kolektif
                   </span>
                 )}
               </h3>
-              <p className="text-[11px] text-gray-400 mt-0.5">
+              <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">
                 {isLegerMode
                   ? 'Mode Leger Kolektif: Menampilkan rata-rata akumulasi nilai santri & presensi dari seluruh mata pelajaran kelas ini.'
                   : 'Kalkulasi otomatis: Harian (30%) + UTS (30%) + UAS (40%). Nilai Akhir & Predikat fleksibel dapat diubah manual.'}
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            {/* Rata tengah pada tampilan HP, rata kanan pada layar sedang/desktop */}
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 w-full md:w-auto">
               <button
                 type="button"
                 onClick={() => setShowQuizBModal(true)}
                 disabled={muridList.length === 0}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white shadow-md transition-all active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                 title="Tarik nilai hasil ujian CBT santri dari Portal Ujian ke buku nilai"
               >
                 <span>📥 Tarik Nilai Ujian CBT</span>
@@ -923,15 +1025,15 @@ function PenilaianInputContent() {
                 type="button"
                 onClick={handleExportExcel}
                 disabled={muridList.length === 0}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-all active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200 border border-slate-200 dark:border-gray-700 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                 title="Unduh daftar nilai ini dalam format Excel (.xlsx)"
               >
-                <Download size={14} className="text-amber-400" />
+                <Download size={14} className="text-amber-600 dark:text-amber-400" />
                 <span>Ekspor Excel</span>
               </button>
 
               {isLegerMode ? (
-                <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300">
                   <Sparkles size={13} />
                   <span>Pilih mapel spesifik untuk input nilai</span>
                 </div>
@@ -940,7 +1042,7 @@ function PenilaianInputContent() {
                   type="button"
                   onClick={handleSaveScores}
                   disabled={savingScores || muridList.length === 0}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-600/30 transition-all active:scale-95 disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-600/25 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
                   {savingScores ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
                   <span>Simpan Semua Nilai</span>
@@ -951,19 +1053,19 @@ function PenilaianInputContent() {
 
           {/* Search Bar */}
           <div className="relative">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Cari santri, NIS, kelas, kamar, alamat, nilai..."
-              className="w-full pl-10 pr-8 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-xs sm:text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+              className="w-full pl-10 pr-8 py-2.5 bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-gray-200 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white"
               >
                 <X size={14} />
               </button>
@@ -972,21 +1074,21 @@ function PenilaianInputContent() {
 
           {/* Konten Tabel (Desktop) & Kartu Input Sentuh (Mobile) */}
           {loadingMurid ? (
-            <div className="py-16 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
-              <RefreshCw size={24} className="animate-spin text-amber-500" />
+            <div className="py-16 text-center text-slate-500 dark:text-gray-400 flex flex-col items-center justify-center gap-3">
+              <RefreshCw size={24} className="animate-spin text-amber-600 dark:text-amber-500" />
               <p className="text-xs font-bold">Memuat daftar santri &amp; nilai...</p>
             </div>
           ) : filteredAndSortedMurid.length === 0 ? (
-            <div className="py-12 text-center text-gray-400 border border-dashed border-gray-800 rounded-xl">
-              <User size={32} className="mx-auto mb-2 text-gray-600" />
-              <p className="text-xs font-bold text-gray-300">Tidak ada santri ditemukan pada filter ini</p>
-              <p className="text-[11px] text-gray-500 mt-1">Pastikan kelas madin dan mata pelajaran yang dipilih sesuai jadwal</p>
+            <div className="py-12 text-center text-slate-500 dark:text-gray-400 border border-dashed border-slate-200 dark:border-gray-800 rounded-2xl">
+              <User size={32} className="mx-auto mb-2 text-slate-400 dark:text-gray-600" />
+              <p className="text-xs font-bold text-slate-700 dark:text-gray-300">Tidak ada santri ditemukan pada filter ini</p>
+              <p className="text-[11px] text-slate-400 dark:text-gray-500 mt-1">Pastikan kelas madin dan mata pelajaran yang dipilih sesuai jadwal</p>
             </div>
           ) : (
             <>
               {/* Mobile Quick Sort Bar */}
               <div className="flex md:hidden items-center gap-1.5 overflow-x-auto pb-1">
-                <span className="text-[10px] font-bold text-gray-400 shrink-0">Urut:</span>
+                <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 shrink-0">Urut:</span>
                 {[
                   { id: 'no', label: 'No' },
                   { id: 'nama', label: 'Nama' },
@@ -997,10 +1099,10 @@ function PenilaianInputContent() {
                     key={opt.id}
                     type="button"
                     onClick={() => handleSort(opt.id)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border shrink-0 flex items-center gap-1 ${
+                    className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border shrink-0 flex items-center gap-1 transition-colors ${
                       sortField === opt.id
                         ? 'bg-amber-600 text-white border-amber-500'
-                        : 'bg-gray-900 border-gray-700 text-gray-400'
+                        : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-400'
                     }`}
                   >
                     <span>{opt.label}</span>
@@ -1013,23 +1115,23 @@ function PenilaianInputContent() {
               <div className="md:hidden space-y-3">
                 {filteredAndSortedMurid.map((m, idx) => {
                   const s = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
-                  const fotoUrl = getFotoUrl(m.foto);
+                  const fotoUrl = getFotoUrl(m.foto, m.nis);
 
                   return (
                     <div
                       key={m.murid_id}
-                      className="p-3.5 rounded-2xl bg-gray-900/90 border border-gray-800 space-y-3"
+                      className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-gray-900/90 border border-slate-200/80 dark:border-gray-800 space-y-3 transition-colors"
                     >
                       {/* Santri Header */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-[10px] font-mono text-gray-500 w-5 text-center shrink-0">
+                          <span className="text-[10px] font-mono text-slate-400 dark:text-gray-500 w-5 text-center shrink-0">
                             {idx + 1}
                           </span>
                           <button
                             type="button"
                             onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
-                            className="relative w-10 h-10 rounded-xl overflow-hidden bg-gray-800 border border-gray-700 shrink-0"
+                            className="relative w-10 h-10 rounded-xl overflow-hidden bg-slate-200 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 shrink-0"
                           >
                             <div
                               className="w-full h-full flex items-center justify-center text-xs font-black text-white"
@@ -1047,11 +1149,11 @@ function PenilaianInputContent() {
                             )}
                           </button>
                           <div className="min-w-0">
-                            <div className="font-extrabold text-white text-xs truncate">{m.nama}</div>
-                            <div className="text-[10px] text-gray-400 flex items-center gap-1.5 flex-wrap">
+                            <div className="font-extrabold text-slate-900 dark:text-white text-xs truncate">{m.nama}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-gray-400 flex items-center gap-1.5 flex-wrap">
                               <span className="font-mono">NIS: {m.nis || '-'}</span>
                               <span>•</span>
-                              <span className={m.kehadiran_persen >= 85 ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                              <span className={m.kehadiran_persen >= 85 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-amber-600 dark:text-amber-400 font-bold'}>
                                 Hadir {m.kehadiran_persen ?? 100}%
                               </span>
                             </div>
@@ -1061,7 +1163,7 @@ function PenilaianInputContent() {
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(m)}
-                          className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 flex items-center gap-1"
+                          className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30 shrink-0 flex items-center gap-1"
                         >
                           <Edit3 size={11} /> Detail
                         </button>
@@ -1070,60 +1172,60 @@ function PenilaianInputContent() {
                       {/* Score Inputs */}
                       <div className="grid grid-cols-5 gap-1.5 pt-1">
                         <div>
-                          <label className="block text-[9px] text-center text-gray-400 mb-0.5">Harian</label>
+                          <label className="block text-[9px] text-center text-slate-500 dark:text-gray-400 mb-0.5">Harian</label>
                           <input
                             type="number"
                             inputMode="decimal"
                             disabled={isLegerMode}
                             value={s.harian}
                             onChange={e => handleScoreChange(m.murid_id, 'harian', e.target.value)}
-                            className="w-full py-2 text-center text-xs font-bold rounded-lg bg-gray-950 border border-gray-700 text-white disabled:opacity-60"
+                            className="w-full py-2 text-center text-xs font-bold rounded-xl bg-white dark:bg-gray-950 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white disabled:opacity-60"
                             placeholder="0"
                           />
                         </div>
                         <div>
-                          <label className="block text-[9px] text-center text-gray-400 mb-0.5">UTS</label>
+                          <label className="block text-[9px] text-center text-slate-500 dark:text-gray-400 mb-0.5">UTS</label>
                           <input
                             type="number"
                             inputMode="decimal"
                             disabled={isLegerMode}
                             value={s.uts}
                             onChange={e => handleScoreChange(m.murid_id, 'uts', e.target.value)}
-                            className="w-full py-2 text-center text-xs font-bold rounded-lg bg-gray-950 border border-gray-700 text-white disabled:opacity-60"
+                            className="w-full py-2 text-center text-xs font-bold rounded-xl bg-white dark:bg-gray-950 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white disabled:opacity-60"
                             placeholder="0"
                           />
                         </div>
                         <div>
-                          <label className="block text-[9px] text-center text-gray-400 mb-0.5">UAS</label>
+                          <label className="block text-[9px] text-center text-slate-500 dark:text-gray-400 mb-0.5">UAS</label>
                           <input
                             type="number"
                             inputMode="decimal"
                             disabled={isLegerMode}
                             value={s.uas}
                             onChange={e => handleScoreChange(m.murid_id, 'uas', e.target.value)}
-                            className="w-full py-2 text-center text-xs font-bold rounded-lg bg-gray-950 border border-gray-700 text-white disabled:opacity-60"
+                            className="w-full py-2 text-center text-xs font-bold rounded-xl bg-white dark:bg-gray-950 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white disabled:opacity-60"
                             placeholder="0"
                           />
                         </div>
                         <div>
-                          <label className="block text-[9px] text-center text-amber-400 font-bold mb-0.5">Akhir</label>
+                          <label className="block text-[9px] text-center text-amber-600 dark:text-amber-400 font-bold mb-0.5">Akhir</label>
                           <input
                             type="number"
                             inputMode="decimal"
                             disabled={isLegerMode}
                             value={s.akhir}
                             onChange={e => handleScoreChange(m.murid_id, 'akhir', e.target.value)}
-                            className="w-full py-2 text-center text-xs font-black rounded-lg bg-amber-950/30 border border-amber-500 text-amber-300 disabled:opacity-60"
+                            className="w-full py-2 text-center text-xs font-black rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-400 dark:border-amber-500 text-amber-700 dark:text-amber-300 disabled:opacity-60"
                             placeholder="0"
                           />
                         </div>
                         <div>
-                          <label className="block text-[9px] text-center text-gray-400 mb-0.5">Pred</label>
+                          <label className="block text-[9px] text-center text-slate-500 dark:text-gray-400 mb-0.5">Pred</label>
                           <select
                             disabled={isLegerMode}
                             value={s.predikat}
                             onChange={e => handleScoreChange(m.murid_id, 'predikat', e.target.value)}
-                            className="w-full py-2 text-center text-xs font-bold rounded-lg bg-gray-950 border border-gray-700 text-white disabled:opacity-60"
+                            className="w-full py-2 text-center text-xs font-bold rounded-xl bg-white dark:bg-gray-950 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white disabled:opacity-60"
                           >
                             <option value="">-</option>
                             <option value="A">A</option>
@@ -1141,65 +1243,65 @@ function PenilaianInputContent() {
                         value={s.catatan}
                         onChange={e => handleScoreChange(m.murid_id, 'catatan', e.target.value)}
                         placeholder={isLegerMode ? 'Ringkasan leger...' : 'Catatan kemajuan santri...'}
-                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-gray-950 border border-gray-800 text-gray-300 placeholder:text-gray-600 disabled:opacity-60"
+                        className="w-full px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-gray-950 border border-slate-200 dark:border-gray-800 text-slate-700 dark:text-gray-300 placeholder:text-slate-400 dark:placeholder:text-gray-600 disabled:opacity-60"
                       />
                     </div>
                   );
                 })}
               </div>
 
-              {/* Desktop Table View (Persis Foto 1) */}
-              <div className="hidden md:block overflow-x-auto border border-gray-800 rounded-xl">
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto border border-slate-200 dark:border-gray-800 rounded-2xl">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#0e1933] text-gray-300 font-extrabold uppercase text-[10px] tracking-wider border-b border-gray-800">
+                  <thead className="bg-slate-50 dark:bg-[#0e1933] text-slate-600 dark:text-gray-300 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-gray-800">
                     <tr>
                       <th className="py-3 px-3 w-10 text-center">
-                        <button type="button" onClick={() => handleSort('no')} className="inline-flex items-center gap-1 hover:text-amber-400">
+                        <button type="button" onClick={() => handleSort('no')} className="inline-flex items-center gap-1 hover:text-amber-600 dark:hover:text-amber-400">
                           <span>No</span> {renderSortIcon('no')}
                         </button>
                       </th>
                       <th className="py-3 px-2 w-12 text-center">Foto</th>
                       <th className="py-3 px-3 min-w-[180px]">
-                        <button type="button" onClick={() => handleSort('nama')} className="flex items-center gap-1 hover:text-amber-400">
+                        <button type="button" onClick={() => handleSort('nama')} className="flex items-center gap-1 hover:text-amber-600 dark:hover:text-amber-400">
                           <span>Nama Santri</span> {renderSortIcon('nama')}
                         </button>
                       </th>
                       <th className="py-3 px-3 w-24">
-                        <button type="button" onClick={() => handleSort('nis')} className="flex items-center gap-1 hover:text-amber-400">
+                        <button type="button" onClick={() => handleSort('nis')} className="flex items-center gap-1 hover:text-amber-600 dark:hover:text-amber-400">
                           <span>NIS</span> {renderSortIcon('nis')}
                         </button>
                       </th>
                       <th className="py-3 px-3 text-center min-w-[90px]">
-                        <button type="button" onClick={() => handleSort('kehadiran')} className="inline-flex flex-col items-center hover:text-amber-400">
+                        <button type="button" onClick={() => handleSort('kehadiran')} className="inline-flex flex-col items-center hover:text-amber-600 dark:hover:text-amber-400">
                           <span className="flex items-center gap-1">Kehadiran {renderSortIcon('kehadiran')}</span>
-                          <span className="text-[9px] text-gray-400 font-normal lowercase">(presensi)</span>
+                          <span className="text-[9px] text-slate-400 dark:text-gray-400 font-normal lowercase">(presensi)</span>
                         </button>
                       </th>
                       <th className="py-3 px-2 text-center w-20">
-                        <button type="button" onClick={() => handleSort('harian')} className="inline-flex flex-col items-center hover:text-amber-400">
+                        <button type="button" onClick={() => handleSort('harian')} className="inline-flex flex-col items-center hover:text-amber-600 dark:hover:text-amber-400">
                           <span className="flex items-center gap-1">Harian {renderSortIcon('harian')}</span>
-                          <span className="text-[9px] text-amber-400 font-normal">(30%)</span>
+                          <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">(30%)</span>
                         </button>
                       </th>
                       <th className="py-3 px-2 text-center w-20">
-                        <button type="button" onClick={() => handleSort('uts')} className="inline-flex flex-col items-center hover:text-amber-400">
+                        <button type="button" onClick={() => handleSort('uts')} className="inline-flex flex-col items-center hover:text-amber-600 dark:hover:text-amber-400">
                           <span className="flex items-center gap-1">UTS {renderSortIcon('uts')}</span>
-                          <span className="text-[9px] text-amber-400 font-normal">(30%)</span>
+                          <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">(30%)</span>
                         </button>
                       </th>
                       <th className="py-3 px-2 text-center w-20">
-                        <button type="button" onClick={() => handleSort('uas')} className="inline-flex flex-col items-center hover:text-amber-400">
+                        <button type="button" onClick={() => handleSort('uas')} className="inline-flex flex-col items-center hover:text-amber-600 dark:hover:text-amber-400">
                           <span className="flex items-center gap-1">UAS {renderSortIcon('uas')}</span>
-                          <span className="text-[9px] text-amber-400 font-normal">(40%)</span>
+                          <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">(40%)</span>
                         </button>
                       </th>
-                      <th className="py-3 px-2 text-center w-24 bg-amber-500/10 border-x border-amber-500/20 text-amber-300 font-black">
-                        <button type="button" onClick={() => handleSort('akhir')} className="inline-flex items-center gap-1 hover:text-amber-200">
+                      <th className="py-3 px-2 text-center w-24 bg-amber-50/80 dark:bg-amber-500/10 border-x border-amber-200/80 dark:border-amber-500/20 text-amber-700 dark:text-amber-300 font-black">
+                        <button type="button" onClick={() => handleSort('akhir')} className="inline-flex items-center gap-1 hover:text-amber-900 dark:hover:text-amber-200">
                           <span>Nilai Akhir</span> {renderSortIcon('akhir')}
                         </button>
                       </th>
                       <th className="py-3 px-2 text-center w-16">
-                        <button type="button" onClick={() => handleSort('predikat')} className="inline-flex items-center gap-1 hover:text-amber-400">
+                        <button type="button" onClick={() => handleSort('predikat')} className="inline-flex items-center gap-1 hover:text-amber-600 dark:hover:text-amber-400">
                           <span>Predikat</span> {renderSortIcon('predikat')}
                         </button>
                       </th>
@@ -1207,18 +1309,18 @@ function PenilaianInputContent() {
                       <th className="py-3 px-2 text-center w-14">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-800/80">
+                  <tbody className="divide-y divide-slate-100 dark:divide-gray-800/80">
                     {filteredAndSortedMurid.map((m, idx) => {
                       const s = scores[m.murid_id] || { harian: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
-                      const fotoUrl = getFotoUrl(m.foto);
+                      const fotoUrl = getFotoUrl(m.foto, m.nis);
 
                       return (
                         <tr
                           key={m.murid_id}
-                          className="hover:bg-gray-800/40 transition-colors group"
+                          className="hover:bg-slate-50/80 dark:hover:bg-gray-800/40 transition-colors group"
                         >
                           {/* No */}
-                          <td className="py-3 px-3 text-center text-gray-400 font-mono text-[11px]">
+                          <td className="py-3 px-3 text-center text-slate-400 dark:text-gray-400 font-mono text-[11px]">
                             {idx + 1}
                           </td>
 
@@ -1227,7 +1329,7 @@ function PenilaianInputContent() {
                             <button
                               type="button"
                               onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
-                              className="inline-block relative w-9 h-9 rounded-xl overflow-hidden bg-gray-800 border border-gray-700/60 transition-transform active:scale-95"
+                              className="inline-block relative w-9 h-9 rounded-xl overflow-hidden bg-slate-200 dark:bg-gray-800 border border-slate-300/70 dark:border-gray-700/60 transition-transform active:scale-95"
                             >
                               <div
                                 className="w-full h-full flex items-center justify-center text-[10px] font-black text-white"
@@ -1248,30 +1350,30 @@ function PenilaianInputContent() {
 
                           {/* Nama Santri & Detail */}
                           <td className="py-3 px-3">
-                            <div className="font-extrabold text-white text-xs group-hover:text-amber-300 transition-colors">
+                            <div className="font-extrabold text-slate-900 dark:text-white text-xs group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
                               {m.nama}
                             </div>
-                            <div className="text-[10px] text-gray-400 flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <div className="text-[10px] text-slate-500 dark:text-gray-400 flex items-center gap-1.5 flex-wrap mt-0.5">
                               {m.nama_kelas && (
-                                <span className="px-1.5 py-0.2 rounded bg-gray-800 text-gray-300 border border-gray-700">
+                                <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300 border border-slate-200 dark:border-gray-700">
                                   {m.nama_kelas}
                                 </span>
                               )}
                               {m.nama_kamar && (
-                                <span className="text-gray-400">
+                                <span className="text-slate-500 dark:text-gray-400">
                                   Kamar: {m.nama_kamar}
                                 </span>
                               )}
                             </div>
                             {m.alamat && (
-                              <p className="text-[9px] text-gray-500 line-clamp-1 mt-0.5">
+                              <p className="text-[9px] text-slate-400 dark:text-gray-500 line-clamp-1 mt-0.5">
                                 {m.alamat}
                               </p>
                             )}
                           </td>
 
                           {/* NIS */}
-                          <td className="py-3 px-3 font-mono text-[11px] text-gray-300">
+                          <td className="py-3 px-3 font-mono text-[11px] text-slate-600 dark:text-gray-300">
                             {m.nis || '-'}
                           </td>
 
@@ -1279,10 +1381,10 @@ function PenilaianInputContent() {
                           <td className="py-3 px-3 text-center">
                             <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
                               (m.kehadiran_persen ?? 100) >= 85
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30'
                                 : (m.kehadiran_persen ?? 100) >= 70
-                                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                  : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                  ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30'
+                                  : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30'
                             }`}>
                               {m.kehadiran_persen ?? 100}%
                             </span>
@@ -1298,7 +1400,7 @@ function PenilaianInputContent() {
                               disabled={isLegerMode}
                               value={s.harian}
                               onChange={e => handleScoreChange(m.murid_id, 'harian', e.target.value)}
-                              className="w-16 px-1.5 py-1.5 text-center text-xs font-bold rounded-lg bg-gray-900/90 border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                              className="w-16 px-1.5 py-1.5 text-center text-xs font-bold rounded-xl bg-slate-50 dark:bg-gray-900/90 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
                               placeholder="0"
                             />
                           </td>
@@ -1313,7 +1415,7 @@ function PenilaianInputContent() {
                               disabled={isLegerMode}
                               value={s.uts}
                               onChange={e => handleScoreChange(m.murid_id, 'uts', e.target.value)}
-                              className="w-16 px-1.5 py-1.5 text-center text-xs font-bold rounded-lg bg-gray-900/90 border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                              className="w-16 px-1.5 py-1.5 text-center text-xs font-bold rounded-xl bg-slate-50 dark:bg-gray-900/90 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
                               placeholder="0"
                             />
                           </td>
@@ -1328,13 +1430,13 @@ function PenilaianInputContent() {
                               disabled={isLegerMode}
                               value={s.uas}
                               onChange={e => handleScoreChange(m.murid_id, 'uas', e.target.value)}
-                              className="w-16 px-1.5 py-1.5 text-center text-xs font-bold rounded-lg bg-gray-900/90 border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                              className="w-16 px-1.5 py-1.5 text-center text-xs font-bold rounded-xl bg-slate-50 dark:bg-gray-900/90 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
                               placeholder="0"
                             />
                           </td>
 
                           {/* Nilai Akhir */}
-                          <td className="py-2 px-1 text-center bg-amber-500/5 border-x border-amber-500/20">
+                          <td className="py-2 px-1 text-center bg-amber-50/40 dark:bg-amber-500/5 border-x border-amber-200/70 dark:border-amber-500/20">
                             <input
                               type="number"
                               min="0"
@@ -1343,7 +1445,7 @@ function PenilaianInputContent() {
                               disabled={isLegerMode}
                               value={s.akhir}
                               onChange={e => handleScoreChange(m.murid_id, 'akhir', e.target.value)}
-                              className="w-18 px-1.5 py-1.5 text-center text-xs font-black rounded-lg bg-gray-950 border border-amber-500 text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-inner disabled:opacity-60"
+                              className="w-18 px-1.5 py-1.5 text-center text-xs font-black rounded-xl bg-amber-50 dark:bg-gray-950 border border-amber-400 dark:border-amber-500 text-amber-700 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-2xs disabled:opacity-60"
                               placeholder="0"
                             />
                           </td>
@@ -1354,7 +1456,7 @@ function PenilaianInputContent() {
                               disabled={isLegerMode}
                               value={s.predikat}
                               onChange={e => handleScoreChange(m.murid_id, 'predikat', e.target.value)}
-                              className="px-1.5 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs font-bold text-center text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                              className="px-1.5 py-1.5 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-xs font-bold text-center text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
                             >
                               <option value="">-</option>
                               <option value="A">A</option>
@@ -1373,7 +1475,7 @@ function PenilaianInputContent() {
                               value={s.catatan}
                               onChange={e => handleScoreChange(m.murid_id, 'catatan', e.target.value)}
                               placeholder="Catatan kemajuan..."
-                              className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-gray-900 border border-gray-700 text-gray-200 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
+                              className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-slate-800 dark:text-gray-200 placeholder:text-slate-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-60"
                             />
                           </td>
 
@@ -1382,7 +1484,7 @@ function PenilaianInputContent() {
                             <button
                               type="button"
                               onClick={() => handleOpenEditModal(m)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition-all active:scale-95"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30 dark:hover:bg-amber-500/30 transition-all active:scale-95 cursor-pointer"
                             >
                               <Edit3 size={11} />
                               <span>Edit</span>
@@ -1399,34 +1501,45 @@ function PenilaianInputContent() {
         </section>
 
         {/* Petunjuk Pengisian */}
-        <section className="bg-amber-950/20 border border-amber-900/30 rounded-2xl p-4 text-xs text-gray-400 space-y-1.5">
-          <p className="font-bold text-amber-400 flex items-center gap-1.5">
+        <section className="bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/30 rounded-3xl p-4 sm:p-5 text-xs text-slate-600 dark:text-gray-400 space-y-1.5 transition-colors">
+          <p className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
             <Sparkles size={14} /> Tips Pengisian Nilai untuk Dewan Guru:
           </p>
-          <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-gray-400">
+          <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-slate-600 dark:text-gray-400">
             <li>Ketik nilai pada kolom <b>Harian, UTS, atau UAS</b>, sistem akan menghitung Nilai Akhir secara otomatis (bobot 30% Harian + 30% UTS + 40% UAS).</li>
             <li>Jika ingin melihat akumulasi rata-rata seluruh mapel di kelas, pilih <b>&quot;Semua Mapel&quot;</b> pada filter Mata Pelajaran untuk Mode Leger Kolektif.</li>
-            <li>Jangan lupa menekan tombol <b>&quot;Simpan Semua Nilai&quot;</b> setelah selesai menginput nilai.</li>
+            <li>Jangan lupa menekan tombol <b>&quot;Simpan Nilai&quot;</b> setelah selesai menginput nilai.</li>
           </ul>
         </section>
       </main>
 
-      {/* Floating Bottom Bar on Mobile */}
+      {/* Floating Bottom Bar — Serasi dengan Pintasan Input Absensi */}
       {!isLegerMode && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0c162e]/95 backdrop-blur-md border-t border-gray-800 p-3 sm:hidden flex items-center justify-between shadow-2xl">
-          <div>
-            <span className="text-[10px] text-gray-400 block">Progres Nilai:</span>
-            <span className="text-xs font-bold text-amber-400">{stats.terisi} / {stats.total} Santri</span>
+        <div className="fixed bottom-0 left-0 right-0 z-40 px-4 py-3 bg-white/95 dark:bg-slate-950/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-5px_20px_rgba(0,0,0,0.5)] transition-colors">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-medium text-slate-500 dark:text-gray-400 block">Progres Nilai:</span>
+                {isDirty && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40 animate-pulse">
+                    <Clock size={9} /> Belum Disimpan
+                  </span>
+                )}
+              </div>
+              <span className="text-xs sm:text-sm font-extrabold text-amber-600 dark:text-amber-400">
+                {stats.terisi} / {stats.total} Santri
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveScores}
+              disabled={savingScores || muridList.length === 0}
+              className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white shadow-lg shadow-amber-500/25 transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer shrink-0"
+            >
+              {savingScores ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+              <span>{savingScores ? 'Menyimpan...' : 'Simpan Nilai'}</span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleSaveScores}
-            disabled={savingScores || muridList.length === 0}
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/30 active:scale-95 disabled:opacity-50"
-          >
-            {savingScores ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-            <span>{savingScores ? 'Menyimpan...' : 'Simpan Semua'}</span>
-          </button>
         </div>
       )}
 
@@ -1450,12 +1563,15 @@ function PenilaianInputContent() {
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]"
           onClick={() => setZoomPhoto(null)}
         >
-          <div className="relative max-w-sm w-full bg-gray-900 border border-gray-700 rounded-3xl overflow-hidden p-2 shadow-2xl">
-            <img src={zoomPhoto} alt="Foto Santri" className="w-full h-auto rounded-2xl object-cover" />
+          <div
+            className="relative max-w-sm w-full bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 rounded-3xl overflow-hidden p-2 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <img src={zoomPhoto} alt="Foto Profil" className="w-full h-auto rounded-2xl object-cover" />
             <button
               type="button"
               onClick={() => setZoomPhoto(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/90"
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/90 cursor-pointer"
             >
               <X size={16} />
             </button>
@@ -1466,21 +1582,21 @@ function PenilaianInputContent() {
       {/* Modal Edit & Rincian Seluruh Nilai Santri */}
       {editingMurid && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]">
-          <div className="bg-[#0e1933] border border-gray-700 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl relative text-gray-200 overflow-hidden">
-            <div className="flex items-center justify-between border-b border-gray-800 px-6 py-4 bg-[#0b1429]">
+          <div className="bg-white dark:bg-[#0e1933] border border-slate-200 dark:border-gray-700 rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl relative text-slate-800 dark:text-gray-200 overflow-hidden transition-colors">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-800 px-6 py-4 bg-slate-50 dark:bg-[#0b1429]">
               <div>
-                <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
-                  <Edit3 size={16} className="text-amber-400" />
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Edit3 size={16} className="text-amber-600 dark:text-amber-400" />
                   <span>Kelola Nilai — {editingMurid.nama}</span>
                 </h3>
-                <p className="text-[11px] text-gray-400 mt-0.5">
+                <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">
                   NIS: {editingMurid.nis || '-'} • Semester {semester} ({tahunAjaran})
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingMurid(null)}
-                className="text-gray-400 hover:text-white p-1"
+                className="text-slate-400 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white p-1 rounded-lg cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1490,8 +1606,8 @@ function PenilaianInputContent() {
               {modalFeedback && (
                 <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 border ${
                   modalFeedback.type === 'success'
-                    ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300'
-                    : 'bg-red-950/50 border-red-500/40 text-red-300'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/50 dark:border-emerald-500/40 dark:text-emerald-300'
+                    : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950/50 dark:border-red-500/40 dark:text-red-300'
                 }`}>
                   {modalFeedback.type === 'success' ? <CheckCircle size={15} /> : <AlertCircle size={15} />}
                   <span>{modalFeedback.message}</span>
@@ -1500,63 +1616,63 @@ function PenilaianInputContent() {
 
               {/* Quick Edit Mapel Aktif */}
               {!isLegerMode && selectedMapel && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-amber-300">
+                <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 space-y-3 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-extrabold text-amber-800 dark:text-amber-300">
                       Input Cepat Mapel Aktif: {selectedMapel}
                     </span>
                     <button
                       type="button"
                       onClick={handleSaveScores}
                       disabled={savingScores}
-                      className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] flex items-center gap-1"
+                      className="px-3 py-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] flex items-center gap-1 cursor-pointer shrink-0"
                     >
                       <Save size={12} /> Simpan
                     </button>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                     <div>
-                      <label className="block text-[10px] text-gray-400 mb-1">Harian (30%)</label>
+                      <label className="block text-[10px] text-slate-500 dark:text-gray-400 mb-1">Harian (30%)</label>
                       <input
                         type="number"
                         value={scores[editingMurid.murid_id]?.harian || ''}
                         onChange={e => handleScoreChange(editingMurid.murid_id, 'harian', e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-center font-bold"
+                        className="w-full px-2 py-1.5 rounded-xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white text-center font-bold"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-gray-400 mb-1">UTS (30%)</label>
+                      <label className="block text-[10px] text-slate-500 dark:text-gray-400 mb-1">UTS (30%)</label>
                       <input
                         type="number"
                         value={scores[editingMurid.murid_id]?.uts || ''}
                         onChange={e => handleScoreChange(editingMurid.murid_id, 'uts', e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-center font-bold"
+                        className="w-full px-2 py-1.5 rounded-xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white text-center font-bold"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-gray-400 mb-1">UAS (40%)</label>
+                      <label className="block text-[10px] text-slate-500 dark:text-gray-400 mb-1">UAS (40%)</label>
                       <input
                         type="number"
                         value={scores[editingMurid.murid_id]?.uas || ''}
                         onChange={e => handleScoreChange(editingMurid.murid_id, 'uas', e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-center font-bold"
+                        className="w-full px-2 py-1.5 rounded-xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white text-center font-bold"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-amber-400 font-bold mb-1">Nilai Akhir</label>
+                      <label className="block text-[10px] text-amber-700 dark:text-amber-400 font-bold mb-1">Nilai Akhir</label>
                       <input
                         type="number"
                         value={scores[editingMurid.murid_id]?.akhir || ''}
                         onChange={e => handleScoreChange(editingMurid.murid_id, 'akhir', e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg bg-gray-950 border border-amber-500 text-center font-black text-amber-300"
+                        className="w-full px-2 py-1.5 rounded-xl bg-white dark:bg-gray-950 border border-amber-400 dark:border-amber-500 text-center font-black text-amber-700 dark:text-amber-300"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-gray-400 mb-1">Predikat</label>
+                      <label className="block text-[10px] text-slate-500 dark:text-gray-400 mb-1">Predikat</label>
                       <select
                         value={scores[editingMurid.murid_id]?.predikat || ''}
                         onChange={e => handleScoreChange(editingMurid.murid_id, 'predikat', e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-center font-bold"
+                        className="w-full px-2 py-1.5 rounded-xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white text-center font-bold"
                       >
                         <option value="">-</option>
                         <option value="A">A</option>
@@ -1572,39 +1688,39 @@ function PenilaianInputContent() {
                     value={scores[editingMurid.murid_id]?.catatan || ''}
                     onChange={e => handleScoreChange(editingMurid.murid_id, 'catatan', e.target.value)}
                     placeholder="Catatan kemajuan santri..."
-                    className="w-full px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs"
+                    className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-slate-800 dark:text-white text-xs"
                   />
                 </div>
               )}
 
               {/* Daftar Seluruh Nilai Tersimpan di Semester Ini */}
               <div className="space-y-2.5">
-                <h4 className="text-xs font-extrabold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <BookOpen size={13} className="text-amber-400" />
+                <h4 className="text-xs font-extrabold text-slate-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <BookOpen size={13} className="text-amber-600 dark:text-amber-400" />
                   <span>Rekaman Nilai Tersimpan ({editModalScores.length} Mapel)</span>
                 </h4>
 
                 {loadingEditModal ? (
-                  <div className="py-8 text-center text-gray-400 flex items-center justify-center gap-2 text-xs">
-                    <RefreshCw size={16} className="animate-spin text-amber-400" />
+                  <div className="py-8 text-center text-slate-500 dark:text-gray-400 flex items-center justify-center gap-2 text-xs">
+                    <RefreshCw size={16} className="animate-spin text-amber-600 dark:text-amber-400" />
                     <span>Memuat rekaman nilai santri...</span>
                   </div>
                 ) : editModalScores.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-gray-500 border border-dashed border-gray-800 rounded-xl">
+                  <div className="py-6 text-center text-xs text-slate-500 dark:text-gray-500 border border-dashed border-slate-200 dark:border-gray-800 rounded-2xl">
                     Belum ada nilai yang tersimpan untuk santri ini pada semester ini.
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {editModalScores.map((item, idx) => (
-                      <div key={item.id || idx} className="p-3 rounded-xl bg-gray-900/90 border border-gray-800 space-y-2">
+                      <div key={item.id || idx} className="p-3 rounded-2xl bg-slate-50 dark:bg-gray-900/90 border border-slate-200/80 dark:border-gray-800 space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-extrabold text-white">{item.mata_pelajaran}</span>
+                          <span className="text-xs font-extrabold text-slate-900 dark:text-white">{item.mata_pelajaran}</span>
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               disabled={savingEditModal}
                               onClick={() => handleUpdateScoreInModal(item)}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1"
+                              className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-600/20 dark:hover:bg-emerald-600/30 dark:text-emerald-300 dark:border-emerald-500/30 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                             >
                               <Check size={11} /> Simpan
                             </button>
@@ -1612,7 +1728,7 @@ function PenilaianInputContent() {
                               type="button"
                               disabled={savingEditModal}
                               onClick={() => handleDeleteMapelScoreInModal(item)}
-                              className="px-2 py-1 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 text-[10px] font-bold"
+                              className="px-2 py-1 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 dark:bg-red-600/20 dark:hover:bg-red-600/30 dark:text-red-300 dark:border-red-500/30 text-[10px] font-bold cursor-pointer"
                               title="Hapus nilai mapel ini"
                             >
                               <Trash2 size={11} />
@@ -1622,7 +1738,7 @@ function PenilaianInputContent() {
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-[11px]">
                           {(['nilai_harian', 'nilai_uts', 'nilai_uas'] as const).map(f => (
                             <div key={f}>
-                              <label className="block text-[9px] text-gray-500 mb-0.5 uppercase">
+                              <label className="block text-[9px] text-slate-500 dark:text-gray-500 mb-0.5 uppercase">
                                 {f.replace('nilai_', '')}
                               </label>
                               <input
@@ -1650,12 +1766,12 @@ function PenilaianInputContent() {
                                     })
                                   );
                                 }}
-                                className="w-full px-1.5 py-1 rounded-lg bg-gray-950 border border-gray-700 text-center font-bold text-gray-100"
+                                className="w-full px-1.5 py-1 rounded-xl bg-white dark:bg-gray-950 border border-slate-200 dark:border-gray-700 text-center font-bold text-slate-900 dark:text-gray-100"
                               />
                             </div>
                           ))}
                           <div>
-                            <label className="block text-[9px] text-amber-400 font-bold mb-0.5 uppercase">akhir</label>
+                            <label className="block text-[9px] text-amber-600 dark:text-amber-400 font-bold mb-0.5 uppercase">akhir</label>
                             <input
                               type="number"
                               min="0"
@@ -1675,11 +1791,11 @@ function PenilaianInputContent() {
                                   })
                                 );
                               }}
-                              className="w-full px-1.5 py-1 rounded-lg bg-gray-950 border border-amber-500 text-center font-black text-amber-300"
+                              className="w-full px-1.5 py-1 rounded-xl bg-amber-50 dark:bg-gray-950 border border-amber-400 dark:border-amber-500 text-center font-black text-amber-700 dark:text-amber-300"
                             />
                           </div>
                           <div>
-                            <label className="block text-[9px] text-gray-500 mb-0.5 uppercase">Pred</label>
+                            <label className="block text-[9px] text-slate-500 dark:text-gray-500 mb-0.5 uppercase">Pred</label>
                             <input
                               type="text"
                               value={item.predikat ?? ''}
@@ -1689,7 +1805,7 @@ function PenilaianInputContent() {
                                   prev.map((row, rIdx) => (rIdx === idx ? { ...row, predikat: val } : row))
                                 );
                               }}
-                              className="w-full px-1.5 py-1 rounded-lg bg-gray-950 border border-gray-700 text-center font-bold text-amber-300"
+                              className="w-full px-1.5 py-1 rounded-xl bg-white dark:bg-gray-950 border border-slate-200 dark:border-gray-700 text-center font-bold text-amber-700 dark:text-amber-300"
                             />
                           </div>
                         </div>
@@ -1703,7 +1819,7 @@ function PenilaianInputContent() {
                             );
                           }}
                           placeholder="Catatan perkembangan mapel ini..."
-                          className="w-full px-2.5 py-1 rounded-lg bg-gray-950 border border-gray-800 text-[11px] text-gray-200 placeholder:text-gray-600"
+                          className="w-full px-2.5 py-1 rounded-xl bg-white dark:bg-gray-950 border border-slate-200 dark:border-gray-800 text-[11px] text-slate-700 dark:text-gray-200 placeholder:text-slate-400 dark:placeholder:text-gray-600"
                         />
                       </div>
                     ))}
@@ -1712,11 +1828,11 @@ function PenilaianInputContent() {
               </div>
             </div>
 
-            <div className="px-6 py-3.5 border-t border-gray-800 bg-[#0b1429] flex justify-end">
+            <div className="px-6 py-3.5 border-t border-slate-100 dark:border-gray-800 bg-slate-50 dark:bg-[#0b1429] flex justify-end">
               <button
                 type="button"
                 onClick={() => setEditingMurid(null)}
-                className="px-5 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-xs font-bold text-gray-200"
+                className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-xs font-bold text-slate-700 dark:text-gray-200 cursor-pointer"
               >
                 Tutup
               </button>
@@ -1731,9 +1847,9 @@ function PenilaianInputContent() {
 export default function PenilaianInputPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#070d1e] text-white flex flex-col items-center justify-center p-4">
-        <RefreshCw size={28} className="animate-spin text-amber-400 mb-3" />
-        <p className="text-xs font-bold text-gray-300">Memuat Pintasan Penilaian...</p>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-white flex flex-col items-center justify-center p-4">
+        <RefreshCw size={28} className="animate-spin text-amber-600 dark:text-amber-400 mb-3" />
+        <p className="text-xs font-bold text-slate-600 dark:text-gray-300">Memuat Pintasan Penilaian...</p>
       </div>
     }>
       <PenilaianInputContent />
