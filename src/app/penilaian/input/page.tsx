@@ -1357,13 +1357,6 @@ function PenilaianInputContent() {
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditModal(m)}
-                          className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30 shrink-0 flex items-center gap-1"
-                        >
-                          <Edit3 size={11} /> Detail
-                        </button>
                       </div>
 
                       {/* Score Inputs */}
@@ -1521,7 +1514,6 @@ function PenilaianInputContent() {
                         </button>
                       </th>
                       <th className="py-3 px-3 min-w-[140px]">Catatan Perkembangan</th>
-                      <th className="py-3 px-2 text-center w-14">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-gray-800/80">
@@ -1709,17 +1701,6 @@ function PenilaianInputContent() {
                             />
                           </td>
 
-                          {/* Aksi Edit */}
-                          <td className="py-2 px-2 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(m)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30 dark:hover:bg-amber-500/30 transition-all active:scale-95 cursor-pointer"
-                            >
-                              <Edit3 size={11} />
-                              <span>Edit</span>
-                            </button>
-                          </td>
                         </tr>
                       );
                     })}
