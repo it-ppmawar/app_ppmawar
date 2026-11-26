@@ -77,11 +77,39 @@ export default function TabInputNilaiGuru({
   const [kategori, setKategori] = useState<'all' | 'putra' | 'putri'>('all');
   const [kelasFilterId, setKelasFilterId] = useState<string>('all');
   const [kelasOptions, setKelasOptions] = useState<Array<{ kelas_id: number; nama_kelas: string }>>([]);
+  const [allKelasMadin, setAllKelasMadin] = useState<Array<{ kelas_id: number; nama_kelas: string }>>([]);
   const [targetGuruId, setTargetGuruId] = useState<string>('all');
   const [semester, setSemester] = useState<string>('1');
   const [tahunAjaran, setTahunAjaran] = useState<string>('2025/2026');
   const [expiryDays, setExpiryDays] = useState<number>(7);
   const [searchNama, setSearchNama] = useState<string>('');
+
+  // Muat daftar Kelas Madin sejak awal agar dropdown Kelas Madin langsung tersedia
+  useEffect(() => {
+    fetch('/api/kelas?type=madin')
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) {
+          const mapped = json.data
+            .filter((k: any) => k.id !== undefined && k.nama)
+            .map((k: any) => ({ kelas_id: Number(k.id), nama_kelas: String(k.nama) }));
+          setAllKelasMadin(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Opsi kelas yang ditampilkan mengikuti filter Unit Madin (atau hasil API jika tersedia)
+  const displayedKelasOptions = useMemo(() => {
+    const base = allKelasMadin.length > 0 ? allKelasMadin : kelasOptions;
+    if (kategori === 'putra') {
+      return base.filter(k => k.nama_kelas.toLowerCase().includes('putra'));
+    }
+    if (kategori === 'putri') {
+      return base.filter(k => k.nama_kelas.toLowerCase().includes('putri'));
+    }
+    return base;
+  }, [allKelasMadin, kelasOptions, kategori]);
 
   // Data State
   const [teacherData, setTeacherData] = useState<any[]>([]);
@@ -403,26 +431,24 @@ export default function TabInputNilaiGuru({
             </select>
           </div>
 
-          {/* Filter Kelas Spesifik (jika sudah dimuat) */}
-          {kelasOptions.length > 0 && (
-            <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                Kelas Madin
-              </label>
-              <select
-                value={kelasFilterId}
-                onChange={e => setKelasFilterId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-              >
-                <option value="all">Semua Kelas</option>
-                {kelasOptions.map(k => (
-                  <option key={k.kelas_id} value={String(k.kelas_id)}>
-                    {k.nama_kelas}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Filter Kelas Madin (selalu tampil sejajar dengan Semester & Tahun Ajaran) */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+              Kelas Madin
+            </label>
+            <select
+              value={kelasFilterId}
+              onChange={e => setKelasFilterId(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+            >
+              <option value="all">Semua Kelas</option>
+              {displayedKelasOptions.map(k => (
+                <option key={k.kelas_id} value={String(k.kelas_id)}>
+                  {k.nama_kelas}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Tombol Tampilkan Data Input Nilai (Rata Tengah di Bawah Barisan Filter) */}
