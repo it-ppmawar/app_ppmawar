@@ -3,7 +3,15 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Megaphone, Search, Send, Clock, CheckCircle2, Mic2, X, ChevronDown, RefreshCw, ExternalLink, BookOpen, User, Home, AlertCircle, Loader2, History, Trash2, Volume2, Filter, Wifi, Radio, Server, Wrench, MapPin, Navigation } from 'lucide-react';
+import {
+  checkJamTerlarang,
+  DEFAULT_JAM_TERLARANG_CONFIG,
+  JamTerlarangCheckResult,
+  JamTerlarangConfig,
+  sanitizeJamTerlarangConfig,
+  shouldRestrictRoleForJamTerlarang,
+} from '@/lib/panggilan/jamTerlarang';
+import { Megaphone, Search, Send, Clock, CheckCircle2, Mic2, X, ChevronDown, RefreshCw, ExternalLink, BookOpen, User, Home, AlertCircle, Loader2, History, Trash2, Volume2, Filter, Wifi, Radio, Server, Wrench, MapPin, Navigation, ShieldAlert } from 'lucide-react';
 
 interface Santri {
   murid_id: number;
@@ -103,6 +111,11 @@ export default function PanggilanSantriPage() {
   const [jedaMenit, setJedaMenit] = useState(0);       // setting jeda dari admin
   const cooldownRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Jam terlarang / jam tenang panggilan
+  const [jamTerlarangConfig, setJamTerlarangConfig] = useState<JamTerlarangConfig>(DEFAULT_JAM_TERLARANG_CONFIG);
+  const [serverClockOffsetMs, setServerClockOffsetMs] = useState(0);
+  const [jamTerlarangStatus, setJamTerlarangStatus] = useState<JamTerlarangCheckResult | null>(null);
+
   // GPS / Geofence state
   const [pesantrenLoc, setPesantrenLoc] = useState<{ lat: number; lng: number; radius: number; wajib: boolean } | null>(null);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -181,9 +194,31 @@ export default function PanggilanSantriPage() {
             requestLocation();
           }
         }
+
+        // Parse pembatasan jam panggilan (jam sholat & kegiatan aktif) + sinkronisasi waktu server
+        if (d.server_time) {
+          const serverMs = new Date(d.server_time).getTime();
+          if (!isNaN(serverMs)) {
+            setServerClockOffsetMs(serverMs - Date.now());
+          }
+        }
+        if (d.data.jam_terlarang_panggilan) {
+          setJamTerlarangConfig(sanitizeJamTerlarangConfig(d.data.jam_terlarang_panggilan));
+        }
       }
     }).catch(() => {});
   }, [user, requestLocation]);
+
+  // Pantau status jam terlarang secara berkala agar akurat saat melewati batas jam selesai
+  useEffect(() => {
+    const updateStatus = () => {
+      const nowWibAdjusted = new Date(Date.now() + serverClockOffsetMs);
+      setJamTerlarangStatus(checkJamTerlarang(jamTerlarangConfig, nowWibAdjusted));
+    };
+    updateStatus();
+    const timer = setInterval(updateStatus, 15000);
+    return () => clearInterval(timer);
+  }, [jamTerlarangConfig, serverClockOffsetMs]);
 
   // Hitung jarak ulang saat pesantrenLoc atau userCoords berubah
   useEffect(() => {
@@ -291,6 +326,10 @@ export default function PanggilanSantriPage() {
     setTeksPanggilan(teksGenerated);
   }, [selectedSantri, selectedFormat, tujuan]);
 
+  const isPengasuhUser = Boolean(user?.is_pengasuh || user?.isPengasuh);
+  const isJamTerlarangRestricted = shouldRestrictRoleForJamTerlarang(user?.role, isPengasuhUser, jamTerlarangConfig);
+  const isBlockedByJamTerlarang = Boolean(isJamTerlarangRestricted && jamTerlarangStatus?.blocked);
+
   const handleSelectSantri = (s: Santri) => {
     setSelectedSantri(s);
     setSearchQ(s.nama);
@@ -302,6 +341,12 @@ export default function PanggilanSantriPage() {
     if (!selectedSantri) { setErrorMsg('Pilih santri terlebih dahulu'); return; }
     if (!teksPanggilan.trim()) { setErrorMsg('Teks panggilan tidak boleh kosong'); return; }
     if (cooldownSisa > 0) return; // blokir jika masih cooldown
+
+    // Cek jam terlarang / jam tenang panggilan (client-side)
+    if (isBlockedByJamTerlarang && jamTerlarangStatus) {
+      setErrorMsg(jamTerlarangStatus.pesan);
+      return;
+    }
 
     // Validasi geofence untuk wali/alumni
     const role = (user?.role || '').toLowerCase();
@@ -350,6 +395,15 @@ export default function PanggilanSantriPage() {
         // Kena cooldown dari server
         setCooldownSisa(d.sisa_detik || jedaMenit * 60);
         setErrorMsg('');
+      } else if (r.status === 403 && d.jam_terlarang) {
+        setErrorMsg(d.error || 'Pengiriman panggilan dinonaktifkan sementara selama waktu sholat atau kegiatan aktif.');
+        setJamTerlarangStatus(prev => ({
+          blocked: true,
+          slot: d.jam_terlarang_slot || prev?.slot || null,
+          waktuWib: d.waktu_wib || prev?.waktuWib || '',
+          hariWib: prev?.hariWib || '',
+          pesan: d.error || prev?.pesan || '',
+        }));
       } else if (r.status === 400 && d.need_gps) {
         setErrorMsg('Data GPS tidak ditemukan. Aktifkan lokasi dan coba lagi.');
       } else if (r.status === 403 && d.di_luar_radius) {
@@ -733,6 +787,47 @@ export default function PanggilanSantriPage() {
         );
       })()}
 
+      {/* ── Banner Jam Terlarang / Jam Tenang Panggilan ── */}
+      {jamTerlarangConfig.aktif && jamTerlarangStatus?.blocked && (
+        isBlockedByJamTerlarang ? (
+          <div className="flex items-start gap-3 px-4 py-3.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-2xl text-red-800 dark:text-red-200 shadow-sm">
+            <ShieldAlert size={20} className="shrink-0 text-red-500 mt-0.5 animate-pulse" />
+            <div className="flex-1 min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-black leading-tight">
+                  Jam Tenang Aktif — {jamTerlarangStatus.slot?.label || 'Waktu Sholat / Kegiatan'}
+                </p>
+                {jamTerlarangStatus.slot && (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-800/60 text-red-700 dark:text-red-200 tabular-nums">
+                    {jamTerlarangStatus.slot.mulai} – {jamTerlarangStatus.slot.selesai} WIB
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed">
+                {jamTerlarangStatus.pesan}
+              </p>
+              {jamTerlarangStatus.waktuWib && (
+                <p className="text-[11px] text-red-500 dark:text-red-400 font-semibold">
+                  Waktu sekarang: {jamTerlarangStatus.hariWib}, {jamTerlarangStatus.waktuWib} WIB
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-3 px-4 py-3 bg-amber-50/90 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/60 rounded-2xl text-amber-800 dark:text-amber-200">
+            <Clock size={18} className="shrink-0 text-amber-500 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold leading-snug">
+                Info Jam Tenang: {jamTerlarangStatus.slot?.label || 'Kegiatan Aktif'} ({jamTerlarangStatus.slot?.mulai} – {jamTerlarangStatus.slot?.selesai} WIB)
+              </p>
+              <p className="text-[11px] mt-0.5 opacity-85">
+                Panggilan untuk peran yang dibatasi sedang ditahan otomatis. Akun Admin, Staff &amp; Pengasuh tetap dapat mengirim panggilan darurat.
+              </p>
+            </div>
+          </div>
+        )
+      )}
+
       {/* Form Card */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
@@ -940,19 +1035,24 @@ export default function PanggilanSantriPage() {
               !selectedSantri ||
               !teksPanggilan.trim() ||
               cooldownSisa > 0 ||
+              isBlockedByJamTerlarang ||
               (pesantrenLoc?.wajib && (['wali_murid','wali_alumni','alumni'].includes((user?.role||'').toLowerCase())) &&
                 lokasiStatus !== 'success')
             }
             className={`w-full flex items-center justify-center gap-2.5 py-4 font-black text-sm rounded-2xl transition-all shadow-lg active:scale-95 ${
-              cooldownSisa > 0
-                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 cursor-not-allowed shadow-none border border-amber-200 dark:border-amber-700'
-                : lokasiStatus === 'outside' || lokasiStatus === 'denied' || (pesantrenLoc?.wajib && lokasiStatus === 'idle' && ['wali_murid','wali_alumni','alumni'].includes((user?.role||'').toLowerCase()))
-                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 cursor-not-allowed shadow-none border border-red-200 dark:border-red-700'
-                  : 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:from-red-600 hover:via-orange-600 hover:to-amber-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white shadow-orange-500/30 disabled:shadow-none'
+              isBlockedByJamTerlarang
+                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 cursor-not-allowed shadow-none border border-red-200 dark:border-red-700'
+                : cooldownSisa > 0
+                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 cursor-not-allowed shadow-none border border-amber-200 dark:border-amber-700'
+                  : lokasiStatus === 'outside' || lokasiStatus === 'denied' || (pesantrenLoc?.wajib && lokasiStatus === 'idle' && ['wali_murid','wali_alumni','alumni'].includes((user?.role||'').toLowerCase()))
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 cursor-not-allowed shadow-none border border-red-200 dark:border-red-700'
+                    : 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:from-red-600 hover:via-orange-600 hover:to-amber-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed text-white shadow-orange-500/30 disabled:shadow-none'
             }`}
           >
             {sending ? (
               <><Loader2 size={18} className="animate-spin" /> Mengirim...</>
+            ) : isBlockedByJamTerlarang ? (
+              <><Clock size={18} className="animate-pulse" /> Jam Tenang{jamTerlarangStatus?.slot?.selesai ? ` — Buka ${jamTerlarangStatus.slot.selesai} WIB` : ''}</>
             ) : cooldownSisa > 0 ? (
               <><Clock size={18} className="animate-pulse" /> Tunggu {cooldownSisa >= 60 ? `${Math.floor(cooldownSisa/60)}m ${cooldownSisa%60}s` : `${cooldownSisa}s`}</>
             ) : lokasiStatus === 'loading' ? (

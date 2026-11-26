@@ -3,6 +3,12 @@ import pool from '@/lib/db';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 import { RowDataPacket } from 'mysql2';
+import {
+  checkJamTerlarang,
+  JAM_TERLARANG_SETTING_KEY,
+  sanitizeJamTerlarangConfig,
+  shouldRestrictRoleForJamTerlarang,
+} from '@/lib/panggilan/jamTerlarang';
 
 const ALLOWED_ROLES = ['admin', 'staff', 'pengasuh', 'pengurus_asrama', 'wali_murid', 'wali_alumni', 'petugas_panggilan', 'petugas_panggilan_umum', 'petugas'];
 
@@ -152,6 +158,47 @@ export async function POST(request: Request) {
     }
 
     const santri = santriRows[0];
+
+    // ── Pembatasan Jam Terlarang / Jam Tenang Panggilan (Sholat & Kegiatan Aktif) ──
+    try {
+      const userId = payload.userId || payload.id;
+      let effectiveRole = String(payload.role || '');
+      let isPengasuhFlag = Boolean(payload.isPengasuh || payload.is_pengasuh);
+
+      if (userId) {
+        try {
+          const [uRows] = await pool.execute<RowDataPacket[]>(
+            'SELECT role, is_pengasuh FROM users WHERE id = ? LIMIT 1',
+            [userId]
+          );
+          if (uRows.length > 0) {
+            if (uRows[0].role) effectiveRole = String(uRows[0].role);
+            if (uRows[0].is_pengasuh) isPengasuhFlag = true;
+          }
+        } catch (_) {}
+      }
+
+      const [jamRows] = await pool.execute<RowDataPacket[]>(
+        'SELECT nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = ? LIMIT 1',
+        [JAM_TERLARANG_SETTING_KEY]
+      );
+      if (jamRows.length > 0 && jamRows[0].nilai) {
+        const jamConfig = sanitizeJamTerlarangConfig(jamRows[0].nilai);
+        if (shouldRestrictRoleForJamTerlarang(effectiveRole, isPengasuhFlag, jamConfig)) {
+          const check = checkJamTerlarang(jamConfig);
+          if (check.blocked) {
+            return NextResponse.json({
+              error: check.pesan,
+              jam_terlarang: true,
+              jam_terlarang_slot: check.slot,
+              waktu_wib: check.waktuWib,
+            }, { status: 403 });
+          }
+        }
+      }
+    } catch (jamErr) {
+      console.warn('[API Panggilan Jam Check]', jamErr);
+    }
 
     // ── Location Radius Check: khusus wali murid & alumni jika radius_panggilan_wali aktif ──
     const isWaliOrAlumni = payload.role === 'wali_murid' || payload.role === 'wali_alumni' || payload.role === 'alumni';

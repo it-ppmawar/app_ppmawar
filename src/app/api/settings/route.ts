@@ -4,6 +4,11 @@ import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 import { isValidIsoDate, SEMESTER_SETTING_KEYS } from '@/lib/penilaian/semesterPeriode';
+import {
+  JAM_TERLARANG_SETTING_KEY,
+  sanitizeJamTerlarangConfig,
+  validateJamTerlarangConfig,
+} from '@/lib/panggilan/jamTerlarang';
 
 const PUBLIC_SETTING_KEYS = [
   'jeda_panggilan_wali',
@@ -13,6 +18,7 @@ const PUBLIC_SETTING_KEYS = [
   'radius_absen',
   'radius_panggilan_wali',
   'gps_scan_absen_wajib',
+  JAM_TERLARANG_SETTING_KEY,
   ...SEMESTER_SETTING_KEYS,
 ] as const;
 
@@ -28,7 +34,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const publicOnly = searchParams.get('public') === '1';
 
-    // Pengaturan publik non-sensitif (lokasi, jeda, periode akademik) dapat diakses tanpa login
+    // Pengaturan publik non-sensitif (lokasi, jeda, jam terlarang, periode akademik) dapat diakses tanpa login
     // supaya halaman pintasan guru dan halaman santri/wali dapat membaca defaultnya.
     if (publicOnly) {
       const placeholders = PUBLIC_SETTING_KEYS.map(() => '?').join(',');
@@ -38,7 +44,7 @@ export async function GET(request: Request) {
       );
       const settings: Record<string, string> = {};
       rows.forEach((row: any) => { settings[row.nama_pengaturan] = row.nilai; });
-      return NextResponse.json({ success: true, data: settings });
+      return NextResponse.json({ success: true, data: settings, server_time: new Date().toISOString() });
     }
 
     const cookieStore = await cookies();
@@ -62,7 +68,7 @@ export async function GET(request: Request) {
       settings[row.nama_pengaturan] = row.nilai;
     });
 
-    return NextResponse.json({ success: true, data: settings });
+    return NextResponse.json({ success: true, data: settings, server_time: new Date().toISOString() });
   } catch (error: any) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
@@ -112,6 +118,7 @@ export async function PUT(request: Request) {
       jeda_panggilan_wali,
       jeda_panggilan_pengurus,
       radius_panggilan_wali,
+      jam_terlarang_panggilan,
       // Telegram Bot settings
       telegram_bot_token,
       telegram_notification_mode,
@@ -172,6 +179,18 @@ export async function PUT(request: Request) {
       }
       if (startVal !== undefined) await upsertSetting(startKey, startVal);
       if (endVal !== undefined) await upsertSetting(endKey, endVal);
+    }
+
+    if (jam_terlarang_panggilan !== undefined) {
+      const sanitizedJam = sanitizeJamTerlarangConfig(jam_terlarang_panggilan);
+      const validationErr = validateJamTerlarangConfig(sanitizedJam);
+      if (validationErr) {
+        return NextResponse.json({ error: validationErr }, { status: 400 });
+      }
+      await pool
+        .query('ALTER TABLE pengaturan_absensi_otomatis MODIFY nilai TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci')
+        .catch(() => {});
+      await upsertSetting(JAM_TERLARANG_SETTING_KEY, JSON.stringify(sanitizedJam));
     }
 
     if (wa_scheduler_api_key !== undefined) {

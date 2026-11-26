@@ -8,7 +8,17 @@ import {
   getTahunAjaranOptions,
   PeriodeFilterMode,
 } from '@/lib/penilaian/semesterPeriode';
-import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone, BookOpen, Users, MapPin, ShieldAlert, Send, GraduationCap } from 'lucide-react';
+import {
+  checkJamTerlarang,
+  createDefaultJamTerlarangPresets,
+  DEFAULT_JAM_TERLARANG_CONFIG,
+  HARI_INDONESIA,
+  JamTerlarangConfig,
+  JamTerlarangSlot,
+  sanitizeJamTerlarangConfig,
+  validateJamTerlarangConfig,
+} from '@/lib/panggilan/jamTerlarang';
+import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone, BookOpen, Users, MapPin, ShieldAlert, Send, GraduationCap, Plus, Trash2, RotateCcw } from 'lucide-react';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -96,6 +106,7 @@ export default function SettingsPage() {
     jeda_panggilan_wali: 5,
     jeda_panggilan_pengurus: 2,
     radius_panggilan_wali: true,
+    jam_terlarang_panggilan: DEFAULT_JAM_TERLARANG_CONFIG as JamTerlarangConfig,
     // Telegram Bot settings
     telegram_bot_token: '',
     telegram_bot_username: 'ppma_notif_bot',
@@ -111,6 +122,8 @@ export default function SettingsPage() {
   const [testingWa, setTestingWa] = useState(false);
   const [testWaPhone, setTestWaPhone] = useState('');
   const [testWaResult, setTestWaResult] = useState<{ success?: boolean; message?: string } | null>(null);
+  const [jamClockOffsetMs, setJamClockOffsetMs] = useState(0);
+  const [jamPreviewNowMs, setJamPreviewNowMs] = useState<number | null>(null);
 
   // State untuk Telegram Bot Testing & Webhook
   const [testingTg, setTestingTg] = useState(false);
@@ -225,6 +238,10 @@ export default function SettingsPage() {
       const res = await fetch('/api/settings');
       const json = await res.json();
       if (json.success) {
+        if (json.server_time) {
+          const srvMs = new Date(json.server_time).getTime();
+          if (!isNaN(srvMs)) setJamClockOffsetMs(srvMs - Date.now());
+        }
         setSettings({
           absensi_otomatis: json.data.absensi_otomatis_guru === '1' || json.data.absensi_otomatis === '1',
           absensi_otomatis_madin: json.data.absensi_otomatis_madin !== '0',
@@ -251,6 +268,7 @@ export default function SettingsPage() {
           jeda_panggilan_wali: isNaN(parseInt(json.data.jeda_panggilan_wali)) ? 5 : parseInt(json.data.jeda_panggilan_wali),
           jeda_panggilan_pengurus: isNaN(parseInt(json.data.jeda_panggilan_pengurus)) ? 2 : parseInt(json.data.jeda_panggilan_pengurus),
           radius_panggilan_wali: json.data.radius_panggilan_wali !== '0',
+          jam_terlarang_panggilan: sanitizeJamTerlarangConfig(json.data.jam_terlarang_panggilan),
           // Telegram Bot settings
           telegram_bot_token: json.data.telegram_bot_token || '',
           telegram_bot_username: json.data.telegram_bot_username || 'ppma_notif_bot',
@@ -396,8 +414,88 @@ export default function SettingsPage() {
     }
   };
 
+  const updateJamTerlarang = (updater: (prev: JamTerlarangConfig) => JamTerlarangConfig) => {
+    setSettings(prev => ({
+      ...prev,
+      jam_terlarang_panggilan: updater(prev.jam_terlarang_panggilan),
+    }));
+  };
+
+  const handleAddJamTerlarangSlot = () => {
+    const newSlot: JamTerlarangSlot = {
+      id: `slot-${Date.now()}`,
+      label: '',
+      mulai: '12:00',
+      selesai: '12:30',
+      hari: [],
+      aktif: true,
+    };
+    updateJamTerlarang(prev => ({
+      ...prev,
+      slots: [...prev.slots, newSlot],
+    }));
+  };
+
+  const handleToggleJamTerlarangDay = (slotId: string, day: string) => {
+    updateJamTerlarang(prev => ({
+      ...prev,
+      slots: prev.slots.map(s => {
+        if (s.id !== slotId) return s;
+        const exists = s.hari.includes(day);
+        return {
+          ...s,
+          hari: exists ? s.hari.filter(d => d !== day) : [...s.hari, day],
+        };
+      }),
+    }));
+  };
+
+  const handleLoadJamPresets = () => {
+    if (
+      settings.jam_terlarang_panggilan.slots.length > 0 &&
+      !confirm('Muat ulang daftar preset bawaan (Subuh, Dzuhur, Jumat, Ashar, Maghrib-Isya, Malam)? Daftar jam saat ini akan diganti dengan preset standar.')
+    ) {
+      return;
+    }
+    updateJamTerlarang(prev => ({
+      ...prev,
+      slots: createDefaultJamTerlarangPresets(),
+    }));
+  };
+
+  const handleUpdateJamSlot = (slotId: string, patch: Partial<JamTerlarangSlot>) => {
+    updateJamTerlarang(prev => ({
+      ...prev,
+      slots: prev.slots.map(s => (s.id === slotId ? { ...s, ...patch } : s)),
+    }));
+  };
+
+  const handleRemoveJamSlot = (slotId: string) => {
+    updateJamTerlarang(prev => ({
+      ...prev,
+      slots: prev.slots.filter(s => s.id !== slotId),
+    }));
+  };
+
+  const handleClearJamSlotDays = (slotId: string) => {
+    handleUpdateJamSlot(slotId, { hari: [] });
+  };
+
+  useEffect(() => {
+    const syncTick = () => setJamPreviewNowMs(Date.now() + jamClockOffsetMs);
+    syncTick();
+    const timer = setInterval(syncTick, 15000);
+    return () => clearInterval(timer);
+  }, [jamClockOffsetMs]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const jamErr = validateJamTerlarangConfig(settings.jam_terlarang_panggilan);
+    if (jamErr) {
+      setError(jamErr);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     if (!confirm('Anda yakin ingin menyimpan perubahan pengaturan sistem?')) {
       return;
     }
@@ -1675,6 +1773,313 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {/* Pengaturan Jam Terlarang / Jam Tenang Panggilan (Sholat & Kegiatan) */}
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {(() => {
+            const jamCfg = settings.jam_terlarang_panggilan;
+            const activeSlotsCount = jamCfg.slots.filter(s => s.aktif).length;
+            const liveCheck = jamPreviewNowMs !== null
+              ? checkJamTerlarang(jamCfg, new Date(jamPreviewNowMs))
+              : null;
+
+            return (
+              <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600 space-y-5">
+                {/* Header & Toggle Utama */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                      <ShieldAlert size={22} className="text-rose-500" />
+                      Jam Terlarang / Jam Tenang Panggilan
+                    </h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">
+                      Tahan pengiriman panggilan TOA sementara saat waktu sholat berjamaah atau kegiatan aktif berlangsung agar suasana ibadah tetap khusyuk.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                    <span className={`text-xs font-black ${jamCfg.aktif ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400'}`}>
+                      {jamCfg.aktif ? 'AKTIF' : 'NONAKTIF'}
+                    </span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={jamCfg.aktif}
+                        onChange={(e) => updateJamTerlarang(prev => ({ ...prev, aktif: e.target.checked }))}
+                      />
+                      <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-rose-300 dark:peer-focus:ring-rose-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-rose-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Target Role yang Dibatasi */}
+                <div className="p-4 bg-rose-50/40 dark:bg-rose-950/20 rounded-2xl border border-rose-200/70 dark:border-rose-800/40 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <span className="text-xs font-bold text-rose-900 dark:text-rose-200 uppercase tracking-wider flex items-center gap-1.5">
+                      <Users size={14} className="text-rose-500" />
+                      Pembatasan Berlaku Untuk Peran
+                    </span>
+                    <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                      Admin, Staff &amp; Pengasuh selalu bisa kirim darurat
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {[
+                      {
+                        key: 'wali' as const,
+                        label: 'Wali Murid / Alumni',
+                        desc: 'Blokir panggilan wali & alumni di jam terlarang',
+                      },
+                      {
+                        key: 'pengurus' as const,
+                        label: 'Pengurus Asrama',
+                        desc: 'Ikutkan akun pengurus asrama dalam jam tenang',
+                      },
+                      {
+                        key: 'petugas' as const,
+                        label: 'Petugas / Lainnya',
+                        desc: 'Berlakukan pula untuk petugas operasional pondok',
+                      },
+                    ].map(target => {
+                      const checked = jamCfg.berlaku_untuk[target.key];
+                      return (
+                        <label
+                          key={target.key}
+                          className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                            checked
+                              ? 'bg-white dark:bg-gray-800 border-rose-300 dark:border-rose-700 shadow-xs'
+                              : 'bg-white/60 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700 opacity-80'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) =>
+                              updateJamTerlarang(prev => ({
+                                ...prev,
+                                berlaku_untuk: {
+                                  ...prev.berlaku_untuk,
+                                  [target.key]: e.target.checked,
+                                },
+                              }))
+                            }
+                            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-gray-800 dark:text-gray-100 leading-tight">
+                              {target.label}
+                            </p>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">
+                              {target.desc}
+                            </p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Toolbar Daftar Slot */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Daftar Jadwal Jam Tenang
+                    </span>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                      {activeSlotsCount} aktif / {jamCfg.slots.length} total
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleLoadJamPresets}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700 transition-colors cursor-pointer"
+                    >
+                      <RotateCcw size={13} />
+                      Muat Preset Sholat &amp; Malam
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddJamTerlarangSlot}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Plus size={14} />
+                      Tambah Jadwal
+                    </button>
+                  </div>
+                </div>
+
+                {/* Daftar Slot */}
+                {jamCfg.slots.length === 0 ? (
+                  <div className="p-6 text-center rounded-2xl border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50/70 dark:bg-gray-900/40 space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                      Belum ada jadwal jam terlarang. Klik <strong>Muat Preset Sholat &amp; Malam</strong> atau <strong>Tambah Jadwal</strong> untuk memulai.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {jamCfg.slots.map((slot, idx) => {
+                      const isOvernight = Boolean(slot.mulai && slot.selesai && slot.mulai > slot.selesai);
+                      const isInvalidInline =
+                        slot.aktif &&
+                        (!slot.label.trim() || !slot.mulai || !slot.selesai || slot.mulai === slot.selesai);
+
+                      return (
+                        <div
+                          key={slot.id}
+                          className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                            slot.aktif
+                              ? isInvalidInline
+                                ? 'bg-red-50/50 dark:bg-red-950/20 border-red-300 dark:border-red-700'
+                                : 'bg-gray-50/80 dark:bg-gray-900/70 border-gray-200 dark:border-gray-700'
+                              : 'bg-gray-100/60 dark:bg-gray-900/30 border-gray-200/70 dark:border-gray-700/60 opacity-65'
+                          }`}
+                        >
+                          {/* Baris 1: Toggle aktif slot, label kegiatan, hapus */}
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={slot.aktif}
+                                onChange={(e) => handleUpdateJamSlot(slot.id, { aktif: e.target.checked })}
+                                title={slot.aktif ? 'Nonaktifkan jadwal ini sementara' : 'Aktifkan jadwal ini'}
+                                className="h-4 w-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500 cursor-pointer shrink-0"
+                              />
+                              <input
+                                type="text"
+                                value={slot.label}
+                                onChange={(e) => handleUpdateJamSlot(slot.id, { label: e.target.value })}
+                                placeholder={`Keterangan jadwal #${idx + 1} (misal: Sholat Maghrib Berjamaah)`}
+                                className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-rose-400 focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0 justify-end">
+                              {isOvernight && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
+                                  Lintas Malam
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveJamSlot(slot.id)}
+                                title="Hapus jadwal ini"
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Baris 2: Jam Mulai - Selesai + Hari Berlaku */}
+                          <div className="flex flex-col lg:flex-row lg:items-center gap-3 pt-1">
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">
+                                  Mulai (WIB)
+                                </label>
+                                <input
+                                  type="time"
+                                  value={slot.mulai}
+                                  onChange={(e) => handleUpdateJamSlot(slot.id, { mulai: e.target.value })}
+                                  className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-800 dark:text-gray-100 tabular-nums"
+                                />
+                              </div>
+                              <span className="text-gray-400 font-bold mt-4">—</span>
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">
+                                  Selesai (WIB)
+                                </label>
+                                <input
+                                  type="time"
+                                  value={slot.selesai}
+                                  onChange={(e) => handleUpdateJamSlot(slot.id, { selesai: e.target.value })}
+                                  className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-800 dark:text-gray-100 tabular-nums"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <span className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                                Hari Berlaku
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleClearJamSlotDays(slot.id)}
+                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
+                                    slot.hari.length === 0
+                                      ? 'bg-rose-600 text-white border-rose-600'
+                                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-rose-400'
+                                  }`}
+                                >
+                                  Setiap Hari
+                                </button>
+                                {HARI_INDONESIA.map(day => {
+                                  const selected = slot.hari.includes(day);
+                                  return (
+                                    <button
+                                      key={day}
+                                      type="button"
+                                      onClick={() => handleToggleJamTerlarangDay(slot.id, day)}
+                                      className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
+                                        selected
+                                          ? 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-200 border-rose-400 dark:border-rose-600'
+                                          : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-rose-300'
+                                      }`}
+                                    >
+                                      {day}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {isInvalidInline && (
+                            <p className="text-[11px] font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
+                              <AlertTriangle size={12} />
+                              Lengkapi keterangan dan pastikan jam mulai tidak sama dengan jam selesai.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Pratinjau Status Waktu Server (WIB) */}
+                {liveCheck && (
+                  <div
+                    className={`p-3.5 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                      !jamCfg.aktif
+                        ? 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'
+                        : liveCheck.blocked
+                          ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                          : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                    }`}
+                  >
+                    <div className="flex items-start sm:items-center gap-2">
+                      <Clock size={15} className="shrink-0 mt-0.5 sm:mt-0" />
+                      <span>
+                        <strong>Pratinjau WIB ({liveCheck.hariWib}, {liveCheck.waktuWib} WIB):</strong>{' '}
+                        {!jamCfg.aktif
+                          ? 'Pembatasan jam terlarang sedang NONAKTIF (panggilan dibuka 24 jam).'
+                          : liveCheck.blocked
+                            ? `Sedang DITAHAN karena "${liveCheck.slot?.label}" (${liveCheck.slot?.mulai}–${liveCheck.slot?.selesai} WIB).`
+                            : 'Di luar jam terlarang — panggilan saat ini DIBUKA.'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-semibold opacity-75 shrink-0">
+                      Klik &quot;Simpan Semua Pengaturan&quot; untuk menerapkan
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <div className="flex justify-end pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
             <button 
