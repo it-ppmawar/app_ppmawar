@@ -843,6 +843,18 @@ export default function TabInputNilaiGuru({
 
                           <td className="px-5 py-4 text-right whitespace-nowrap align-middle">
                             <div className="inline-flex items-center justify-end gap-2">
+                              <a
+                                href={previewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all active:scale-95"
+                                title="Buka pintasan input nilai untuk guru ini"
+                              >
+                                <Award size={14} />
+                                <span>Input Nilai</span>
+                                <ExternalLink size={12} className="opacity-75" />
+                              </a>
+
                               {hasPhone ? (
                                 <a
                                   href={waUrl}
@@ -868,18 +880,6 @@ export default function TabInputNilaiGuru({
                                   <span>No. WA Kosong</span>
                                 </button>
                               )}
-
-                              <a
-                                href={previewUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all active:scale-95"
-                                title="Buka pintasan input nilai untuk guru ini"
-                              >
-                                <Award size={14} />
-                                <span>Input Nilai</span>
-                                <ExternalLink size={12} className="opacity-75" />
-                              </a>
 
                               <button
                                 type="button"
@@ -960,6 +960,16 @@ export default function TabInputNilaiGuru({
                       </div>
 
                       <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700/60">
+                        <a
+                          href={previewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-sm active:scale-95"
+                        >
+                          <Award size={14} />
+                          <span>Input Nilai</span>
+                        </a>
+
                         {hasPhone ? (
                           <a
                             href={waUrl}
@@ -985,16 +995,6 @@ export default function TabInputNilaiGuru({
                             <span>Tanpa WA</span>
                           </button>
                         )}
-
-                        <a
-                          href={previewUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-sm active:scale-95"
-                        >
-                          <Award size={14} />
-                          <span>Input Nilai</span>
-                        </a>
 
                         <button
                           type="button"

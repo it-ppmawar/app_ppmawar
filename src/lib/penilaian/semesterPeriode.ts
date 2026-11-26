@@ -36,11 +36,25 @@ export const DEFAULT_SEMESTER_PERIODE_CONFIG: SemesterPeriodeConfig = {
   periode_sem2_selesai: '',
 };
 
-const BASE_TAHUN_AJARAN_OPTIONS = ['2024/2025', '2025/2026', '2026/2027', '2027/2028'];
+/**
+ * Generate daftar opsi Tahun Ajaran secara dinamis berdasarkan tahun sekarang.
+ * Menampilkan: 2 tahun sebelum + tahun aktif + 2 tahun setelah tahun berjalan.
+ * Jadi daftar tidak pernah "habis" — selalu mengikuti kalender nyata.
+ */
+function generateBaseTahunAjaranOptions(): string[] {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  // Tahun ajaran format YYYY/YYYY+1 (misal 2026/2027)
+  const list: string[] = [];
+  for (let y = currentYear - 2; y <= currentYear + 2; y++) {
+    list.push(`${y}/${y + 1}`);
+  }
+  return list;
+}
 
-/** Daftar opsi Tahun Ajaran untuk dropdown filter (menjamin nilai aktif selalu termasuk). */
+/** Daftar opsi Tahun Ajaran untuk dropdown filter (auto-generate dinamis, tidak pernah habis). */
 export function getTahunAjaranOptions(extraYear?: string | null): string[] {
-  const list = [...BASE_TAHUN_AJARAN_OPTIONS];
+  const list = generateBaseTahunAjaranOptions();
   const trimmed = extraYear ? extraYear.trim() : '';
   if (trimmed && !list.includes(trimmed)) {
     list.push(trimmed);
