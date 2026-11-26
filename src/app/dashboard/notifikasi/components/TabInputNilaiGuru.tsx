@@ -348,8 +348,8 @@ export default function TabInputNilaiGuru({
               className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
             >
               <option value="all">📚 Semua Madrasah Diniyah (Madin)</option>
-              <option value="putra">🕌 Madin Putra</option>
-              <option value="putri">🌸 Madin Putri</option>
+              <option value="putra">👳 Madin Putra</option>
+              <option value="putri">🧕 Madin Putri</option>
             </select>
           </div>
 

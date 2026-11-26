@@ -76,45 +76,45 @@ function PreviewContent() {
   return (
     <>
       {/* Tombol Print — hanya tampil di layar, tidak ikut print */}
-      <div className="print:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between px-4 py-2.5 z-50">
-        <div className="flex items-center gap-2 text-amber-700 font-bold text-sm">
-          <BookOpen size={18} />
-          <span>Preview Raport — {d.santri?.nama || '-'}</span>
+      <div className="print:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between gap-2 px-4 py-2.5 z-50">
+        <div className="flex items-center gap-2 text-amber-700 font-bold text-xs sm:text-sm min-w-0">
+          <BookOpen size={18} className="shrink-0" />
+          <span className="truncate">Preview Raport — {d.santri?.nama || '-'}</span>
         </div>
         <button
           onClick={() => window.print()}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all active:scale-95"
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 shrink-0"
         >
           <Printer size={15} />
           <span>Cetak / Simpan PDF</span>
         </button>
       </div>
 
-      {/* Konten Raport (A4 Print) */}
-      <div className="print:pt-0 pt-14 bg-gray-100 print:bg-white min-h-screen overflow-x-auto">
-        <div className="bg-white text-gray-900 max-w-4xl mx-auto p-8 sm:p-12 print:p-8 print:max-w-none shadow-md print:shadow-none min-w-[760px] print:min-w-0" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
+      {/* Konten Raport (A4 Print — Konsisten di PC & HP) */}
+      <div className="print:pt-0 pt-14 bg-gray-100 print:bg-white min-h-screen w-full overflow-x-auto print:overflow-visible">
+        <div className="bg-white text-gray-900 w-[840px] max-w-4xl lg:w-full mx-auto p-10 print:p-8 print:w-auto print:max-w-none shadow-md print:shadow-none" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
 
           {/* KOP RESMI PESANTREN */}
           <div className="border-b-4 border-double border-gray-900 pb-4 mb-6 text-center">
-            <h3 className="text-xl sm:text-2xl font-black tracking-wider uppercase font-serif">
+            <h3 className="text-2xl font-black tracking-wider uppercase font-serif">
               PONDOK PESANTREN MATHOLI&apos;UL ANWAR
             </h3>
-            <h4 className="text-base sm:text-lg font-bold uppercase text-emerald-800 font-serif">
-              MADRASAH DINIYAH &amp; LEMBAGA TAHFIDZ AL-QUR&apos;AN
+            <h4 className="text-lg font-bold uppercase text-emerald-800 font-serif">
+              MADRASAH DINIYAH &amp; MADRASATUL QUR&apos;AN
             </h4>
             <p className="text-xs text-gray-600 mt-1 font-sans">
               Simo - Lamongan - Jawa Timur | Website: ppmawar.or.id
             </p>
-            <div className="mt-3 inline-block bg-gray-900 text-white font-bold text-xs sm:text-sm px-6 py-1 rounded-full uppercase tracking-widest">
+            <div className="mt-3 inline-block bg-gray-900 text-white font-bold text-sm px-6 py-1 rounded-full uppercase tracking-widest">
               LAPORAN HASIL BELAJAR SANTRI (RAPORT)
             </div>
           </div>
 
           {/* IDENTITAS SANTRI DENGAN PAS FOTO */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
+          <div className="flex flex-row items-start gap-5 mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
             {/* Pas Foto Santri */}
             <div className="shrink-0">
-              <div className="w-20 h-24 sm:w-24 sm:h-28 rounded-xl overflow-hidden relative shadow-xs border-2 border-gray-300 bg-gray-100">
+              <div className="w-24 h-28 rounded-xl overflow-hidden relative shadow-xs border-2 border-gray-300 bg-gray-100">
                 <div
                   className="absolute inset-0 flex items-center justify-center"
                   style={{ backgroundColor: getAvatarColor(d.santri?.nama || '') }}
@@ -135,21 +135,26 @@ function PreviewContent() {
               </div>
             </div>
 
-            <div className="flex-1 w-full text-xs sm:text-sm">
-              {/* Nama Santri: 1 baris tersendiri full-width */}
-              <div className="flex mb-2">
-                <span className="w-36 font-bold text-gray-600">Nama Santri</span><span className="font-black text-gray-900">: {d.santri?.nama}</span>
+            <div className="flex-1 min-w-0 text-sm space-y-1.5">
+              <div className="flex items-baseline">
+                <span className="w-44 shrink-0 font-bold text-gray-600">Nama Santri</span>
+                <span className="font-black text-gray-900 flex-1">: {d.santri?.nama}</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5">
-                <div className="space-y-1.5">
-                  <div className="flex"><span className="w-36 font-bold text-gray-600">Nomor Induk (NIS)</span><span>: {d.santri?.nis || '-'}</span></div>
-                  <div className="flex"><span className="w-36 font-bold text-gray-600">Kelas Madin</span><span>: {d.santri?.nama_kelas_madin}</span></div>
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex"><span className="w-36 font-bold text-gray-600">Semester / TA</span><span className="font-bold">: {semLabel} / {d.tahun_ajaran}</span></div>
-                  <div className="flex"><span className="w-36 font-bold text-gray-600">Kamar / Asrama</span><span>: {d.santri?.nama_kamar} ({d.santri?.nama_asrama})</span></div>
-                  <div className="flex"><span className="w-36 font-bold text-gray-600">Wali Kelas</span><span>: {d.santri?.wali_kelas || '-'}</span></div>
-                </div>
+              <div className="flex items-baseline">
+                <span className="w-44 shrink-0 font-bold text-gray-600">Nomor Induk (NIS)</span>
+                <span className="flex-1 whitespace-nowrap">: {d.santri?.nis || '-'}</span>
+              </div>
+              <div className="flex items-baseline">
+                <span className="w-44 shrink-0 font-bold text-gray-600">Kelas Madin</span>
+                <span className="flex-1 whitespace-nowrap">: {d.santri?.nama_kelas_madin || '-'}</span>
+              </div>
+              <div className="flex items-baseline">
+                <span className="w-44 shrink-0 font-bold text-gray-600">Semester / TA</span>
+                <span className="font-bold flex-1 whitespace-nowrap">: {semLabel} / {d.tahun_ajaran}</span>
+              </div>
+              <div className="flex items-baseline">
+                <span className="w-44 shrink-0 font-bold text-gray-600">Kamar / Asrama</span>
+                <span className="flex-1 whitespace-nowrap">: {d.santri?.nama_kamar} ({d.santri?.nama_asrama})</span>
               </div>
             </div>
           </div>
@@ -232,7 +237,7 @@ function PreviewContent() {
                 </div>
 
                 {/* REKAP ABSENSI & KEDISIPLINAN */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-2 gap-4 mb-6">
                   {abs && (
                     <div>
                       <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">B. Rekap Kehadiran (Otomatis)</h5>
@@ -312,18 +317,31 @@ function PreviewContent() {
           </div>
 
           {/* TANDA TANGAN */}
-          <div className="grid grid-cols-3 gap-6 text-xs text-center mt-8">
-            <div>
-              <p className="text-gray-500 mb-16">Mengetahui,<br /><strong>Orang Tua / Wali Santri</strong></p>
-              <p className="font-bold border-t border-gray-400 mx-4 pt-1">( ........................................ )</p>
+          <div className="grid grid-cols-2 gap-8 text-xs text-center mt-8">
+            <div className="flex flex-col justify-between">
+              <div>
+                <p className="text-gray-500">Mengetahui,</p>
+                <p className="font-bold text-gray-700">Orang Tua / Wali Santri</p>
+              </div>
+              <div className="mt-16">
+                <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
+                  {d.santri?.nama_wali && String(d.santri.nama_wali).trim() && d.santri.nama_wali !== '-'
+                    ? d.santri.nama_wali
+                    : '( ......................... )'}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-gray-500 mb-16">Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br /><strong>Wali Kelas</strong></p>
-              <p className="font-bold border-t border-gray-400 mx-4 pt-1">{d.santri?.wali_kelas || '( ........................................ )'}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 mb-16">Kepala Madrasah Diniyah<br /><strong>PP. Matholi&apos;ul Anwar</strong></p>
-              <p className="font-bold border-t border-gray-400 mx-4 pt-1">{(d as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}</p>
+            <div className="flex flex-col justify-between">
+              <div>
+                <p className="text-gray-500">Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p className="text-gray-500">Kepala Madrasah Diniyah</p>
+                <p className="font-bold text-gray-700">PP. Matholi&apos;ul Anwar</p>
+              </div>
+              <div className="mt-16">
+                <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
+                  {(d as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}
+                </p>
+              </div>
             </div>
           </div>
 

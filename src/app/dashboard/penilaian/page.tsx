@@ -449,9 +449,9 @@ export default function PenilaianRaportPage() {
       ['Nama Santri', raportData.santri.nama],
       ['NIS', raportData.santri.nis || '-'],
       ['Kelas Madin', raportData.santri.nama_kelas_madin],
-      ['Kamar / Asrama', `${raportData.santri.nama_kamar} (${raportData.santri.nama_asrama})`],
-      ['Wali Kelas', raportData.santri.wali_kelas || '-'],
       ['Semester / Tahun Ajaran', `${raportData.semester === '1' ? 'Semester 1 (Ganjil)' : 'Semester 2 (Genap)'} / ${raportData.tahun_ajaran}`],
+      ['Kamar / Asrama', `${raportData.santri.nama_kamar} (${raportData.santri.nama_asrama})`],
+      ['Nama Wali Santri', raportData.santri.nama_wali || '-'],
       [],
       ['A. NILAI HASIL BELAJAR'],
       hasLisan
@@ -2130,32 +2130,32 @@ export default function PenilaianRaportPage() {
               )}
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* LEMBAR RAPORT RESMI (TAMPILAN CETAK A4) */}
-              <div className="overflow-x-auto pb-4 print:overflow-visible">
-              <div className="bg-white text-gray-900 rounded-3xl shadow-md border border-gray-200 p-8 sm:p-12 print:border-none print:shadow-none print:p-0 print:m-0 max-w-4xl mx-auto min-w-[760px] print:min-w-0" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
+            <div className="space-y-6 w-full">
+              {/* LEMBAR RAPORT RESMI (TAMPILAN CETAK A4 — KONSISTEN DI PC & HP) */}
+              <div className="w-full overflow-x-auto pb-4 print:overflow-visible">
+              <div className="bg-white text-gray-900 rounded-3xl shadow-md border border-gray-200 p-10 print:border-none print:shadow-none print:p-0 print:m-0 w-[840px] max-w-4xl lg:w-full mx-auto print:w-auto print:max-w-none" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
                 {/* KOP RESMI PESANTREN */}
                 <div className="border-b-4 border-double border-gray-900 pb-4 mb-6 text-center">
-                  <h3 className="text-xl sm:text-2xl font-black tracking-wider uppercase font-serif">
+                  <h3 className="text-2xl font-black tracking-wider uppercase font-serif">
                     PONDOK PESANTREN MATHOLI'UL ANWAR
                   </h3>
-                  <h4 className="text-base sm:text-lg font-bold uppercase text-emerald-800 font-serif">
-                    MADRASAH DINIYAH &amp; LEMBAGA TAHFIDZ AL-QUR'AN
+                  <h4 className="text-lg font-bold uppercase text-emerald-800 font-serif">
+                    MADRASAH DINIYAH &amp; MADRASATUL QUR'AN
                   </h4>
                   <p className="text-xs text-gray-600 mt-1 font-sans">
                     Simo - Lamongan - Jawa Timur | Website: ppmawar.or.id
                   </p>
-                  <div className="mt-3 inline-block bg-gray-900 text-white font-bold text-xs sm:text-sm px-6 py-1 rounded-full uppercase tracking-widest">
+                  <div className="mt-3 inline-block bg-gray-900 text-white font-bold text-sm px-6 py-1 rounded-full uppercase tracking-widest">
                     LAPORAN HASIL BELAJAR SANTRI (RAPORT)
                   </div>
                 </div>
 
                 {/* IDENTITAS SANTRI DENGAN PAS FOTO RESMI */}
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
+                <div className="flex flex-row items-start gap-5 mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
                   {/* Pas Foto Santri Resmi */}
                   <div className="shrink-0">
                     <div
-                      className={`w-20 h-24 sm:w-24 sm:h-28 rounded-xl overflow-hidden relative shadow-xs border-2 border-gray-300 dark:border-gray-600 bg-gray-100 ${raportData.santri.foto && raportData.santri.foto !== '-' ? 'cursor-pointer hover:opacity-90' : ''}`}
+                      className={`w-24 h-28 rounded-xl overflow-hidden relative shadow-xs border-2 border-gray-300 dark:border-gray-600 bg-gray-100 ${raportData.santri.foto && raportData.santri.foto !== '-' ? 'cursor-pointer hover:opacity-90' : ''}`}
                       onClick={() => raportData.santri.foto && raportData.santri.foto !== '-' ? setZoomPhoto(getFotoUrl(raportData.santri.foto)) : null}
                       title="Foto Santri (klik untuk memperbesar)"
                     >
@@ -2179,39 +2179,27 @@ export default function PenilaianRaportPage() {
                     </div>
                   </div>
 
-                  {/* Rincian Identitas Santri */}
-                  <div className="flex-1 w-full text-xs sm:text-sm">
-                    {/* Nama Santri: 1 baris tersendiri full-width */}
-                    <div className="flex mb-2">
-                      <span className="w-32 font-bold text-gray-600">Nama Santri</span>
-                      <span className="font-black text-gray-900">: {raportData.santri.nama}</span>
+                  {/* Rincian Identitas Santri (masing-masing 1 baris tanpa terpotong/bertumpuk, tanpa Wali Kelas) */}
+                  <div className="flex-1 min-w-0 text-sm space-y-1.5">
+                    <div className="flex items-baseline">
+                      <span className="w-44 shrink-0 font-bold text-gray-600">Nama Santri</span>
+                      <span className="font-black text-gray-900 flex-1">: {raportData.santri.nama}</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5">
-                      <div className="space-y-1.5">
-                        <div className="flex">
-                          <span className="w-32 font-bold text-gray-600">Nomor Induk (NIS)</span>
-                          <span>: {raportData.santri.nis || '-'}</span>
-                        </div>
-                        <div className="flex">
-                          <span className="w-32 font-bold text-gray-600">Kelas Madin</span>
-                          <span>: {raportData.santri.nama_kelas_madin}</span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <div className="flex">
-                          <span className="w-32 font-bold text-gray-600">Semester / TA</span>
-                          <span className="font-bold">: {raportData.semester === '1' ? '1 (Ganjil)' : '2 (Genap)'} / {raportData.tahun_ajaran}</span>
-                        </div>
-                        <div className="flex">
-                          <span className="w-32 font-bold text-gray-600">Kamar / Asrama</span>
-                          <span>: {raportData.santri.nama_kamar} ({raportData.santri.nama_asrama})</span>
-                        </div>
-                        <div className="flex">
-                          <span className="w-32 font-bold text-gray-600">Wali Kelas</span>
-                          <span>: {raportData.santri.wali_kelas || '-'}</span>
-                        </div>
-                      </div>
+                    <div className="flex items-baseline">
+                      <span className="w-44 shrink-0 font-bold text-gray-600">Nomor Induk (NIS)</span>
+                      <span className="flex-1 whitespace-nowrap">: {raportData.santri.nis || '-'}</span>
+                    </div>
+                    <div className="flex items-baseline">
+                      <span className="w-44 shrink-0 font-bold text-gray-600">Kelas Madin</span>
+                      <span className="flex-1 whitespace-nowrap">: {raportData.santri.nama_kelas_madin || '-'}</span>
+                    </div>
+                    <div className="flex items-baseline">
+                      <span className="w-44 shrink-0 font-bold text-gray-600">Semester / TA</span>
+                      <span className="font-bold flex-1 whitespace-nowrap">: {raportData.semester === '1' ? '1 (Ganjil)' : '2 (Genap)'} / {raportData.tahun_ajaran}</span>
+                    </div>
+                    <div className="flex items-baseline">
+                      <span className="w-44 shrink-0 font-bold text-gray-600">Kamar / Asrama</span>
+                      <span className="flex-1 whitespace-nowrap">: {raportData.santri.nama_kamar} ({raportData.santri.nama_asrama})</span>
                     </div>
                   </div>
                 </div>
@@ -2293,7 +2281,7 @@ export default function PenilaianRaportPage() {
                 })()}
 
                 {/* SINKRONISASI 1: TABEL B & C (PRESENSI & KEDISIPLINAN OTOMATIS) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-2 gap-4 mb-6">
                   {/* TABEL B: REKAPITULASI PRESENSI */}
                   <div>
                     <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2 flex items-center gap-1.5">
@@ -2374,27 +2362,39 @@ export default function PenilaianRaportPage() {
                 </div>
 
                 {/* KOLOM TANDA TANGAN RESMI */}
-                <div className="grid grid-cols-3 gap-4 text-center text-xs mt-10 pt-4">
-                  <div>
-                    <p className="text-gray-500 mb-16">Mengetahui,<br /><strong>Orang Tua / Wali Santri</strong></p>
-                    <p className="font-bold border-t border-gray-400 mx-4 pt-1">( ........................................ )</p>
+                <div className="grid grid-cols-2 gap-8 text-center text-xs mt-10 pt-4">
+                  <div className="flex flex-col justify-between">
+                    <div>
+                      <p className="text-gray-500">Mengetahui,</p>
+                      <p className="font-bold text-gray-700">Orang Tua / Wali Santri</p>
+                    </div>
+                    <div className="mt-16">
+                      <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
+                        {raportData.santri.nama_wali && String(raportData.santri.nama_wali).trim() && raportData.santri.nama_wali !== '-'
+                          ? raportData.santri.nama_wali
+                          : '( ......................... )'}
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <p className="text-gray-500 mb-16">Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br /><strong>Wali Kelas</strong></p>
-                    <p className="font-bold border-t border-gray-400 mx-4 pt-1">{raportData.santri.wali_kelas || '( ........................................ )'}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-gray-500 mb-16">Kepala Madrasah Diniyah<br /><strong>PP. Matholi'ul Anwar</strong></p>
-                    <p className="font-bold border-t border-gray-400 mx-4 pt-1">{(raportData as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}</p>
+                  <div className="flex flex-col justify-between">
+                    <div>
+                      <p className="text-gray-500">Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                      <p className="text-gray-500">Kepala Madrasah Diniyah</p>
+                      <p className="font-bold text-gray-700">PP. Matholi'ul Anwar</p>
+                    </div>
+                    <div className="mt-16">
+                      <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
+                        {(raportData as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
               </div>
 
-              {/* FORM PENGISIAN CATATAN WALI KELAS & KEPRIBADIAN (Print-hidden, hanya untuk guru/admin/staff) */}
-              {!isWaliOrSantri && !isTamu && (
+              {/* FORM PENGISIAN CATATAN WALI KELAS & KEPRIBADIAN (Print-hidden, hanya untuk admin/staff/guru/pengasuh/pengurus_asrama) */}
+              {(['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRole)) && (
               <div className="print:hidden bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
                   <h4 className="font-extrabold text-sm sm:text-base text-gray-800 dark:text-gray-100 flex items-center gap-2">

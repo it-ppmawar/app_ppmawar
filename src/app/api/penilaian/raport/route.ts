@@ -32,7 +32,13 @@ export async function GET(request: Request) {
     // 1. Ambil Profil Santri (dukung kelas_madin_id maupun kelas_madin_2_id)
     const [muridRows] = await pool.execute<RowDataPacket[]>(`
       SELECT 
-        m.murid_id, m.nama, m.nis, m.jenis_kelamin, m.nama_wali, COALESCE(m.no_wali, '') as no_hp_wali,
+        m.murid_id, m.nama, m.nis, m.jenis_kelamin,
+        COALESCE(
+          NULLIF(TRIM(m.nama_wali), ''),
+          NULLIF(TRIM((SELECT u.nama FROM users u WHERE u.murid_id = m.murid_id AND u.role = 'wali_murid' LIMIT 1)), ''),
+          ''
+        ) as nama_wali,
+        COALESCE(m.no_wali, '') as no_hp_wali,
         COALESCE(m.foto, '') as foto,
         COALESCE(km.nama_kelas, km2.nama_kelas, '-') as nama_kelas_madin,
         COALESCE(km.nama_kelas, km2.nama_kelas, '-') as tingkat_madin,
@@ -249,7 +255,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const auth = await resolvePenilaianAuth(request, {
       bodyToken: body?.token,
-      allowedRoles: ['admin', 'staff', 'guru'],
+      allowedRoles: ['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'],
     });
     if (!auth.ok) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });

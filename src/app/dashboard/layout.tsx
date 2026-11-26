@@ -1391,7 +1391,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* Konten Utama */}
-      <main className="flex-1 p-4 pb-28">
+      <main className="flex-1 min-w-0 p-4 pb-28">
         {/* Banner Tamu di halaman */}
         {isTamu && (
           <div className="mb-4 flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-2xl text-amber-800 dark:text-amber-300">
