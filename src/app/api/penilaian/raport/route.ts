@@ -192,18 +192,13 @@ export async function GET(request: Request) {
       status_kelulusan: semester === '2' ? 'Naik Kelas' : 'Lanjut ke Semester Berikutnya',
     };
 
-    // 6. Sinkronisasi Nama Kepala Madin dari pengaturan_absensi_otomatis
+    // 6. Sinkronisasi Nama Kepala Madin dari pengaturan "Semua Madin" (kepala_madin_all_id) di halaman notifikasi
     let kepalaMadinNama = 'Agus Naqoub Ashrofun Nasr';
     try {
       const [kmRows] = await pool.execute<RowDataPacket[]>(
-        "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('kepala_madin_all_id', 'kepala_madin_putra_id', 'kepala_madin_putri_id')"
+        "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan = 'kepala_madin_all_id' LIMIT 1"
       );
-      const kmMap: Record<string, string> = {};
-      kmRows.forEach((r: RowDataPacket) => { kmMap[r.nama_pengaturan] = r.nilai; });
-      const isPutri = santri.jenis_kelamin === 'Perempuan' || (santri.nama_kelas_madin || '').toLowerCase().includes('putri');
-      const targetGid = isPutri
-        ? (kmMap['kepala_madin_putri_id'] || kmMap['kepala_madin_all_id'])
-        : (kmMap['kepala_madin_putra_id'] || kmMap['kepala_madin_all_id']);
+      const targetGid = kmRows.length > 0 ? kmRows[0].nilai : '';
       if (targetGid) {
         const [guruRows] = await pool.execute<RowDataPacket[]>(
           'SELECT nama FROM guru WHERE guru_id = ? LIMIT 1', [targetGid]

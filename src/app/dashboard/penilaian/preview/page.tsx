@@ -236,32 +236,32 @@ function PreviewContent() {
                   </div>
                 </div>
 
-                {/* REKAP ABSENSI & KEDISIPLINAN */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                {/* REKAP ABSENSI & KEDISIPLINAN (BERTUMPUK FULL-WIDTH) */}
+                <div className="space-y-6 mb-6">
                   {abs && (
                     <div>
-                      <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">B. Rekap Kehadiran (Otomatis)</h5>
+                      <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">B. Rekapitulasi Presensi</h5>
                       <div className="border border-gray-300 rounded-xl overflow-hidden text-xs">
                         <table className="w-full">
                           <tbody className="divide-y divide-gray-200">
                             <tr>
-                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Hadir</td>
+                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Hadir</td>
                               <td className="py-2 px-3 font-bold text-emerald-700">{abs.hadir ?? 0} kali</td>
                             </tr>
                             <tr>
-                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Izin</td>
+                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Izin</td>
                               <td className="py-2 px-3 font-bold text-amber-700">{abs.izin ?? 0} kali</td>
                             </tr>
                             <tr>
-                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Sakit</td>
+                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Sakit</td>
                               <td className="py-2 px-3 font-bold text-blue-700">{abs.sakit ?? 0} kali</td>
                             </tr>
                             <tr>
-                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Alpha / Tanpa Keterangan</td>
+                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Alpha / Tanpa Keterangan</td>
                               <td className="py-2 px-3 font-bold text-rose-700">{abs.alpha ?? abs.alpa ?? 0} kali</td>
                             </tr>
                             <tr className="bg-gray-100 font-bold">
-                              <td className="py-2 px-3 border-r border-gray-200">Persentase Kehadiran</td>
+                              <td className="py-2 px-3 w-64 border-r border-gray-200">Persentase Kehadiran</td>
                               <td className="py-2 px-3 font-black text-gray-900">{abs.persentase ?? 100}%</td>
                             </tr>
                           </tbody>
@@ -272,16 +272,16 @@ function PreviewContent() {
 
                   {d.rekap_kedisiplinan && (
                     <div>
-                      <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">C. Kedisiplinan &amp; Kepribadian</h5>
+                      <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">C. Kedisiplinan &amp; Ketertiban</h5>
                       <div className="border border-gray-300 rounded-xl overflow-hidden text-xs">
                         <table className="w-full">
                           <tbody className="divide-y divide-gray-200">
                             <tr>
-                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Predikat Kedisiplinan</td>
+                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Predikat Kedisiplinan</td>
                               <td className="py-2 px-3 font-black text-emerald-800">{d.rekap_kedisiplinan.predikat}</td>
                             </tr>
                             <tr>
-                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Catatan Pelanggaran</td>
+                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Catatan Pelanggaran</td>
                               <td className="py-2 px-3 text-gray-600 italic">
                                 {!d.rekap_kedisiplinan.riwayat || d.rekap_kedisiplinan.riwayat.length === 0
                                   ? 'Tidak ada catatan pelanggaran (Disiplin baik).'
@@ -289,15 +289,15 @@ function PreviewContent() {
                               </td>
                             </tr>
                             <tr>
-                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Predikat Akhlak</td>
+                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Predikat Akhlak</td>
                               <td className="py-2 px-3 font-bold text-gray-800">{d.catatan?.akhlak || 'Baik'}</td>
                             </tr>
                             <tr>
-                              <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Capaian Tahfidz</td>
+                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Capaian Tahfidz</td>
                               <td className="py-2 px-3 font-bold text-gray-800">{d.catatan?.tahfidz_hafalan || '-'}</td>
                             </tr>
                             <tr className="bg-gray-100 font-bold">
-                              <td className="py-2 px-3 border-r border-gray-200">Keputusan Akhir</td>
+                              <td className="py-2 px-3 w-64 border-r border-gray-200">Keputusan Akhir</td>
                               <td className="py-2 px-3 font-black text-emerald-800">{d.catatan?.status_kelulusan || '-'}</td>
                             </tr>
                           </tbody>
@@ -317,30 +317,29 @@ function PreviewContent() {
           </div>
 
           {/* TANDA TANGAN */}
-          <div className="grid grid-cols-2 gap-8 text-xs text-center mt-8">
-            <div className="flex flex-col justify-between">
-              <div>
-                <p className="text-gray-500">Mengetahui,</p>
+          <div className="text-xs mt-8">
+            <p className="text-right text-gray-500">
+              Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+            <p className="text-center text-gray-500 mt-1 mb-1">Mengetahui,</p>
+            <div className="grid grid-cols-2 gap-6 text-center">
+              <div className="flex flex-col justify-between">
                 <p className="font-bold text-gray-700">Orang Tua / Wali Santri</p>
+                <div className="mt-16">
+                  <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
+                    {d.santri?.nama_wali && String(d.santri.nama_wali).trim() && d.santri.nama_wali !== '-'
+                      ? d.santri.nama_wali
+                      : '( ......................... )'}
+                  </p>
+                </div>
               </div>
-              <div className="mt-16">
-                <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
-                  {d.santri?.nama_wali && String(d.santri.nama_wali).trim() && d.santri.nama_wali !== '-'
-                    ? d.santri.nama_wali
-                    : '( ......................... )'}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-col justify-between">
-              <div>
-                <p className="text-gray-500">Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                <p className="text-gray-500">Kepala Madrasah Diniyah</p>
-                <p className="font-bold text-gray-700">PP. Matholi&apos;ul Anwar</p>
-              </div>
-              <div className="mt-16">
-                <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
-                  {(d as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}
-                </p>
+              <div className="flex flex-col justify-between">
+                <p className="font-bold text-gray-700 whitespace-nowrap">Kepala Madrasah Diniyah PP. Matholi&apos;ul Anwar</p>
+                <div className="mt-16">
+                  <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
+                    {(d as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>

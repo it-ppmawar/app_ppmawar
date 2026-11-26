@@ -2280,34 +2280,34 @@ export default function PenilaianRaportPage() {
                   );
                 })()}
 
-                {/* SINKRONISASI 1: TABEL B & C (PRESENSI & KEDISIPLINAN OTOMATIS) */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                {/* SINKRONISASI 1: TABEL B & C (BERTUMPUK FULL-WIDTH) */}
+                <div className="space-y-6 mb-6">
                   {/* TABEL B: REKAPITULASI PRESENSI */}
                   <div>
                     <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2 flex items-center gap-1.5">
-                      <ClipboardCheck size={14} className="text-blue-600" /> B. Rekapitulasi Presensi (Otomatis)
+                      <ClipboardCheck size={14} className="text-blue-600" /> B. Rekapitulasi Presensi
                     </h5>
                     <div className="border border-gray-300 rounded-xl overflow-hidden text-xs">
                       <table className="w-full">
                         <tbody className="divide-y divide-gray-200">
                           <tr>
-                            <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Hadir</td>
+                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Hadir</td>
                             <td className="py-2 px-3 font-bold text-emerald-700">{raportData.rekap_absensi.hadir} kali</td>
                           </tr>
                           <tr>
-                            <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Izin</td>
+                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Izin</td>
                             <td className="py-2 px-3 font-bold text-amber-700">{raportData.rekap_absensi.izin} kali</td>
                           </tr>
                           <tr>
-                            <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Sakit</td>
+                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Sakit</td>
                             <td className="py-2 px-3 font-bold text-blue-700">{raportData.rekap_absensi.sakit} kali</td>
                           </tr>
                           <tr>
-                            <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Alpha / Tanpa Keterangan</td>
+                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Alpha / Tanpa Keterangan</td>
                             <td className="py-2 px-3 font-bold text-rose-700">{raportData.rekap_absensi.alpha} kali</td>
                           </tr>
                           <tr className="bg-gray-100 font-bold">
-                            <td className="py-2 px-3 border-r border-gray-200">Persentase Kehadiran</td>
+                            <td className="py-2 px-3 w-64 border-r border-gray-200">Persentase Kehadiran</td>
                             <td className="py-2 px-3 font-black text-gray-900">{raportData.rekap_absensi.persentase}%</td>
                           </tr>
                         </tbody>
@@ -2318,21 +2318,21 @@ export default function PenilaianRaportPage() {
                   {/* TABEL C: CATATAN KEDISIPLINAN */}
                   <div>
                     <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2 flex items-center gap-1.5">
-                      <ShieldCheck size={14} className="text-emerald-600" /> C. Kedisiplinan &amp; Ketertiban (Otomatis)
+                      <ShieldCheck size={14} className="text-emerald-600" /> C. Kedisiplinan &amp; Ketertiban
                     </h5>
                     <div className="border border-gray-300 rounded-xl overflow-hidden text-xs">
                       <table className="w-full">
                         <tbody className="divide-y divide-gray-200">
                           <tr>
-                            <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Total Poin Pelanggaran</td>
+                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Total Poin Pelanggaran</td>
                             <td className="py-2 px-3 font-bold text-gray-900">{raportData.rekap_kedisiplinan.total_poin} Poin</td>
                           </tr>
                           <tr>
-                            <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Predikat Kedisiplinan</td>
+                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Predikat Kedisiplinan</td>
                             <td className="py-2 px-3 font-black text-emerald-800">{raportData.rekap_kedisiplinan.predikat}</td>
                           </tr>
                           <tr>
-                            <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Catatan Pelanggaran</td>
+                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Catatan Pelanggaran</td>
                             <td className="py-2 px-3 text-gray-600 italic">
                               {raportData.rekap_kedisiplinan.riwayat.length === 0
                                 ? 'Tidak ada catatan pelanggaran (Disiplin baik).'
@@ -2340,11 +2340,11 @@ export default function PenilaianRaportPage() {
                             </td>
                           </tr>
                           <tr>
-                            <td className="py-2 px-3 font-semibold bg-gray-50 border-r border-gray-200">Capaian Tahfidz</td>
+                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Capaian Tahfidz</td>
                             <td className="py-2 px-3 font-bold text-gray-800">{editCatatan.tahfidz_hafalan || '-'}</td>
                           </tr>
                           <tr className="bg-gray-100 font-bold">
-                            <td className="py-2 px-3 border-r border-gray-200">Keputusan Akhir</td>
+                            <td className="py-2 px-3 w-64 border-r border-gray-200">Keputusan Akhir</td>
                             <td className="py-2 px-3 font-black text-emerald-800">{editCatatan.status_kelulusan}</td>
                           </tr>
                         </tbody>
@@ -2362,31 +2362,30 @@ export default function PenilaianRaportPage() {
                 </div>
 
                 {/* KOLOM TANDA TANGAN RESMI */}
-                <div className="grid grid-cols-2 gap-8 text-center text-xs mt-10 pt-4">
-                  <div className="flex flex-col justify-between">
-                    <div>
-                      <p className="text-gray-500">Mengetahui,</p>
+                <div className="text-xs mt-10 pt-4">
+                  <p className="text-right text-gray-500">
+                    Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                  <p className="text-center text-gray-500 mt-1 mb-1">Mengetahui,</p>
+                  <div className="grid grid-cols-2 gap-6 text-center">
+                    <div className="flex flex-col justify-between">
                       <p className="font-bold text-gray-700">Orang Tua / Wali Santri</p>
+                      <div className="mt-16">
+                        <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
+                          {raportData.santri.nama_wali && String(raportData.santri.nama_wali).trim() && raportData.santri.nama_wali !== '-'
+                            ? raportData.santri.nama_wali
+                            : '( ......................... )'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="mt-16">
-                      <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
-                        {raportData.santri.nama_wali && String(raportData.santri.nama_wali).trim() && raportData.santri.nama_wali !== '-'
-                          ? raportData.santri.nama_wali
-                          : '( ......................... )'}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="flex flex-col justify-between">
-                    <div>
-                      <p className="text-gray-500">Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                      <p className="text-gray-500">Kepala Madrasah Diniyah</p>
-                      <p className="font-bold text-gray-700">PP. Matholi'ul Anwar</p>
-                    </div>
-                    <div className="mt-16">
-                      <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
-                        {(raportData as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}
-                      </p>
+                    <div className="flex flex-col justify-between">
+                      <p className="font-bold text-gray-700 whitespace-nowrap">Kepala Madrasah Diniyah PP. Matholi'ul Anwar</p>
+                      <div className="mt-16">
+                        <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
+                          {(raportData as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
