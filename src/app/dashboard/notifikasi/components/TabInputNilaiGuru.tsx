@@ -855,6 +855,15 @@ export default function TabInputNilaiGuru({
                                 <ExternalLink size={12} className="opacity-75" />
                               </a>
 
+                              <button
+                                type="button"
+                                onClick={() => handleCopyText(`msg_${item.id}`, msg)}
+                                className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-amber-400 hover:text-amber-600 transition-all active:scale-95 cursor-pointer"
+                                title="Salin isi pesan WhatsApp"
+                              >
+                                {copiedId === `msg_${item.id}` ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                              </button>
+
                               {hasPhone ? (
                                 <a
                                   href={waUrl}
@@ -880,15 +889,6 @@ export default function TabInputNilaiGuru({
                                   <span>No. WA Kosong</span>
                                 </button>
                               )}
-
-                              <button
-                                type="button"
-                                onClick={() => handleCopyText(`msg_${item.id}`, msg)}
-                                className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-amber-400 hover:text-amber-600 transition-all active:scale-95 cursor-pointer"
-                                title="Salin isi pesan WhatsApp"
-                              >
-                                {copiedId === `msg_${item.id}` ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                              </button>
                             </div>
                           </td>
                         </tr>
@@ -970,6 +970,15 @@ export default function TabInputNilaiGuru({
                           <span>Input Nilai</span>
                         </a>
 
+                        <button
+                          type="button"
+                          onClick={() => handleCopyText(`msg_${item.id}`, msg)}
+                          className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 active:scale-95"
+                          title="Salin Pesan"
+                        >
+                          {copiedId === `msg_${item.id}` ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                        </button>
+
                         {hasPhone ? (
                           <a
                             href={waUrl}
@@ -995,15 +1004,6 @@ export default function TabInputNilaiGuru({
                             <span>Tanpa WA</span>
                           </button>
                         )}
-
-                        <button
-                          type="button"
-                          onClick={() => handleCopyText(`msg_${item.id}`, msg)}
-                          className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 active:scale-95"
-                          title="Salin Pesan"
-                        >
-                          {copiedId === `msg_${item.id}` ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                        </button>
                       </div>
                     </div>
                   );
