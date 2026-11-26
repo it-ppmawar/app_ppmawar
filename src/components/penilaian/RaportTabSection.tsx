@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import RaportDocument from '@/components/penilaian/RaportDocument';
 import { exportRaportToExcel } from '@/lib/penilaian/exportRaportExcel';
+import { getTahunAjaranOptions } from '@/lib/penilaian/semesterPeriode';
 
 const AVATAR_COLORS = [
   '#2563eb', '#16a34a', '#9333ea', '#dc2626', '#ea580c',
@@ -361,9 +362,9 @@ export default function RaportTabSection({
                   onChange={e => onChangeTahunAjaran(e.target.value)}
                   className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs ${inputBgCls}`}
                 >
-                  <option value="2024/2025">2024/2025</option>
-                  <option value="2025/2026">2025/2026</option>
-                  <option value="2026/2027">2026/2027</option>
+                  {getTahunAjaranOptions(tahunAjaran).map(thn => (
+                    <option key={thn} value={thn}>{thn}</option>
+                  ))}
                 </select>
               </div>
             )}

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import QuizBModal from './QuizBModal';
 import RaportTabSection, { RaportCatatanForm } from '@/components/penilaian/RaportTabSection';
 import { calcNilaiAkhir, calcPredikat, calcPredikatFromInput } from '@/lib/penilaian/calcNilai';
+import { getTahunAjaranOptions } from '@/lib/penilaian/semesterPeriode';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, CheckCircle, AlertCircle, RefreshCw,
@@ -458,6 +459,24 @@ export default function PenilaianRaportPage() {
           const role = (d.user.role || '').toLowerCase();
           if (role === 'wali_murid' || role === 'wali_alumni' || role === 'santri' || role === 'tamu') {
             setActiveTab('raport');
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // 0b. Auto-select Periode Akademik Aktif dari pengaturan sistem (kecuali sudah di-override query URL)
+  useEffect(() => {
+    fetch('/api/settings?public=1')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.data) {
+          const sp = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+          if (!sp?.get('semester') && d.data.semester_aktif) {
+            setSemester(d.data.semester_aktif);
+          }
+          if (!sp?.get('tahun_ajaran') && d.data.tahun_ajaran_aktif) {
+            setTahunAjaran(d.data.tahun_ajaran_aktif);
           }
         }
       })
@@ -1058,9 +1077,9 @@ export default function PenilaianRaportPage() {
                   onChange={(e) => setTahunAjaran(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
                 >
-                  <option value="2024/2025">2024/2025</option>
-                  <option value="2025/2026">2025/2026</option>
-                  <option value="2026/2027">2026/2027</option>
+                  {getTahunAjaranOptions(tahunAjaran).map(thn => (
+                    <option key={thn} value={thn}>{thn}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -1763,6 +1782,7 @@ export default function PenilaianRaportPage() {
           semester={semester}
           onChangeSemester={setSemester}
           tahunAjaran={tahunAjaran}
+          onChangeTahunAjaran={setTahunAjaran}
           muridList={muridList}
           loadingMurid={loadingMurid}
           selectedMuridId={selectedMuridId}

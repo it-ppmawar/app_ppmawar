@@ -2,6 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import {
+  formatTanggalIndoShort,
+  getStandardSemesterDates,
+  getTahunAjaranOptions,
+  PeriodeFilterMode,
+} from '@/lib/penilaian/semesterPeriode';
 import { Settings, Power, Clock, Save, AlertTriangle, CheckCircle, Bell, RefreshCw, Calendar, Building2, Database, ChevronDown, ChevronUp, MessageSquare, Sheet, ExternalLink, Loader2, Megaphone, BookOpen, Users, MapPin, ShieldAlert, Send, GraduationCap } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -11,6 +17,58 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSavedSuccess, setIsSavedSuccess] = useState(false);
+
+  // State Periode Akademik Aktif & Ketentuan Tanggal Semester
+  const [semesterAktif, setSemesterAktif] = useState('1');
+  const [tahunAjaranAktif, setTahunAjaranAktif] = useState('2025/2026');
+  const [periodeFilterMode, setPeriodeFilterMode] = useState<PeriodeFilterMode>('semua');
+  const [sem1Mulai, setSem1Mulai] = useState('');
+  const [sem1Selesai, setSem1Selesai] = useState('');
+  const [sem2Mulai, setSem2Mulai] = useState('');
+  const [sem2Selesai, setSem2Selesai] = useState('');
+  const [savingPeriode, setSavingPeriode] = useState(false);
+  const [periodeMsg, setPeriodeMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleSavePeriode = async () => {
+    if (periodeFilterMode === 'kustom') {
+      if (sem1Mulai && sem1Selesai && sem1Mulai > sem1Selesai) {
+        setPeriodeMsg({ type: 'error', text: 'Tanggal mulai Semester 1 (Ganjil) tidak boleh melebihi tanggal selesai.' });
+        return;
+      }
+      if (sem2Mulai && sem2Selesai && sem2Mulai > sem2Selesai) {
+        setPeriodeMsg({ type: 'error', text: 'Tanggal mulai Semester 2 (Genap) tidak boleh melebihi tanggal selesai.' });
+        return;
+      }
+    }
+    setSavingPeriode(true);
+    setPeriodeMsg(null);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          semester_aktif: semesterAktif,
+          tahun_ajaran_aktif: tahunAjaranAktif,
+          periode_filter_mode: periodeFilterMode,
+          periode_sem1_mulai: sem1Mulai,
+          periode_sem1_selesai: sem1Selesai,
+          periode_sem2_mulai: sem2Mulai,
+          periode_sem2_selesai: sem2Selesai,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setPeriodeMsg({ type: 'success', text: 'Periode akademik & ketentuan semester berhasil disimpan!' });
+      } else {
+        setPeriodeMsg({ type: 'error', text: json.error || 'Gagal menyimpan periode.' });
+      }
+    } catch {
+      setPeriodeMsg({ type: 'error', text: 'Kesalahan jaringan saat menyimpan periode.' });
+    } finally {
+      setSavingPeriode(false);
+      setTimeout(() => setPeriodeMsg(null), 3500);
+    }
+  };
 
   const [settings, setSettings] = useState({
     absensi_otomatis: false,
@@ -204,6 +262,20 @@ export default function SettingsPage() {
           telegram_auto_rekap_kepala_madin: json.data.telegram_auto_rekap_kepala_madin !== '0',
           telegram_auto_notif_wali: json.data.telegram_auto_notif_wali !== '0',
         });
+        // Periode Akademik Aktif & Ketentuan Tanggal Semester
+        if (json.data.semester_aktif) setSemesterAktif(json.data.semester_aktif);
+        if (json.data.tahun_ajaran_aktif) setTahunAjaranAktif(json.data.tahun_ajaran_aktif);
+        if (
+          json.data.periode_filter_mode === 'semua' ||
+          json.data.periode_filter_mode === 'otomatis' ||
+          json.data.periode_filter_mode === 'kustom'
+        ) {
+          setPeriodeFilterMode(json.data.periode_filter_mode);
+        }
+        if (json.data.periode_sem1_mulai !== undefined) setSem1Mulai(json.data.periode_sem1_mulai || '');
+        if (json.data.periode_sem1_selesai !== undefined) setSem1Selesai(json.data.periode_sem1_selesai || '');
+        if (json.data.periode_sem2_mulai !== undefined) setSem2Mulai(json.data.periode_sem2_mulai || '');
+        if (json.data.periode_sem2_selesai !== undefined) setSem2Selesai(json.data.periode_sem2_selesai || '');
       } else {
         setError(json.error || 'Gagal memuat pengaturan');
       }
@@ -1625,6 +1697,195 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Card Periode Akademik & Ketentuan Semester */}
+      <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 dark:border-gray-700 space-y-6">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2 pb-4 border-b border-gray-100 dark:border-gray-700">
+          <Calendar size={22} className="text-blue-500" />
+          Periode Akademik &amp; Ketentuan Semester
+        </h2>
+
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+          Atur semester dan tahun ajaran aktif yang menjadi <strong>default</strong> di seluruh halaman Penilaian, Raport, &amp; Siaran WA Guru, sekaligus tentukan rentang tanggal periode semester untuk perhitungan <strong>Rekapitulasi Presensi &amp; Kedisiplinan</strong> pada Raport.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {/* Semester Aktif */}
+          <div className="p-5 bg-blue-50 dark:bg-blue-950/30 rounded-2xl border border-blue-200 dark:border-blue-800/60 space-y-3">
+            <label className="block text-sm font-bold text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+              <Calendar size={15} />
+              Semester Aktif (Default)
+            </label>
+            <select
+              value={semesterAktif}
+              onChange={(e) => setSemesterAktif(e.target.value)}
+              className="w-full bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 px-4 py-2.5 rounded-xl font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all"
+            >
+              <option value="1">Semester 1 (Ganjil)</option>
+              <option value="2">Semester 2 (Genap)</option>
+            </select>
+          </div>
+
+          {/* Tahun Ajaran Aktif */}
+          <div className="p-5 bg-blue-50 dark:bg-blue-950/30 rounded-2xl border border-blue-200 dark:border-blue-800/60 space-y-3">
+            <label className="block text-sm font-bold text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+              <Calendar size={15} />
+              Tahun Ajaran Aktif (Default)
+            </label>
+            <select
+              value={tahunAjaranAktif}
+              onChange={(e) => setTahunAjaranAktif(e.target.value)}
+              className="w-full bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 px-4 py-2.5 rounded-xl font-bold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all"
+            >
+              {getTahunAjaranOptions(tahunAjaranAktif).map(thn => (
+                <option key={thn} value={thn}>{thn}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Ketentuan Rentang Tanggal Semester (Presensi & Kedisiplinan Raport) */}
+        <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-4">
+          <div>
+            <h3 className="font-bold text-gray-800 dark:text-gray-200 text-base flex items-center gap-2">
+              <Clock size={17} className="text-blue-500" />
+              Ketentuan Rentang Tanggal Semester (Presensi &amp; Kedisiplinan Raport)
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Menentukan data absensi dan catatan pelanggaran pada tanggal mana saja yang dihitung ke dalam <strong>Rekapitulasi Presensi</strong>, <strong>Kedisiplinan</strong>, dan <strong>% Kehadiran</strong> tiap semester.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {([
+              {
+                id: 'semua',
+                title: 'Semua Data (Tanpa Batas)',
+                desc: 'Menghitung seluruh riwayat presensi & pelanggaran tanpa dibatasi tanggal.',
+              },
+              {
+                id: 'otomatis',
+                title: 'Otomatis Kalender Umum',
+                desc: 'Sem 1: 1 Jul – 31 Des, Sem 2: 1 Jan – 30 Jun otomatis sesuai Tahun Ajaran.',
+              },
+              {
+                id: 'kustom',
+                title: 'Manual Kalender Pesantren',
+                desc: 'Atur sendiri tanggal mulai & selesai Semester 1 dan 2 untuk TA aktif.',
+              },
+            ] as const).map(opt => {
+              const active = periodeFilterMode === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setPeriodeFilterMode(opt.id)}
+                  className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    active
+                      ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-600 ring-2 ring-blue-500/20'
+                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                  }`}
+                >
+                  <p className={`font-bold text-xs ${active ? 'text-blue-700 dark:text-blue-300' : 'text-gray-800 dark:text-gray-200'}`}>
+                    {opt.title}
+                  </p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                    {opt.desc}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {periodeFilterMode === 'otomatis' && (() => {
+            const r1 = getStandardSemesterDates('1', tahunAjaranAktif);
+            const r2 = getStandardSemesterDates('2', tahunAjaranAktif);
+            return (
+              <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/50 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+                <p className="font-bold">Pratinjau Rentang Otomatis ({tahunAjaranAktif}):</p>
+                <p>• Semester 1 (Ganjil): <strong>{r1 ? `${formatTanggalIndoShort(r1.startDate)} – ${formatTanggalIndoShort(r1.endDate)}` : '-'}</strong></p>
+                <p>• Semester 2 (Genap): <strong>{r2 ? `${formatTanggalIndoShort(r2.startDate)} – ${formatTanggalIndoShort(r2.endDate)}` : '-'}</strong></p>
+              </div>
+            );
+          })()}
+
+          {periodeFilterMode === 'kustom' && (
+            <div className="space-y-4 pt-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-3.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-2.5">
+                  <p className="font-bold text-xs text-gray-800 dark:text-gray-200">Semester 1 (Ganjil) — TA {tahunAjaranAktif}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Mulai</label>
+                      <input
+                        type="date"
+                        value={sem1Mulai}
+                        onChange={(e) => setSem1Mulai(e.target.value)}
+                        className="w-full px-2.5 py-2 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-xs font-semibold text-gray-800 dark:text-gray-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Selesai</label>
+                      <input
+                        type="date"
+                        value={sem1Selesai}
+                        onChange={(e) => setSem1Selesai(e.target.value)}
+                        className="w-full px-2.5 py-2 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-xs font-semibold text-gray-800 dark:text-gray-100"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-2.5">
+                  <p className="font-bold text-xs text-gray-800 dark:text-gray-200">Semester 2 (Genap) — TA {tahunAjaranAktif}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Mulai</label>
+                      <input
+                        type="date"
+                        value={sem2Mulai}
+                        onChange={(e) => setSem2Mulai(e.target.value)}
+                        className="w-full px-2.5 py-2 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-xs font-semibold text-gray-800 dark:text-gray-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">Tanggal Selesai</label>
+                      <input
+                        type="date"
+                        value={sem2Selesai}
+                        onChange={(e) => setSem2Selesai(e.target.value)}
+                        className="w-full px-2.5 py-2 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-xs font-semibold text-gray-800 dark:text-gray-100"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                💡 Jika membuka raport untuk Tahun Ajaran selain {tahunAjaranAktif}, sistem otomatis menggunakan rentang standar kalender pendidikan (Jul–Des / Jan–Jun).
+              </p>
+            </div>
+          )}
+        </div>
+
+        {periodeMsg && (
+          <div className={`p-3 rounded-xl flex items-center gap-2 text-sm font-semibold ${periodeMsg.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/60' : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/60'}`}>
+            {periodeMsg.type === 'success' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+            {periodeMsg.text}
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleSavePeriode}
+            disabled={savingPeriode}
+            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold rounded-xl shadow transition-all text-sm cursor-pointer"
+          >
+            {savingPeriode ? <Clock size={16} className="animate-spin" /> : <Save size={16} />}
+            {savingPeriode ? 'Menyimpan...' : 'Simpan Pengaturan Periode'}
+          </button>
+        </div>
       </div>
 
       {/* Card Sinkronisasi Data Santri */}

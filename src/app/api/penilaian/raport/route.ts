@@ -3,6 +3,8 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { resolvePenilaianAuth } from '@/lib/auth/penilaianAuth';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
+import { buildDateWhereClause, resolveSemesterDateRange } from '@/lib/penilaian/semesterPeriode';
+import { getSemesterPeriodeConfig } from '@/lib/penilaian/semesterPeriodeServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,7 +139,12 @@ export async function GET(request: Request) {
     });
     const rataRata = nilaiRows.length > 0 ? (totalNilai / nilaiRows.length).toFixed(2) : '0.00';
 
-    // 3. SINKRONISASI OTOMATIS: Rekapitulasi Absensi dari database (aman terhadap tabel/record kosong)
+    // 3. SINKRONISASI OTOMATIS: Rekapitulasi Absensi & Kedisiplinan (mengikuti ketentuan periode semester)
+    const periodeConfig = await getSemesterPeriodeConfig();
+    const dateRange = resolveSemesterDateRange(semester, tahunAjaran, periodeConfig);
+    const absenDate = buildDateWhereClause('tanggal', dateRange);
+    const pelDate = buildDateWhereClause('tanggal', dateRange);
+
     let hadirCount = 0;
     let izinCount = 0;
     let sakitCount = 0;
@@ -151,8 +158,8 @@ export async function GET(request: Request) {
           SUM(CASE WHEN LOWER(status) IN ('alpha', 'alpa') OR status = '' OR status IS NULL THEN 1 ELSE 0 END) as alpha,
           COUNT(*) as total_sesi
         FROM absensi
-        WHERE murid_id = ?
-      `, [muridId]);
+        WHERE murid_id = ? ${absenDate.clause}
+      `, [muridId, ...absenDate.params]);
       hadirCount = Number(absenRows[0]?.hadir || 0);
       izinCount = Number(absenRows[0]?.izin || 0);
       sakitCount = Number(absenRows[0]?.sakit || 0);
@@ -171,10 +178,10 @@ export async function GET(request: Request) {
         SELECT 
           pelanggaran_id, jenis, deskripsi, DATE_FORMAT(tanggal, '%Y-%m-%d') as tanggal
         FROM pelanggaran
-        WHERE murid_id = ?
+        WHERE murid_id = ? ${pelDate.clause}
         ORDER BY tanggal DESC
         LIMIT 10
-      `, [muridId]);
+      `, [muridId, ...pelDate.params]);
       pelanggaranRows = pRows;
     } catch (pelErr) {
       console.warn('Error fetching pelanggaran for raport:', pelErr);
@@ -258,6 +265,9 @@ export async function GET(request: Request) {
         },
         catatan,
         kepala_madin: kepalaMadinNama,
+        periode_filter: dateRange
+          ? { mode: dateRange.mode, start_date: dateRange.startDate || null, end_date: dateRange.endDate || null }
+          : { mode: periodeConfig.periode_filter_mode, start_date: null, end_date: null },
       },
     });
   } catch (error: any) {

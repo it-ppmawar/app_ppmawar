@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import QuizBModal from '@/app/dashboard/penilaian/QuizBModal';
 import RaportTabSection, { RaportCatatanForm } from '@/components/penilaian/RaportTabSection';
 import { calcNilaiAkhir, calcPredikat, calcPredikatFromInput, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
+import { getTahunAjaranOptions } from '@/lib/penilaian/semesterPeriode';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
@@ -185,13 +186,34 @@ function PenilaianInputContent() {
       setLoadingAuth(true);
       setAuthError(null);
       try {
-        const res = await fetch(`/api/penilaian/quick-verify?token=${encodeURIComponent(token)}`);
+        // Fetch token & periode aktif secara paralel
+        const [res, settingsRes] = await Promise.all([
+          fetch(`/api/penilaian/quick-verify?token=${encodeURIComponent(token)}`),
+          fetch('/api/settings?public=1').catch(() => null),
+        ]);
         const json = await res.json();
+        
+        // Terapkan periode aktif dari settings sebagai default awal
+        // (akan di-override oleh data token jika ada)
+        if (settingsRes) {
+          try {
+            const settingsJson = await settingsRes.json();
+            if (settingsJson.success && settingsJson.data) {
+              if (settingsJson.data.semester_aktif) setSemester(settingsJson.data.semester_aktif);
+              if (settingsJson.data.tahun_ajaran_aktif) setTahunAjaran(settingsJson.data.tahun_ajaran_aktif);
+            }
+          } catch { /* abaikan */ }
+        }
+
         if (json.success && json.data) {
           const d = json.data;
           setGuruInfo(d);
-          if (d.semester) setSemester(String(d.semester));
-          if (d.tahun_ajaran) setTahunAjaran(String(d.tahun_ajaran));
+          const urlSem = searchParams.get('semester');
+          const urlThn = searchParams.get('tahun_ajaran');
+          if (urlSem) setSemester(urlSem);
+          else if (d.semester) setSemester(String(d.semester));
+          if (urlThn) setTahunAjaran(urlThn);
+          else if (d.tahun_ajaran) setTahunAjaran(String(d.tahun_ajaran));
 
           const classes = d.classes || [];
           const formattedClasses = classes.length > 1
@@ -1150,9 +1172,9 @@ function PenilaianInputContent() {
                 onChange={e => setTahunAjaran(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-xs sm:text-sm font-semibold text-slate-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
               >
-                <option value="2024/2025">2024/2025</option>
-                <option value="2025/2026">2025/2026</option>
-                <option value="2026/2027">2026/2027</option>
+                {getTahunAjaranOptions(tahunAjaran).map(thn => (
+                  <option key={thn} value={thn}>{thn}</option>
+                ))}
               </select>
             </div>
           </div>

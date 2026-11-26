@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { getTahunAjaranOptions } from '@/lib/penilaian/semesterPeriode';
 import {
   Award, Search, RefreshCw, Clock, CheckCircle2, AlertCircle,
   Phone, MessageCircle, Sparkles, User, BookOpen, ArrowUpDown,
@@ -84,7 +85,7 @@ export default function TabInputNilaiGuru({
   const [expiryDays, setExpiryDays] = useState<number>(7);
   const [searchNama, setSearchNama] = useState<string>('');
 
-  // Muat daftar Kelas Madin sejak awal agar dropdown Kelas Madin langsung tersedia
+  // Muat daftar Kelas Madin & default periode akademik aktif sejak awal
   useEffect(() => {
     fetch('/api/kelas?type=madin')
       .then(res => res.json())
@@ -94,6 +95,16 @@ export default function TabInputNilaiGuru({
             .filter((k: any) => k.id !== undefined && k.nama)
             .map((k: any) => ({ kelas_id: Number(k.id), nama_kelas: String(k.nama) }));
           setAllKelasMadin(mapped);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/settings?public=1')
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && json.data) {
+          if (json.data.semester_aktif) setSemester(json.data.semester_aktif);
+          if (json.data.tahun_ajaran_aktif) setTahunAjaran(json.data.tahun_ajaran_aktif);
         }
       })
       .catch(() => {});
@@ -425,9 +436,9 @@ export default function TabInputNilaiGuru({
               onChange={e => setTahunAjaran(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
             >
-              <option value="2024/2025">2024/2025</option>
-              <option value="2025/2026">2025/2026</option>
-              <option value="2026/2027">2026/2027</option>
+              {getTahunAjaranOptions(tahunAjaran).map(thn => (
+                <option key={thn} value={thn}>{thn}</option>
+              ))}
             </select>
           </div>
 

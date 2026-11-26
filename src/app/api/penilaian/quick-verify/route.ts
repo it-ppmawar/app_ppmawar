@@ -3,6 +3,7 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { resolveToken } from '@/lib/auth/shortToken';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
+import { getSemesterPeriodeConfig } from '@/lib/penilaian/semesterPeriodeServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -148,6 +149,8 @@ export async function GET(request: Request) {
       } catch (_) {}
     }
 
+    const periodeConfig = await getSemesterPeriodeConfig();
+
     return NextResponse.json({
       success: true,
       data: {
@@ -157,8 +160,8 @@ export async function GET(request: Request) {
         no_hp: guru.no_hp,
         foto: guru.foto,
         classes,
-        semester: payload.semester || '1',
-        tahun_ajaran: payload.tahun_ajaran || '2025/2026',
+        semester: payload.semester || periodeConfig.semester_aktif,
+        tahun_ajaran: payload.tahun_ajaran || periodeConfig.tahun_ajaran_aktif,
         kategori: payload.kategori || 'madin',
         exp_date_formatted: expDateFormatted,
         duration_label: durationLabel,

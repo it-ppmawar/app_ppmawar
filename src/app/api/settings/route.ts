@@ -3,9 +3,44 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
+import { isValidIsoDate, SEMESTER_SETTING_KEYS } from '@/lib/penilaian/semesterPeriode';
+
+const PUBLIC_SETTING_KEYS = [
+  'jeda_panggilan_wali',
+  'jeda_panggilan_pengurus',
+  'lat_pesantren',
+  'lng_pesantren',
+  'radius_absen',
+  'radius_panggilan_wali',
+  'gps_scan_absen_wajib',
+  ...SEMESTER_SETTING_KEYS,
+] as const;
+
+async function upsertSetting(key: string, value: string) {
+  await pool.execute(
+    'INSERT INTO pengaturan_absensi_otomatis (nama_pengaturan, nilai) VALUES (?, ?) ON DUPLICATE KEY UPDATE nilai = ?',
+    [key, value, value]
+  );
+}
 
 export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const publicOnly = searchParams.get('public') === '1';
+
+    // Pengaturan publik non-sensitif (lokasi, jeda, periode akademik) dapat diakses tanpa login
+    // supaya halaman pintasan guru dan halaman santri/wali dapat membaca defaultnya.
+    if (publicOnly) {
+      const placeholders = PUBLIC_SETTING_KEYS.map(() => '?').join(',');
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN (${placeholders})`,
+        [...PUBLIC_SETTING_KEYS]
+      );
+      const settings: Record<string, string> = {};
+      rows.forEach((row: any) => { settings[row.nama_pengaturan] = row.nilai; });
+      return NextResponse.json({ success: true, data: settings });
+    }
+
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -14,22 +49,9 @@ export async function GET(request: Request) {
     if (!payload) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const isAdmin = payload.role === 'admin';
-    const { searchParams } = new URL(request.url);
-    const publicOnly = searchParams.get('public') === '1';
 
-    // Non-admin hanya boleh baca setting jeda panggilan (untuk keperluan UI)
-    if (!isAdmin && !publicOnly) {
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    if (!isAdmin && publicOnly) {
-      // Kembalikan setting panggilan & lokasi publik
-      const [rows] = await pool.execute<RowDataPacket[]>(
-        "SELECT nama_pengaturan, nilai FROM pengaturan_absensi_otomatis WHERE nama_pengaturan IN ('jeda_panggilan_wali', 'jeda_panggilan_pengurus', 'lat_pesantren', 'lng_pesantren', 'radius_absen', 'radius_panggilan_wali', 'gps_scan_absen_wajib')"
-      );
-      const settings: Record<string, string> = {};
-      rows.forEach((row: any) => { settings[row.nama_pengaturan] = row.nilai; });
-      return NextResponse.json({ success: true, data: settings });
     }
 
     const [rows] = await pool.execute<RowDataPacket[]>('SELECT * FROM pengaturan_absensi_otomatis');
@@ -57,7 +79,15 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Hanya Admin Utama yang dapat mengubah pengaturan sistem' }, { status: 403 });
     }
 
-    const { 
+    const body = await request.json();
+    const {
+      semester_aktif,
+      tahun_ajaran_aktif,
+      periode_filter_mode,
+      periode_sem1_mulai,
+      periode_sem1_selesai,
+      periode_sem2_mulai,
+      periode_sem2_selesai,
       absensi_otomatis, 
       absensi_otomatis_madin,
       absensi_otomatis_quran,
@@ -91,7 +121,58 @@ export async function PUT(request: Request) {
       telegram_auto_reminder_guru,
       telegram_auto_rekap_kepala_madin,
       telegram_auto_notif_wali,
-    } = await request.json();
+    } = body;
+
+    if (semester_aktif !== undefined) {
+      const val = ['1', '2'].includes(String(semester_aktif)) ? String(semester_aktif) : '1';
+      await upsertSetting('semester_aktif', val);
+    }
+
+    if (tahun_ajaran_aktif !== undefined) {
+      await upsertSetting('tahun_ajaran_aktif', tahun_ajaran_aktif.toString().trim());
+    }
+
+    if (periode_filter_mode !== undefined) {
+      const allowedModes = ['semua', 'otomatis', 'kustom'];
+      const modeVal = allowedModes.includes(String(periode_filter_mode)) ? String(periode_filter_mode) : 'semua';
+      await upsertSetting('periode_filter_mode', modeVal);
+    }
+
+    const customDateChecks = [
+      {
+        startKey: 'periode_sem1_mulai',
+        startRaw: periode_sem1_mulai,
+        endKey: 'periode_sem1_selesai',
+        endRaw: periode_sem1_selesai,
+        label: 'Semester 1 (Ganjil)',
+      },
+      {
+        startKey: 'periode_sem2_mulai',
+        startRaw: periode_sem2_mulai,
+        endKey: 'periode_sem2_selesai',
+        endRaw: periode_sem2_selesai,
+        label: 'Semester 2 (Genap)',
+      },
+    ];
+    for (const { startKey, startRaw, endKey, endRaw, label } of customDateChecks) {
+      const startVal = startRaw !== undefined ? String(startRaw).trim() : undefined;
+      const endVal = endRaw !== undefined ? String(endRaw).trim() : undefined;
+
+      if (startVal && !isValidIsoDate(startVal)) {
+        return NextResponse.json({ error: `Format tanggal mulai ${label} tidak valid` }, { status: 400 });
+      }
+      if (endVal && !isValidIsoDate(endVal)) {
+        return NextResponse.json({ error: `Format tanggal selesai ${label} tidak valid` }, { status: 400 });
+      }
+      if (startVal && endVal && startVal > endVal) {
+        return NextResponse.json(
+          { error: `Tanggal mulai ${label} tidak boleh melebihi tanggal selesai` },
+          { status: 400 }
+        );
+      }
+      if (startVal !== undefined) await upsertSetting(startKey, startVal);
+      if (endVal !== undefined) await upsertSetting(endKey, endVal);
+    }
 
     if (wa_scheduler_api_key !== undefined) {
       await pool.execute(

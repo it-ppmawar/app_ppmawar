@@ -4,6 +4,8 @@ import { RowDataPacket } from 'mysql2';
 import { resolvePenilaianAuth } from '@/lib/auth/penilaianAuth';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
 import { calcPredikat } from '@/lib/penilaian/calcNilai';
+import { buildDateWhereClause, resolveSemesterDateRange } from '@/lib/penilaian/semesterPeriode';
+import { getSemesterPeriodeConfig } from '@/lib/penilaian/semesterPeriodeServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -214,9 +216,13 @@ export async function GET(request: Request) {
         const muridIds = muridRows.map(m => m.murid_id);
         const placeholders = muridIds.map(() => '?').join(',');
 
-        // 4. Ambil rekap kehadiran dari tabel absensi
+        // 4. Ambil rekap kehadiran dari tabel absensi (sesuai ketentuan periode semester)
         const attendanceMap: Record<number, { persen: number; hadir: number; total: number }> = {};
         try {
+          const periodeConfig = await getSemesterPeriodeConfig();
+          const dateRange = resolveSemesterDateRange(semester, tahunAjaran, periodeConfig);
+          const attDate = buildDateWhereClause('a.tanggal', dateRange);
+
           let attQuery: string;
           let attParams: any[];
 
@@ -229,8 +235,9 @@ export async function GET(request: Request) {
                         JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
                         WHERE a.murid_id IN (${placeholders})
                           AND jm.mata_pelajaran = ?
+                          ${attDate.clause}
                         GROUP BY a.murid_id`;
-            attParams = [...muridIds, mapelName];
+            attParams = [...muridIds, mapelName, ...attDate.params];
           } else {
             // Kehadiran seluruh sesi
             attQuery = `SELECT a.murid_id,
@@ -238,8 +245,9 @@ export async function GET(request: Request) {
                           COUNT(*) as total_sesi
                         FROM absensi a
                         WHERE a.murid_id IN (${placeholders})
+                          ${attDate.clause}
                         GROUP BY a.murid_id`;
-            attParams = muridIds;
+            attParams = [...muridIds, ...attDate.params];
           }
 
           const [attRows] = await pool.execute<RowDataPacket[]>(attQuery, attParams);
