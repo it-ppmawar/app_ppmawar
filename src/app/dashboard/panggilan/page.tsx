@@ -821,7 +821,7 @@ export default function PanggilanSantriPage() {
                 Info Jam Tenang: {jamTerlarangStatus.slot?.label || 'Kegiatan Aktif'} ({jamTerlarangStatus.slot?.mulai} – {jamTerlarangStatus.slot?.selesai} WIB)
               </p>
               <p className="text-[11px] mt-0.5 opacity-85">
-                Panggilan untuk peran yang dibatasi sedang ditahan otomatis. Akun Admin, Staff &amp; Pengasuh tetap dapat mengirim panggilan darurat.
+                Panggilan untuk peran yang dibatasi sedang ditahan otomatis. Akun Admin &amp; Pengasuh tetap dapat mengirim panggilan darurat.
               </p>
             </div>
           </div>

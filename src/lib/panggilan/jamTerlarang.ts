@@ -22,6 +22,7 @@ export interface JamTerlarangSlot {
 export interface JamTerlarangTarget {
   wali: boolean;
   pengurus: boolean;
+  staff: boolean;
   petugas: boolean;
 }
 
@@ -95,6 +96,7 @@ export const DEFAULT_JAM_TERLARANG_CONFIG: JamTerlarangConfig = {
   berlaku_untuk: {
     wali: true,
     pengurus: true,
+    staff: false,
     petugas: false,
   },
   slots: DEFAULT_JAM_TERLARANG_SLOTS.map(s => ({ ...s, hari: [...s.hari] })),
@@ -150,6 +152,7 @@ export function sanitizeJamTerlarangConfig(raw: unknown): JamTerlarangConfig {
   const berlaku_untuk: JamTerlarangTarget = {
     wali: targetRaw.wali !== undefined ? Boolean(targetRaw.wali) : true,
     pengurus: targetRaw.pengurus !== undefined ? Boolean(targetRaw.pengurus) : true,
+    staff: targetRaw.staff !== undefined ? Boolean(targetRaw.staff) : false,
     petugas: targetRaw.petugas !== undefined ? Boolean(targetRaw.petugas) : false,
   };
 
@@ -279,7 +282,7 @@ export function isSlotActiveAtTime(
 
 /**
  * Menentukan apakah peran pengguna harus diblokir saat jam terlarang aktif.
- * Admin, Pengasuh, dan Staff selalu dikecualikan untuk kebutuhan darurat.
+ * Hanya Admin & Pengasuh yang selalu dikecualikan untuk kebutuhan darurat.
  */
 export function shouldRestrictRoleForJamTerlarang(
   role?: string | null,
@@ -289,7 +292,7 @@ export function shouldRestrictRoleForJamTerlarang(
   if (!config?.aktif) return false;
 
   const r = String(role || '').toLowerCase().trim();
-  if (isPengasuh || r === 'admin' || r.includes('pengasuh') || r === 'staff') {
+  if (isPengasuh || r === 'admin' || r.includes('pengasuh')) {
     return false;
   }
 
@@ -298,6 +301,9 @@ export function shouldRestrictRoleForJamTerlarang(
   }
   if (r.includes('pengurus_asrama') || r === 'pengurus') {
     return Boolean(config.berlaku_untuk.pengurus);
+  }
+  if (r === 'staff' || r.startsWith('staff_') || r.includes('staff')) {
+    return Boolean(config.berlaku_untuk.staff);
   }
   if (r.includes('petugas')) {
     return Boolean(config.berlaku_untuk.petugas);

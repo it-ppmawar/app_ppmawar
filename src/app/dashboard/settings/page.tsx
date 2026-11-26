@@ -1821,11 +1821,11 @@ export default function SettingsPage() {
                       Pembatasan Berlaku Untuk Peran
                     </span>
                     <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-                      Admin, Staff &amp; Pengasuh selalu bisa kirim darurat
+                      Admin &amp; Pengasuh selalu bisa kirim darurat
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                     {[
                       {
                         key: 'wali' as const,
@@ -1836,6 +1836,11 @@ export default function SettingsPage() {
                         key: 'pengurus' as const,
                         label: 'Pengurus Asrama',
                         desc: 'Ikutkan akun pengurus asrama dalam jam tenang',
+                      },
+                      {
+                        key: 'staff' as const,
+                        label: 'Staff',
+                        desc: 'Ikutkan akun staff kantor / bagian dalam jam tenang',
                       },
                       {
                         key: 'petugas' as const,
