@@ -4,9 +4,10 @@ import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import QuizBModal from '@/app/dashboard/penilaian/QuizBModal';
+import RaportTabSection, { RaportCatatanForm } from '@/components/penilaian/RaportTabSection';
 import { calcNilaiAkhir, calcPredikat, calcPredikatFromInput, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
 import {
-  Award, BookOpen, GraduationCap, Search, Filter,
+  Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
   Save, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
   Sparkles, Download, Edit3, ArrowUpDown, ArrowUp, ArrowDown,
   X, Trash2, Check, Clock, Phone, ShieldCheck, Sun, Moon
@@ -60,10 +61,30 @@ function PenilaianInputContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || searchParams.get('t') || '';
 
+  // Tab aktif ('input' = Input & Leger Nilai, 'raport' = Raport Santri)
+  const [activeTab, setActiveTab] = useState<'input' | 'raport'>(() =>
+    (searchParams.get('tab') || '').toLowerCase() === 'raport' ? 'raport' : 'input'
+  );
+
   // Auth & Guru Info State
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [guruInfo, setGuruInfo] = useState<any>(null);
+
+  // State Raport Santri
+  const [selectedMuridId, setSelectedMuridId] = useState<string>('');
+  const [raportData, setRaportData] = useState<any>(null);
+  const [raportError, setRaportError] = useState<string | null>(null);
+  const [loadingRaport, setLoadingRaport] = useState(false);
+  const [savingRaportCatatan, setSavingRaportCatatan] = useState(false);
+  const [editCatatan, setEditCatatan] = useState<RaportCatatanForm>({
+    catatan_wali_kelas: '',
+    akhlak: 'Baik',
+    kerajinan: 'Baik',
+    kebersihan: 'Baik',
+    tahfidz_hafalan: '',
+    status_kelulusan: 'Naik Kelas',
+  });
 
   // Filter States
   const [kelasList, setKelasList] = useState<any[]>([]);
@@ -290,6 +311,9 @@ function PenilaianInputContent() {
           });
           setScores(initialScores);
           setIsDirty(false);
+          setSelectedMuridId(prev => (
+            prev && json.muridList.some((m: any) => String(m.murid_id) === prev) ? prev : ''
+          ));
         }
       } catch (err) {
         console.error('Error fetching murid for token input:', err);
@@ -300,6 +324,96 @@ function PenilaianInputContent() {
 
     fetchMurid();
   }, [selectedKelas, selectedMapel, semester, tahunAjaran, token, reloadTrigger]);
+
+  // 3b. Muat Detail Raport Santri saat tab Raport aktif
+  const fetchRaportDetail = async (mId: string) => {
+    if (!mId || !token) {
+      setRaportData(null);
+      setRaportError(null);
+      return;
+    }
+    setLoadingRaport(true);
+    setRaportError(null);
+    try {
+      const query = new URLSearchParams({
+        murid_id: mId,
+        semester,
+        tahun_ajaran: tahunAjaran,
+        token,
+      });
+      const res = await fetch(`/api/penilaian/raport?${query.toString()}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        setRaportData(json.data);
+        if (json.data.catatan) {
+          setEditCatatan({
+            catatan_wali_kelas: json.data.catatan.catatan_wali_kelas || '',
+            akhlak: json.data.catatan.akhlak || 'Baik',
+            kerajinan: json.data.catatan.kerajinan || 'Baik',
+            kebersihan: json.data.catatan.kebersihan || 'Baik',
+            tahfidz_hafalan: json.data.catatan.tahfidz_hafalan || '',
+            status_kelulusan: json.data.catatan.status_kelulusan || 'Naik Kelas',
+          });
+        }
+      } else {
+        setRaportData(null);
+        setRaportError(json.error || 'Gagal memuat data raport santri.');
+      }
+    } catch (err: any) {
+      console.error('Error fetching raport in pintasan:', err);
+      setRaportData(null);
+      setRaportError(err?.message || 'Terjadi kendala koneksi saat memuat raport.');
+    } finally {
+      setLoadingRaport(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'raport' && token) {
+      if (selectedMuridId) {
+        fetchRaportDetail(selectedMuridId);
+      } else {
+        setRaportData(null);
+        setRaportError(null);
+      }
+    }
+  }, [activeTab, selectedMuridId, semester, tahunAjaran, token]);
+
+  const handleSaveRaportCatatan = async () => {
+    if (!selectedMuridId || !token) return;
+    setSavingRaportCatatan(true);
+    try {
+      const res = await fetch('/api/penilaian/raport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-token': token },
+        body: JSON.stringify({
+          token,
+          murid_id: selectedMuridId,
+          semester,
+          tahun_ajaran: tahunAjaran,
+          ...editCatatan,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('Catatan & kepribadian raport berhasil disimpan!');
+        fetchRaportDetail(selectedMuridId);
+      } else {
+        alert(json.error || 'Gagal menyimpan catatan raport');
+      }
+    } catch {
+      alert('Terjadi kesalahan jaringan saat menyimpan catatan.');
+    } finally {
+      setSavingRaportCatatan(false);
+    }
+  };
+
+  const handleChangeKelasSafely = (nextKelas: string) => {
+    if (isDirty && !window.confirm('Ada nilai yang belum disimpan pada kelas ini. Tetap ganti kelas?')) {
+      return;
+    }
+    setSelectedKelas(nextKelas);
+  };
 
   // 4. Score Change Handler
   const handleScoreChange = (muridId: number, field: 'harian' | 'lisan' | 'uts' | 'uas' | 'akhir' | 'predikat' | 'catatan', val: string) => {
@@ -701,9 +815,9 @@ function PenilaianInputContent() {
   const guruFotoUrl = getFotoUrl(guruInfo?.foto);
 
   return (
-    <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 selection:bg-amber-500 selection:text-white ${!isLegerMode ? 'pb-28' : 'pb-12'}`}>
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 selection:bg-amber-500 selection:text-white print:bg-white print:text-black print:p-0 print:pb-0 ${activeTab === 'input' && !isLegerMode ? 'pb-28' : 'pb-12'}`}>
       {/* Top Floating App Bar — Serasi dengan Pintasan Absensi & Rekapitulasi */}
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-4 py-1 shadow-xs rounded-b-2xl transition-colors min-h-[58px] h-[58px] flex items-center">
+      <header className="print:hidden sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-4 py-1 shadow-xs rounded-b-2xl transition-colors min-h-[58px] h-[58px] flex items-center">
         <div className="w-full max-w-7xl mx-auto flex items-center justify-between gap-2">
           {/* Pojok Kiri: Logo Lembaga */}
           <div className="flex items-center justify-start shrink-0">
@@ -742,7 +856,7 @@ function PenilaianInputContent() {
           <div className="min-w-0 flex-1 flex flex-col items-center justify-center text-center">
             <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
               <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                Input &amp; Leger Nilai
+                {activeTab === 'raport' ? 'Raport Santri' : 'Input & Leger Nilai'}
               </h1>
               <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800/60 rounded-md shrink-0">
                 (Guru Madin)
@@ -779,10 +893,10 @@ function PenilaianInputContent() {
       </header>
 
       {/* Main Container */}
-      <main className="max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-4">
+      <main className="max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-4 print:max-w-none print:p-0 print:m-0 print:space-y-0">
 
         {/* Hero & Banner Profil Guru (Urutan data selaras Rekapitulasi Foto 5 & Rapat Kiri Sejajar Foto Guru) */}
-        <section className="bg-gradient-to-br from-amber-50/90 via-white to-orange-50/50 dark:from-[#853f06] dark:via-[#5c2c09] dark:to-[#0d1b3e] border border-amber-200/80 dark:border-amber-500/30 rounded-3xl p-4 sm:p-6 shadow-xs dark:shadow-xl dark:shadow-black/30 relative overflow-hidden transition-colors">
+        <section className="print:hidden bg-gradient-to-br from-amber-50/90 via-white to-orange-50/50 dark:from-[#853f06] dark:via-[#5c2c09] dark:to-[#0d1b3e] border border-amber-200/80 dark:border-amber-500/30 rounded-3xl p-4 sm:p-6 shadow-xs dark:shadow-xl dark:shadow-black/30 relative overflow-hidden transition-colors">
           <div className="absolute top-0 right-0 w-72 h-72 bg-amber-200/30 dark:bg-amber-400/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
@@ -845,24 +959,59 @@ function PenilaianInputContent() {
               </div>
             </div>
 
-            <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between w-full lg:w-auto pt-3 lg:pt-0 border-t lg:border-t-0 border-amber-200/70 dark:border-white/15 gap-2">
-              <div className="text-left lg:text-right">
-                <span className="text-[10px] text-amber-800/80 dark:text-amber-200/80 uppercase font-bold block">
-                  {isLegerMode ? 'Santri pada Leger Kelas' : 'Progres Pengisian Mapel Ini'}
-                </span>
-                <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white">
-                  {stats.terisi} dari {stats.total} Santri ({stats.persen}%)
-                </span>
+            <div className="flex flex-col items-stretch lg:items-end justify-between w-full lg:w-auto pt-3 lg:pt-0 border-t lg:border-t-0 border-amber-200/70 dark:border-white/15 gap-3 shrink-0">
+              {/* Tab Switcher: Input & Leger Nilai / Raport Santri */}
+              <div className="grid grid-cols-2 gap-1.5 bg-amber-100/85 dark:bg-black/35 p-1.5 rounded-2xl border border-amber-200/80 dark:border-white/15 backdrop-blur-md w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('input')}
+                  className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
+                    activeTab === 'input'
+                      ? 'bg-amber-600 dark:bg-amber-500 text-white shadow-md'
+                      : 'text-amber-900/75 dark:text-amber-200/85 hover:text-amber-950 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/10'
+                  }`}
+                >
+                  <ClipboardCheck size={14} className="shrink-0" />
+                  <span>Input &amp; Leger Nilai</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('raport')}
+                  className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
+                    activeTab === 'raport'
+                      ? 'bg-amber-600 dark:bg-amber-500 text-white shadow-md'
+                      : 'text-amber-900/75 dark:text-amber-200/85 hover:text-amber-950 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/10'
+                  }`}
+                >
+                  <GraduationCap size={14} className="shrink-0" />
+                  <span>Raport Santri</span>
+                </button>
               </div>
-              <div className="w-28 sm:w-40 h-2.5 bg-amber-200/60 dark:bg-black/30 rounded-full overflow-hidden border border-amber-300/60 dark:border-white/15">
-                <div
-                  className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 dark:from-amber-400 dark:to-emerald-400 transition-all duration-500 rounded-full"
-                  style={{ width: `${stats.persen}%` }}
-                />
-              </div>
+
+              {activeTab === 'input' && (
+                <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between w-full gap-2">
+                  <div className="text-left lg:text-right">
+                    <span className="text-[10px] text-amber-800/80 dark:text-amber-200/80 uppercase font-bold block">
+                      {isLegerMode ? 'Santri pada Leger Kelas' : 'Progres Pengisian Mapel Ini'}
+                    </span>
+                    <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white">
+                      {stats.terisi} dari {stats.total} Santri ({stats.persen}%)
+                    </span>
+                  </div>
+                  <div className="w-28 sm:w-40 h-2.5 bg-amber-200/60 dark:bg-black/30 rounded-full overflow-hidden border border-amber-300/60 dark:border-white/15">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 dark:from-amber-400 dark:to-emerald-400 transition-all duration-500 rounded-full"
+                      style={{ width: `${stats.persen}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>
+
+        {activeTab === 'input' && (
+        <>
 
         {/* Notifikasi Sukses Simpan */}
         {saveSuccessMsg && (
@@ -1011,8 +1160,8 @@ function PenilaianInputContent() {
 
         {/* Section Heading & Actions */}
         <section className="bg-white dark:bg-[#0b1429] border border-slate-200/80 dark:border-gray-800 rounded-3xl p-4 sm:p-5 shadow-xs dark:shadow-lg space-y-4 transition-colors">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
                 <span>
                   {isLegerMode
@@ -1035,13 +1184,13 @@ function PenilaianInputContent() {
               </p>
             </div>
 
-            {/* Rata tengah pada tampilan HP, rata kanan pada layar sedang/desktop */}
-            <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 w-full md:w-auto">
+            {/* Rata tengah pada tampilan HP, 1 baris sejajar rapi pada layar tablet/PC */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center justify-center lg:justify-end gap-2 w-full lg:w-auto shrink-0">
               <button
                 type="button"
                 onClick={() => setShowQuizBModal(true)}
                 disabled={muridList.length === 0}
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer whitespace-nowrap shrink-0"
                 title="Tarik nilai hasil ujian CBT santri dari Portal Ujian ke buku nilai"
               >
                 <span>📥 Tarik Nilai Ujian CBT</span>
@@ -1051,7 +1200,7 @@ function PenilaianInputContent() {
                 type="button"
                 onClick={handleExportExcel}
                 disabled={muridList.length === 0}
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200 border border-slate-200 dark:border-gray-700 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200 border border-slate-200 dark:border-gray-700 transition-all active:scale-95 disabled:opacity-50 cursor-pointer whitespace-nowrap shrink-0"
                 title="Unduh daftar nilai ini dalam format Excel (.xlsx)"
               >
                 <Download size={14} className="text-amber-600 dark:text-amber-400" />
@@ -1059,7 +1208,7 @@ function PenilaianInputContent() {
               </button>
 
               {isLegerMode ? (
-                <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300">
+                <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300 whitespace-nowrap shrink-0">
                   <Sparkles size={13} />
                   <span>Pilih mapel spesifik untuk input nilai</span>
                 </div>
@@ -1068,7 +1217,7 @@ function PenilaianInputContent() {
                   type="button"
                   onClick={handleSaveScores}
                   disabled={savingScores || muridList.length === 0}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-600/25 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-600/25 transition-all active:scale-95 disabled:opacity-50 cursor-pointer whitespace-nowrap shrink-0"
                 >
                   {savingScores ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
                   <span>Simpan Semua Nilai</span>
@@ -1570,11 +1719,53 @@ function PenilaianInputContent() {
             <li>Jangan lupa menekan tombol <b>&quot;Simpan Nilai&quot;</b> setelah selesai menginput nilai.</li>
           </ul>
         </section>
+        </>
+        )}
+
+        {/* Tab 2: Raport Santri Resmi */}
+        {activeTab === 'raport' && (
+          <RaportTabSection
+            kelasList={kelasList}
+            selectedKelas={selectedKelas}
+            onChangeKelas={handleChangeKelasSafely}
+            semester={semester}
+            onChangeSemester={setSemester}
+            tahunAjaran={tahunAjaran}
+            onChangeTahunAjaran={setTahunAjaran}
+            muridList={muridList}
+            loadingMurid={loadingMurid}
+            selectedMuridId={selectedMuridId}
+            onSelectMuridId={setSelectedMuridId}
+            raportData={raportData}
+            loadingRaport={loadingRaport}
+            raportError={raportError}
+            onRefreshRaport={fetchRaportDetail}
+            onPrint={() => window.print()}
+            getPreviewUrl={mId => {
+              const p = new URLSearchParams({
+                murid_id: mId,
+                semester,
+                tahun_ajaran: tahunAjaran,
+                preview: '1',
+                token,
+              });
+              return `/penilaian/preview?${p.toString()}`;
+            }}
+            getFotoUrl={getFotoUrl}
+            onZoomPhoto={setZoomPhoto}
+            canEditCatatan={true}
+            editCatatan={editCatatan}
+            onChangeEditCatatan={setEditCatatan}
+            onSaveCatatan={handleSaveRaportCatatan}
+            savingCatatan={savingRaportCatatan}
+            variant="shortcut"
+          />
+        )}
       </main>
 
       {/* Floating Bottom Bar — Serasi dengan Pintasan Input Absensi */}
-      {!isLegerMode && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 px-4 py-3 bg-white/95 dark:bg-slate-950/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-5px_20px_rgba(0,0,0,0.5)] transition-colors">
+      {activeTab === 'input' && !isLegerMode && (
+        <div className="print:hidden fixed bottom-0 left-0 right-0 z-40 px-4 py-3 bg-white/95 dark:bg-slate-950/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-5px_20px_rgba(0,0,0,0.5)] transition-colors">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">

@@ -6,6 +6,21 @@ import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
 
 export const dynamic = 'force-dynamic';
 
+/** Memastikan guru pemilik quick token hanya dapat mengakses santri di kelas yang diampunya. */
+async function canGuruAccessMurid(guruId: number | string, muridId: string | number): Promise<boolean> {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT 1 FROM murid m
+     WHERE m.murid_id = ?
+       AND (
+         m.kelas_madin_id IN (SELECT kelas_id FROM kelas_madin WHERE guru_id = ? UNION SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?)
+         OR m.kelas_madin_2_id IN (SELECT kelas_id FROM kelas_madin WHERE guru_id = ? UNION SELECT kelas_madin_id FROM jadwal_madin WHERE guru_id = ?)
+       )
+     LIMIT 1`,
+    [muridId, guruId, guruId, guruId, guruId]
+  );
+  return rows.length > 0;
+}
+
 export async function GET(request: Request) {
   try {
     await ensurePenilaianDB();
@@ -27,6 +42,14 @@ export async function GET(request: Request) {
     // Batasi akses wali_murid / santri agar hanya dapat mengakses raport santri miliknya sendiri
     if ((auth.role === 'wali_murid' || auth.role === 'santri') && auth.muridId && String(auth.muridId) !== String(muridId)) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    }
+
+    // Batasi pemilik tautan pintasan guru agar hanya dapat mengakses raport santri di kelasnya
+    if (auth.isQuickToken && auth.role === 'guru' && auth.guruId) {
+      const allowed = await canGuruAccessMurid(auth.guruId, muridId);
+      if (!allowed) {
+        return NextResponse.json({ error: 'Santri ini tidak terdaftar pada kelas yang Anda ampu.' }, { status: 403 });
+      }
     }
 
     // 1. Ambil Profil Santri (dukung kelas_madin_id maupun kelas_madin_2_id)
@@ -270,6 +293,13 @@ export async function POST(request: Request) {
 
     if (!murid_id || !semester || !tahun_ajaran) {
       return NextResponse.json({ error: 'Data raport tidak lengkap' }, { status: 400 });
+    }
+
+    if (auth.isQuickToken && auth.role === 'guru' && auth.guruId) {
+      const allowed = await canGuruAccessMurid(auth.guruId, murid_id);
+      if (!allowed) {
+        return NextResponse.json({ error: 'Santri ini tidak terdaftar pada kelas yang Anda ampu.' }, { status: 403 });
+      }
     }
 
     await pool.execute(`

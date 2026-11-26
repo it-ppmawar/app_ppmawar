@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import * as XLSX from 'xlsx';
 import QuizBModal from './QuizBModal';
-import { calcNilaiAkhir, calcPredikat, calcPredikatFromInput, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
+import RaportTabSection, { RaportCatatanForm } from '@/components/penilaian/RaportTabSection';
+import { calcNilaiAkhir, calcPredikat, calcPredikatFromInput } from '@/lib/penilaian/calcNilai';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
-  Save, Printer, CheckCircle, AlertCircle, RefreshCw, User, Calendar,
-  ShieldCheck, AlertTriangle, FileText, ChevronRight, ChevronDown, Sparkles, Download,
+  Save, CheckCircle, AlertCircle, RefreshCw,
+  ShieldCheck, ChevronRight, ChevronDown, Sparkles,
   Edit3, ArrowUpDown, ArrowUp, ArrowDown, X, Trash2
 } from 'lucide-react';
 
@@ -417,15 +417,10 @@ export default function PenilaianRaportPage() {
   const [selectedMuridId, setSelectedMuridId] = useState<string>('');
   const [raportData, setRaportData] = useState<any>(null);
   const [raportError, setRaportError] = useState<string | null>(null);
-  // Searchable combobox Pilih Santri (tab Raport)
-  const [muridSearch, setMuridSearch] = useState<string>('');
-  const [showMuridDropdown, setShowMuridDropdown] = useState(false);
-  const muridComboRef = useRef<HTMLDivElement>(null);
-  const muridInputRef = useRef<HTMLInputElement>(null);
   const initialSantriIdRef = useRef<string>('');
   const [loadingRaport, setLoadingRaport] = useState(false);
   const [savingRaportCatatan, setSavingRaportCatatan] = useState(false);
-  const [editCatatan, setEditCatatan] = useState({
+  const [editCatatan, setEditCatatan] = useState<RaportCatatanForm>({
     catatan_wali_kelas: '',
     akhlak: 'Baik',
     kerajinan: 'Baik',
@@ -433,84 +428,6 @@ export default function PenilaianRaportPage() {
     tahfidz_hafalan: '',
     status_kelulusan: 'Naik Kelas',
   });
-
-  // Export Raport Santri ke Excel
-  const handleExportRaportExcel = () => {
-    if (!raportData) return;
-    const wb = XLSX.utils.book_new();
-    const listNilai = Array.isArray(raportData.nilai) ? raportData.nilai : [];
-    const hasLisan = listNilai.some((n: any) => !isEmptyScoreVal(n.nilai_lisan));
-
-    // Sheet 1: Nilai Akademik
-    const nilaiRows = [
-      ['LAPORAN HASIL BELAJAR SANTRI (RAPORT)'],
-      ['Pondok Pesantren Matholi\'ul Anwar — Madrasah Diniyah'],
-      [],
-      ['Nama Santri', raportData.santri.nama],
-      ['NIS', raportData.santri.nis || '-'],
-      ['Kelas Madin', raportData.santri.nama_kelas_madin],
-      ['Semester / Tahun Ajaran', `${raportData.semester === '1' ? 'Semester 1 (Ganjil)' : 'Semester 2 (Genap)'} / ${raportData.tahun_ajaran}`],
-      ['Kamar / Asrama', `${raportData.santri.nama_kamar} (${raportData.santri.nama_asrama})`],
-      ['Nama Wali Santri', raportData.santri.nama_wali || '-'],
-      [],
-      ['A. NILAI HASIL BELAJAR'],
-      hasLisan
-        ? ['No', 'Mata Pelajaran', 'Kitab yang Dipelajari', 'KKM', 'Ujian Lisan', 'Nilai Akhir', 'Predikat', 'Keterangan']
-        : ['No', 'Mata Pelajaran', 'Kitab yang Dipelajari', 'KKM', 'Nilai Akhir', 'Predikat', 'Keterangan'],
-      ...listNilai.map((n: any, i: number) =>
-        hasLisan
-          ? [
-              i + 1,
-              n.mata_pelajaran,
-              n.kitab || '-',
-              70,
-              !isEmptyScoreVal(n.nilai_lisan) ? n.nilai_lisan : '-',
-              n.nilai_akhir,
-              n.predikat,
-              Number(n.nilai_akhir) >= 70 ? 'Tuntas' : Number(n.nilai_akhir) > 0 ? 'Perlu Bimbingan' : (n.catatan || 'Belum Dinilai'),
-            ]
-          : [
-              i + 1,
-              n.mata_pelajaran,
-              n.kitab || '-',
-              70,
-              n.nilai_akhir,
-              n.predikat,
-              Number(n.nilai_akhir) >= 70 ? 'Tuntas' : Number(n.nilai_akhir) > 0 ? 'Perlu Bimbingan' : (n.catatan || 'Belum Dinilai'),
-            ]
-      ),
-      [],
-      hasLisan
-        ? ['', '', '', '', 'Nilai Rata-Rata Akhir:', raportData.ringkasan_nilai?.rata_rata, '', `Dari ${raportData.ringkasan_nilai?.total_mapel} mata pelajaran`]
-        : ['', '', '', 'Nilai Rata-Rata Akhir:', raportData.ringkasan_nilai?.rata_rata, '', `Dari ${raportData.ringkasan_nilai?.total_mapel} mata pelajaran`],
-      [],
-      ['B. REKAPITULASI PRESENSI'],
-      ['Hadir', raportData.rekap_absensi?.hadir + ' kali'],
-      ['Izin', raportData.rekap_absensi?.izin + ' kali'],
-      ['Sakit', raportData.rekap_absensi?.sakit + ' kali'],
-      ['Alpha / Tanpa Keterangan', raportData.rekap_absensi?.alpha + ' kali'],
-      ['Persentase Kehadiran', raportData.rekap_absensi?.persentase + '%'],
-      [],
-      ['C. KEDISIPLINAN & KETERTIBAN'],
-      ['Total Poin Pelanggaran', raportData.rekap_kedisiplinan?.total_poin + ' Poin'],
-      ['Predikat Kedisiplinan', raportData.rekap_kedisiplinan?.predikat],
-      ['Capaian Tahfidz', editCatatan.tahfidz_hafalan || '-'],
-      ['Keputusan Akhir', editCatatan.status_kelulusan],
-      [],
-      ['D. CATATAN WALI KELAS'],
-      [editCatatan.catatan_wali_kelas || 'Tingkatkan terus prestasi belajar dan ketaatan ibadah.'],
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(nilaiRows);
-    ws['!cols'] = hasLisan
-      ? [{ wch: 28 }, { wch: 28 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 20 }]
-      : [{ wch: 28 }, { wch: 28 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 10 }, { wch: 20 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Raport Santri');
-
-    const namaSantri = (raportData.santri.nama || 'Santri').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_');
-    const smstr = raportData.semester === '1' ? 'Ganjil' : 'Genap';
-    XLSX.writeFile(wb, `Raport_${namaSantri}_Sem${smstr}_${raportData.tahun_ajaran?.replace('/', '-')}.xlsx`);
-  };
 
   // Toggle Input Mapel Khusus (mengosongkan input dan mengarahkan kursor otomatis)
   const handleToggleCustomMapel = () => {
@@ -529,28 +446,6 @@ export default function PenilaianRaportPage() {
       }
     }
   };
-
-  // Computed: filter daftar santri berdasarkan teks pencarian di combobox Raport
-  const filteredMuridOptions = useMemo(() => {
-    if (!muridSearch.trim()) return muridList;
-    const q = muridSearch.toLowerCase().trim();
-    return muridList.filter(m =>
-      (m.nama || '').toLowerCase().includes(q) ||
-      (m.nis || '').toLowerCase().includes(q) ||
-      (m.nama_kelas || '').toLowerCase().includes(q)
-    );
-  }, [muridList, muridSearch]);
-
-  // Close combobox Pilih Santri saat klik di luar
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (muridComboRef.current && !muridComboRef.current.contains(e.target as Node)) {
-        setShowMuridDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // 0. Fetch Role Pengguna (untuk mode tamu & wali)
   useEffect(() => {
@@ -1861,618 +1756,47 @@ export default function PenilaianRaportPage() {
       {/* TAB 2: RAPORT SANTRI & CETAK RESMI                                        */}
       {/* ========================================================================= */}
       {(isWaliOrSantri || isTamu || activeTab === 'raport') && (
-        <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
-          {/* Header Kontrol Raport: Format Presisi HP (Pilih Santri di Atas Full-Width, Kelas & Semester Berdampingan 50%-50%, Tombol Print Rata Tengah) */}
-          <div className="print:hidden bg-white dark:bg-gray-800 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
-            <div className="flex flex-col gap-3 w-full">
-              {/* Baris 1: Filter Pilih Santri — Searchable Combobox */}
-              <div className="w-full" ref={muridComboRef}>
-                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                  Pilih Santri
-                </label>
-                <div className="relative">
-                  {/* Input pencarian */}
-                  <div
-                    className={`w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border ${showMuridDropdown ? 'border-amber-500 ring-2 ring-amber-500/30' : 'border-gray-200 dark:border-gray-600'} text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 shadow-xs cursor-text transition-all`}
-                    onClick={() => {
-                      setShowMuridDropdown(true);
-                      setTimeout(() => muridInputRef.current?.focus(), 0);
-                    }}
-                  >
-                    <Search size={14} className="text-gray-400 shrink-0" />
-                    <input
-                      ref={muridInputRef}
-                      type="text"
-                      value={showMuridDropdown ? muridSearch : (muridList.find(m => String(m.murid_id) === selectedMuridId)?.nama || '')}
-                      onChange={e => { setMuridSearch(e.target.value); setShowMuridDropdown(true); }}
-                      onFocus={() => { setMuridSearch(''); setShowMuridDropdown(true); }}
-                      placeholder={loadingMurid ? 'Memuat daftar santri...' : muridList.length === 0 ? '(Belum ada data santri)' : 'Pilih atau ketik nama / NIS santri...'}
-                      className="flex-1 bg-transparent outline-none font-bold text-gray-800 dark:text-gray-100 placeholder:font-normal placeholder:text-gray-400 min-w-0"
-                    />
-                    {selectedMuridId && !showMuridDropdown && (
-                      <>
-                        <span className="text-[10px] font-semibold text-gray-400 shrink-0">
-                          {muridList.find(m => String(m.murid_id) === selectedMuridId)?.nis || ''}
-                        </span>
-                        {!isWaliOrSantri && (
-                          <button
-                            type="button"
-                            onClick={e => {
-                              e.stopPropagation();
-                              setSelectedMuridId('');
-                              setMuridSearch('');
-                              setRaportData(null);
-                              setRaportError(null);
-                            }}
-                            title="Kosongkan pilihan santri"
-                            className="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded transition-colors shrink-0"
-                          >
-                            <X size={13} />
-                          </button>
-                        )}
-                      </>
-                    )}
-                    <ChevronDown size={14} className={`text-gray-400 shrink-0 transition-transform duration-200 ${showMuridDropdown ? 'rotate-180 text-amber-500' : ''}`} />
-                  </div>
-
-                  {/* Dropdown list */}
-                  {showMuridDropdown && (
-                    <div className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-xl overflow-hidden max-h-64 flex flex-col">
-                      {filteredMuridOptions.length === 0 ? (
-                        <div className="px-4 py-3 text-xs text-gray-400 text-center">
-                          {muridSearch ? `Tidak ditemukan: "${muridSearch}"` : 'Belum ada data santri'}
-                        </div>
-                      ) : (
-                        <>
-                          <div className="px-3 py-1.5 border-b border-gray-100 dark:border-gray-700 text-[10px] text-gray-400">
-                            {filteredMuridOptions.length} santri {muridSearch ? `cocok dengan "${muridSearch}"` : 'tersedia'}
-                          </div>
-                          <ul className="overflow-y-auto flex-1">
-                            {filteredMuridOptions.map(m => {
-                              const isSelected = String(m.murid_id) === selectedMuridId;
-                              const q = muridSearch.trim().toLowerCase();
-                              const name = m.nama || '';
-                              const nis = m.nis || '';
-                              // Highlight teks yang cocok
-                              const highlightText = (text: string) => {
-                                if (!q) return <span>{text}</span>;
-                                const idx = text.toLowerCase().indexOf(q);
-                                if (idx === -1) return <span>{text}</span>;
-                                return (
-                                  <span>
-                                    {text.slice(0, idx)}
-                                    <mark className="bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 rounded px-0.5">{text.slice(idx, idx + q.length)}</mark>
-                                    {text.slice(idx + q.length)}
-                                  </span>
-                                );
-                              };
-                              return (
-                                <li key={m.murid_id}>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const nextId = String(m.murid_id);
-                                      setMuridSearch('');
-                                      setShowMuridDropdown(false);
-                                      setSelectedMuridId(nextId);
-                                      fetchRaportDetail(nextId);
-                                    }}
-                                    className={`w-full text-left px-3.5 py-2 flex items-center gap-2.5 transition-colors ${isSelected ? 'bg-amber-50 dark:bg-amber-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/60'}`}
-                                  >
-                                    {/* Thumbnail Foto Santri */}
-                                    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 relative border border-gray-200 dark:border-gray-700 shadow-2xs">
-                                      <div
-                                        className="absolute inset-0 flex items-center justify-center"
-                                        style={{ backgroundColor: getAvatarColor(name) }}
-                                      >
-                                        <span className="text-white text-[10px] font-bold leading-none">{getInitials(name)}</span>
-                                      </div>
-                                      {m.foto && m.foto !== '-' && (
-                                        <img
-                                          src={getFotoUrl(m.foto)}
-                                          alt={name}
-                                          className="absolute inset-0 w-full h-full object-cover"
-                                          onError={(e) => {
-                                            e.currentTarget.style.opacity = '0';
-                                            e.currentTarget.style.display = 'none';
-                                            e.currentTarget.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                                          }}
-                                        />
-                                      )}
-                                    </div>
-
-                                    <div className="flex-1 min-w-0">
-                                      <div className={`text-xs font-bold truncate ${isSelected ? 'text-amber-700 dark:text-amber-300' : 'text-gray-800 dark:text-gray-100'}`}>
-                                        {highlightText(name)}
-                                      </div>
-                                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                        {nis && <span className="text-[10px] text-gray-400 font-mono">{highlightText(nis)}</span>}
-                                        {m.nama_kelas && (
-                                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
-                                            {m.nama_kelas}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    {isSelected && <CheckCircle size={14} className="text-amber-500 shrink-0" />}
-                                  </button>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Baris 2: Filter Pilih Kelas dan Pilih Semester Berdampingan Rata Tengah dengan Ukuran Presisi Sama */}
-              <div className="grid grid-cols-2 gap-3 w-full">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    Pilih Kelas
-                  </label>
-                  <select
-                    value={selectedKelas}
-                    onChange={(e) => {
-                      setSelectedKelas(e.target.value);
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
-                  >
-                    {kelasList.map(k => (
-                      <option key={k.kelas_id} value={k.kelas_id}>{k.nama_kelas}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
-                    Pilih Semester
-                  </label>
-                  <select
-                    value={semester}
-                    onChange={(e) => setSemester(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
-                  >
-                    <option value="1">Semester 1 (Ganjil)</option>
-                    <option value="2">Semester 2 (Genap)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Tombol Aksi PDF + Excel (Berdampingan 3 Kolom di HP seperti Rekapitulasi) */}
-            <div className="grid grid-cols-3 sm:flex sm:justify-center gap-2 w-full pt-1">
-              {/* Preview PDF */}
-              <button
-                onClick={() => {
-                  if (!selectedMuridId) return;
-                  const params = new URLSearchParams({
-                    murid_id: selectedMuridId,
-                    semester,
-                    tahun_ajaran: tahunAjaran,
-                    preview: '1',
-                  });
-                  window.open(`/dashboard/penilaian/preview?${params.toString()}`, '_blank', 'noopener');
-                }}
-                disabled={!raportData}
-                className="px-2 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5 sm:gap-2"
-                title="Preview Lembar Raport PDF"
-              >
-                <FileText size={15} />
-                <span>Preview<span className="hidden sm:inline"> PDF</span></span>
-              </button>
-              {/* Cetak / Download PDF */}
-              <button
-                onClick={handlePrint}
-                disabled={!raportData}
-                className="px-2 sm:px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5 sm:gap-2"
-                title="Cetak atau Download Raport PDF"
-              >
-                <Printer size={15} />
-                <span className="sm:hidden">PDF</span>
-                <span className="hidden sm:inline">Cetak / Download PDF</span>
-              </button>
-              {/* Unduh Excel */}
-              <button
-                onClick={handleExportRaportExcel}
-                disabled={!raportData}
-                className="px-2 sm:px-5 py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5 sm:gap-2"
-                title="Unduh Raport Format Excel (.xlsx)"
-              >
-                <Download size={15} />
-                <span className="sm:hidden">Excel</span>
-                <span className="hidden sm:inline">Unduh Excel</span>
-              </button>
-            </div>
-          </div>
-
-          {loadingRaport ? (
-            <div className="p-16 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700">
-              <RefreshCw size={32} className="animate-spin mx-auto text-amber-600 mb-3" />
-              <p className="font-bold">Menyiapkan Lembar Raport Santri...</p>
-              <p className="text-xs text-gray-400 mt-1">Menyinkronkan nilai, rekap absensi, dan poin kedisiplinan</p>
-            </div>
-          ) : raportError ? (
-            <div className="p-12 sm:p-16 text-center text-rose-600 dark:text-rose-400 bg-white dark:bg-gray-800 rounded-3xl border border-rose-200 dark:border-rose-800 space-y-3">
-              <AlertCircle size={32} className="mx-auto" />
-              <p className="font-bold text-sm sm:text-base">{raportError}</p>
-              {selectedMuridId && (
-                <button
-                  type="button"
-                  onClick={() => fetchRaportDetail(selectedMuridId)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-all"
-                >
-                  <RefreshCw size={13} />
-                  <span>Muat Ulang Raport</span>
-                </button>
-              )}
-            </div>
-          ) : !raportData ? (
-            <div className="p-16 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 space-y-4">
-              <AlertCircle size={32} className="mx-auto text-gray-400 mb-3" />
-              {selectedMuridId ? (
-                <>
-                  <p className="font-bold text-amber-700 dark:text-amber-400">Data raport belum dimuat.</p>
-                  <p className="text-xs text-gray-400 mt-1">Klik tombol di bawah untuk memuat raport santri ini.</p>
-                  <button
-                    type="button"
-                    onClick={() => fetchRaportDetail(selectedMuridId)}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-all active:scale-95"
-                  >
-                    <RefreshCw size={14} />
-                    <span>Muat Raport Santri</span>
-                  </button>
-                </>
-              ) : (
-                <p className="font-bold">Silakan pilih santri untuk melihat raport.</p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-6 w-full">
-              {/* LEMBAR RAPORT RESMI (TAMPILAN CETAK A4 — KONSISTEN DI PC & HP) */}
-              <div className="w-full overflow-x-auto pb-4 print:overflow-visible">
-              <div className="bg-white text-gray-900 rounded-3xl shadow-md border border-gray-200 p-10 print:border-none print:shadow-none print:p-0 print:m-0 w-[840px] max-w-4xl lg:w-full mx-auto print:w-auto print:max-w-none" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
-                {/* KOP RESMI PESANTREN */}
-                <div className="border-b-4 border-double border-gray-900 pb-4 mb-6 text-center">
-                  <h3 className="text-2xl font-black tracking-wider uppercase font-serif">
-                    PONDOK PESANTREN MATHOLI'UL ANWAR
-                  </h3>
-                  <h4 className="text-lg font-bold uppercase text-emerald-800 font-serif">
-                    MADRASAH DINIYAH &amp; MADRASATUL QUR'AN
-                  </h4>
-                  <p className="text-xs text-gray-600 mt-1 font-sans">
-                    Simo - Lamongan - Jawa Timur | Website: ppmawar.or.id
-                  </p>
-                  <div className="mt-3 inline-block bg-gray-900 text-white font-bold text-sm px-6 py-1 rounded-full uppercase tracking-widest">
-                    LAPORAN HASIL BELAJAR SANTRI (RAPORT)
-                  </div>
-                </div>
-
-                {/* IDENTITAS SANTRI DENGAN PAS FOTO RESMI */}
-                <div className="flex flex-row items-start gap-5 mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
-                  {/* Pas Foto Santri Resmi */}
-                  <div className="shrink-0">
-                    <div
-                      className={`w-24 h-28 rounded-xl overflow-hidden relative shadow-xs border-2 border-gray-300 dark:border-gray-600 bg-gray-100 ${raportData.santri.foto && raportData.santri.foto !== '-' ? 'cursor-pointer hover:opacity-90' : ''}`}
-                      onClick={() => raportData.santri.foto && raportData.santri.foto !== '-' ? setZoomPhoto(getFotoUrl(raportData.santri.foto)) : null}
-                      title="Foto Santri (klik untuk memperbesar)"
-                    >
-                      <div
-                        className="absolute inset-0 flex items-center justify-center"
-                        style={{ backgroundColor: getAvatarColor(raportData.santri.nama) }}
-                      >
-                        <span className="text-white text-base font-bold leading-none">{getInitials(raportData.santri.nama)}</span>
-                      </div>
-                      {raportData.santri.foto && raportData.santri.foto !== '-' && (
-                        <img
-                          src={getFotoUrl(raportData.santri.foto)}
-                          alt={raportData.santri.nama}
-                          className="absolute inset-0 w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.opacity = '0';
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Rincian Identitas Santri (masing-masing 1 baris tanpa terpotong/bertumpuk, tanpa Wali Kelas) */}
-                  <div className="flex-1 min-w-0 text-sm space-y-1.5">
-                    <div className="flex items-baseline">
-                      <span className="w-44 shrink-0 font-bold text-gray-600">Nama Santri</span>
-                      <span className="font-black text-gray-900 flex-1">: {raportData.santri.nama}</span>
-                    </div>
-                    <div className="flex items-baseline">
-                      <span className="w-44 shrink-0 font-bold text-gray-600">Nomor Induk (NIS)</span>
-                      <span className="flex-1 whitespace-nowrap">: {raportData.santri.nis || '-'}</span>
-                    </div>
-                    <div className="flex items-baseline">
-                      <span className="w-44 shrink-0 font-bold text-gray-600">Kelas Madin</span>
-                      <span className="flex-1 whitespace-nowrap">: {raportData.santri.nama_kelas_madin || '-'}</span>
-                    </div>
-                    <div className="flex items-baseline">
-                      <span className="w-44 shrink-0 font-bold text-gray-600">Semester / TA</span>
-                      <span className="font-bold flex-1 whitespace-nowrap">: {raportData.semester === '1' ? '1 (Ganjil)' : '2 (Genap)'} / {raportData.tahun_ajaran}</span>
-                    </div>
-                    <div className="flex items-baseline">
-                      <span className="w-44 shrink-0 font-bold text-gray-600">Kamar / Asrama</span>
-                      <span className="flex-1 whitespace-nowrap">: {raportData.santri.nama_kamar} ({raportData.santri.nama_asrama})</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* TABEL A: HASIL BELAJAR / NILAI AKADEMIK */}
-                {(() => {
-                  const listNilai = Array.isArray(raportData.nilai) ? raportData.nilai : [];
-                  const hasLisan = listNilai.some((n: any) => !isEmptyScoreVal(n.nilai_lisan));
-                  return (
-                    <div className="mb-6">
-                      <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2 flex items-center gap-1.5">
-                        <BookOpen size={14} /> A. Nilai Hasil Belajar (Madrasah Diniyah)
-                      </h5>
-                      <div className="border border-gray-300 rounded-xl overflow-hidden">
-                        <table className="w-full text-left border-collapse text-xs">
-                          <thead>
-                            <tr className="bg-gray-100 border-b border-gray-300 font-bold text-gray-800">
-                              <th className="py-2.5 px-3 w-10 text-center border-r border-gray-300">No</th>
-                              <th className="py-2.5 px-3 border-r border-gray-300">Mata Pelajaran</th>
-                              <th className="py-2.5 px-3 border-r border-gray-300">Kitab yang Dipelajari</th>
-                              <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">KKM</th>
-                              {hasLisan && (
-                                <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">Lisan</th>
-                              )}
-                              <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">Nilai</th>
-                              <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">Predikat</th>
-                              <th className="py-2.5 px-3">Keterangan</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200">
-                            {listNilai.length === 0 ? (
-                              <tr>
-                                <td colSpan={hasLisan ? 8 : 7} className="py-4 text-center text-gray-500 italic">
-                                  Belum ada nilai yang diinput untuk santri ini pada semester ini.
-                                </td>
-                              </tr>
-                            ) : (
-                              listNilai.map((n: any, idx: number) => (
-                                <tr key={n.id} className="hover:bg-gray-50">
-                                  <td className="py-2 px-3 text-center border-r border-gray-200">{idx + 1}</td>
-                                  <td className="py-2 px-3 font-bold border-r border-gray-200">{n.mata_pelajaran}</td>
-                                  <td className="py-2 px-3 italic text-gray-700 border-r border-gray-200">{n.kitab || '-'}</td>
-                                  <td className="py-2 px-2 text-center border-r border-gray-200">70</td>
-                                  {hasLisan && (
-                                    <td className="py-2 px-2 text-center font-semibold text-gray-800 border-r border-gray-200">
-                                      {!isEmptyScoreVal(n.nilai_lisan) ? n.nilai_lisan : '-'}
-                                    </td>
-                                  )}
-                                  <td className="py-2 px-2 text-center font-bold text-gray-900 border-r border-gray-200">{n.nilai_akhir}</td>
-                                  <td className="py-2 px-2 text-center font-black border-r border-gray-200">{n.predikat}</td>
-                                  <td className="py-2 px-3 text-gray-600">
-                                    {Number(n.nilai_akhir) >= 70 ? 'Tuntas' : Number(n.nilai_akhir) > 0 ? 'Perlu Bimbingan' : (n.catatan || 'Belum Dinilai')}
-                                  </td>
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                          {listNilai.length > 0 && (
-                            <tfoot>
-                              <tr className="bg-gray-100 font-bold border-t border-gray-300">
-                                <td colSpan={hasLisan ? 5 : 4} className="py-2.5 px-3 text-right border-r border-gray-300 uppercase">
-                                  Nilai Rata-Rata Akhir:
-                                </td>
-                                <td className="py-2.5 px-2 text-center font-black text-emerald-800 border-r border-gray-300">
-                                  {Number(raportData.ringkasan_nilai.rata_rata) > 0 ? raportData.ringkasan_nilai.rata_rata : '-'}
-                                </td>
-                                <td colSpan={2} className="py-2.5 px-3 text-xs text-gray-600">
-                                  {Number(raportData.ringkasan_nilai.rata_rata) > 0
-                                    ? `Dari total ${raportData.ringkasan_nilai.total_mapel} mata pelajaran`
-                                    : 'Belum ada nilai akhir yang dihitung'}
-                                </td>
-                              </tr>
-                            </tfoot>
-                          )}
-                        </table>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* SINKRONISASI 1: TABEL B & C (BERTUMPUK FULL-WIDTH) */}
-                <div className="space-y-6 mb-6">
-                  {/* TABEL B: REKAPITULASI PRESENSI */}
-                  <div>
-                    <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2 flex items-center gap-1.5">
-                      <ClipboardCheck size={14} className="text-blue-600" /> B. Rekapitulasi Presensi
-                    </h5>
-                    <div className="border border-gray-300 rounded-xl overflow-hidden text-xs">
-                      <table className="w-full">
-                        <tbody className="divide-y divide-gray-200">
-                          <tr>
-                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Hadir</td>
-                            <td className="py-2 px-3 font-bold text-emerald-700">{raportData.rekap_absensi.hadir} kali</td>
-                          </tr>
-                          <tr>
-                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Izin</td>
-                            <td className="py-2 px-3 font-bold text-amber-700">{raportData.rekap_absensi.izin} kali</td>
-                          </tr>
-                          <tr>
-                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Sakit</td>
-                            <td className="py-2 px-3 font-bold text-blue-700">{raportData.rekap_absensi.sakit} kali</td>
-                          </tr>
-                          <tr>
-                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Alpha / Tanpa Keterangan</td>
-                            <td className="py-2 px-3 font-bold text-rose-700">{raportData.rekap_absensi.alpha} kali</td>
-                          </tr>
-                          <tr className="bg-gray-100 font-bold">
-                            <td className="py-2 px-3 w-64 border-r border-gray-200">Persentase Kehadiran</td>
-                            <td className="py-2 px-3 font-black text-gray-900">{raportData.rekap_absensi.persentase}%</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* TABEL C: CATATAN KEDISIPLINAN */}
-                  <div>
-                    <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2 flex items-center gap-1.5">
-                      <ShieldCheck size={14} className="text-emerald-600" /> C. Kedisiplinan &amp; Ketertiban
-                    </h5>
-                    <div className="border border-gray-300 rounded-xl overflow-hidden text-xs">
-                      <table className="w-full">
-                        <tbody className="divide-y divide-gray-200">
-                          <tr>
-                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Total Poin Pelanggaran</td>
-                            <td className="py-2 px-3 font-bold text-gray-900">{raportData.rekap_kedisiplinan.total_poin} Poin</td>
-                          </tr>
-                          <tr>
-                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Predikat Kedisiplinan</td>
-                            <td className="py-2 px-3 font-black text-emerald-800">{raportData.rekap_kedisiplinan.predikat}</td>
-                          </tr>
-                          <tr>
-                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Catatan Pelanggaran</td>
-                            <td className="py-2 px-3 text-gray-600 italic">
-                              {raportData.rekap_kedisiplinan.riwayat.length === 0
-                                ? 'Tidak ada catatan pelanggaran (Disiplin baik).'
-                                : `${raportData.rekap_kedisiplinan.riwayat[0].jenis} (${raportData.rekap_kedisiplinan.riwayat[0].deskripsi || '-'})`}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Capaian Tahfidz</td>
-                            <td className="py-2 px-3 font-bold text-gray-800">{editCatatan.tahfidz_hafalan || '-'}</td>
-                          </tr>
-                          <tr className="bg-gray-100 font-bold">
-                            <td className="py-2 px-3 w-64 border-r border-gray-200">Keputusan Akhir</td>
-                            <td className="py-2 px-3 font-black text-emerald-800">{editCatatan.status_kelulusan}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                {/* CATATAN WALI KELAS */}
-                <div className="border border-gray-300 rounded-xl p-4 mb-8 bg-gray-50 print:bg-transparent">
-                  <h6 className="font-bold text-xs uppercase text-gray-700 mb-1">Catatan Wali Kelas:</h6>
-                  <p className="text-xs text-gray-800 italic leading-relaxed">
-                    "{editCatatan.catatan_wali_kelas || 'Tingkatkan terus prestasi belajar dan ketaatan ibadah.'}"
-                  </p>
-                </div>
-
-                {/* KOLOM TANDA TANGAN RESMI */}
-                <div className="text-xs mt-10 pt-4">
-                  <p className="text-right text-gray-500">
-                    Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </p>
-                  <p className="text-center text-gray-500 mt-1 mb-1">Mengetahui,</p>
-                  <div className="grid grid-cols-2 gap-6 text-center">
-                    <div className="flex flex-col justify-between">
-                      <p className="font-bold text-gray-700">Orang Tua / Wali Santri</p>
-                      <div className="mt-16">
-                        <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
-                          {raportData.santri.nama_wali && String(raportData.santri.nama_wali).trim() && raportData.santri.nama_wali !== '-'
-                            ? raportData.santri.nama_wali
-                            : '( ......................... )'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col justify-between">
-                      <p className="font-bold text-gray-700 whitespace-nowrap">Kepala Madrasah Diniyah PP. Matholi'ul Anwar</p>
-                      <div className="mt-16">
-                        <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
-                          {(raportData as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              </div>
-
-              {/* FORM PENGISIAN CATATAN WALI KELAS & KEPRIBADIAN (Print-hidden, hanya untuk admin/staff/guru/pengasuh/pengurus_asrama) */}
-              {(['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRole)) && (
-              <div className="print:hidden bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
-                <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
-                  <h4 className="font-extrabold text-sm sm:text-base text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                    <Sparkles size={18} className="text-amber-500" /> Pengaturan Catatan &amp; Kepribadian Raport
-                  </h4>
-                  <button
-                    onClick={handleSaveRaportCatatan}
-                    disabled={savingRaportCatatan}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all"
-                  >
-                    {savingRaportCatatan ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                    <span>{savingRaportCatatan ? 'Menyimpan...' : 'Simpan Catatan'}</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                      Capaian Tahfidz / Hafalan
-                    </label>
-                    <input
-                      type="text"
-                      value={editCatatan.tahfidz_hafalan}
-                      onChange={(e) => setEditCatatan({ ...editCatatan, tahfidz_hafalan: e.target.value })}
-                      placeholder="Contoh: Juz 30 (Al-A'la - An-Nas)"
-                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-semibold text-gray-800 dark:text-gray-100"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                      Keputusan Kenaikan / Kelulusan
-                    </label>
-                    <select
-                      value={editCatatan.status_kelulusan}
-                      onChange={(e) => setEditCatatan({ ...editCatatan, status_kelulusan: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-semibold text-gray-800 dark:text-gray-100"
-                    >
-                      <option value="Naik Kelas">Naik Kelas</option>
-                      <option value="Tinggal di Kelas">Tinggal di Kelas</option>
-                      <option value="Lulus">Lulus</option>
-                      <option value="Lanjut ke Semester Berikutnya">Lanjut ke Semester Berikutnya</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                      Predikat Akhlak Santri
-                    </label>
-                    <select
-                      value={editCatatan.akhlak}
-                      onChange={(e) => setEditCatatan({ ...editCatatan, akhlak: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs font-semibold text-gray-800 dark:text-gray-100"
-                    >
-                      <option value="Sangat Baik">Sangat Baik</option>
-                      <option value="Baik">Baik</option>
-                      <option value="Cukup">Cukup</option>
-                      <option value="Perlu Pembinaan">Perlu Pembinaan</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Catatan Wali Kelas untuk Santri &amp; Orang Tua
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={editCatatan.catatan_wali_kelas}
-                    onChange={(e) => setEditCatatan({ ...editCatatan, catatan_wali_kelas: e.target.value })}
-                    placeholder="Tuliskan motivasi, saran, dan evaluasi untuk santri..."
-                    className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-              </div>
-              )}
-            </div>
-          )}
-        </div>
+        <RaportTabSection
+          kelasList={kelasList}
+          selectedKelas={selectedKelas}
+          onChangeKelas={setSelectedKelas}
+          semester={semester}
+          onChangeSemester={setSemester}
+          tahunAjaran={tahunAjaran}
+          muridList={muridList}
+          loadingMurid={loadingMurid}
+          selectedMuridId={selectedMuridId}
+          onSelectMuridId={id => {
+            setSelectedMuridId(id);
+            if (!id) {
+              setRaportData(null);
+              setRaportError(null);
+            }
+          }}
+          raportData={raportData}
+          loadingRaport={loadingRaport}
+          raportError={raportError}
+          onRefreshRaport={fetchRaportDetail}
+          onPrint={handlePrint}
+          getPreviewUrl={mId => {
+            const p = new URLSearchParams({
+              murid_id: mId,
+              semester,
+              tahun_ajaran: tahunAjaran,
+              preview: '1',
+            });
+            return `/dashboard/penilaian/preview?${p.toString()}`;
+          }}
+          getFotoUrl={getFotoUrl}
+          onZoomPhoto={setZoomPhoto}
+          canEditCatatan={['admin', 'staff', 'guru', 'pengasuh', 'pengurus_asrama'].includes(userRole)}
+          isWaliOrSantri={isWaliOrSantri}
+          editCatatan={editCatatan}
+          onChangeEditCatatan={setEditCatatan}
+          onSaveCatatan={handleSaveRaportCatatan}
+          savingCatatan={savingRaportCatatan}
+          variant="dashboard"
+        />
       )}
 
       {/* Zoom Photo Modal (Persis Halaman Data Murid) */}
