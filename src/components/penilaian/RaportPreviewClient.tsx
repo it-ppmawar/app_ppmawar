@@ -280,7 +280,7 @@ export default function RaportPreviewClient() {
                             </tr>
                             <tr className="bg-gray-100 font-bold">
                               <td className="py-2 px-3 w-64 border-r border-gray-200">Persentase Kehadiran</td>
-                              <td className="py-2 px-3 font-black text-gray-900">{abs.persentase ?? 100}%</td>
+                              <td className="py-2 px-3 font-black text-gray-900">{abs.persentase ?? 100} persen</td>
                             </tr>
                           </tbody>
                         </table>
