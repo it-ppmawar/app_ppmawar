@@ -403,46 +403,48 @@ export default function TabInputNilaiGuru({
             </select>
           </div>
 
-          {/* Filter Kelas Spesifik (jika sudah dimuat) + Tombol Tampilkan */}
-          <div className="flex flex-col sm:flex-row gap-2 items-end">
-            {kelasOptions.length > 0 && (
-              <div className="w-full sm:w-1/2">
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Kelas Madin
-                </label>
-                <select
-                  value={kelasFilterId}
-                  onChange={e => setKelasFilterId(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-                >
-                  <option value="all">Semua Kelas</option>
-                  {kelasOptions.map(k => (
-                    <option key={k.kelas_id} value={String(k.kelas_id)}>
-                      {k.nama_kelas}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {/* Filter Kelas Spesifik (jika sudah dimuat) */}
+          {kelasOptions.length > 0 && (
+            <div>
+              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                Kelas Madin
+              </label>
+              <select
+                value={kelasFilterId}
+                onChange={e => setKelasFilterId(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+              >
+                <option value="all">Semua Kelas</option>
+                {kelasOptions.map(k => (
+                  <option key={k.kelas_id} value={String(k.kelas_id)}>
+                    {k.nama_kelas}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* Tombol Tampilkan Data Input Nilai (Rata Tengah di Bawah Barisan Filter) */}
+        <div className="flex justify-center pt-1">
+          <button
+            type="button"
+            onClick={fetchTeacherScores}
+            disabled={loadingData}
+            className="w-full sm:w-auto sm:min-w-[260px] py-2.5 px-6 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md shadow-amber-600/30 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer"
+          >
+            {loadingData ? (
+              <>
+                <RefreshCw size={14} className="animate-spin" />
+                <span>Memuat...</span>
+              </>
+            ) : (
+              <>
+                <Award size={14} />
+                <span>Tampilkan Data Input Nilai</span>
+              </>
             )}
-            <button
-              type="button"
-              onClick={fetchTeacherScores}
-              disabled={loadingData}
-              className="w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md shadow-amber-600/30 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer"
-            >
-              {loadingData ? (
-                <>
-                  <RefreshCw size={14} className="animate-spin" />
-                  <span>Memuat...</span>
-                </>
-              ) : (
-                <>
-                  <Award size={14} />
-                  <span>Tampilkan Data Input Nilai</span>
-                </>
-              )}
-            </button>
-          </div>
+          </button>
         </div>
 
         {/* Masa Berlaku Tautan */}
@@ -495,7 +497,6 @@ export default function TabInputNilaiGuru({
       <div className="bg-amber-50/30 dark:bg-amber-950/15 border border-amber-200/70 dark:border-amber-800/40 rounded-2xl p-4 sm:p-5 space-y-3">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-            <Sparkles size={13} className="text-amber-600" />
             <span>✏️ Edit Templat Pesan WhatsApp Pintasan Input Nilai Guru</span>
           </label>
           <span className="text-[10px] text-gray-400 dark:text-gray-500 leading-relaxed">
