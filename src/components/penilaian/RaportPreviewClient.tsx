@@ -211,7 +211,7 @@ export default function RaportPreviewClient() {
               <>
                 <div className="mb-4">
                   <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-1.5 flex items-center gap-1.5">
-                    <BookOpen size={14} /> A. Nilai Hasil Belajar (Madrasah Diniyah)
+                    <BookOpen size={14} /> A. Nilai Hasil Belajar
                   </h5>
                   <div className="border border-gray-300 rounded-xl overflow-hidden">
                     <table className="w-full text-left border-collapse text-[11px]">
