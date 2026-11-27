@@ -876,7 +876,7 @@ function PenilaianInputContent() {
 
           {/* Teks Rata Tengah */}
           <div className="min-w-0 flex-1 flex flex-col items-center justify-center text-center">
-            <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+            <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
               <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
                 {activeTab === 'raport' ? 'Raport Santri' : 'Input & Leger Nilai'}
               </h1>
@@ -884,7 +884,7 @@ function PenilaianInputContent() {
                 (Guru Madin)
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 text-center font-medium max-w-full">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 text-center font-medium max-w-full break-words leading-snug">
               {guruInfo?.nama || "PP. Matholi'ul Anwar"}
             </p>
           </div>
@@ -948,7 +948,7 @@ function PenilaianInputContent() {
                   <div className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300/70 dark:bg-amber-500/25 dark:text-amber-200 dark:border-amber-400/40 mb-1">
                     <ShieldCheck size={11} /> Dokumen Resmi Penilaian
                   </div>
-                  <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-tight truncate">
+                  <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-tight break-words">
                     {guruInfo?.nama || 'Ustadz / Ustadzah'}
                   </h2>
                 </div>
@@ -987,7 +987,7 @@ function PenilaianInputContent() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('input')}
-                  className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl font-bold text-[11px] sm:text-xs text-center leading-tight transition-all cursor-pointer ${
                     activeTab === 'input'
                       ? 'bg-amber-600 dark:bg-amber-500 text-white shadow-md'
                       : 'text-amber-900/75 dark:text-amber-200/85 hover:text-amber-950 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/10'
@@ -999,7 +999,7 @@ function PenilaianInputContent() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('raport')}
-                  className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl font-bold text-[11px] sm:text-xs text-center leading-tight transition-all cursor-pointer ${
                     activeTab === 'raport'
                       ? 'bg-amber-600 dark:bg-amber-500 text-white shadow-md'
                       : 'text-amber-900/75 dark:text-amber-200/85 hover:text-amber-950 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/10'
@@ -1320,43 +1320,44 @@ function PenilaianInputContent() {
                       className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-gray-900/90 border border-slate-200/80 dark:border-gray-800 space-y-3 transition-colors"
                     >
                       {/* Santri Header */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-[10px] font-mono text-slate-400 dark:text-gray-500 w-5 text-center shrink-0">
-                            {idx + 1}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
-                            className="relative w-10 h-10 rounded-xl overflow-hidden bg-slate-200 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 shrink-0"
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => fotoUrl && setZoomPhoto(fotoUrl)}
+                          className="relative w-10 h-10 rounded-xl overflow-hidden bg-slate-200 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 shrink-0 mt-0.5"
+                        >
+                          <div
+                            className="w-full h-full flex items-center justify-center text-xs font-black text-white"
+                            style={{ backgroundColor: getAvatarColor(m.nama) }}
                           >
-                            <div
-                              className="w-full h-full flex items-center justify-center text-xs font-black text-white"
-                              style={{ backgroundColor: getAvatarColor(m.nama) }}
-                            >
-                              {getInitials(m.nama)}
-                            </div>
-                            {fotoUrl && (
-                              <img
-                                src={fotoUrl}
-                                alt={m.nama}
-                                className="absolute inset-0 w-full h-full object-cover"
-                                onError={(e: any) => { e.target.style.display = 'none'; }}
-                              />
-                            )}
-                          </button>
-                          <div className="min-w-0">
-                            <div className="font-extrabold text-slate-900 dark:text-white text-xs truncate">{m.nama}</div>
-                            <div className="text-[10px] text-slate-500 dark:text-gray-400 flex items-center gap-1.5 flex-wrap">
-                              <span className="font-mono">NIS: {m.nis || '-'}</span>
-                              <span>•</span>
-                              <span className={m.kehadiran_persen >= 85 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-amber-600 dark:text-amber-400 font-bold'}>
-                                Hadir {m.kehadiran_persen ?? 100}%
-                              </span>
+                            {getInitials(m.nama)}
+                          </div>
+                          {fotoUrl && (
+                            <img
+                              src={fotoUrl}
+                              alt={m.nama}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              onError={(e: any) => { e.target.style.display = 'none'; }}
+                            />
+                          )}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-[11px] font-extrabold font-mono text-amber-600 dark:text-amber-400 shrink-0">
+                              {idx + 1}.
+                            </span>
+                            <div className="font-extrabold text-slate-900 dark:text-white text-xs break-words leading-snug min-w-0">
+                              {m.nama}
                             </div>
                           </div>
+                          <div className="text-[10px] text-slate-500 dark:text-gray-400 flex items-center gap-x-1.5 gap-y-0.5 flex-wrap mt-0.5">
+                            <span className="font-mono whitespace-nowrap">NIS: {m.nis || '-'}</span>
+                            <span>•</span>
+                            <span className={`whitespace-nowrap ${m.kehadiran_persen >= 85 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-amber-600 dark:text-amber-400 font-bold'}`}>
+                              Hadir {m.kehadiran_persen ?? 100}%
+                            </span>
+                          </div>
                         </div>
-
                       </div>
 
                       {/* Score Inputs */}
