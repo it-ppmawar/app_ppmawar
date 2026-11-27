@@ -1,7 +1,7 @@
 'use client';
 
-import { BookOpen } from 'lucide-react';
-import { isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
+import { BookOpen, ClipboardList } from 'lucide-react';
+import { calcPredikatFromInput, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
 import RaportKopHeader from '@/components/penilaian/RaportKopHeader';
 import RaportFooterSections, { RaportKedisiplinanRow } from '@/components/penilaian/RaportFooterSections';
 
@@ -13,19 +13,22 @@ const AVATAR_COLORS = [
 function getInitials(nama: string): string {
   if (!nama) return '?';
   const parts = nama.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return nama.substring(0, 2).toUpperCase();
+  return parts.length >= 2
+    ? (parts[0][0] + parts[1][0]).toUpperCase()
+    : nama.substring(0, 2).toUpperCase();
 }
 
 function getAvatarColor(nama: string): string {
   if (!nama) return AVATAR_COLORS[0];
   let hash = 0;
-  for (let i = 0; i < nama.length; i++) {
-    hash = nama.charCodeAt(i) + ((hash << 5) - hash);
-  }
+  for (let i = 0; i < nama.length; i++) hash = nama.charCodeAt(i) + ((hash << 5) - hash);
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function displayValue(value: unknown, fallback = '-'): string {
+  return value !== null && value !== undefined && String(value).trim() !== ''
+    ? String(value)
+    : fallback;
 }
 
 export interface RaportDocumentProps {
@@ -40,9 +43,7 @@ export interface RaportDocumentProps {
   onZoomPhoto?: (url: string) => void;
 }
 
-/**
- * Lembar Raport Resmi A4 PP. Matholi'ul Anwar dengan tata letak konsisten di PC, HP (horizontal scroll), dan Cetak PDF.
- */
+/** Preview dan cetak raport dalam dua lembar A4: ringkasan lalu transkrip nilai. */
 export default function RaportDocument({
   raportData,
   editCatatan,
@@ -51,18 +52,19 @@ export default function RaportDocument({
 }: RaportDocumentProps) {
   if (!raportData) return null;
 
+  const santri = raportData.santri || {};
   const listNilai = Array.isArray(raportData.nilai) ? raportData.nilai : [];
-  const hasLisan = listNilai.some((n: any) => !isEmptyScoreVal(n.nilai_lisan));
-
-  const tahfidzText = editCatatan?.tahfidz_hafalan ?? raportData.catatan?.tahfidz_hafalan ?? '';
-  const keputusanText = editCatatan?.status_kelulusan ?? raportData.catatan?.status_kelulusan ?? 'Lanjut ke Semester Berikutnya';
-  const catatanWaliText =
-    editCatatan?.catatan_wali_kelas ??
-    raportData.catatan?.catatan_wali_kelas ??
-    '';
-
-  const fotoSrc = getFotoUrl(raportData.santri?.foto, raportData.santri?.nis);
+  const semesterLabel = raportData.semester === '1' ? '1 (Ganjil)' : '2 (Genap)';
+  const totalMapel = Number(raportData.ringkasan_nilai?.total_mapel ?? listNilai.length);
+  const totalDinilai = Number(raportData.ringkasan_nilai?.total_mapel_dinilai ?? 0);
+  const totalNilaiAkhir = Number(raportData.ringkasan_nilai?.total_nilai_akhir ?? 0);
+  const rataRata = totalNilaiAkhir > 0 ? displayValue(raportData.ringkasan_nilai?.rata_rata) : '-';
+  const fotoSrc = getFotoUrl(santri.foto, santri.nis);
   const canZoomFoto = Boolean(fotoSrc && onZoomPhoto);
+  const catatan = raportData.catatan || {};
+  const catatanWaliText = editCatatan?.catatan_wali_kelas ?? catatan.catatan_wali_kelas ?? '';
+  const tahfidzText = editCatatan?.tahfidz_hafalan ?? catatan.tahfidz_hafalan ?? '';
+  const keputusanText = editCatatan?.status_kelulusan ?? catatan.status_kelulusan ?? 'Lanjut ke Semester Berikutnya';
 
   const kedisiplinanRows: RaportKedisiplinanRow[] = [
     {
@@ -84,6 +86,11 @@ export default function RaportDocument({
       valueClassName: 'text-gray-600 italic font-normal',
     },
     {
+      label: 'Predikat Akhlak',
+      value: editCatatan?.akhlak ?? catatan.akhlak ?? 'Baik',
+      valueClassName: 'font-bold text-gray-800',
+    },
+    {
       label: 'Capaian Tahfidz',
       value: tahfidzText || '-',
       valueClassName: 'font-bold text-gray-800',
@@ -96,168 +103,185 @@ export default function RaportDocument({
     },
   ];
 
+  const pageShell = 'raport-print-page bg-white text-gray-900 w-[794px] min-h-[1123px] flex flex-col mx-auto p-9 print:w-full print:h-[277mm] print:min-h-[277mm] print:max-h-[277mm] print:p-0 print:m-0 print:shadow-none print:border-none print:rounded-none';
+
   return (
     <div className="w-full overflow-x-auto pb-4 print:overflow-visible print:pb-0">
-      <div
-        className="bg-white text-gray-900 rounded-3xl shadow-md border border-gray-200 p-9 print:border-none print:shadow-none print:p-0 print:m-0 w-[794px] min-h-[1123px] flex flex-col mx-auto print:w-full print:min-h-0"
-        style={{ fontFamily: '"Courier New", Courier, monospace' }}
-      >
-        {/* KOP RESMI PESANTREN */}
-        <RaportKopHeader />
+      <style jsx global>{`
+        @media print {
+          @page { size: A4 portrait; margin: 10mm 12mm; }
+          html, body { margin: 0 !important; background: #fff !important; }
+          .raport-print-page {
+            box-sizing: border-box;
+            overflow: hidden;
+            break-after: page;
+            page-break-after: always;
+          }
+          .raport-print-page:last-child {
+            break-after: auto;
+            page-break-after: auto;
+          }
+          .raport-print-page table { break-inside: auto; }
+          .raport-print-page tr { break-inside: avoid; page-break-inside: avoid; }
+        }
+      `}</style>
 
-        {/* IDENTITAS SANTRI DENGAN PAS FOTO RESMI */}
-        <div className="flex flex-row items-start gap-4 mb-4 bg-gray-50 print:bg-transparent p-3.5 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
-          {/* Pas Foto Santri Resmi */}
-          <div className="shrink-0">
-            <div
-              className={`w-[88px] h-[104px] rounded-xl overflow-hidden relative shadow-xs border-2 border-gray-300 bg-gray-100 ${
-                canZoomFoto ? 'cursor-pointer hover:opacity-90' : ''
-              }`}
-              onClick={() => (canZoomFoto ? onZoomPhoto?.(fotoSrc) : null)}
-              title={canZoomFoto ? 'Foto Santri (klik untuk memperbesar)' : undefined}
-            >
+      <div className="flex flex-col items-center gap-6 print:block print:gap-0" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
+        {/* HALAMAN 1: RINGKASAN RAPORT DAN IDENTITAS SANTRI */}
+        <article className={`${pageShell} rounded-3xl shadow-md border border-gray-200`}>
+          <RaportKopHeader />
+
+          <section className="flex flex-row items-start gap-4 mb-4 bg-gray-50 print:bg-transparent p-3.5 rounded-2xl border border-gray-200/60 print:border-none print:p-0 print:mb-3">
+            <div className="shrink-0">
               <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ backgroundColor: getAvatarColor(raportData.santri?.nama || '') }}
+                className={`w-[88px] h-[104px] rounded-xl overflow-hidden relative shadow-xs border-2 border-gray-300 bg-gray-100 print:w-[70px] print:h-[84px] ${canZoomFoto ? 'cursor-pointer hover:opacity-90' : ''}`}
+                onClick={() => (canZoomFoto ? onZoomPhoto?.(fotoSrc) : null)}
+                title={canZoomFoto ? 'Foto Santri (klik untuk memperbesar)' : undefined}
               >
-                <span className="text-white text-base font-bold leading-none">
-                  {getInitials(raportData.santri?.nama || '')}
-                </span>
+                <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: getAvatarColor(santri.nama || '') }}>
+                  <span className="text-white text-base font-bold leading-none">{getInitials(santri.nama || '')}</span>
+                </div>
+                {fotoSrc && (
+                  <img
+                    src={fotoSrc}
+                    alt={santri.nama || 'Foto Santri'}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.display = 'none'; }}
+                  />
+                )}
               </div>
-              {fotoSrc && (
-                <img
-                  src={fotoSrc}
-                  alt={raportData.santri?.nama || 'Foto Santri'}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.opacity = '0';
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              )}
             </div>
+
+            <div className="flex-1 min-w-0 text-xs sm:text-[13px] print:text-[10px] space-y-1 print:space-y-0.5">
+              <div className="flex items-baseline"><span className="w-40 shrink-0 font-bold text-gray-600 print:w-32">Nama Santri</span><span className="font-black text-gray-900 flex-1">: {displayValue(santri.nama)}</span></div>
+              <div className="flex items-baseline"><span className="w-40 shrink-0 font-bold text-gray-600 print:w-32">Nomor Induk (NIS)</span><span className="flex-1">: {displayValue(santri.nis)}</span></div>
+              <div className="flex items-baseline"><span className="w-40 shrink-0 font-bold text-gray-600 print:w-32">Kelas Madin</span><span className="flex-1">: {displayValue(santri.nama_kelas_madin)}</span></div>
+              <div className="flex items-baseline"><span className="w-40 shrink-0 font-bold text-gray-600 print:w-32">Semester / TA</span><span className="font-bold flex-1">: {semesterLabel} / {displayValue(raportData.tahun_ajaran)}</span></div>
+              <div className="flex items-baseline"><span className="w-40 shrink-0 font-bold text-gray-600 print:w-32">Kamar / Asrama</span><span className="flex-1">: {displayValue(santri.nama_kamar)} ({displayValue(santri.nama_asrama)})</span></div>
+              <div className="flex items-baseline"><span className="w-40 shrink-0 font-bold text-gray-600 print:w-32">Alamat</span><span className="flex-1 break-words">: {displayValue(santri.alamat)}</span></div>
+            </div>
+          </section>
+
+          <section className="mb-4 print:mb-3">
+            <h5 className="font-bold text-xs print:text-[10px] uppercase tracking-wider text-gray-700 mb-1.5 flex items-center gap-1.5">
+              <BookOpen size={14} /> A. Ringkasan Hasil Belajar
+            </h5>
+            <div className="grid grid-cols-3 gap-2 print:gap-1.5">
+              <div className="rounded-xl border border-gray-300 bg-gray-50 print:bg-white px-3 py-2 print:px-2 print:py-1.5">
+                <div className="text-[10px] print:text-[8px] uppercase text-gray-500 font-bold">Nilai Rata-rata</div>
+                <div className="text-lg print:text-sm font-black text-emerald-800">{rataRata}</div>
+              </div>
+              <div className="rounded-xl border border-gray-300 bg-gray-50 print:bg-white px-3 py-2 print:px-2 print:py-1.5">
+                <div className="text-[10px] print:text-[8px] uppercase text-gray-500 font-bold">Jumlah Mata Pelajaran</div>
+                <div className="text-lg print:text-sm font-black text-gray-900">{totalMapel} <span className="text-xs font-semibold">mapel</span></div>
+              </div>
+              <div className="rounded-xl border border-gray-300 bg-gray-50 print:bg-white px-3 py-2 print:px-2 print:py-1.5">
+                <div className="text-[10px] print:text-[8px] uppercase text-gray-500 font-bold">Mata Pelajaran Dinilai</div>
+                <div className="text-lg print:text-sm font-black text-gray-900">{totalDinilai} <span className="text-xs font-semibold">mapel</span></div>
+              </div>
+            </div>
+          </section>
+
+          <RaportFooterSections
+            absensi={raportData.rekap_absensi || {}}
+            kedisiplinanRows={kedisiplinanRows}
+            catatanTitle="D. Catatan Wali Kelas:"
+            catatanContent={<p className="italic leading-snug">&quot;{catatanWaliText || 'Tingkatkan terus prestasi belajar dan ketaatan ibadah.'}&quot;</p>}
+            namaWali={santri.nama_wali}
+            kepalaMadin={raportData.kepala_madin}
+          />
+
+          <div className="mt-auto pt-2 text-center text-[9px] print:text-[8px] text-gray-500">Halaman 1 dari 2</div>
+        </article>
+
+        {/* HALAMAN 2: TRANSKRIP NILAI DETAIL, SEMUA MAPEL DAN KOMPONEN NILAI */}
+        <article className={`${pageShell} rounded-3xl shadow-md border border-gray-200`}>
+          <RaportKopHeader title="TRANSKRIP NILAI DETAIL" />
+
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-3 print:mb-2 text-[10px] print:text-[9px] border border-gray-300 rounded-lg p-2 print:p-1.5">
+            <div><span className="font-bold">Nama</span><span className="inline-block w-3 text-center">:</span> {displayValue(santri.nama)}</div>
+            <div><span className="font-bold">Kelas Madin</span><span className="inline-block w-3 text-center">:</span> {displayValue(santri.nama_kelas_madin)}</div>
+            <div><span className="font-bold">Nomor Induk (NIS)</span><span className="inline-block w-3 text-center">:</span> {displayValue(santri.nis)}</div>
+            <div><span className="font-bold">Semester / TA</span><span className="inline-block w-3 text-center">:</span> {semesterLabel} / {displayValue(raportData.tahun_ajaran)}</div>
           </div>
 
-          {/* Rincian Identitas Santri */}
-          <div className="flex-1 min-w-0 text-xs sm:text-[13px] print:text-xs space-y-1">
-            <div className="flex items-baseline">
-              <span className="w-40 shrink-0 font-bold text-gray-600">Nama Santri</span>
-              <span className="font-black text-gray-900 flex-1">: {raportData.santri?.nama}</span>
-            </div>
-            <div className="flex items-baseline">
-              <span className="w-40 shrink-0 font-bold text-gray-600">Nomor Induk (NIS)</span>
-              <span className="flex-1 whitespace-nowrap">: {raportData.santri?.nis || '-'}</span>
-            </div>
-            <div className="flex items-baseline">
-              <span className="w-40 shrink-0 font-bold text-gray-600">Kelas Madin</span>
-              <span className="flex-1 whitespace-nowrap">: {raportData.santri?.nama_kelas_madin || '-'}</span>
-            </div>
-            <div className="flex items-baseline">
-              <span className="w-40 shrink-0 font-bold text-gray-600">Semester / TA</span>
-              <span className="font-bold flex-1 whitespace-nowrap">
-                : {raportData.semester === '1' ? '1 (Ganjil)' : '2 (Genap)'} / {raportData.tahun_ajaran}
-              </span>
-            </div>
-            <div className="flex items-baseline">
-              <span className="w-40 shrink-0 font-bold text-gray-600">Kamar / Asrama</span>
-              <span className="flex-1 whitespace-nowrap">
-                : {raportData.santri?.nama_kamar} ({raportData.santri?.nama_asrama})
-              </span>
-            </div>
+          <div className="flex items-center justify-between gap-3 mb-1.5 print:mb-1">
+            <h5 className="font-bold text-xs print:text-[10px] uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+              <ClipboardList size={14} /> A. Transkrip Nilai Per Mata Pelajaran
+            </h5>
+            <span className="text-[9px] print:text-[8px] text-gray-600 whitespace-nowrap">KKM: 70</span>
           </div>
-        </div>
 
-        {/* TABEL A: HASIL BELAJAR / NILAI AKADEMIK */}
-        <div className="mb-4">
-          <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-1.5 flex items-center gap-1.5">
-            <BookOpen size={14} /> A. Nilai Hasil Belajar
-          </h5>
-          <div className="border border-gray-300 rounded-xl overflow-hidden">
-            <table className="w-full text-left border-collapse text-[11px]">
+          <div className="border border-gray-400 rounded-lg overflow-hidden">
+            <table className="w-full table-fixed text-left border-collapse text-[9px] print:text-[7.5px] leading-tight">
+              <colgroup>
+                <col style={{ width: '4%' }} />
+                <col style={{ width: '24%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '22%' }} />
+              </colgroup>
               <thead>
-                <tr className="bg-gray-100 border-b border-gray-300 font-bold text-gray-800">
-                  <th className="py-2 px-2.5 w-9 text-center border-r border-gray-300">No</th>
-                  <th className="py-2 px-2.5 border-r border-gray-300">Mata Pelajaran</th>
-                  <th className="py-2 px-2.5 border-r border-gray-300">Kitab yang Dipelajari</th>
-                  <th className="py-2 px-2 w-12 text-center border-r border-gray-300">KKM</th>
-                  {hasLisan && (
-                    <th className="py-2 px-2 w-14 text-center border-r border-gray-300">Lisan</th>
-                  )}
-                  <th className="py-2 px-2 w-14 text-center border-r border-gray-300">Nilai</th>
-                  <th className="py-2 px-2 w-16 text-center border-r border-gray-300">Predikat</th>
-                  <th className="py-2 px-2.5">Keterangan</th>
+                <tr className="bg-gray-100 border-b border-gray-400 font-bold text-gray-800">
+                  {['No', 'Mata Pelajaran / Kitab', 'KKM', 'Harian', 'Lisan', 'UTS', 'UAS', 'Nilai Akhir', 'Predikat', 'Keterangan'].map((label) => (
+                    <th key={label} className="py-1.5 px-1 print:py-1 print:px-0.5 text-center border-r border-gray-300 last:border-r-0">{label}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody>
                 {listNilai.length === 0 ? (
-                  <tr>
-                    <td colSpan={hasLisan ? 8 : 7} className="py-4 text-center text-gray-500 italic">
-                      Belum ada nilai yang diinput untuk santri ini pada semester ini.
-                    </td>
-                  </tr>
-                ) : (
-                  listNilai.map((n: any, idx: number) => (
-                    <tr key={n.id || idx} className="hover:bg-gray-50">
-                      <td className="py-1.5 px-2.5 text-center border-r border-gray-200">{idx + 1}</td>
-                      <td className="py-1.5 px-2.5 font-bold border-r border-gray-200">{n.mata_pelajaran}</td>
-                      <td className="py-1.5 px-2.5 italic text-gray-700 border-r border-gray-200">{n.kitab || '-'}</td>
-                      <td className="py-1.5 px-2 text-center border-r border-gray-200">70</td>
-                      {hasLisan && (
-                        <td className="py-1.5 px-2 text-center font-semibold text-gray-800 border-r border-gray-200">
-                          {!isEmptyScoreVal(n.nilai_lisan) ? n.nilai_lisan : '-'}
+                  <tr><td colSpan={10} className="py-4 text-center text-gray-500 italic">Belum ada mata pelajaran pada jadwal kelas ini.</td></tr>
+                ) : listNilai.map((n: any, idx: number) => {
+                  const hasFinal = !isEmptyScoreVal(n.nilai_akhir) && String(n.nilai_akhir).trim() !== '-';
+                  const finalNumber = hasFinal ? Number(n.nilai_akhir) : NaN;
+                  const keterangan = n.catatan || (
+                    Number.isFinite(finalNumber)
+                      ? finalNumber >= 70 ? 'Tuntas' : 'Perlu Bimbingan'
+                      : 'Belum Dinilai'
+                  );
+                  return (
+                    <tr key={n.id || `${n.mata_pelajaran}-${idx}`} className="border-b border-gray-300 last:border-b-0">
+                      <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center border-r border-gray-300">{idx + 1}</td>
+                      <td className="py-1.5 px-1.5 print:py-1 print:px-1 border-r border-gray-300">
+                        <div className="font-bold break-words">{displayValue(n.mata_pelajaran)}</div>
+                        <div className="italic text-gray-600 break-words">{displayValue(n.kitab)}</div>
+                      </td>
+                      <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center border-r border-gray-300">70</td>
+                      {['nilai_harian', 'nilai_lisan', 'nilai_uts', 'nilai_uas', 'nilai_akhir'].map((field) => (
+                        <td key={field} className={`py-1.5 px-1 print:py-1 print:px-0.5 text-center border-r border-gray-300 ${field === 'nilai_akhir' ? 'font-bold' : ''}`}>
+                          {displayValue(n[field])}
                         </td>
-                      )}
-                      <td className="py-1.5 px-2 text-center font-bold text-gray-900 border-r border-gray-200">
-                        {!isEmptyScoreVal(n.nilai_akhir) ? n.nilai_akhir : '-'}
+                      ))}
+                      <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center font-bold border-r border-gray-300">
+                        {displayValue(n.predikat, calcPredikatFromInput(n.nilai_akhir, '-'))}
                       </td>
-                      <td className="py-1.5 px-2 text-center font-black border-r border-gray-200">
-                        {n.predikat || '-'}
-                      </td>
-                      <td className="py-1.5 px-2.5 text-gray-600">
-                        {Number(n.nilai_akhir) >= 70
-                          ? 'Tuntas'
-                          : Number(n.nilai_akhir) > 0
-                            ? 'Perlu Bimbingan'
-                            : n.catatan || 'Belum Dinilai'}
-                      </td>
+                      <td className="py-1.5 px-1.5 print:py-1 print:px-1 break-words">{displayValue(keterangan)}</td>
                     </tr>
-                  ))
-                )}
+                  );
+                })}
               </tbody>
-              {listNilai.length > 0 && (
-                <tfoot>
-                  <tr className="bg-gray-100 font-bold border-t border-gray-300">
-                    <td colSpan={hasLisan ? 5 : 4} className="py-2 px-2.5 text-right border-r border-gray-300 uppercase">
-                      Nilai Rata-Rata Akhir:
-                    </td>
-                    <td className="py-2 px-2 text-center font-black text-emerald-800 border-r border-gray-300">
-                      {Number(raportData.ringkasan_nilai?.rata_rata) > 0 ? raportData.ringkasan_nilai.rata_rata : '-'}
-                    </td>
-                    <td colSpan={2} className="py-2 px-2.5 text-[11px] text-gray-600">
-                      {Number(raportData.ringkasan_nilai?.rata_rata) > 0
-                        ? `Dari total ${raportData.ringkasan_nilai.total_mapel} mata pelajaran`
-                        : 'Belum ada nilai akhir yang dihitung'}
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
+              <tfoot>
+                <tr className="bg-gray-100 border-t border-gray-400 font-bold">
+                  <td colSpan={7} className="py-1.5 px-2 print:py-1 print:px-1 text-right border-r border-gray-300 uppercase">Nilai Rata-rata Akhir</td>
+                  <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center text-emerald-800 border-r border-gray-300">{rataRata}</td>
+                  <td colSpan={2} className="py-1.5 px-1.5 print:py-1 print:px-1">{totalMapel} mapel · {totalDinilai} dinilai · {totalNilaiAkhir} nilai akhir</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
-        </div>
 
-        {/* TABEL B & C BERDAMPINGAN + CATATAN WALI KELAS + TANDA TANGAN RESMI */}
-        <RaportFooterSections
-          absensi={raportData.rekap_absensi || {}}
-          kedisiplinanRows={kedisiplinanRows}
-          catatanTitle="Catatan Wali Kelas:"
-          catatanContent={
-            <p className="italic leading-snug">
-              &quot;{catatanWaliText || 'Tingkatkan terus prestasi belajar dan ketaatan ibadah.'}&quot;
-            </p>
-          }
-          namaWali={raportData.santri?.nama_wali}
-          kepalaMadin={raportData.kepala_madin}
-        />
+          <div className="mt-3 print:mt-2 border border-gray-300 rounded-lg p-2 print:p-1.5 text-[9px] print:text-[8px] text-gray-700">
+            <span className="font-bold uppercase">Keterangan nilai: </span>
+            Nilai akhir ≥ 70: Tuntas · Nilai akhir &lt; 70: Perlu Bimbingan · Tanda “-”: belum diisi.
+          </div>
+
+          <div className="mt-auto pt-2 text-center text-[9px] print:text-[8px] text-gray-500">Halaman 2 dari 2</div>
+        </article>
       </div>
     </div>
   );

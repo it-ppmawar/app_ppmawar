@@ -59,6 +59,7 @@ export async function GET(request: Request) {
     const [muridRows] = await pool.execute<RowDataPacket[]>(`
       SELECT 
         m.murid_id, m.nama, m.nis, m.jenis_kelamin,
+        COALESCE(m.alamat, '') as alamat,
         COALESCE(
           NULLIF(TRIM(m.nama_wali), ''),
           NULLIF(TRIM((SELECT u.nama FROM users u WHERE u.murid_id = m.murid_id AND u.role = 'wali_murid' LIMIT 1)), ''),
@@ -105,39 +106,82 @@ export async function GET(request: Request) {
       console.warn('Error fetching nilai_santri for raport:', nilaiErr);
     }
 
-    // Jika santri belum memiliki nilai tersimpan, tetap sertakan daftar mata pelajaran kelasnya
-    if (nilaiRows.length === 0 && santri.kelas_madin_id) {
+    // Selalu ambil seluruh mata pelajaran kelas, lalu gabungkan dengan nilai tersimpan.
+    // Dengan begitu mapel yang belum memiliki baris nilai tetap muncul di transkrip.
+    let mapelKelasRows: RowDataPacket[] = [];
+    if (santri.kelas_madin_id) {
       try {
-        const [mapelRows] = await pool.execute<RowDataPacket[]>(`
-          SELECT DISTINCT mata_pelajaran, '' as kitab
-          FROM jadwal_madin
-          WHERE kelas_madin_id = ? AND mata_pelajaran IS NOT NULL AND mata_pelajaran != ''
-          ORDER BY mata_pelajaran ASC
+        const [rows] = await pool.execute<RowDataPacket[]>(`
+          SELECT DISTINCT j.mata_pelajaran, COALESCE(k.kitab, '') as kitab
+          FROM jadwal_madin j
+          LEFT JOIN kurikulum_madin k ON LOWER(TRIM(j.mata_pelajaran)) = LOWER(TRIM(k.mata_pelajaran))
+          WHERE j.kelas_madin_id = ? AND j.mata_pelajaran IS NOT NULL AND TRIM(j.mata_pelajaran) != ''
+          ORDER BY j.mata_pelajaran ASC
         `, [santri.kelas_madin_id]);
-
-        if (mapelRows.length > 0) {
-          nilaiRows = mapelRows.map((r, idx) => ({
-            id: `default_${idx + 1}`,
-            mata_pelajaran: r.mata_pelajaran,
-            kitab: r.kitab || '-',
-            nilai_harian: null,
-            nilai_lisan: null,
-            nilai_uts: null,
-            nilai_uas: null,
-            nilai_akhir: '-',
-            predikat: '-',
-            catatan: 'Belum Ada Nilai',
-          })) as any;
-        }
+        mapelKelasRows = rows;
       } catch (jadwalErr) {
-        console.warn('Error fetching default mapel for empty raport:', jadwalErr);
+        console.warn('Error fetching class mapel for raport:', jadwalErr);
       }
     }
+
+    const nilaiByMapel = new Map<string, any>();
+    const mapelKey = (name: unknown) => String(name || '').trim().toLocaleLowerCase('id');
+    for (const row of mapelKelasRows) {
+      const name = String(row.mata_pelajaran || '').trim();
+      if (!name) continue;
+      const key = mapelKey(name);
+      const current = nilaiByMapel.get(key);
+      if (!current) {
+        nilaiByMapel.set(key, {
+          id: `mapel_${nilaiByMapel.size + 1}`,
+          mata_pelajaran: name,
+          kitab: row.kitab || '',
+          nilai_harian: null,
+          nilai_lisan: null,
+          nilai_uts: null,
+          nilai_uas: null,
+          nilai_akhir: null,
+          predikat: null,
+          catatan: '',
+        });
+      } else if (!current.kitab && row.kitab) {
+        current.kitab = row.kitab;
+      }
+    }
+
+    for (const row of nilaiRows) {
+      const name = String(row.mata_pelajaran || '').trim();
+      if (!name) continue;
+      const key = mapelKey(name);
+      const current = nilaiByMapel.get(key);
+      if (!current) {
+        nilaiByMapel.set(key, { ...row, mata_pelajaran: name });
+        continue;
+      }
+
+      for (const field of ['kitab', 'nilai_harian', 'nilai_lisan', 'nilai_uts', 'nilai_uas', 'nilai_akhir', 'predikat', 'catatan']) {
+        const value = (row as any)[field];
+        if (value !== null && value !== undefined && String(value).trim() !== '') {
+          current[field] = value;
+        }
+      }
+      if (row.id) current.id = row.id;
+    }
+
+    nilaiRows = Array.from(nilaiByMapel.values()).sort((a, b) =>
+      String(a.mata_pelajaran).localeCompare(String(b.mata_pelajaran), 'id')
+    ) as RowDataPacket[];
 
     // Hitung rata-rata hanya dari mata pelajaran yang memiliki nilai akhir numerik valid
     let totalNilai = 0;
     let scoredMapelCount = 0;
+    let mapelDinilaiCount = 0;
     nilaiRows.forEach(n => {
+      const hasAnyScore = ['nilai_harian', 'nilai_lisan', 'nilai_uts', 'nilai_uas', 'nilai_akhir'].some((field) => {
+        const value = (n as any)[field];
+        return value !== null && value !== undefined && String(value).trim() !== '' && String(value).trim() !== '-';
+      });
+      if (hasAnyScore) mapelDinilaiCount++;
       const raw = n.nilai_akhir;
       if (raw !== null && raw !== undefined && String(raw).trim() !== '' && String(raw).trim() !== '-') {
         const num = Number(raw);
@@ -257,7 +301,9 @@ export async function GET(request: Request) {
         tahun_ajaran: tahunAjaran,
         nilai: nilaiRows,
         ringkasan_nilai: {
-          total_mapel: scoredMapelCount > 0 ? scoredMapelCount : nilaiRows.length,
+          total_mapel: nilaiRows.length,
+          total_mapel_dinilai: mapelDinilaiCount,
+          total_nilai_akhir: scoredMapelCount,
           rata_rata: rataRata,
         },
         rekap_absensi: {

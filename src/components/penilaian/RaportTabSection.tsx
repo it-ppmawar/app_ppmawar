@@ -136,7 +136,7 @@ export default function RaportTabSection({
   const selectedMurid = muridList.find(m => String(m.murid_id) === selectedMuridId);
 
   return (
-    <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
+    <div className="space-y-6 print:space-y-0 animate-[fadeIn_0.2s_ease-out]">
       {/* Header Kontrol Raport */}
       <div className={`print:hidden ${cardCls} space-y-4`}>
         <div className="flex flex-col gap-3 w-full">
@@ -458,7 +458,7 @@ export default function RaportTabSection({
           )}
         </div>
       ) : (
-        <div className="space-y-6 w-full">
+        <div className="space-y-6 print:space-y-0 w-full">
           {/* LEMBAR RAPORT RESMI */}
           <RaportDocument
             raportData={raportData}
