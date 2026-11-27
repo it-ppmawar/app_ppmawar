@@ -158,7 +158,7 @@ export default function RaportDocument({
               <div className="flex items-baseline"><span className="w-40 shrink-0 font-bold text-gray-600 print:w-32">Kelas Madin</span><span className="flex-1">: {displayValue(santri.nama_kelas_madin)}</span></div>
               <div className="flex items-baseline"><span className="w-40 shrink-0 font-bold text-gray-600 print:w-32">Semester / TA</span><span className="font-bold flex-1">: {semesterLabel} / {displayValue(raportData.tahun_ajaran)}</span></div>
               <div className="flex items-baseline"><span className="w-40 shrink-0 font-bold text-gray-600 print:w-32">Kamar / Asrama</span><span className="flex-1">: {displayValue(santri.nama_kamar)} ({displayValue(santri.nama_asrama)})</span></div>
-              <div className="flex items-baseline"><span className="w-40 shrink-0 font-bold text-gray-600 print:w-32">Alamat</span><span className="flex-1 break-words">: {displayValue(santri.alamat)}</span></div>
+              <div className="flex items-baseline"><span className="w-40 shrink-0 font-bold text-gray-600 print:w-32">Alamat</span><span className="font-bold text-gray-700 print:w-28 print:text-[9px]">:</span><span className="flex-1 break-words leading-snug">{displayValue(santri.alamat)}</span></div>
             </div>
           </section>
 
@@ -198,11 +198,34 @@ export default function RaportDocument({
         <article className={`${pageShell} rounded-3xl shadow-md border border-gray-200`}>
           <RaportKopHeader title="TRANSKRIP NILAI DETAIL" />
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-3 print:mb-2 text-[10px] print:text-[9px] border border-gray-300 rounded-lg p-2 print:p-1.5">
-            <div><span className="font-bold">Nama</span><span className="inline-block w-3 text-center">:</span> {displayValue(santri.nama)}</div>
-            <div><span className="font-bold">Kelas Madin</span><span className="inline-block w-3 text-center">:</span> {displayValue(santri.nama_kelas_madin)}</div>
-            <div><span className="font-bold">Nomor Induk (NIS)</span><span className="inline-block w-3 text-center">:</span> {displayValue(santri.nis)}</div>
-            <div><span className="font-bold">Semester / TA</span><span className="inline-block w-3 text-center">:</span> {semesterLabel} / {displayValue(raportData.tahun_ajaran)}</div>
+          {/* INFO SANTRI + FOTO */}
+          <div className="flex flex-row items-start gap-4 mb-3 print:mb-2 border border-gray-300 rounded-lg p-2 print:p-1.5">
+            {/* Foto santri */}
+            <div className="shrink-0">
+              <div
+                className={`w-[64px] h-[76px] rounded-lg overflow-hidden relative shadow-xs border-2 border-gray-300 bg-gray-100 print:w-[52px] print:h-[62px] ${canZoomFoto ? 'cursor-pointer hover:opacity-90' : ''}`}
+                onClick={() => (canZoomFoto ? onZoomPhoto?.(fotoSrc) : null)}
+              >
+                <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: getAvatarColor(santri.nama || '') }}>
+                  <span className="text-white text-sm font-bold leading-none">{getInitials(santri.nama || '')}</span>
+                </div>
+                {fotoSrc && (
+                  <img
+                    src={fotoSrc}
+                    alt={santri.nama || 'Foto Santri'}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.display = 'none'; }}
+                  />
+                )}
+              </div>
+            </div>
+            {/* Data santri */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 flex-1 text-[10px] print:text-[9px]">
+              <div><span className="font-bold">Nama</span><span className="inline-block w-3 text-center">:</span> {displayValue(santri.nama)}</div>
+              <div><span className="font-bold">Kelas Madin</span><span className="inline-block w-3 text-center">:</span> {displayValue(santri.nama_kelas_madin)}</div>
+              <div><span className="font-bold">Nomor Induk (NIS)</span><span className="inline-block w-3 text-center">:</span> {displayValue(santri.nis)}</div>
+              <div><span className="font-bold">Semester / TA</span><span className="inline-block w-3 text-center">:</span> {semesterLabel} / {displayValue(raportData.tahun_ajaran)}</div>
+            </div>
           </div>
 
           <div className="flex items-center justify-between gap-3 mb-1.5 print:mb-1">
@@ -280,7 +303,26 @@ export default function RaportDocument({
             Nilai akhir ≥ 70: Tuntas · Nilai akhir &lt; 70: Perlu Bimbingan · Tanda “-”: belum diisi.
           </div>
 
-          <div className="mt-auto pt-2 text-center text-[9px] print:text-[8px] text-gray-500">Halaman 2 dari 2</div>
+          {/* TTD KEPALA MADIN — mt-auto mendorong ke ujung bawah halaman */}
+          <div className="text-xs mt-auto pt-2 print:break-inside-avoid">
+            <p className="text-right text-gray-500">
+              Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+            <div className="flex justify-end mt-2 text-center">
+              <div className="flex flex-col items-center">
+                <p className="font-bold text-gray-700 whitespace-nowrap">
+                  Kepala Madrasah Diniyah PP. Matholi&apos;ul Anwar
+                </p>
+                <div className="mt-16 print:mt-14 w-full">
+                  <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
+                    {raportData.kepala_madin || 'Agus Naqoub Ashrofun Nasr'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 text-center text-[9px] print:text-[8px] text-gray-500">Halaman 2 dari 2</div>
         </article>
       </div>
     </div>

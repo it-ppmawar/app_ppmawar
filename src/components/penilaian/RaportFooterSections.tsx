@@ -44,7 +44,7 @@ export default function RaportFooterSections({
   const showSideBySide = Boolean(absensi && kedisiplinanRows && kedisiplinanRows.length > 0);
 
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0">
       {/* TABEL B & C BERDAMPINGAN (B SESUAI LEBAR ISI, C MELEBAR, TINGGI PRESISI SAMA RATA) */}
       {(absensi || (kedisiplinanRows && kedisiplinanRows.length > 0)) && (
         <div
@@ -138,14 +138,14 @@ export default function RaportFooterSections({
         </div>
       )}
 
-      {/* CATATAN WALI KELAS */}
-      <div className="border border-gray-300 rounded-xl p-3 mb-2 bg-gray-50 print:bg-transparent print:break-inside-avoid">
+      {/* CATATAN WALI KELAS — min-height agar konsisten meski catatan pendek */}
+      <div className="border border-gray-300 rounded-xl p-3 mb-2 bg-gray-50 print:bg-transparent print:break-inside-avoid" style={{ minHeight: '4rem' }}>
         <h6 className="font-bold text-[11px] uppercase tracking-wider text-gray-700 mb-0.5">{catatanTitle}</h6>
         <div className="text-xs text-gray-800">{catatanContent}</div>
       </div>
 
-      {/* KOLOM TANDA TANGAN RESMI — TEKS RAPAT KE ATAS AGAR RUANG TANDA TANGAN LEGA */}
-      <div className="text-xs mt-1.5 pt-0.5 print:break-inside-avoid">
+      {/* KOLOM TANDA TANGAN RESMI — mt-auto mendorong TTD ke bawah halaman */}
+      <div className="text-xs mt-auto pt-1 print:break-inside-avoid">
         <p className="text-right text-gray-500">
           Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
@@ -153,7 +153,7 @@ export default function RaportFooterSections({
         <div className="grid grid-cols-2 gap-6 text-center">
           <div className="flex flex-col justify-between">
             <p className="font-bold text-gray-700">Orang Tua / Wali Santri</p>
-            <div className="mt-24">
+            <div className="mt-16 print:mt-14">
               <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
                 {namaWali && String(namaWali).trim() && namaWali !== '-'
                   ? namaWali
@@ -166,7 +166,7 @@ export default function RaportFooterSections({
             <p className="font-bold text-gray-700 whitespace-nowrap">
               Kepala Madrasah Diniyah PP. Matholi&apos;ul Anwar
             </p>
-            <div className="mt-24">
+            <div className="mt-16 print:mt-14">
               <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
                 {kepalaMadin || 'Agus Naqoub Ashrofun Nasr'}
               </p>
@@ -174,6 +174,6 @@ export default function RaportFooterSections({
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
