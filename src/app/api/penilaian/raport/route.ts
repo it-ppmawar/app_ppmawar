@@ -73,7 +73,7 @@ export async function GET(request: Request) {
         COALESCE(k.nama_kamar, '-') as nama_kamar,
         COALESCE(k.nama_asrama, '-') as nama_asrama,
         COALESCE(g.nama, g2.nama, '-') as wali_kelas,
-        COALESCE(m.kelas_madin_id, m.kelas_madin_2_id) as kelas_madin_id
+        COALESCE(NULLIF(m.kelas_madin_id, 0), NULLIF(m.kelas_madin_2_id, 0)) as kelas_madin_id
       FROM murid m
       LEFT JOIN kelas_madin km ON m.kelas_madin_id = km.kelas_id
       LEFT JOIN guru g ON km.guru_id = g.guru_id
@@ -452,7 +452,8 @@ export async function POST(request: Request) {
     } | null = null;
 
     if (hasGradeSettings) {
-      const batasNilai = Number(batas_nilai_tuntas);
+      const rawBatas = String(batas_nilai_tuntas ?? '').trim();
+      const batasNilai = rawBatas === '' ? NaN : Number(rawBatas);
       const labelTuntas = String(keterangan_tuntas || '').trim();
       const labelBimbingan = String(keterangan_bimbingan || '').trim();
       if (!Number.isFinite(batasNilai) || batasNilai < 0 || batasNilai > 100) {
@@ -463,7 +464,7 @@ export async function POST(request: Request) {
       }
 
       const [muridKelasRows] = await pool.execute<RowDataPacket[]>(`
-        SELECT COALESCE(kelas_madin_id, kelas_madin_2_id, 0) as kelas_madin_id
+        SELECT COALESCE(NULLIF(kelas_madin_id, 0), NULLIF(kelas_madin_2_id, 0), 0) as kelas_madin_id
         FROM murid
         WHERE murid_id = ?
         LIMIT 1

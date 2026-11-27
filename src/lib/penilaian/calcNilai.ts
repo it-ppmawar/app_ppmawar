@@ -116,3 +116,57 @@ export function calcNilaiAkhir(params: {
   }
   return Math.round((h * 0.3 + u * 0.3 + a * 0.4) * 100) / 100;
 }
+
+export const DEFAULT_PENGATURAN_NILAI = {
+  batas_nilai_tuntas: 70,
+  keterangan_tuntas: 'Tuntas',
+  keterangan_bimbingan: 'Perlu Bimbingan',
+} as const;
+
+export interface PengaturanNilaiLike {
+  batas_nilai_tuntas?: unknown;
+  keterangan_tuntas?: unknown;
+  keterangan_bimbingan?: unknown;
+}
+
+/** Menormalkan KKM dan label keterangan nilai raport dari pengaturan tersimpan serta override form. */
+export function resolvePengaturanNilai(
+  saved?: PengaturanNilaiLike | null,
+  overrides?: PengaturanNilaiLike | null
+) {
+  const overrideBatas = overrides?.batas_nilai_tuntas;
+  const hasOverrideBatas =
+    overrideBatas !== undefined &&
+    overrideBatas !== null &&
+    String(overrideBatas).trim() !== '';
+  const parsedBatas = Number(
+    hasOverrideBatas
+      ? overrideBatas
+      : saved?.batas_nilai_tuntas ?? DEFAULT_PENGATURAN_NILAI.batas_nilai_tuntas
+  );
+  const batasNilaiTuntas = Number.isFinite(parsedBatas)
+    ? Math.min(100, Math.max(0, parsedBatas))
+    : DEFAULT_PENGATURAN_NILAI.batas_nilai_tuntas;
+
+  const pickLabel = (overrideVal: unknown, savedVal: unknown, fallback: string) => {
+    const ov = overrideVal !== undefined && overrideVal !== null ? String(overrideVal).trim() : '';
+    if (ov) return ov;
+    const sv = savedVal !== undefined && savedVal !== null ? String(savedVal).trim() : '';
+    return sv || fallback;
+  };
+
+  return {
+    batasNilaiTuntas,
+    batasLabel: batasNilaiTuntas.toLocaleString('id-ID', { maximumFractionDigits: 2 }),
+    keteranganTuntas: pickLabel(
+      overrides?.keterangan_tuntas,
+      saved?.keterangan_tuntas,
+      DEFAULT_PENGATURAN_NILAI.keterangan_tuntas
+    ),
+    keteranganBimbingan: pickLabel(
+      overrides?.keterangan_bimbingan,
+      saved?.keterangan_bimbingan,
+      DEFAULT_PENGATURAN_NILAI.keterangan_bimbingan
+    ),
+  };
+}

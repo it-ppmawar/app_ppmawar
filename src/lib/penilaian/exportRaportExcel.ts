@@ -1,10 +1,13 @@
 import * as XLSX from 'xlsx';
-import { isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
+import { isEmptyScoreVal, resolvePengaturanNilai } from '@/lib/penilaian/calcNilai';
 
 export interface RaportExcelOverrides {
   tahfidz_hafalan?: string;
   status_kelulusan?: string;
   catatan_wali_kelas?: string;
+  batas_nilai_tuntas?: string;
+  keterangan_tuntas?: string;
+  keterangan_bimbingan?: string;
 }
 
 /**
@@ -16,6 +19,11 @@ export function exportRaportToExcel(raportData: any, overrides?: RaportExcelOver
   const wb = XLSX.utils.book_new();
   const listNilai = Array.isArray(raportData.nilai) ? raportData.nilai : [];
   const hasLisan = listNilai.some((n: any) => !isEmptyScoreVal(n.nilai_lisan));
+  const {
+    batasNilaiTuntas,
+    keteranganTuntas,
+    keteranganBimbingan,
+  } = resolvePengaturanNilai(raportData.pengaturan_nilai, overrides);
 
   const tahfidz = overrides?.tahfidz_hafalan ?? raportData.catatan?.tahfidz_hafalan ?? '';
   const keputusan = overrides?.status_kelulusan ?? raportData.catatan?.status_kelulusan ?? '-';
@@ -42,36 +50,37 @@ export function exportRaportToExcel(raportData: any, overrides?: RaportExcelOver
     hasLisan
       ? ['No', 'Mata Pelajaran', 'Kitab yang Dipelajari', 'KKM', 'Ujian Lisan', 'Nilai Akhir', 'Predikat', 'Keterangan']
       : ['No', 'Mata Pelajaran', 'Kitab yang Dipelajari', 'KKM', 'Nilai Akhir', 'Predikat', 'Keterangan'],
-    ...listNilai.map((n: any, i: number) =>
-      hasLisan
+    ...listNilai.map((n: any, i: number) => {
+      const hasFinal = !isEmptyScoreVal(n.nilai_akhir) && String(n.nilai_akhir).trim() !== '-';
+      const finalNumber = hasFinal ? Number(n.nilai_akhir) : NaN;
+      const rowKeterangan =
+        n.catatan ||
+        (Number.isFinite(finalNumber)
+          ? finalNumber >= batasNilaiTuntas
+            ? keteranganTuntas
+            : keteranganBimbingan
+          : 'Belum Dinilai');
+      return hasLisan
         ? [
             i + 1,
             n.mata_pelajaran,
             n.kitab || '-',
-            70,
+            batasNilaiTuntas,
             !isEmptyScoreVal(n.nilai_lisan) ? n.nilai_lisan : '-',
             n.nilai_akhir,
             n.predikat,
-            Number(n.nilai_akhir) >= 70
-              ? 'Tuntas'
-              : Number(n.nilai_akhir) > 0
-                ? 'Perlu Bimbingan'
-                : n.catatan || 'Belum Dinilai',
+            rowKeterangan,
           ]
         : [
             i + 1,
             n.mata_pelajaran,
             n.kitab || '-',
-            70,
+            batasNilaiTuntas,
             n.nilai_akhir,
             n.predikat,
-            Number(n.nilai_akhir) >= 70
-              ? 'Tuntas'
-              : Number(n.nilai_akhir) > 0
-                ? 'Perlu Bimbingan'
-                : n.catatan || 'Belum Dinilai',
-          ]
-    ),
+            rowKeterangan,
+          ];
+    }),
     [],
     hasLisan
       ? ['', '', '', '', 'Nilai Rata-Rata Akhir:', raportData.ringkasan_nilai?.rata_rata, '', `Dari ${raportData.ringkasan_nilai?.total_mapel} mata pelajaran`]

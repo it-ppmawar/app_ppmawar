@@ -1,7 +1,7 @@
 'use client';
 
 import { BookOpen, ClipboardList } from 'lucide-react';
-import { calcPredikatFromInput, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
+import { calcPredikatFromInput, isEmptyScoreVal, resolvePengaturanNilai } from '@/lib/penilaian/calcNilai';
 import RaportKopHeader from '@/components/penilaian/RaportKopHeader';
 import RaportFooterSections, {
   KepalaMadinSignatureColumn,
@@ -106,14 +106,12 @@ export default function RaportDocument({
   const tahfidzText = editCatatan?.tahfidz_hafalan ?? catatan.tahfidz_hafalan ?? '';
   const keputusanText = editCatatan?.status_kelulusan ?? catatan.status_kelulusan ?? 'Lanjut ke Semester Berikutnya';
   const pengaturanNilai = raportData.pengaturan_nilai || {};
-  const editBatas = editCatatan?.batas_nilai_tuntas;
-  const parsedBatas = Number(editBatas !== undefined && editBatas.trim() !== ''
-    ? editBatas
-    : pengaturanNilai.batas_nilai_tuntas ?? 70);
-  const batasNilaiTuntas = Number.isFinite(parsedBatas) ? Math.min(100, Math.max(0, parsedBatas)) : 70;
-  const keteranganTuntas = editCatatan?.keterangan_tuntas || pengaturanNilai.keterangan_tuntas || 'Tuntas';
-  const keteranganBimbingan = editCatatan?.keterangan_bimbingan || pengaturanNilai.keterangan_bimbingan || 'Perlu Bimbingan';
-  const batasLabel = batasNilaiTuntas.toLocaleString('id-ID', { maximumFractionDigits: 2 });
+  const {
+    batasNilaiTuntas,
+    batasLabel,
+    keteranganTuntas,
+    keteranganBimbingan,
+  } = resolvePengaturanNilai(pengaturanNilai, editCatatan);
 
   const identitasPage1 = [
     { label: 'Nama Santri', value: displayValue(santri.nama), valueClass: 'font-black text-gray-900' },
@@ -268,7 +266,7 @@ export default function RaportDocument({
             <span className="text-[9px] print:text-[8px] text-gray-600 whitespace-nowrap">KKM: {batasLabel}</span>
           </div>
 
-          <div className="border border-gray-400 rounded-lg overflow-hidden">
+          <div className="shrink-0 border border-gray-400 rounded-lg overflow-hidden">
             <table className="w-full table-fixed text-left border-collapse text-[9px] print:text-[7.5px] leading-tight">
               <colgroup>
                 <col style={{ width: '4%' }} />
