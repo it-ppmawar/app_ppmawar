@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, Fragment } from 'react';
 import QuizBModal from './QuizBModal';
 import RaportTabSection, { RaportCatatanForm } from '@/components/penilaian/RaportTabSection';
+import { KelasCollapseToggleButton, KelasGroupHeaderContent } from '@/components/penilaian/KelasCollapseControls';
 import { calcNilaiAkhir, calcPredikat, calcPredikatFromInput } from '@/lib/penilaian/calcNilai';
+import { groupMuridByKelas } from '@/lib/penilaian/groupMuridByKelas';
 import { getTahunAjaranOptions } from '@/lib/penilaian/semesterPeriode';
 import {
   Award, BookOpen, GraduationCap, ClipboardCheck, Search, Filter,
@@ -91,6 +93,10 @@ export default function PenilaianRaportPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('no');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [collapsedKelasSections, setCollapsedKelasSections] = useState<Record<string, boolean>>({});
+  const toggleKelasCollapse = (key: string) => {
+    setCollapsedKelasSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // Modal Integrasi QuizB
   const [showQuizBModal, setShowQuizBModal] = useState(false);
@@ -648,6 +654,7 @@ export default function PenilaianRaportPage() {
     };
 
     fetchMuridDanNilai();
+    setCollapsedKelasSections({});
   }, [selectedKelas, selectedMapel, semester, tahunAjaran, reloadTrigger, isRaportAllSantri]);
 
   // Untuk akun wali murid / santri yang hanya punya data anaknya sendiri, tampilkan raport otomatis
@@ -846,6 +853,252 @@ export default function PenilaianRaportPage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const kelasSections = useMemo(
+    () => groupMuridByKelas(filteredAndSortedMurid, sortField === 'nama_kelas'),
+    [filteredAndSortedMurid, sortField]
+  );
+
+  const renderSantriRow = (m: any, idx: number) => {
+    const cur = scores[m.murid_id] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
+    const fotoUrl = getFotoUrl(m.foto);
+
+    return (
+      <tr key={m.murid_id} className="hover:bg-amber-50/40 dark:hover:bg-gray-700/40 transition-colors">
+        <td className="py-3 px-3 text-center text-gray-500 font-semibold">{idx + 1}</td>
+
+        {/* Kolom Foto Santri (Persis Pola Halaman Rekapitulasi) */}
+        <td className="py-2.5 px-2 text-center">
+          <div
+            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full mx-auto overflow-hidden relative border border-gray-200 dark:border-gray-700 shadow-2xs ${
+              fotoUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''
+            }`}
+            onClick={() => (fotoUrl ? setZoomPhoto(fotoUrl) : null)}
+            title={fotoUrl ? 'Klik untuk memperbesar foto' : m.nama}
+          >
+            {fotoUrl ? (
+              <img
+                src={fotoUrl}
+                alt={m.nama}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                  if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div
+              className={`avatar-fallback w-full h-full flex items-center justify-center text-white text-[11px] font-bold ${
+                fotoUrl ? 'hidden' : ''
+              }`}
+              style={{ backgroundColor: getAvatarColor(m.nama) }}
+            >
+              {getInitials(m.nama)}
+            </div>
+          </div>
+        </td>
+
+        <td className="py-3 px-4 font-bold text-gray-800 dark:text-gray-100 min-w-[160px]">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span>{m.nama}</span>
+            {isSemuaKelasMode && m.nama_kelas && (
+              <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
+                🏷️ {m.nama_kelas}
+              </span>
+            )}
+          </div>
+          {(m.nama_kamar || m.nama_asrama) ? (
+            <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold leading-tight mt-0.5">
+              🛏 {[m.nama_kamar, m.nama_asrama].filter(Boolean).join(' — ')}
+            </span>
+          ) : null}
+          {m.alamat ? (
+            <span className="block text-[10px] text-gray-400 font-normal leading-tight">
+              📍 {m.alamat}
+            </span>
+          ) : null}
+          {!m.nama_kamar && !m.nama_asrama && !m.alamat && (
+            <span className="block text-[10px] text-gray-400 font-normal">
+              {m.jenis_kelamin === 'Perempuan' ? 'Santri Putri' : 'Santri Putra'}
+            </span>
+          )}
+        </td>
+        <td className="py-3 px-3 text-center text-gray-500 font-mono text-xs">{m.nis || '-'}</td>
+
+        {/* KOLOM PROSENTASE KEHADIRAN OTOMATIS */}
+        <td className="py-3 px-2.5 text-center">
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-extrabold shadow-2xs ${
+              (m.kehadiran_persen ?? 100) >= 85
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                : (m.kehadiran_persen ?? 100) >= 70
+                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+            }`}
+            title={m.kehadiran_total > 0 ? `${m.kehadiran_hadir} dari ${m.kehadiran_total} sesi hadir` : 'Presensi terekap otomatis'}
+          >
+            {m.kehadiran_persen !== undefined ? `${m.kehadiran_persen}%` : '100%'}
+          </span>
+        </td>
+
+        {isLegerMode ? (
+          <>
+            <td className="py-3 px-2 text-center font-semibold text-gray-700 dark:text-gray-300">
+              {cur.harian !== '' ? cur.harian : '-'}
+            </td>
+            <td className="py-3 px-2 text-center font-semibold text-amber-700 dark:text-amber-300">
+              {cur.lisan !== '' ? cur.lisan : '-'}
+            </td>
+            <td className="py-3 px-2 text-center font-semibold text-gray-700 dark:text-gray-300">
+              {cur.uts !== '' ? cur.uts : '-'}
+            </td>
+            <td className="py-3 px-2 text-center font-semibold text-gray-700 dark:text-gray-300">
+              {cur.uas !== '' ? cur.uas : '-'}
+            </td>
+            <td className="py-2.5 px-2 text-center bg-amber-50/40 dark:bg-amber-950/20 border-l border-r border-amber-100 dark:border-amber-900/40">
+              <span className="inline-block px-3 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/70 font-black text-amber-900 dark:text-amber-200 text-xs sm:text-sm">
+                {cur.akhir !== '' ? cur.akhir : '-'}
+              </span>
+            </td>
+            <td className="py-2.5 px-2 text-center bg-amber-50/40 dark:bg-amber-950/20 border-r border-amber-100 dark:border-amber-900/40">
+              <span className="inline-block px-2.5 py-0.5 rounded-full font-bold text-xs bg-white dark:bg-gray-800 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-600 shadow-2xs">
+                {cur.predikat || '-'}
+              </span>
+            </td>
+            <td className="py-3 px-4 text-xs font-semibold text-gray-600 dark:text-gray-400">
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                (m.total_mapel_dinilai || 0) > 0
+                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+              }`}>
+                {m.catatan || 'Belum Ada Nilai'}
+              </span>
+            </td>
+          </>
+        ) : (
+          <>
+            <td className="py-2 px-2 text-center">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="any"
+                value={cur.harian}
+                onChange={(e) => handleScoreChange(m.murid_id, 'harian', e.target.value)}
+                placeholder="0"
+                className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+              />
+            </td>
+            <td className="py-2 px-2 text-center">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="any"
+                value={cur.lisan}
+                onChange={(e) => handleScoreChange(m.murid_id, 'lisan', e.target.value)}
+                placeholder="-"
+                className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+              />
+            </td>
+            <td className="py-2 px-2 text-center">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="any"
+                value={cur.uts}
+                onChange={(e) => handleScoreChange(m.murid_id, 'uts', e.target.value)}
+                placeholder="0"
+                className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+              />
+            </td>
+            <td className="py-2 px-2 text-center">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="any"
+                value={cur.uas}
+                onChange={(e) => handleScoreChange(m.murid_id, 'uas', e.target.value)}
+                placeholder="0"
+                className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+              />
+            </td>
+            {/* NILAI AKHIR (DAPAT DIUBAH MANUAL OLEH PENGGUNA/GURU) */}
+            <td className="py-2 px-2 text-center bg-amber-50/40 dark:bg-amber-950/20 border-l border-r border-amber-100 dark:border-amber-900/40">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="any"
+                value={cur.akhir}
+                onChange={(e) => handleScoreChange(m.murid_id, 'akhir', e.target.value)}
+                placeholder="0"
+                className="w-20 text-center py-1.5 px-2 bg-white dark:bg-gray-900 rounded-lg border-2 border-amber-400 dark:border-amber-500 font-black text-amber-900 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                title="Nilai Akhir: Terhitung otomatis, dapat diedit langsung jika ingin override manual"
+              />
+            </td>
+            {/* PREDIKAT (DAPAT DIUBAH MANUAL OLEH PENGGUNA/GURU) */}
+            <td className="py-2 px-2 text-center bg-amber-50/40 dark:bg-amber-950/20 border-r border-amber-100 dark:border-amber-900/40">
+              <select
+                value={cur.predikat}
+                onChange={(e) => handleScoreChange(m.murid_id, 'predikat', e.target.value)}
+                className="w-16 text-center py-1.5 px-1 bg-white dark:bg-gray-900 rounded-lg border border-amber-400 dark:border-amber-500 font-black text-xs text-amber-900 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+              >
+                <option value="">-</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+                <option value="E">E</option>
+              </select>
+            </td>
+            <td className="py-2 px-4">
+              <input
+                type="text"
+                value={cur.catatan}
+                onChange={(e) => handleScoreChange(m.murid_id, 'catatan', e.target.value)}
+                placeholder="Catatan kemajuan..."
+                className="w-full py-1.5 px-2.5 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </td>
+          </>
+        )}
+
+        {/* Kolom Aksi (Edit & Hapus Nilai Percobaan) */}
+        <td className="py-2.5 px-2 text-center whitespace-nowrap">
+          {isWaliOrSantri || isTamu ? (
+            <span className="text-[11px] text-gray-400 italic">Lihat Saja</span>
+          ) : (
+            <div className="flex items-center justify-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleOpenEditModal(m)}
+                className="p-1.5 text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 rounded-lg border border-amber-200 dark:border-amber-800/60 transition-all text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
+                title="Edit / Kelola Nilai Santri Ini"
+              >
+                <Edit3 size={13} />
+                <span className="hidden sm:inline">Edit</span>
+              </button>
+              {((isLegerMode && (m.total_mapel_dinilai || 0) > 0) || (!isLegerMode && (cur.harian !== '' || cur.lisan !== '' || cur.uts !== '' || cur.uas !== '' || cur.akhir !== ''))) && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickResetScore(m)}
+                  className="p-1.5 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 rounded-lg border border-rose-200 dark:border-rose-800/60 transition-all text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
+                  title="Hapus Nilai / Reset Hasil Percobaan"
+                >
+                  <Trash2 size={13} />
+                  <span className="hidden sm:inline">Hapus</span>
+                </button>
+              )}
+            </div>
+          )}
+        </td>
+      </tr>
+    );
   };
 
   return (
@@ -1225,7 +1478,19 @@ export default function PenilaianRaportPage() {
                     )}
                   </div>
 
-                  <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-2 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-2.5 text-xs text-gray-500 dark:text-gray-400 font-medium flex-wrap">
+                    {isSemuaKelasMode && kelasSections.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <KelasCollapseToggleButton
+                          sectionKeys={kelasSections.map(s => s.key)}
+                          collapsedMap={collapsedKelasSections}
+                          onChangeMap={setCollapsedKelasSections}
+                        />
+                        <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                          {kelasSections.length} Kelas
+                        </span>
+                      </div>
+                    )}
                     {searchQuery && (
                       <span className="bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 px-2.5 py-1 rounded-lg text-xs font-bold border border-amber-300 dark:border-amber-800/60">
                         Hasil: {filteredAndSortedMurid.length} dari {muridList.length} santri
@@ -1521,247 +1786,31 @@ export default function PenilaianRaportPage() {
                             </button>
                           </td>
                         </tr>
-                      ) : (
-                        filteredAndSortedMurid.map((m, idx) => {
-                      const cur = scores[m.murid_id] || { harian: '', lisan: '', uts: '', uas: '', akhir: '', predikat: '', catatan: '' };
-                      const fotoUrl = getFotoUrl(m.foto);
-
-                      return (
-                        <tr key={m.murid_id} className="hover:bg-amber-50/40 dark:hover:bg-gray-700/40 transition-colors">
-                          <td className="py-3 px-3 text-center text-gray-500 font-semibold">{idx + 1}</td>
-
-                          {/* Kolom Foto Santri (Persis Pola Halaman Rekapitulasi) */}
-                          <td className="py-2.5 px-2 text-center">
-                            <div
-                              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full mx-auto overflow-hidden relative border border-gray-200 dark:border-gray-700 shadow-2xs ${
-                                fotoUrl ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''
-                              }`}
-                              onClick={() => (fotoUrl ? setZoomPhoto(fotoUrl) : null)}
-                              title={fotoUrl ? 'Klik untuk memperbesar foto' : m.nama}
-                            >
-                              {fotoUrl ? (
-                                <img
-                                  src={fotoUrl}
-                                  alt={m.nama}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
-                                    if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                                  }}
-                                />
-                              ) : null}
-                              <div
-                                className={`avatar-fallback w-full h-full flex items-center justify-center text-white text-[11px] font-bold ${
-                                  fotoUrl ? 'hidden' : ''
-                                }`}
-                                style={{ backgroundColor: getAvatarColor(m.nama) }}
+                      ) : isSemuaKelasMode ? (
+                        kelasSections.map((sec) => {
+                          const isCollapsed = !searchQuery.trim() && Boolean(collapsedKelasSections[sec.key]);
+                          return (
+                            <Fragment key={sec.key}>
+                              <tr
+                                onClick={() => toggleKelasCollapse(sec.key)}
+                                className="bg-amber-50/90 dark:bg-amber-950/40 border-y border-amber-200 dark:border-amber-800/60 cursor-pointer hover:bg-amber-100/80 dark:hover:bg-amber-900/50 transition-colors select-none"
+                                title={isCollapsed ? 'Klik untuk membuka daftar santri kelas ini' : 'Klik untuk menutup daftar santri kelas ini'}
                               >
-                                {getInitials(m.nama)}
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="py-3 px-4 font-bold text-gray-800 dark:text-gray-100 min-w-[160px]">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span>{m.nama}</span>
-                              {isSemuaKelasMode && m.nama_kelas && (
-                                <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
-                                  🏷️ {m.nama_kelas}
-                                </span>
-                              )}
-                            </div>
-                            {(m.nama_kamar || m.nama_asrama) ? (
-                              <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold leading-tight mt-0.5">
-                                🛏 {[m.nama_kamar, m.nama_asrama].filter(Boolean).join(' — ')}
-                              </span>
-                            ) : null}
-                            {m.alamat ? (
-                              <span className="block text-[10px] text-gray-400 font-normal leading-tight">
-                                📍 {m.alamat}
-                              </span>
-                            ) : null}
-                            {!m.nama_kamar && !m.nama_asrama && !m.alamat && (
-                              <span className="block text-[10px] text-gray-400 font-normal">
-                                {m.jenis_kelamin === 'Perempuan' ? 'Santri Putri' : 'Santri Putra'}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 text-center text-gray-500 font-mono text-xs">{m.nis || '-'}</td>
-                          
-                          {/* KOLOM PROSENTASE KEHADIRAN OTOMATIS */}
-                          <td className="py-3 px-2.5 text-center">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-extrabold shadow-2xs ${
-                                (m.kehadiran_persen ?? 100) >= 85
-                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                                  : (m.kehadiran_persen ?? 100) >= 70
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
-                                  : 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
-                              }`}
-                              title={m.kehadiran_total > 0 ? `${m.kehadiran_hadir} dari ${m.kehadiran_total} sesi hadir` : 'Presensi terekap otomatis'}
-                            >
-                              {m.kehadiran_persen !== undefined ? `${m.kehadiran_persen}%` : '100%'}
-                            </span>
-                          </td>
-
-                          {isLegerMode ? (
-                            <>
-                              <td className="py-3 px-2 text-center font-semibold text-gray-700 dark:text-gray-300">
-                                {cur.harian !== '' ? cur.harian : '-'}
-                              </td>
-                              <td className="py-3 px-2 text-center font-semibold text-amber-700 dark:text-amber-300">
-                                {cur.lisan !== '' ? cur.lisan : '-'}
-                              </td>
-                              <td className="py-3 px-2 text-center font-semibold text-gray-700 dark:text-gray-300">
-                                {cur.uts !== '' ? cur.uts : '-'}
-                              </td>
-                              <td className="py-3 px-2 text-center font-semibold text-gray-700 dark:text-gray-300">
-                                {cur.uas !== '' ? cur.uas : '-'}
-                              </td>
-                              <td className="py-2.5 px-2 text-center bg-amber-50/40 dark:bg-amber-950/20 border-l border-r border-amber-100 dark:border-amber-900/40">
-                                <span className="inline-block px-3 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/70 font-black text-amber-900 dark:text-amber-200 text-xs sm:text-sm">
-                                  {cur.akhir !== '' ? cur.akhir : '-'}
-                                </span>
-                              </td>
-                              <td className="py-2.5 px-2 text-center bg-amber-50/40 dark:bg-amber-950/20 border-r border-amber-100 dark:border-amber-900/40">
-                                <span className="inline-block px-2.5 py-0.5 rounded-full font-bold text-xs bg-white dark:bg-gray-800 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-600 shadow-2xs">
-                                  {cur.predikat || '-'}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4 text-xs font-semibold text-gray-600 dark:text-gray-400">
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                                  (m.total_mapel_dinilai || 0) > 0
-                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                                    : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                                }`}>
-                                  {m.catatan || 'Belum Ada Nilai'}
-                                </span>
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="py-2 px-2 text-center">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="any"
-                                  value={cur.harian}
-                                  onChange={(e) => handleScoreChange(m.murid_id, 'harian', e.target.value)}
-                                  placeholder="0"
-                                  className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-                                />
-                              </td>
-                              <td className="py-2 px-2 text-center">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="any"
-                                  value={cur.lisan}
-                                  onChange={(e) => handleScoreChange(m.murid_id, 'lisan', e.target.value)}
-                                  placeholder="-"
-                                  className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-                                />
-                              </td>
-                              <td className="py-2 px-2 text-center">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="any"
-                                  value={cur.uts}
-                                  onChange={(e) => handleScoreChange(m.murid_id, 'uts', e.target.value)}
-                                  placeholder="0"
-                                  className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-                                />
-                              </td>
-                              <td className="py-2 px-2 text-center">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="any"
-                                  value={cur.uas}
-                                  onChange={(e) => handleScoreChange(m.murid_id, 'uas', e.target.value)}
-                                  placeholder="0"
-                                  className="w-16 sm:w-18 text-center py-1.5 px-2 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-                                />
-                              </td>
-                              {/* NILAI AKHIR (DAPAT DIUBAH MANUAL OLEH PENGGUNA/GURU) */}
-                              <td className="py-2 px-2 text-center bg-amber-50/40 dark:bg-amber-950/20 border-l border-r border-amber-100 dark:border-amber-900/40">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="any"
-                                  value={cur.akhir}
-                                  onChange={(e) => handleScoreChange(m.murid_id, 'akhir', e.target.value)}
-                                  placeholder="0"
-                                  className="w-20 text-center py-1.5 px-2 bg-white dark:bg-gray-900 rounded-lg border-2 border-amber-400 dark:border-amber-500 font-black text-amber-900 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
-                                  title="Nilai Akhir: Terhitung otomatis, dapat diedit langsung jika ingin override manual"
-                                />
-                              </td>
-                              {/* PREDIKAT (DAPAT DIUBAH MANUAL OLEH PENGGUNA/GURU) */}
-                              <td className="py-2 px-2 text-center bg-amber-50/40 dark:bg-amber-950/20 border-r border-amber-100 dark:border-amber-900/40">
-                                <select
-                                  value={cur.predikat}
-                                  onChange={(e) => handleScoreChange(m.murid_id, 'predikat', e.target.value)}
-                                  className="w-16 text-center py-1.5 px-1 bg-white dark:bg-gray-900 rounded-lg border border-amber-400 dark:border-amber-500 font-black text-xs text-amber-900 dark:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
-                                >
-                                  <option value="">-</option>
-                                  <option value="A">A</option>
-                                  <option value="B">B</option>
-                                  <option value="C">C</option>
-                                  <option value="D">D</option>
-                                  <option value="E">E</option>
-                                </select>
-                              </td>
-                              <td className="py-2 px-4">
-                                <input
-                                  type="text"
-                                  value={cur.catatan}
-                                  onChange={(e) => handleScoreChange(m.murid_id, 'catatan', e.target.value)}
-                                  placeholder="Catatan kemajuan..."
-                                  className="w-full py-1.5 px-2.5 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                                />
-                              </td>
-                            </>
-                          )}
-
-                          {/* Kolom Aksi (Edit & Hapus Nilai Percobaan) */}
-                          <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                            {isWaliOrSantri || isTamu ? (
-                              <span className="text-[11px] text-gray-400 italic">Lihat Saja</span>
-                            ) : (
-                              <div className="flex items-center justify-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditModal(m)}
-                                  className="p-1.5 text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 rounded-lg border border-amber-200 dark:border-amber-800/60 transition-all text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
-                                  title="Edit / Kelola Nilai Santri Ini"
-                                >
-                                  <Edit3 size={13} />
-                                  <span className="hidden sm:inline">Edit</span>
-                                </button>
-                                {((isLegerMode && (m.total_mapel_dinilai || 0) > 0) || (!isLegerMode && (cur.harian !== '' || cur.lisan !== '' || cur.uts !== '' || cur.uas !== '' || cur.akhir !== ''))) && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleQuickResetScore(m)}
-                                    className="p-1.5 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 rounded-lg border border-rose-200 dark:border-rose-800/60 transition-all text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
-                                    title="Hapus Nilai / Reset Hasil Percobaan"
-                                  >
-                                    <Trash2 size={13} />
-                                    <span className="hidden sm:inline">Hapus</span>
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    }))}
+                                <td colSpan={13} className="py-2.5 px-4">
+                                  <KelasGroupHeaderContent
+                                    namaKelas={sec.namaKelas}
+                                    count={sec.items.length}
+                                    isCollapsed={isCollapsed}
+                                  />
+                                </td>
+                              </tr>
+                              {!isCollapsed && sec.items.map((m, idx) => renderSantriRow(m, idx))}
+                            </Fragment>
+                          );
+                        })
+                      ) : (
+                        filteredAndSortedMurid.map((m, idx) => renderSantriRow(m, idx))
+                      )}
                   </tbody>
                 </table>
               </div>

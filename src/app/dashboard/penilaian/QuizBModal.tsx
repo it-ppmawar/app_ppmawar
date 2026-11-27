@@ -323,32 +323,35 @@ export default function QuizBModal({
       <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh] my-auto">
         
         {/* Header Modal */}
-        <div className="p-4 sm:p-6 bg-gradient-to-r from-emerald-700 via-teal-800 to-emerald-950 text-white flex items-center justify-between shrink-0 relative overflow-hidden">
+        <div className="p-4 sm:p-6 bg-gradient-to-r from-emerald-700 via-teal-800 to-emerald-950 text-white shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center gap-3 relative z-10">
-            <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center text-emerald-200 shadow-inner">
-              <Sparkles size={22} className="animate-pulse" />
-            </div>
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                <h3 className="font-black text-lg sm:text-xl text-white tracking-tight leading-tight">
-                  Tarik Nilai Ujian CBT / QuizB
-                </h3>
-                <span className="self-start sm:self-auto px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-400 text-emerald-950 shadow-xs">
-                  CBT &amp; QuizB
-                </span>
+          <div className="relative z-10 space-y-2.5 sm:space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center text-emerald-200 shadow-inner shrink-0">
+                  <Sparkles size={22} className="animate-pulse" />
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
+                  <h3 className="font-black text-base sm:text-xl text-white tracking-tight leading-tight">
+                    Tarik Nilai Ujian CBT / QuizB
+                  </h3>
+                  <span className="self-start sm:self-auto px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-400 text-emerald-950 shadow-xs shrink-0">
+                    CBT &amp; QuizB
+                  </span>
+                </div>
               </div>
-              <p className="text-xs text-emerald-100/80 mt-0.5">
-                Sinkronkan nilai ujian CBT santri dari Portal Ujian ke buku nilai &amp; raport santri
-              </p>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-xl text-emerald-100 hover:text-white hover:bg-white/15 transition-colors shrink-0 self-start sm:self-center"
+              >
+                <X size={20} />
+              </button>
             </div>
+
+            <p className="text-xs text-emerald-100/80 leading-relaxed">
+              Sinkronkan nilai ujian CBT santri dari Portal Ujian ke buku nilai &amp; raport santri
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-emerald-100 hover:text-white hover:bg-white/15 transition-colors relative z-10"
-          >
-            <X size={20} />
-          </button>
         </div>
 
         {/* Tab Navigation */}
