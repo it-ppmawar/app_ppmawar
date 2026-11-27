@@ -32,7 +32,7 @@ export default function RaportKopHeader() {
               PONDOK PESANTREN MATHOLI&apos;UL ANWAR
             </h3>
             <h4 className="text-sm sm:text-base print:text-[15px] font-bold uppercase text-emerald-800">
-              MADRASAH DINIYAH &amp; MADRASATUL QUR&apos;AN
+              MADRASAH DINIYAH
             </h4>
             <p className="text-[11px] text-gray-600 mt-0.5">
               Simo - Lamongan - Jawa Timur | Website: ppmawar.or.id

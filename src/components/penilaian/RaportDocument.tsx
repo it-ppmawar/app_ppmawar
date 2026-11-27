@@ -79,7 +79,7 @@ export default function RaportDocument({
       label: 'Catatan Pelanggaran',
       value:
         !raportData.rekap_kedisiplinan?.riwayat || raportData.rekap_kedisiplinan.riwayat.length === 0
-          ? 'Tidak ada catatan pelanggaran (Disiplin baik).'
+          ? 'Tidak ada catatan pelanggaran.'
           : `${raportData.rekap_kedisiplinan.riwayat[0].jenis} (${raportData.rekap_kedisiplinan.riwayat[0].deskripsi || '-'})`,
       valueClassName: 'text-gray-600 italic font-normal',
     },

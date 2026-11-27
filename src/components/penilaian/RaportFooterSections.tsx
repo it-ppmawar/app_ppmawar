@@ -149,7 +149,7 @@ export default function RaportFooterSections({
         <p className="text-right text-gray-500">
           Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
-        <p className="text-center text-gray-500 mt-0.5 mb-0.5">Mengetahui,</p>
+        <p className="text-center text-gray-500 mt-2 mb-2">Mengetahui,</p>
         <div className="grid grid-cols-2 gap-6 text-center">
           <div className="flex flex-col justify-between">
             <p className="font-bold text-gray-700">Orang Tua / Wali Santri</p>

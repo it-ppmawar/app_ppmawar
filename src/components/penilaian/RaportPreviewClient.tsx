@@ -184,7 +184,7 @@ export default function RaportPreviewClient() {
                     label: 'Catatan Pelanggaran',
                     value:
                       !d.rekap_kedisiplinan.riwayat || d.rekap_kedisiplinan.riwayat.length === 0
-                        ? 'Tidak ada catatan pelanggaran (Disiplin baik).'
+                        ? 'Tidak ada catatan pelanggaran.'
                         : `${d.rekap_kedisiplinan.riwayat[0].jenis} (${d.rekap_kedisiplinan.riwayat[0].deskripsi || '-'})`,
                     valueClassName: 'text-gray-600 italic font-normal',
                   },
