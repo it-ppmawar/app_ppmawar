@@ -2,6 +2,7 @@
 
 import { BookOpen, ClipboardCheck, ShieldCheck } from 'lucide-react';
 import { isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
+import RaportKopHeader from '@/components/penilaian/RaportKopHeader';
 
 const AVATAR_COLORS = [
   '#2563eb', '#16a34a', '#9333ea', '#dc2626', '#ea580c',
@@ -69,20 +70,7 @@ export default function RaportDocument({
         style={{ fontFamily: '"Courier New", Courier, monospace' }}
       >
         {/* KOP RESMI PESANTREN */}
-        <div className="border-b-4 border-double border-gray-900 pb-4 mb-6 text-center">
-          <h3 className="text-2xl font-black tracking-wider uppercase">
-            PONDOK PESANTREN MATHOLI&apos;UL ANWAR
-          </h3>
-          <h4 className="text-lg font-bold uppercase text-emerald-800">
-            MADRASAH DINIYAH &amp; MADRASATUL QUR&apos;AN
-          </h4>
-          <p className="text-xs text-gray-600 mt-1">
-            Simo - Lamongan - Jawa Timur | Website: ppmawar.or.id
-          </p>
-          <div className="mt-3 inline-block bg-gray-900 text-white font-bold text-sm px-6 py-1 rounded-full uppercase tracking-widest">
-            LAPORAN HASIL BELAJAR SANTRI (RAPORT)
-          </div>
-        </div>
+        <RaportKopHeader />
 
         {/* IDENTITAS SANTRI DENGAN PAS FOTO RESMI */}
         <div className="flex flex-row items-start gap-5 mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
