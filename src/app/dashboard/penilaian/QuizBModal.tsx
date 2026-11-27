@@ -325,30 +325,30 @@ export default function QuizBModal({
         {/* Header Modal */}
         <div className="p-4 sm:p-6 bg-gradient-to-r from-emerald-700 via-teal-800 to-emerald-950 text-white shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="relative z-10 space-y-2.5 sm:space-y-2">
+          <div className="relative z-10">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center text-emerald-200 shadow-inner shrink-0">
                   <Sparkles size={22} className="animate-pulse" />
                 </div>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
+                <div className="flex flex-row items-center gap-2 min-w-0 flex-wrap">
                   <h3 className="font-black text-base sm:text-xl text-white tracking-tight leading-tight">
                     Tarik Nilai Ujian CBT / QuizB
                   </h3>
-                  <span className="self-start sm:self-auto px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-400 text-emerald-950 shadow-xs shrink-0">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-400 text-emerald-950 shadow-xs shrink-0">
                     CBT &amp; QuizB
                   </span>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-xl text-emerald-100 hover:text-white hover:bg-white/15 transition-colors shrink-0 self-start sm:self-center"
+                className="p-2 rounded-xl text-emerald-100 hover:text-white hover:bg-white/15 transition-colors shrink-0 self-start"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <p className="text-xs text-emerald-100/80 leading-relaxed">
+            <p className="text-xs text-emerald-100/80 leading-relaxed mt-2">
               Sinkronkan nilai ujian CBT santri dari Portal Ujian ke buku nilai &amp; raport santri
             </p>
           </div>
