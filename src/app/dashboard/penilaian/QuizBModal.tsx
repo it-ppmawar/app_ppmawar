@@ -331,18 +331,18 @@ export default function QuizBModal({
                 <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center text-emerald-200 shadow-inner shrink-0">
                   <Sparkles size={22} className="animate-pulse" />
                 </div>
-                <div className="flex flex-row items-center gap-2 min-w-0 flex-wrap">
+                <div className="min-w-0">
                   <h3 className="font-black text-base sm:text-xl text-white tracking-tight leading-tight">
-                    Tarik Nilai Ujian CBT / QuizB
+                    Tarik Nilai Ujian CBT / QuizB{' '}
+                    <span className="inline-flex align-middle ml-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-400 text-emerald-950 shadow-xs leading-none tracking-normal whitespace-nowrap">
+                      CBT &amp; QuizB
+                    </span>
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-400 text-emerald-950 shadow-xs shrink-0">
-                    CBT &amp; QuizB
-                  </span>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-xl text-emerald-100 hover:text-white hover:bg-white/15 transition-colors shrink-0 self-start"
+                className="p-2 rounded-xl text-emerald-100 hover:text-white hover:bg-white/15 transition-colors shrink-0 self-start sm:self-center"
               >
                 <X size={20} />
               </button>

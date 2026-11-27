@@ -28,8 +28,8 @@ interface RaportFooterSectionsProps {
 }
 
 /**
- * Bagian bawah raport A4: Tabel B (Presensi, proporsi ringkas 38%) dan Tabel C
- * (Kedisiplinan, proporsi lebih lebar 62%) berdampingan dengan tinggi presisi sama rata,
+ * Bagian bawah raport A4: Tabel B (Presensi, lebar ringkas presisi sesuai isi tanpa ruang kosong berlebih)
+ * dan Tabel C (Kedisiplinan, melebar mengisi sisa ruang) berdampingan dengan tinggi presisi sama rata,
  * diikuti Catatan Wali Kelas dan ruang tanda tangan lega di bawahnya.
  */
 export default function RaportFooterSections({
@@ -45,19 +45,19 @@ export default function RaportFooterSections({
 
   return (
     <>
-      {/* TABEL B & C BERDAMPINGAN (B RINGKAS SESUAI ISI, C LEBIH LEBAR, TINGGI PRESISI SAMA RATA) */}
+      {/* TABEL B & C BERDAMPINGAN (B SESUAI LEBAR ISI, C MELEBAR, TINGGI PRESISI SAMA RATA) */}
       {(absensi || (kedisiplinanRows && kedisiplinanRows.length > 0)) && (
         <div
           className={
             showSideBySide
-              ? 'grid grid-cols-[38%_1fr] gap-3.5 items-stretch mb-3.5'
-              : 'mb-3.5'
+              ? 'grid grid-cols-[max-content_1fr] gap-3.5 items-stretch mb-3.5 print:break-inside-avoid'
+              : 'mb-3.5 print:break-inside-avoid'
           }
         >
           {/* TABEL B: REKAPITULASI PRESENSI */}
           {absensi && (
             <div className="flex flex-col min-w-0">
-              <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-1.5 flex items-center gap-1.5 shrink-0">
+              <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-1.5 flex items-center gap-1.5 shrink-0 whitespace-nowrap">
                 {showIcons && <ClipboardCheck size={14} className="text-blue-600 shrink-0" />}
                 <span>B. Rekapitulasi Presensi</span>
               </h5>
@@ -113,7 +113,7 @@ export default function RaportFooterSections({
           {/* TABEL C: KEDISIPLINAN & KETERTIBAN */}
           {kedisiplinanRows && kedisiplinanRows.length > 0 && (
             <div className="flex flex-col min-w-0">
-              <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-1.5 flex items-center gap-1.5 shrink-0">
+              <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-1.5 flex items-center gap-1.5 shrink-0 whitespace-nowrap">
                 {showIcons && <ShieldCheck size={14} className="text-emerald-600 shrink-0" />}
                 <span>C. Kedisiplinan &amp; Ketertiban</span>
               </h5>
@@ -139,13 +139,13 @@ export default function RaportFooterSections({
       )}
 
       {/* CATATAN WALI KELAS */}
-      <div className="border border-gray-300 rounded-xl p-3 mb-2 bg-gray-50 print:bg-transparent">
+      <div className="border border-gray-300 rounded-xl p-3 mb-2 bg-gray-50 print:bg-transparent print:break-inside-avoid">
         <h6 className="font-bold text-[11px] uppercase tracking-wider text-gray-700 mb-0.5">{catatanTitle}</h6>
         <div className="text-xs text-gray-800">{catatanContent}</div>
       </div>
 
       {/* KOLOM TANDA TANGAN RESMI — TEKS RAPAT KE ATAS AGAR RUANG TANDA TANGAN LEGA */}
-      <div className="text-xs mt-1.5 pt-0.5">
+      <div className="text-xs mt-1.5 pt-0.5 print:break-inside-avoid">
         <p className="text-right text-gray-500">
           Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
         </p>

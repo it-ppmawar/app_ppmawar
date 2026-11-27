@@ -58,6 +58,9 @@ export function KelasGroupHeaderContent({
   isCollapsed,
   subtitleBadge,
 }: KelasGroupHeaderContentProps) {
+  const upperKelas = namaKelas.trim().toUpperCase();
+  const kelasHeading = upperKelas.startsWith('KELAS ') ? upperKelas : `KELAS ${upperKelas}`;
+
   return (
     <div className="flex flex-col items-start gap-1 w-full">
       <div className="flex items-center justify-between w-full gap-2">
@@ -67,7 +70,7 @@ export function KelasGroupHeaderContent({
           </div>
           <BookOpen size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
           <span className="font-extrabold text-slate-900 dark:text-slate-100 text-[11px] sm:text-xs uppercase tracking-wider text-left break-words">
-            --- KELAS {namaKelas.toUpperCase()} ({count} Santri) ---
+            --- {kelasHeading} ({count} Santri) ---
           </span>
         </div>
         <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 opacity-80 shrink-0 whitespace-nowrap">
