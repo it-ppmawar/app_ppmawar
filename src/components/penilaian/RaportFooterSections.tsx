@@ -27,10 +27,44 @@ interface RaportFooterSectionsProps {
   showIcons?: boolean;
 }
 
+/** Format tanggal resmi raport berbahasa Indonesia dengan lokasi Lamongan. */
+export function formatTanggalRaport(date: Date = new Date()): string {
+  return `Lamongan, ${date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })}`;
+}
+
+/** Kolom tanda tangan Kepala Madrasah Diniyah dengan garis dan jarak TTD lega. */
+export function KepalaMadinSignatureColumn({
+  kepalaMadin,
+  dateLabel,
+}: {
+  kepalaMadin?: string | null;
+  dateLabel?: string;
+}) {
+  return (
+    <div className="flex flex-col justify-between text-center">
+      <div>
+        {dateLabel && <p className="text-right text-gray-500 mb-2">{dateLabel}</p>}
+        <p className="font-bold text-gray-700 whitespace-nowrap">
+          Kepala Madrasah Diniyah PP. Matholi&apos;ul Anwar
+        </p>
+      </div>
+      <div className="mt-24">
+        <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
+          {kepalaMadin || 'Agus Naqoub Ashrofun Nasr'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Bagian bawah raport A4: Tabel B (Presensi, lebar ringkas presisi sesuai isi tanpa ruang kosong berlebih)
  * dan Tabel C (Kedisiplinan, melebar mengisi sisa ruang) berdampingan dengan tinggi presisi sama rata,
- * diikuti Catatan Wali Kelas dan ruang tanda tangan lega di bawahnya.
+ * diikuti Catatan Wali Kelas yang mengisi sisa tinggi halaman agar blok tanda tangan rapat di bawah.
  */
 export default function RaportFooterSections({
   absensi,
@@ -42,6 +76,7 @@ export default function RaportFooterSections({
   showIcons = true,
 }: RaportFooterSectionsProps) {
   const showSideBySide = Boolean(absensi && kedisiplinanRows && kedisiplinanRows.length > 0);
+  const tanggalRaport = formatTanggalRaport();
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -138,22 +173,20 @@ export default function RaportFooterSections({
         </div>
       )}
 
-      {/* CATATAN WALI KELAS — min-height agar konsisten meski catatan pendek */}
-      <div className="border border-gray-300 rounded-xl p-3 mb-2 bg-gray-50 print:bg-transparent print:break-inside-avoid" style={{ minHeight: '4rem' }}>
-        <h6 className="font-bold text-[11px] uppercase tracking-wider text-gray-700 mb-0.5">{catatanTitle}</h6>
+      {/* CATATAN WALI KELAS — mengisi sisa tinggi halaman agar blok tanda tangan rapat di bawah */}
+      <div className="border border-gray-300 rounded-xl p-3 mb-2 bg-gray-50 print:bg-transparent print:break-inside-avoid flex-1 min-h-[120px] flex flex-col">
+        <h6 className="font-bold text-[11px] uppercase tracking-wider text-gray-700 mb-1">{catatanTitle}</h6>
         <div className="text-xs text-gray-800">{catatanContent}</div>
       </div>
 
-      {/* KOLOM TANDA TANGAN RESMI — mt-auto mendorong TTD ke bawah halaman */}
-      <div className="text-xs mt-auto pt-1 print:break-inside-avoid">
-        <p className="text-right text-gray-500">
-          Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-        </p>
+      {/* KOLOM TANDA TANGAN RESMI — bergeser ke bawah halaman mengikuti Catatan Wali Kelas */}
+      <div className="text-xs print:text-[11px] pt-1 print:break-inside-avoid">
+        <p className="text-right text-gray-500">{tanggalRaport}</p>
         <p className="text-center text-gray-500 mt-2 mb-2">Mengetahui,</p>
         <div className="grid grid-cols-2 gap-6 text-center">
           <div className="flex flex-col justify-between">
             <p className="font-bold text-gray-700">Orang Tua / Wali Santri</p>
-            <div className="mt-16 print:mt-14">
+            <div className="mt-24">
               <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
                 {namaWali && String(namaWali).trim() && namaWali !== '-'
                   ? namaWali
@@ -162,16 +195,7 @@ export default function RaportFooterSections({
             </div>
           </div>
 
-          <div className="flex flex-col justify-between">
-            <p className="font-bold text-gray-700 whitespace-nowrap">
-              Kepala Madrasah Diniyah PP. Matholi&apos;ul Anwar
-            </p>
-            <div className="mt-16 print:mt-14">
-              <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
-                {kepalaMadin || 'Agus Naqoub Ashrofun Nasr'}
-              </p>
-            </div>
-          </div>
+          <KepalaMadinSignatureColumn kepalaMadin={kepalaMadin} />
         </div>
       </div>
     </div>
