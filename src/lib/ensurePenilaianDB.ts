@@ -64,6 +64,22 @@ export async function ensurePenilaianDB() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // 2b. Pengaturan ambang dan keterangan nilai per kelas dan periode raport
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS raport_pengaturan_nilai (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        kelas_madin_id INT NOT NULL DEFAULT 0,
+        semester VARCHAR(10) NOT NULL DEFAULT '1',
+        tahun_ajaran VARCHAR(20) NOT NULL DEFAULT '2025/2026',
+        batas_nilai_tuntas DECIMAL(5,2) NOT NULL DEFAULT 70,
+        keterangan_tuntas VARCHAR(100) NOT NULL DEFAULT 'Tuntas',
+        keterangan_bimbingan VARCHAR(100) NOT NULL DEFAULT 'Perlu Bimbingan',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_raport_pengaturan_kelas_periode (kelas_madin_id, semester, tahun_ajaran)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // 3. Tabel quizb_sync_logs (riwayat sinkronisasi & webhook dari QuizB)
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS quizb_sync_logs (

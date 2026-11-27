@@ -37,6 +37,9 @@ export interface RaportCatatanForm {
   kebersihan: string;
   tahfidz_hafalan: string;
   status_kelulusan: string;
+  batas_nilai_tuntas: string;
+  keterangan_tuntas: string;
+  keterangan_bimbingan: string;
 }
 
 export interface RaportTabSectionProps {
@@ -481,7 +484,7 @@ export default function RaportTabSection({
                   className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50"
                 >
                   {savingCatatan ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                  <span>{savingCatatan ? 'Menyimpan...' : 'Simpan Catatan'}</span>
+                  <span>{savingCatatan ? 'Menyimpan...' : 'Simpan Catatan & Pengaturan'}</span>
                 </button>
               </div>
 
@@ -529,6 +532,55 @@ export default function RaportTabSection({
                     <option value="Cukup">Cukup</option>
                     <option value="Perlu Pembinaan">Perlu Pembinaan</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+                <h5 className="text-xs font-extrabold text-gray-800 dark:text-gray-100 mb-1">Pengaturan Keterangan Nilai</h5>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-3">
+                  Berlaku untuk seluruh raport kelas {raportData?.santri?.nama_kelas_madin || selectedKelas || '-'} pada semester {semester}, tahun ajaran {tahunAjaran || '-'}.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      Batas nilai tuntas (KKM)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.01"
+                      value={editCatatan.batas_nilai_tuntas}
+                      onChange={e => onChangeEditCatatan({ ...editCatatan, batas_nilai_tuntas: e.target.value })}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold ${inputBgCls}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      Keterangan jika tuntas
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={100}
+                      value={editCatatan.keterangan_tuntas}
+                      onChange={e => onChangeEditCatatan({ ...editCatatan, keterangan_tuntas: e.target.value })}
+                      placeholder="Tuntas"
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold ${inputBgCls}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      Keterangan jika belum tuntas
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={100}
+                      value={editCatatan.keterangan_bimbingan}
+                      onChange={e => onChangeEditCatatan({ ...editCatatan, keterangan_bimbingan: e.target.value })}
+                      placeholder="Perlu Bimbingan"
+                      className={`w-full px-3 py-2 rounded-xl border text-xs font-semibold ${inputBgCls}`}
+                    />
+                  </div>
                 </div>
               </div>
 

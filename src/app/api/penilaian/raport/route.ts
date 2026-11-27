@@ -89,6 +89,31 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Santri tidak ditemukan' }, { status: 404 });
     }
     const santri = muridRows[0];
+    const defaultPengaturanNilai = {
+      batas_nilai_tuntas: 70,
+      keterangan_tuntas: 'Tuntas',
+      keterangan_bimbingan: 'Perlu Bimbingan',
+    };
+    let pengaturanNilai = defaultPengaturanNilai;
+    try {
+      const [pengaturanRows] = await pool.execute<RowDataPacket[]>(`
+        SELECT batas_nilai_tuntas, keterangan_tuntas, keterangan_bimbingan
+        FROM raport_pengaturan_nilai
+        WHERE kelas_madin_id = ? AND semester = ? AND tahun_ajaran = ?
+        LIMIT 1
+      `, [Number(santri.kelas_madin_id) || 0, semester, tahunAjaran]);
+      if (pengaturanRows.length > 0) {
+        const row = pengaturanRows[0];
+        const batas = Number(row.batas_nilai_tuntas);
+        pengaturanNilai = {
+          batas_nilai_tuntas: Number.isFinite(batas) ? Math.min(100, Math.max(0, batas)) : 70,
+          keterangan_tuntas: String(row.keterangan_tuntas || defaultPengaturanNilai.keterangan_tuntas),
+          keterangan_bimbingan: String(row.keterangan_bimbingan || defaultPengaturanNilai.keterangan_bimbingan),
+        };
+      }
+    } catch (pengaturanErr) {
+      console.warn('Error fetching raport grade settings:', pengaturanErr);
+    }
 
     // 2. Ambil Nilai Akademik Santri untuk semester & tahun ajaran ini
     let nilaiRows: RowDataPacket[] = [];
@@ -363,6 +388,7 @@ export async function GET(request: Request) {
           riwayat: pelanggaranRows,
         },
         catatan,
+        pengaturan_nilai: pengaturanNilai,
         kepala_madin: kepalaMadinNama,
         periode_filter: dateRange
           ? { mode: dateRange.mode, start_date: dateRange.startDate || null, end_date: dateRange.endDate || null }
@@ -398,6 +424,9 @@ export async function POST(request: Request) {
       kebersihan,
       tahfidz_hafalan,
       status_kelulusan,
+      batas_nilai_tuntas,
+      keterangan_tuntas,
+      keterangan_bimbingan,
     } = body;
 
     if (!murid_id || !semester || !tahun_ajaran) {
@@ -409,6 +438,42 @@ export async function POST(request: Request) {
       if (!allowed) {
         return NextResponse.json({ error: 'Santri ini tidak terdaftar pada kelas yang Anda ampu.' }, { status: 403 });
       }
+    }
+
+    const hasGradeSettings =
+      Object.prototype.hasOwnProperty.call(body, 'batas_nilai_tuntas') ||
+      Object.prototype.hasOwnProperty.call(body, 'keterangan_tuntas') ||
+      Object.prototype.hasOwnProperty.call(body, 'keterangan_bimbingan');
+    let gradeSettingsToSave: {
+      kelasMadinId: number;
+      batasNilai: number;
+      labelTuntas: string;
+      labelBimbingan: string;
+    } | null = null;
+
+    if (hasGradeSettings) {
+      const batasNilai = Number(batas_nilai_tuntas);
+      const labelTuntas = String(keterangan_tuntas || '').trim();
+      const labelBimbingan = String(keterangan_bimbingan || '').trim();
+      if (!Number.isFinite(batasNilai) || batasNilai < 0 || batasNilai > 100) {
+        return NextResponse.json({ error: 'Batas nilai tuntas harus berada antara 0 dan 100.' }, { status: 400 });
+      }
+      if (!labelTuntas || labelTuntas.length > 100 || !labelBimbingan || labelBimbingan.length > 100) {
+        return NextResponse.json({ error: 'Keterangan nilai wajib diisi dan maksimal 100 karakter.' }, { status: 400 });
+      }
+
+      const [muridKelasRows] = await pool.execute<RowDataPacket[]>(`
+        SELECT COALESCE(kelas_madin_id, kelas_madin_2_id, 0) as kelas_madin_id
+        FROM murid
+        WHERE murid_id = ?
+        LIMIT 1
+      `, [murid_id]);
+      gradeSettingsToSave = {
+        kelasMadinId: Number(muridKelasRows[0]?.kelas_madin_id) || 0,
+        batasNilai,
+        labelTuntas,
+        labelBimbingan,
+      };
     }
 
     await pool.execute(`
@@ -434,6 +499,26 @@ export async function POST(request: Request) {
       tahfidz_hafalan || null,
       status_kelulusan || 'Naik Kelas',
     ]);
+
+    if (gradeSettingsToSave) {
+      await pool.execute(`
+        INSERT INTO raport_pengaturan_nilai
+          (kelas_madin_id, semester, tahun_ajaran, batas_nilai_tuntas, keterangan_tuntas, keterangan_bimbingan)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          batas_nilai_tuntas = VALUES(batas_nilai_tuntas),
+          keterangan_tuntas = VALUES(keterangan_tuntas),
+          keterangan_bimbingan = VALUES(keterangan_bimbingan),
+          updated_at = CURRENT_TIMESTAMP
+      `, [
+        gradeSettingsToSave.kelasMadinId,
+        semester,
+        tahun_ajaran,
+        gradeSettingsToSave.batasNilai,
+        gradeSettingsToSave.labelTuntas,
+        gradeSettingsToSave.labelBimbingan,
+      ]);
+    }
 
     return NextResponse.json({
       success: true,

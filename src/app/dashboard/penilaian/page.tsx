@@ -441,6 +441,9 @@ export default function PenilaianRaportPage() {
     kebersihan: 'Baik',
     tahfidz_hafalan: '',
     status_kelulusan: 'Naik Kelas',
+    batas_nilai_tuntas: '70',
+    keterangan_tuntas: 'Tuntas',
+    keterangan_bimbingan: 'Perlu Bimbingan',
   });
 
   // Toggle Input Mapel Khusus (mengosongkan input dan mengarahkan kursor otomatis)
@@ -723,6 +726,9 @@ export default function PenilaianRaportPage() {
             kebersihan: json.data.catatan.kebersihan || 'Baik',
             tahfidz_hafalan: json.data.catatan.tahfidz_hafalan || '',
             status_kelulusan: json.data.catatan.status_kelulusan || 'Naik Kelas',
+            batas_nilai_tuntas: String(json.data.pengaturan_nilai?.batas_nilai_tuntas ?? 70),
+            keterangan_tuntas: json.data.pengaturan_nilai?.keterangan_tuntas || 'Tuntas',
+            keterangan_bimbingan: json.data.pengaturan_nilai?.keterangan_bimbingan || 'Perlu Bimbingan',
           });
         }
       } else {

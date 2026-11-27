@@ -76,6 +76,9 @@ export interface RaportDocumentProps {
     akhlak?: string;
     tahfidz_hafalan?: string;
     status_kelulusan?: string;
+    batas_nilai_tuntas?: string;
+    keterangan_tuntas?: string;
+    keterangan_bimbingan?: string;
   };
   getFotoUrl: (fotoName: string | null, nis?: string) => string;
   onZoomPhoto?: (url: string) => void;
@@ -102,6 +105,15 @@ export default function RaportDocument({
   const catatanWaliText = editCatatan?.catatan_wali_kelas ?? catatan.catatan_wali_kelas ?? '';
   const tahfidzText = editCatatan?.tahfidz_hafalan ?? catatan.tahfidz_hafalan ?? '';
   const keputusanText = editCatatan?.status_kelulusan ?? catatan.status_kelulusan ?? 'Lanjut ke Semester Berikutnya';
+  const pengaturanNilai = raportData.pengaturan_nilai || {};
+  const editBatas = editCatatan?.batas_nilai_tuntas;
+  const parsedBatas = Number(editBatas !== undefined && editBatas.trim() !== ''
+    ? editBatas
+    : pengaturanNilai.batas_nilai_tuntas ?? 70);
+  const batasNilaiTuntas = Number.isFinite(parsedBatas) ? Math.min(100, Math.max(0, parsedBatas)) : 70;
+  const keteranganTuntas = editCatatan?.keterangan_tuntas || pengaturanNilai.keterangan_tuntas || 'Tuntas';
+  const keteranganBimbingan = editCatatan?.keterangan_bimbingan || pengaturanNilai.keterangan_bimbingan || 'Perlu Bimbingan';
+  const batasLabel = batasNilaiTuntas.toLocaleString('id-ID', { maximumFractionDigits: 2 });
 
   const identitasPage1 = [
     { label: 'Nama Santri', value: displayValue(santri.nama), valueClass: 'font-black text-gray-900' },
@@ -253,7 +265,7 @@ export default function RaportDocument({
             <h5 className="font-bold text-xs print:text-[10px] uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
               <ClipboardList size={14} /> A. Transkrip Nilai Per Mata Pelajaran
             </h5>
-            <span className="text-[9px] print:text-[8px] text-gray-600 whitespace-nowrap">KKM: 70</span>
+            <span className="text-[9px] print:text-[8px] text-gray-600 whitespace-nowrap">KKM: {batasLabel}</span>
           </div>
 
           <div className="border border-gray-400 rounded-lg overflow-hidden">
@@ -286,7 +298,7 @@ export default function RaportDocument({
                   const finalNumber = hasFinal ? Number(n.nilai_akhir) : NaN;
                   const keterangan = n.catatan || (
                     Number.isFinite(finalNumber)
-                      ? finalNumber >= 70 ? 'Tuntas' : 'Perlu Bimbingan'
+                      ? finalNumber >= batasNilaiTuntas ? keteranganTuntas : keteranganBimbingan
                       : 'Belum Dinilai'
                   );
                   const hasKehadiran =
@@ -301,7 +313,7 @@ export default function RaportDocument({
                         <div className="font-bold break-words">{displayValue(n.mata_pelajaran)}</div>
                         <div className="italic text-gray-600 break-words">{displayValue(n.kitab)}</div>
                       </td>
-                      <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center border-r border-gray-300">70</td>
+                      <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center border-r border-gray-300">{batasLabel}</td>
                       {['nilai_harian', 'nilai_lisan', 'nilai_uts', 'nilai_uas', 'nilai_akhir'].map((field) => (
                         <td key={field} className={`py-1.5 px-1 print:py-1 print:px-0.5 text-center border-r border-gray-300 ${field === 'nilai_akhir' ? 'font-bold' : ''}`}>
                           {displayValue(n[field])}
@@ -338,13 +350,13 @@ export default function RaportDocument({
 
           <div className="mt-3 print:mt-2 border border-gray-300 rounded-lg p-2 print:p-1.5 text-[9px] print:text-[8px] text-gray-700">
             <span className="font-bold uppercase">Keterangan nilai: </span>
-            Nilai akhir ≥ 70: Tuntas · Nilai akhir &lt; 70: Perlu Bimbingan · Tanda “-”: belum diisi.
+            Nilai akhir ≥ {batasLabel}: {keteranganTuntas} · Nilai akhir &lt; {batasLabel}: {keteranganBimbingan} · Tanda “-”: belum diisi.
           </div>
 
           {/* B. CATATAN WALI KELAS (dipindahkan dari halaman 1) */}
-          <div className="mt-3 print:mt-2 border border-gray-300 rounded-xl p-3 bg-gray-50 print:bg-transparent print:break-inside-avoid min-h-[84px] flex flex-col">
-            <h6 className="font-bold text-[11px] uppercase tracking-wider text-gray-700 mb-1">B. Catatan Wali Kelas:</h6>
-            <div className="text-xs text-gray-800">
+          <div className="mt-3 print:mt-2 border border-gray-300 rounded-xl p-3 bg-gray-50 print:bg-transparent print:break-inside-avoid min-h-[84px] flex flex-1 flex-col">
+            <h6 className="shrink-0 font-bold text-[11px] uppercase tracking-wider text-gray-700 mb-1">B. Catatan Wali Kelas:</h6>
+            <div className="flex flex-1 flex-col text-xs text-gray-800">
               <p className="italic leading-snug">&quot;{catatanWaliText || 'Tingkatkan terus prestasi belajar dan ketaatan ibadah.'}&quot;</p>
             </div>
           </div>
