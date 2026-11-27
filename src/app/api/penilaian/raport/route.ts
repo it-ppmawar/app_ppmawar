@@ -225,6 +225,49 @@ export async function GET(request: Request) {
     const totalAbsensi = hadirCount + izinCount + sakitCount + alphaCount;
     const persentaseHadir = totalAbsensi > 0 ? Math.round((hadirCount / totalAbsensi) * 100) : 100;
 
+    // 3b. Hitung persentase kehadiran per mata pelajaran untuk halaman Transkrip Akademik
+    const absenDateJadwal = buildDateWhereClause('a.tanggal', dateRange);
+    const perMapelAbsensi = new Map<string, { hadir: number; total: number }>();
+    try {
+      const [mapelAbsenRows] = await pool.execute<RowDataPacket[]>(`
+        SELECT
+          jm.mata_pelajaran,
+          SUM(CASE WHEN LOWER(a.status) = 'hadir' THEN 1 ELSE 0 END) as hadir,
+          COUNT(*) as total_sesi
+        FROM absensi a
+        JOIN jadwal_madin jm ON a.jadwal_madin_id = jm.jadwal_id
+        WHERE a.murid_id = ?
+          AND jm.mata_pelajaran IS NOT NULL
+          AND TRIM(jm.mata_pelajaran) != ''
+          ${absenDateJadwal.clause}
+        GROUP BY jm.mata_pelajaran
+      `, [muridId, ...absenDateJadwal.params]);
+
+      for (const row of mapelAbsenRows) {
+        const key = mapelKey(row.mata_pelajaran);
+        if (!key) continue;
+        const prev = perMapelAbsensi.get(key) || { hadir: 0, total: 0 };
+        perMapelAbsensi.set(key, {
+          hadir: prev.hadir + Number(row.hadir || 0),
+          total: prev.total + Number(row.total_sesi || 0),
+        });
+      }
+    } catch (mapelAbsenErr) {
+      console.warn('Error fetching per-mapel absensi for raport:', mapelAbsenErr);
+    }
+
+    nilaiRows = nilaiRows.map((row) => {
+      const att = perMapelAbsensi.get(mapelKey(row.mata_pelajaran));
+      const total = att?.total ?? 0;
+      const hadir = att?.hadir ?? 0;
+      return {
+        ...row,
+        kehadiran_hadir: hadir,
+        kehadiran_total: total,
+        kehadiran_persen: total > 0 ? Math.round((hadir / total) * 100) : null,
+      };
+    }) as RowDataPacket[];
+
     // 4. SINKRONISASI OTOMATIS: Catatan Kedisiplinan / Ketertiban (tabel pelanggaran: pelanggaran_id, murid_id, jenis, deskripsi, tanggal)
     let pelanggaranRows: RowDataPacket[] = [];
     try {

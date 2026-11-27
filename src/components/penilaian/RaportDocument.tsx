@@ -228,8 +228,6 @@ export default function RaportDocument({
           <RaportFooterSections
             absensi={raportData.rekap_absensi || {}}
             kedisiplinanRows={kedisiplinanRows}
-            catatanTitle="D. Catatan Wali Kelas:"
-            catatanContent={<p className="italic leading-snug">&quot;{catatanWaliText || 'Tingkatkan terus prestasi belajar dan ketaatan ibadah.'}&quot;</p>}
             namaWali={santri.nama_wali}
             kepalaMadin={raportData.kepala_madin}
           />
@@ -237,9 +235,9 @@ export default function RaportDocument({
           <div className="pt-2 text-center text-[9px] print:text-[8px] text-gray-500">Halaman 1 dari 2</div>
         </article>
 
-        {/* HALAMAN 2: TRANSKRIP NILAI DETAIL, SEMUA MAPEL DAN KOMPONEN NILAI */}
+        {/* HALAMAN 2: TRANSKRIP AKADEMIK, SEMUA MAPEL DAN CATATAN WALI KELAS */}
         <article className={`${pageShell} rounded-3xl shadow-md border border-gray-200`}>
-          <RaportKopHeader title="TRANSKRIP NILAI DETAIL" />
+          <RaportKopHeader title="TRANSKRIP AKADEMIK" />
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-3 print:mb-2 text-[10px] print:text-[9px] border border-gray-300 rounded-lg p-2 print:p-1.5">
             {identitasPage2.map((item) => (
@@ -262,26 +260,27 @@ export default function RaportDocument({
             <table className="w-full table-fixed text-left border-collapse text-[9px] print:text-[7.5px] leading-tight">
               <colgroup>
                 <col style={{ width: '4%' }} />
-                <col style={{ width: '24%' }} />
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '7%' }} />
                 <col style={{ width: '22%' }} />
+                <col style={{ width: '5%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '19%' }} />
               </colgroup>
               <thead>
                 <tr className="bg-gray-100 border-b border-gray-400 font-bold text-gray-800">
-                  {['No', 'Mata Pelajaran / Kitab', 'KKM', 'Harian', 'Lisan', 'UTS', 'UAS', 'Nilai Akhir', 'Predikat', 'Keterangan'].map((label) => (
+                  {['No', 'Mata Pelajaran / Kitab', 'KKM', 'Harian', 'Lisan', 'UTS', 'UAS', 'Nilai Akhir', 'Predikat', 'Kehadiran', 'Keterangan'].map((label) => (
                     <th key={label} className="py-1.5 px-1 print:py-1 print:px-0.5 text-center border-r border-gray-300 last:border-r-0">{label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {listNilai.length === 0 ? (
-                  <tr><td colSpan={10} className="py-4 text-center text-gray-500 italic">Belum ada mata pelajaran pada jadwal kelas ini.</td></tr>
+                  <tr><td colSpan={11} className="py-4 text-center text-gray-500 italic">Belum ada mata pelajaran pada jadwal kelas ini.</td></tr>
                 ) : listNilai.map((n: any, idx: number) => {
                   const hasFinal = !isEmptyScoreVal(n.nilai_akhir) && String(n.nilai_akhir).trim() !== '-';
                   const finalNumber = hasFinal ? Number(n.nilai_akhir) : NaN;
@@ -290,6 +289,11 @@ export default function RaportDocument({
                       ? finalNumber >= 70 ? 'Tuntas' : 'Perlu Bimbingan'
                       : 'Belum Dinilai'
                   );
+                  const hasKehadiran =
+                    n.kehadiran_persen !== null &&
+                    n.kehadiran_persen !== undefined &&
+                    Number(n.kehadiran_total ?? 0) > 0;
+                  const kehadiranText = hasKehadiran ? `${n.kehadiran_persen}%` : '-';
                   return (
                     <tr key={n.id || `${n.mata_pelajaran}-${idx}`} className="border-b border-gray-300 last:border-b-0">
                       <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center border-r border-gray-300">{idx + 1}</td>
@@ -306,6 +310,9 @@ export default function RaportDocument({
                       <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center font-bold border-r border-gray-300">
                         {displayValue(n.predikat, calcPredikatFromInput(n.nilai_akhir, '-'))}
                       </td>
+                      <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center font-semibold border-r border-gray-300">
+                        {kehadiranText}
+                      </td>
                       <td className="py-1.5 px-1.5 print:py-1 print:px-1 break-words">{displayValue(keterangan)}</td>
                     </tr>
                   );
@@ -315,7 +322,15 @@ export default function RaportDocument({
                 <tr className="bg-gray-100 border-t border-gray-400 font-bold">
                   <td colSpan={7} className="py-1.5 px-2 print:py-1 print:px-1 text-right border-r border-gray-300 uppercase">Nilai Rata-rata Akhir</td>
                   <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center text-emerald-800 border-r border-gray-300">{rataRata}</td>
-                  <td colSpan={2} className="py-1.5 px-1.5 print:py-1 print:px-1">{totalMapel} mapel · {totalDinilai} dinilai · {totalNilaiAkhir} nilai akhir</td>
+                  <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center border-r border-gray-300">
+                    {rataRata !== '-' ? calcPredikatFromInput(rataRata, '-') : '-'}
+                  </td>
+                  <td className="py-1.5 px-1 print:py-1 print:px-0.5 text-center text-emerald-800 border-r border-gray-300">
+                    {Number(raportData.rekap_absensi?.total ?? 0) > 0
+                      ? `${raportData.rekap_absensi?.persentase ?? 100}%`
+                      : '-'}
+                  </td>
+                  <td className="py-1.5 px-1.5 print:py-1 print:px-1">{totalMapel} mapel · {totalDinilai} dinilai</td>
                 </tr>
               </tfoot>
             </table>
@@ -326,10 +341,20 @@ export default function RaportDocument({
             Nilai akhir ≥ 70: Tuntas · Nilai akhir &lt; 70: Perlu Bimbingan · Tanda “-”: belum diisi.
           </div>
 
-          {/* FOTO SANTRI & TTD KEPALA MADIN — rata ujung bawah halaman seperti transkrip resmi */}
+          {/* B. CATATAN WALI KELAS (dipindahkan dari halaman 1) */}
+          <div className="mt-3 print:mt-2 border border-gray-300 rounded-xl p-3 bg-gray-50 print:bg-transparent print:break-inside-avoid min-h-[84px] flex flex-col">
+            <h6 className="font-bold text-[11px] uppercase tracking-wider text-gray-700 mb-1">B. Catatan Wali Kelas:</h6>
+            <div className="text-xs text-gray-800">
+              <p className="italic leading-snug">&quot;{catatanWaliText || 'Tingkatkan terus prestasi belajar dan ketaatan ibadah.'}&quot;</p>
+            </div>
+          </div>
+
+          {/* FOTO SANTRI (rata tengah presisi) & TTD KEPALA MADIN — rata ujung bawah halaman */}
           <div className="mt-auto pt-4 print:pt-2 text-xs print:text-[11px] print:break-inside-avoid">
-            <div className="grid grid-cols-2 gap-6 items-end">
-              <div className="flex justify-end pr-6 sm:pr-10">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-4">
+              <div aria-hidden="true" />
+
+              <div className="flex justify-center">
                 <SantriPhoto
                   nama={santri.nama || ''}
                   fotoSrc={fotoSrc}
@@ -341,6 +366,7 @@ export default function RaportDocument({
               <KepalaMadinSignatureColumn
                 kepalaMadin={raportData.kepala_madin}
                 dateLabel={formatTanggalRaport()}
+                lineMarginClass="mx-4"
               />
             </div>
           </div>
