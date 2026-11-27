@@ -4,7 +4,14 @@ import { useState, useEffect, useRef, useMemo, Fragment } from 'react';
 import QuizBModal from './QuizBModal';
 import RaportTabSection, { RaportCatatanForm } from '@/components/penilaian/RaportTabSection';
 import { KelasCollapseToggleButton, KelasGroupHeaderContent } from '@/components/penilaian/KelasCollapseControls';
-import { calcNilaiAkhir, calcPredikat, calcPredikatFromInput } from '@/lib/penilaian/calcNilai';
+import {
+  calcNilaiAkhir,
+  calcPredikat,
+  calcPredikatFromInput,
+  hasFilledGrade,
+  isEmptyScoreVal,
+  isResidualZeroScoreRow,
+} from '@/lib/penilaian/calcNilai';
 import { groupMuridByKelas } from '@/lib/penilaian/groupMuridByKelas';
 import { getTahunAjaranOptions } from '@/lib/penilaian/semesterPeriode';
 import {
@@ -606,12 +613,14 @@ export default function PenilaianRaportPage() {
           setMuridList(json.muridList);
           const initialScores: Record<number, any> = {};
           json.muridList.forEach((m: any) => {
-            const h = m.nilai_harian !== null && m.nilai_harian !== undefined && m.nilai_harian !== '' ? String(m.nilai_harian) : '';
-            const l = m.nilai_lisan !== null && m.nilai_lisan !== undefined && m.nilai_lisan !== '' ? String(m.nilai_lisan) : '';
-            const u = m.nilai_uts !== null && m.nilai_uts !== undefined && m.nilai_uts !== '' ? String(m.nilai_uts) : '';
-            const a = m.nilai_uas !== null && m.nilai_uas !== undefined && m.nilai_uas !== '' ? String(m.nilai_uas) : '';
-            let finalVal = m.nilai_akhir !== null && m.nilai_akhir !== undefined && m.nilai_akhir !== '' ? String(m.nilai_akhir) : '';
-            let pred = m.predikat || '';
+            // Abaikan baris residu lama (seluruh skor 0/kosong tanpa predikat A–E dan tanpa catatan)
+            const isResidual = isResidualZeroScoreRow(m);
+            const h = !isResidual && !isEmptyScoreVal(m.nilai_harian) ? String(m.nilai_harian) : '';
+            const l = !isResidual && !isEmptyScoreVal(m.nilai_lisan) ? String(m.nilai_lisan) : '';
+            const u = !isResidual && !isEmptyScoreVal(m.nilai_uts) ? String(m.nilai_uts) : '';
+            const a = !isResidual && !isEmptyScoreVal(m.nilai_uas) ? String(m.nilai_uas) : '';
+            let finalVal = !isResidual && !isEmptyScoreVal(m.nilai_akhir) ? String(m.nilai_akhir) : '';
+            let pred = !isResidual ? (m.predikat || '') : '';
 
             // Jika belum ada nilai akhir tersimpan tetapi komponen terisi, hitung preview
             if (!finalVal && (h || l || u || a)) {
@@ -620,6 +629,9 @@ export default function PenilaianRaportPage() {
                 finalVal = String(autoFinal);
                 pred = autoFinal === 0 ? 'E' : calcPredikat(autoFinal);
               }
+            } else if (finalVal && !pred) {
+              const parsedAkh = parseFloat(finalVal);
+              pred = parsedAkh === 0 ? 'E' : calcPredikat(parsedAkh);
             }
 
             initialScores[m.murid_id] = {
@@ -629,7 +641,7 @@ export default function PenilaianRaportPage() {
               uas: a,
               akhir: finalVal,
               predikat: pred,
-              catatan: m.catatan || '',
+              catatan: isResidual ? '' : (m.catatan || ''),
             };
           });
           setScores(initialScores);
@@ -763,9 +775,11 @@ export default function PenilaianRaportPage() {
 
       // Jika yang diubah langsung adalah nilai akhir secara manual, otomatis sesuaikan predikatnya
       if (field === 'akhir') {
-        const numAkhir = parseFloat(val);
-        if (!isNaN(numAkhir)) {
-          updated.predikat = numAkhir === 0 ? 'E' : calcPredikat(numAkhir);
+        if (val !== '') {
+          const numAkhir = parseFloat(val);
+          updated.predikat = !isNaN(numAkhir) ? (numAkhir === 0 ? 'E' : calcPredikat(numAkhir)) : '';
+        } else {
+          updated.predikat = '';
         }
       }
 
@@ -1083,7 +1097,7 @@ export default function PenilaianRaportPage() {
                 <Edit3 size={13} />
                 <span className="hidden sm:inline">Edit</span>
               </button>
-              {((isLegerMode && (m.total_mapel_dinilai || 0) > 0) || (!isLegerMode && (cur.harian !== '' || cur.lisan !== '' || cur.uts !== '' || cur.uas !== '' || cur.akhir !== ''))) && (
+              {((isLegerMode && (m.total_mapel_dinilai || 0) > 0) || (!isLegerMode && hasFilledGrade(cur))) && (
                 <button
                   type="button"
                   onClick={() => handleQuickResetScore(m)}

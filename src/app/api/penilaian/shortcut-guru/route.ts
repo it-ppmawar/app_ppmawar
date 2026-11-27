@@ -6,6 +6,7 @@ import { verifyToken } from '@/lib/auth/jwt';
 import { createShortTokensBatch } from '@/lib/auth/shortToken';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
 import { resolveAsrama } from '@/lib/auth/resolveAsrama';
+import { residualZeroConditionSql } from '@/lib/penilaian/nilaiSql';
 
 export const dynamic = 'force-dynamic';
 
@@ -168,7 +169,7 @@ export async function GET(request: Request) {
       santriPerKelas[Number(r.kelas_id)] = Number(r.total_santri || 0);
     });
 
-    // 3. Ambil nilai santri yang sudah tersimpan pada semester & tahun ajaran ini
+    // 3. Ambil nilai santri yang sudah tersimpan pada semester & tahun ajaran ini (abaikan baris residu kosong)
     const [scoredRows] = await pool.execute<RowDataPacket[]>(`
       SELECT 
         ns.murid_id,
@@ -179,6 +180,8 @@ export async function GET(request: Request) {
       FROM nilai_santri ns
       JOIN murid m ON ns.murid_id = m.murid_id
       WHERE ns.semester = ? AND ns.tahun_ajaran = ?
+        AND (ns.nilai_harian IS NOT NULL OR ns.nilai_lisan IS NOT NULL OR ns.nilai_uts IS NOT NULL OR ns.nilai_uas IS NOT NULL OR ns.nilai_akhir IS NOT NULL)
+        AND NOT ${residualZeroConditionSql('ns')}
     `, [semester, tahunAjaran]);
 
     const scoredSets: Record<string, Set<number>> = {};

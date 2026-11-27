@@ -5,6 +5,7 @@ import { resolvePenilaianAuth } from '@/lib/auth/penilaianAuth';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
 import { buildDateWhereClause, resolveSemesterDateRange } from '@/lib/penilaian/semesterPeriode';
 import { getSemesterPeriodeConfig } from '@/lib/penilaian/semesterPeriodeServer';
+import { residualZeroConditionSql } from '@/lib/penilaian/nilaiSql';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +97,7 @@ export async function GET(request: Request) {
           id, mata_pelajaran, kitab, nilai_harian, nilai_lisan, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
         FROM nilai_santri
         WHERE murid_id = ? AND semester = ? AND tahun_ajaran = ?
+          AND NOT ${residualZeroConditionSql()}
         ORDER BY mata_pelajaran ASC
       `, [muridId, semester, tahunAjaran]);
       nilaiRows = nRows;
@@ -132,12 +134,20 @@ export async function GET(request: Request) {
       }
     }
 
-    // Hitung rata-rata nilai akhir
+    // Hitung rata-rata hanya dari mata pelajaran yang memiliki nilai akhir numerik valid
     let totalNilai = 0;
+    let scoredMapelCount = 0;
     nilaiRows.forEach(n => {
-      totalNilai += Number(n.nilai_akhir || 0);
+      const raw = n.nilai_akhir;
+      if (raw !== null && raw !== undefined && String(raw).trim() !== '' && String(raw).trim() !== '-') {
+        const num = Number(raw);
+        if (!isNaN(num)) {
+          totalNilai += num;
+          scoredMapelCount++;
+        }
+      }
     });
-    const rataRata = nilaiRows.length > 0 ? (totalNilai / nilaiRows.length).toFixed(2) : '0.00';
+    const rataRata = scoredMapelCount > 0 ? (totalNilai / scoredMapelCount).toFixed(2) : '0.00';
 
     // 3. SINKRONISASI OTOMATIS: Rekapitulasi Absensi & Kedisiplinan (mengikuti ketentuan periode semester)
     const periodeConfig = await getSemesterPeriodeConfig();
@@ -247,7 +257,7 @@ export async function GET(request: Request) {
         tahun_ajaran: tahunAjaran,
         nilai: nilaiRows,
         ringkasan_nilai: {
-          total_mapel: nilaiRows.length,
+          total_mapel: scoredMapelCount > 0 ? scoredMapelCount : nilaiRows.length,
           rata_rata: rataRata,
         },
         rekap_absensi: {

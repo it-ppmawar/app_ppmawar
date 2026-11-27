@@ -19,6 +19,69 @@ export function isEmptyScoreVal(v: unknown): boolean {
   return v === null || v === undefined || String(v).trim() === '';
 }
 
+export function isEmptyPredikat(v: unknown): boolean {
+  return isEmptyScoreVal(v) || String(v).trim() === '-';
+}
+
+export function isZeroOrEmptyScoreVal(v: unknown): boolean {
+  if (isEmptyScoreVal(v)) return true;
+  const num = Number(v);
+  return !isNaN(num) && num === 0;
+}
+
+export interface ScoreFieldsLike {
+  harian?: unknown;
+  lisan?: unknown;
+  uts?: unknown;
+  uas?: unknown;
+  akhir?: unknown;
+  nilai_harian?: unknown;
+  nilai_lisan?: unknown;
+  nilai_uts?: unknown;
+  nilai_uas?: unknown;
+  nilai_akhir?: unknown;
+  predikat?: unknown;
+  catatan?: unknown;
+}
+
+/** Mengecek apakah baris hanya berisi nol/kosong residu tanpa predikat A–E maupun catatan. */
+export function isResidualZeroScoreRow(row: ScoreFieldsLike | null | undefined): boolean {
+  if (!row) return true;
+  const h = row.harian !== undefined ? row.harian : row.nilai_harian;
+  const l = row.lisan !== undefined ? row.lisan : row.nilai_lisan;
+  const u = row.uts !== undefined ? row.uts : row.nilai_uts;
+  const a = row.uas !== undefined ? row.uas : row.nilai_uas;
+  const akh = row.akhir !== undefined ? row.akhir : row.nilai_akhir;
+
+  return (
+    isZeroOrEmptyScoreVal(h) &&
+    isZeroOrEmptyScoreVal(l) &&
+    isZeroOrEmptyScoreVal(u) &&
+    isZeroOrEmptyScoreVal(a) &&
+    isZeroOrEmptyScoreVal(akh) &&
+    isEmptyPredikat(row.predikat) &&
+    isEmptyScoreVal(row.catatan)
+  );
+}
+
+/** Mengecek apakah santri benar-benar memiliki minimal satu komponen nilai yang terisi. */
+export function hasFilledGrade(row: ScoreFieldsLike | null | undefined): boolean {
+  if (!row || isResidualZeroScoreRow(row)) return false;
+  const h = row.harian !== undefined ? row.harian : row.nilai_harian;
+  const l = row.lisan !== undefined ? row.lisan : row.nilai_lisan;
+  const u = row.uts !== undefined ? row.uts : row.nilai_uts;
+  const a = row.uas !== undefined ? row.uas : row.nilai_uas;
+  const akh = row.akhir !== undefined ? row.akhir : row.nilai_akhir;
+
+  return (
+    !isEmptyScoreVal(h) ||
+    !isEmptyScoreVal(l) ||
+    !isEmptyScoreVal(u) ||
+    !isEmptyScoreVal(a) ||
+    !isEmptyScoreVal(akh)
+  );
+}
+
 export function parseClampedScore(v: unknown): number {
   const n = Number(v);
   if (isNaN(n)) return 0;

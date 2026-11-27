@@ -3,7 +3,8 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { resolvePenilaianAuth } from '@/lib/auth/penilaianAuth';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
-import { calcPredikat } from '@/lib/penilaian/calcNilai';
+import { calcPredikatFromInput } from '@/lib/penilaian/calcNilai';
+import { residualZeroConditionSql } from '@/lib/penilaian/nilaiSql';
 import { buildDateWhereClause, resolveSemesterDateRange } from '@/lib/penilaian/semesterPeriode';
 import { getSemesterPeriodeConfig } from '@/lib/penilaian/semesterPeriodeServer';
 
@@ -266,14 +267,15 @@ export async function GET(request: Request) {
           // MODE LEGER KOLEKTIF: Ambil rata-rata nilai dari seluruh mata pelajaran yang sudah dinilai
           let avgQuery = `SELECT 
               murid_id,
-              AVG(CASE WHEN nilai_harian IS NOT NULL AND nilai_harian != '' THEN CAST(nilai_harian AS DECIMAL(5,2)) END) as avg_harian,
+              AVG(CASE WHEN nilai_harian IS NOT NULL THEN CAST(nilai_harian AS DECIMAL(5,2)) END) as avg_harian,
               AVG(CASE WHEN nilai_lisan IS NOT NULL THEN CAST(nilai_lisan AS DECIMAL(5,2)) END) as avg_lisan,
-              AVG(CASE WHEN nilai_uts IS NOT NULL AND nilai_uts != '' THEN CAST(nilai_uts AS DECIMAL(5,2)) END) as avg_uts,
-              AVG(CASE WHEN nilai_uas IS NOT NULL AND nilai_uas != '' THEN CAST(nilai_uas AS DECIMAL(5,2)) END) as avg_uas,
-              AVG(CASE WHEN nilai_akhir IS NOT NULL AND nilai_akhir != '' THEN CAST(nilai_akhir AS DECIMAL(5,2)) END) as avg_akhir,
-              COUNT(DISTINCT mata_pelajaran) as total_mapel_dinilai
+              AVG(CASE WHEN nilai_uts IS NOT NULL THEN CAST(nilai_uts AS DECIMAL(5,2)) END) as avg_uts,
+              AVG(CASE WHEN nilai_uas IS NOT NULL THEN CAST(nilai_uas AS DECIMAL(5,2)) END) as avg_uas,
+              AVG(CASE WHEN nilai_akhir IS NOT NULL THEN CAST(nilai_akhir AS DECIMAL(5,2)) END) as avg_akhir,
+              COUNT(DISTINCT CASE WHEN (nilai_harian IS NOT NULL OR nilai_lisan IS NOT NULL OR nilai_uts IS NOT NULL OR nilai_uas IS NOT NULL OR nilai_akhir IS NOT NULL) THEN mata_pelajaran END) as total_mapel_dinilai
              FROM nilai_santri
-             WHERE semester = ? AND tahun_ajaran = ? AND murid_id IN (${placeholders})`;
+             WHERE semester = ? AND tahun_ajaran = ? AND murid_id IN (${placeholders})
+               AND NOT ${residualZeroConditionSql()}`;
           let avgParams = [semester, tahunAjaran, ...muridIds];
 
           if (!isSemuaKelas) {
@@ -298,7 +300,7 @@ export async function GET(request: Request) {
             const uts = r && r.avg_uts !== null ? Number(r.avg_uts).toFixed(1) : '';
             const uas = r && r.avg_uas !== null ? Number(r.avg_uas).toFixed(1) : '';
             const akhir = r && r.avg_akhir !== null ? Number(r.avg_akhir).toFixed(1) : '';
-            const predikat = akhir !== '' ? calcPredikat(parseFloat(akhir)) : '-';
+            const predikat = akhir !== '' ? calcPredikatFromInput(akhir, '-') : '-';
 
             return {
               murid_id: m.murid_id,
@@ -331,7 +333,8 @@ export async function GET(request: Request) {
           try {
             const scoreQuery = `SELECT murid_id, nilai_harian, nilai_lisan, nilai_uts, nilai_uas, nilai_akhir, predikat, catatan
                FROM nilai_santri
-               WHERE mata_pelajaran = ? AND semester = ? AND tahun_ajaran = ? AND murid_id IN (${placeholders})`;
+               WHERE mata_pelajaran = ? AND semester = ? AND tahun_ajaran = ? AND murid_id IN (${placeholders})
+                 AND NOT ${residualZeroConditionSql()}`;
             const scoreParams = [mapelName, semester, tahunAjaran, ...muridIds];
 
             const [scoreRows] = await pool.execute<RowDataPacket[]>(scoreQuery, scoreParams);

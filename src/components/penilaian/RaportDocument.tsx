@@ -207,8 +207,12 @@ export default function RaportDocument({
                           {!isEmptyScoreVal(n.nilai_lisan) ? n.nilai_lisan : '-'}
                         </td>
                       )}
-                      <td className="py-1.5 px-2 text-center font-bold text-gray-900 border-r border-gray-200">{n.nilai_akhir}</td>
-                      <td className="py-1.5 px-2 text-center font-black border-r border-gray-200">{n.predikat}</td>
+                      <td className="py-1.5 px-2 text-center font-bold text-gray-900 border-r border-gray-200">
+                        {!isEmptyScoreVal(n.nilai_akhir) ? n.nilai_akhir : '-'}
+                      </td>
+                      <td className="py-1.5 px-2 text-center font-black border-r border-gray-200">
+                        {n.predikat || '-'}
+                      </td>
                       <td className="py-1.5 px-2.5 text-gray-600">
                         {Number(n.nilai_akhir) >= 70
                           ? 'Tuntas'

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
-import { calcNilaiAkhir, calcPredikat } from '@/lib/penilaian/calcNilai';
+import { calcNilaiAkhir, calcPredikatFromInput } from '@/lib/penilaian/calcNilai';
 
 export const dynamic = 'force-dynamic';
 
@@ -150,18 +150,18 @@ export async function POST(request: Request) {
           [foundMurid.murid_id, mata_pelajaran, semester, tahun_ajaran]
         );
 
-        let harian = 0;
+        let harian: number | null = null;
         let lisan: number | null = null;
-        let uts = 0;
-        let uas = 0;
+        let uts: number | null = null;
+        let uas: number | null = null;
         let catatan = `QuizB: ${quiz_title || 'Kuis Online'} (${scoreVal})`;
 
         if (existingRows.length > 0) {
           const ex = existingRows[0];
-          harian = ex.nilai_harian !== null ? Number(ex.nilai_harian) : 0;
+          harian = ex.nilai_harian !== null && ex.nilai_harian !== undefined ? Number(ex.nilai_harian) : null;
           lisan = ex.nilai_lisan !== null && ex.nilai_lisan !== undefined ? Number(ex.nilai_lisan) : null;
-          uts = ex.nilai_uts !== null ? Number(ex.nilai_uts) : 0;
-          uas = ex.nilai_uas !== null ? Number(ex.nilai_uas) : 0;
+          uts = ex.nilai_uts !== null && ex.nilai_uts !== undefined ? Number(ex.nilai_uts) : null;
+          uas = ex.nilai_uas !== null && ex.nilai_uas !== undefined ? Number(ex.nilai_uas) : null;
           if (ex.catatan) {
             catatan = `${ex.catatan}; ${catatan}`;
           }
@@ -180,7 +180,7 @@ export async function POST(request: Request) {
         }
 
         const nilaiAkhir = calcNilaiAkhir({ harian, lisan, uts, uas }) ?? 0;
-        const predikat = calcPredikat(nilaiAkhir);
+        const predikat = calcPredikatFromInput(nilaiAkhir, '-');
 
         // Upsert nilai_santri
         await pool.execute(

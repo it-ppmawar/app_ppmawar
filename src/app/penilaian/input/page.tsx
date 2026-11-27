@@ -6,7 +6,14 @@ import * as XLSX from 'xlsx';
 import QuizBModal from '@/app/dashboard/penilaian/QuizBModal';
 import RaportTabSection, { RaportCatatanForm } from '@/components/penilaian/RaportTabSection';
 import { KelasCollapseToggleButton, KelasGroupHeaderContent } from '@/components/penilaian/KelasCollapseControls';
-import { calcNilaiAkhir, calcPredikat, calcPredikatFromInput, isEmptyScoreVal } from '@/lib/penilaian/calcNilai';
+import {
+  calcNilaiAkhir,
+  calcPredikat,
+  calcPredikatFromInput,
+  hasFilledGrade,
+  isEmptyScoreVal,
+  isResidualZeroScoreRow,
+} from '@/lib/penilaian/calcNilai';
 import { groupMuridByKelas } from '@/lib/penilaian/groupMuridByKelas';
 import { getTahunAjaranOptions } from '@/lib/penilaian/semesterPeriode';
 import {
@@ -309,12 +316,14 @@ function PenilaianInputContent() {
           setMuridList(json.muridList);
           const initialScores: Record<number, any> = {};
           json.muridList.forEach((m: any) => {
-            const h = m.nilai_harian !== null && m.nilai_harian !== undefined && m.nilai_harian !== '' ? String(m.nilai_harian) : '';
-            const l = m.nilai_lisan !== null && m.nilai_lisan !== undefined && m.nilai_lisan !== '' ? String(m.nilai_lisan) : '';
-            const u = m.nilai_uts !== null && m.nilai_uts !== undefined && m.nilai_uts !== '' ? String(m.nilai_uts) : '';
-            const a = m.nilai_uas !== null && m.nilai_uas !== undefined && m.nilai_uas !== '' ? String(m.nilai_uas) : '';
-            let akh = m.nilai_akhir !== null && m.nilai_akhir !== undefined && m.nilai_akhir !== '' ? String(m.nilai_akhir) : '';
-            let pred = m.predikat || '';
+            // Abaikan baris residu lama (seluruh skor 0/kosong tanpa predikat A–E dan tanpa catatan)
+            const isResidual = isResidualZeroScoreRow(m);
+            const h = !isResidual && !isEmptyScoreVal(m.nilai_harian) ? String(m.nilai_harian) : '';
+            const l = !isResidual && !isEmptyScoreVal(m.nilai_lisan) ? String(m.nilai_lisan) : '';
+            const u = !isResidual && !isEmptyScoreVal(m.nilai_uts) ? String(m.nilai_uts) : '';
+            const a = !isResidual && !isEmptyScoreVal(m.nilai_uas) ? String(m.nilai_uas) : '';
+            let akh = !isResidual && !isEmptyScoreVal(m.nilai_akhir) ? String(m.nilai_akhir) : '';
+            let pred = !isResidual ? (m.predikat || '') : '';
 
             if (!akh && (h || l || u || a)) {
               const autoFinal = calcNilaiAkhir({ harian: h, lisan: l, uts: u, uas: a });
@@ -334,7 +343,7 @@ function PenilaianInputContent() {
               uas: a,
               akhir: akh,
               predikat: pred,
-              catatan: m.catatan || '',
+              catatan: isResidual ? '' : (m.catatan || ''),
             };
           });
           setScores(initialScores);
@@ -785,7 +794,7 @@ function PenilaianInputContent() {
     let terisi = 0;
     muridList.forEach(m => {
       const s = scores[m.murid_id];
-      if (s && (s.harian !== '' || s.lisan !== '' || s.uts !== '' || s.uas !== '' || s.akhir !== '')) {
+      if (s && hasFilledGrade(s)) {
         terisi++;
       }
     });

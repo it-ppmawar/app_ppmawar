@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 import { ensureUjianDB } from '@/lib/ensureUjianDB';
 import { ensurePenilaianDB } from '@/lib/ensurePenilaianDB';
-import { calcNilaiAkhir, calcPredikat } from '@/lib/penilaian/calcNilai';
+import { calcNilaiAkhir, calcPredikatFromInput } from '@/lib/penilaian/calcNilai';
 
 export const dynamic = 'force-dynamic';
 
@@ -200,18 +200,18 @@ export async function POST(request: Request) {
           [murid_id, exam.mata_pelajaran, exam.semester, exam.tahun_ajaran]
         );
 
-        let harian = 0;
+        let harian: number | null = null;
         let lisan: number | null = null;
-        let uts = 0;
-        let uas = 0;
+        let uts: number | null = null;
+        let uas: number | null = null;
         let catatanBaru = `CBT: ${exam.judul} (${finalScore})`;
 
         if (existingNilai.length > 0) {
           const ex = existingNilai[0];
-          harian = ex.nilai_harian !== null ? Number(ex.nilai_harian) : 0;
+          harian = ex.nilai_harian !== null && ex.nilai_harian !== undefined ? Number(ex.nilai_harian) : null;
           lisan = ex.nilai_lisan !== null && ex.nilai_lisan !== undefined ? Number(ex.nilai_lisan) : null;
-          uts = ex.nilai_uts !== null ? Number(ex.nilai_uts) : 0;
-          uas = ex.nilai_uas !== null ? Number(ex.nilai_uas) : 0;
+          uts = ex.nilai_uts !== null && ex.nilai_uts !== undefined ? Number(ex.nilai_uts) : null;
+          uas = ex.nilai_uas !== null && ex.nilai_uas !== undefined ? Number(ex.nilai_uas) : null;
           if (ex.catatan) catatanBaru = `${ex.catatan}; ${catatanBaru}`;
         }
 
@@ -224,7 +224,7 @@ export async function POST(request: Request) {
         }
 
         const nilaiAkhir = calcNilaiAkhir({ harian, lisan, uts, uas }) ?? 0;
-        const predikat = calcPredikat(nilaiAkhir);
+        const predikat = calcPredikatFromInput(nilaiAkhir, '-');
 
         if (existingNilai.length > 0) {
           await pool.execute(

@@ -1,4 +1,6 @@
 import pool from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
+import { residualZeroConditionSql } from '@/lib/penilaian/nilaiSql';
 
 let isEnsured = false;
 
@@ -17,11 +19,11 @@ export async function ensurePenilaianDB() {
         kitab VARCHAR(150) NULL,
         semester VARCHAR(10) NOT NULL DEFAULT '1',
         tahun_ajaran VARCHAR(20) NOT NULL DEFAULT '2025/2026',
-        nilai_harian DECIMAL(5,2) DEFAULT 0,
+        nilai_harian DECIMAL(5,2) NULL DEFAULT NULL,
         nilai_lisan DECIMAL(5,2) NULL DEFAULT NULL,
-        nilai_uts DECIMAL(5,2) DEFAULT 0,
-        nilai_uas DECIMAL(5,2) DEFAULT 0,
-        nilai_akhir DECIMAL(5,2) DEFAULT 0,
+        nilai_uts DECIMAL(5,2) NULL DEFAULT NULL,
+        nilai_uas DECIMAL(5,2) NULL DEFAULT NULL,
+        nilai_akhir DECIMAL(5,2) NULL DEFAULT NULL,
         predikat VARCHAR(5) NULL,
         catatan TEXT NULL,
         guru_id INT NULL,
@@ -96,6 +98,35 @@ export async function ensurePenilaianDB() {
         ('bridge_url', 'https://quizb.my.id/quizb_bridge.php'),
         ('secret_key', 'ppmawar-quizb-2026-secret')
     `);
+
+    // Pastikan kolom skor mengizinkan NULL tanpa DEFAULT 0 agar komponen yang belum diisi tidak tersimpan sebagai angka 0 palsu
+    try {
+      const [colRows] = await pool.execute<RowDataPacket[]>(`
+        SELECT COLUMN_NAME, IS_NULLABLE, COLUMN_DEFAULT
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'nilai_santri'
+          AND COLUMN_NAME IN ('nilai_harian', 'nilai_uts', 'nilai_uas', 'nilai_akhir')
+      `);
+      for (const col of colRows) {
+        if (String(col.IS_NULLABLE || '').toUpperCase() === 'NO' || col.COLUMN_DEFAULT !== null) {
+          await pool.execute(
+            `ALTER TABLE \`nilai_santri\` MODIFY COLUMN \`${col.COLUMN_NAME}\` DECIMAL(5,2) NULL DEFAULT NULL`
+          );
+        }
+      }
+    } catch (nullErr: any) {
+      console.warn('Nullable score columns check warning:', nullErr?.message);
+    }
+
+    // Bersihkan baris residu lama yang seluruh nilainya 0/NULL tanpa predikat A–E dan tanpa catatan
+    try {
+      await pool.execute(
+        `DELETE FROM nilai_santri WHERE ${residualZeroConditionSql()}`
+      );
+    } catch (cleanErr: any) {
+      console.warn('Cleanup residual empty nilai_santri warning:', cleanErr?.message);
+    }
 
     isEnsured = true;
   } catch (error) {
