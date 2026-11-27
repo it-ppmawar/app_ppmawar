@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Printer, BookOpen, RefreshCw } from 'lucide-react';
 import RaportKopHeader from '@/components/penilaian/RaportKopHeader';
+import RaportFooterSections, { RaportKedisiplinanRow } from '@/components/penilaian/RaportFooterSections';
 
 const AVATAR_COLORS = [
   '#2563eb', '#16a34a', '#9333ea', '#dc2626', '#ea580c',
@@ -112,15 +113,15 @@ export default function RaportPreviewClient() {
 
       {/* Konten Raport (A4 Print — Konsisten di PC & HP) */}
       <div className="print:pt-0 pt-14 bg-gray-100 print:bg-white min-h-screen w-full overflow-x-auto print:overflow-visible">
-        <div className="bg-white text-gray-900 w-[840px] max-w-4xl lg:w-full mx-auto p-10 print:p-8 print:w-auto print:max-w-none shadow-md print:shadow-none" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
+        <div className="bg-white text-gray-900 w-[794px] min-h-[1123px] flex flex-col mx-auto p-9 print:p-0 print:w-full print:min-h-0 shadow-md print:shadow-none" style={{ fontFamily: '"Courier New", Courier, monospace' }}>
 
           {/* KOP RESMI PESANTREN */}
           <RaportKopHeader />
 
           {/* IDENTITAS SANTRI DENGAN PAS FOTO */}
-          <div className="flex flex-row items-start gap-5 mb-6 bg-gray-50 print:bg-transparent p-4 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
+          <div className="flex flex-row items-start gap-4 mb-4 bg-gray-50 print:bg-transparent p-3.5 rounded-2xl border border-gray-200/60 print:border-none print:p-0">
             <div className="shrink-0">
-              <div className="w-24 h-28 rounded-xl overflow-hidden relative shadow-xs border-2 border-gray-300 bg-gray-100">
+              <div className="w-[88px] h-[104px] rounded-xl overflow-hidden relative shadow-xs border-2 border-gray-300 bg-gray-100">
                 <div
                   className="absolute inset-0 flex items-center justify-center"
                   style={{ backgroundColor: getAvatarColor(d.santri?.nama || '') }}
@@ -141,58 +142,91 @@ export default function RaportPreviewClient() {
               </div>
             </div>
 
-            <div className="flex-1 min-w-0 text-sm space-y-1.5">
+            <div className="flex-1 min-w-0 text-xs sm:text-[13px] print:text-xs space-y-1">
               <div className="flex items-baseline">
-                <span className="w-44 shrink-0 font-bold text-gray-600">Nama Santri</span>
+                <span className="w-40 shrink-0 font-bold text-gray-600">Nama Santri</span>
                 <span className="font-black text-gray-900 flex-1">: {d.santri?.nama}</span>
               </div>
               <div className="flex items-baseline">
-                <span className="w-44 shrink-0 font-bold text-gray-600">Nomor Induk (NIS)</span>
+                <span className="w-40 shrink-0 font-bold text-gray-600">Nomor Induk (NIS)</span>
                 <span className="flex-1 whitespace-nowrap">: {d.santri?.nis || '-'}</span>
               </div>
               <div className="flex items-baseline">
-                <span className="w-44 shrink-0 font-bold text-gray-600">Kelas Madin</span>
+                <span className="w-40 shrink-0 font-bold text-gray-600">Kelas Madin</span>
                 <span className="flex-1 whitespace-nowrap">: {d.santri?.nama_kelas_madin || '-'}</span>
               </div>
               <div className="flex items-baseline">
-                <span className="w-44 shrink-0 font-bold text-gray-600">Semester / TA</span>
+                <span className="w-40 shrink-0 font-bold text-gray-600">Semester / TA</span>
                 <span className="font-bold flex-1 whitespace-nowrap">: {semLabel} / {d.tahun_ajaran}</span>
               </div>
               <div className="flex items-baseline">
-                <span className="w-44 shrink-0 font-bold text-gray-600">Kamar / Asrama</span>
+                <span className="w-40 shrink-0 font-bold text-gray-600">Kamar / Asrama</span>
                 <span className="flex-1 whitespace-nowrap">: {d.santri?.nama_kamar} ({d.santri?.nama_asrama})</span>
               </div>
             </div>
           </div>
 
-          {/* TABEL NILAI AKADEMIK */}
+          {/* TABEL NILAI AKADEMIK + REKAP B & C BERDAMPINGAN + CATATAN + TTD */}
           {(() => {
             const nilaiList = Array.isArray(d.nilai) ? d.nilai : [];
             const hasLisan = nilaiList.some(
               (n: any) => n.nilai_lisan !== null && n.nilai_lisan !== undefined && String(n.nilai_lisan).trim() !== ''
             );
-            const abs = d.rekap_absensi || d.absensi;
+            const abs = d.rekap_absensi || d.absensi || null;
+            const kedisiplinanRows: RaportKedisiplinanRow[] | null = d.rekap_kedisiplinan
+              ? [
+                  {
+                    label: 'Predikat Kedisiplinan',
+                    value: d.rekap_kedisiplinan.predikat,
+                    valueClassName: 'font-black text-emerald-800',
+                  },
+                  {
+                    label: 'Catatan Pelanggaran',
+                    value:
+                      !d.rekap_kedisiplinan.riwayat || d.rekap_kedisiplinan.riwayat.length === 0
+                        ? 'Tidak ada catatan pelanggaran (Disiplin baik).'
+                        : `${d.rekap_kedisiplinan.riwayat[0].jenis} (${d.rekap_kedisiplinan.riwayat[0].deskripsi || '-'})`,
+                    valueClassName: 'text-gray-600 italic font-normal',
+                  },
+                  {
+                    label: 'Predikat Akhlak',
+                    value: d.catatan?.akhlak || 'Baik',
+                    valueClassName: 'font-bold text-gray-800',
+                  },
+                  {
+                    label: 'Capaian Tahfidz',
+                    value: d.catatan?.tahfidz_hafalan || '-',
+                    valueClassName: 'font-bold text-gray-800',
+                  },
+                  {
+                    label: 'Keputusan Akhir',
+                    value: d.catatan?.status_kelulusan || '-',
+                    valueClassName: 'font-black text-emerald-800',
+                    highlightRow: true,
+                  },
+                ]
+              : null;
 
             return (
               <>
-                <div className="mb-6">
-                  <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2 flex items-center gap-1.5">
+                <div className="mb-4">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-1.5 flex items-center gap-1.5">
                     <BookOpen size={14} /> A. Nilai Hasil Belajar (Madrasah Diniyah)
                   </h5>
                   <div className="border border-gray-300 rounded-xl overflow-hidden">
-                    <table className="w-full text-left border-collapse text-xs">
+                    <table className="w-full text-left border-collapse text-[11px]">
                       <thead>
                         <tr className="bg-gray-100 border-b border-gray-300 font-bold text-gray-800">
-                          <th className="py-2.5 px-3 w-10 text-center border-r border-gray-300">No</th>
-                          <th className="py-2.5 px-3 border-r border-gray-300">Mata Pelajaran</th>
-                          <th className="py-2.5 px-3 border-r border-gray-300">Kitab</th>
-                          <th className="py-2.5 px-2 w-14 text-center border-r border-gray-300">KKM</th>
+                          <th className="py-2 px-2.5 w-9 text-center border-r border-gray-300">No</th>
+                          <th className="py-2 px-2.5 border-r border-gray-300">Mata Pelajaran</th>
+                          <th className="py-2 px-2.5 border-r border-gray-300">Kitab</th>
+                          <th className="py-2 px-2 w-12 text-center border-r border-gray-300">KKM</th>
                           {hasLisan && (
-                            <th className="py-2.5 px-2 w-14 text-center border-r border-gray-300">Lisan</th>
+                            <th className="py-2 px-2 w-14 text-center border-r border-gray-300">Lisan</th>
                           )}
-                          <th className="py-2.5 px-2 w-14 text-center border-r border-gray-300">Nilai</th>
-                          <th className="py-2.5 px-2 w-16 text-center border-r border-gray-300">Predikat</th>
-                          <th className="py-2.5 px-3">Keterangan</th>
+                          <th className="py-2 px-2 w-14 text-center border-r border-gray-300">Nilai</th>
+                          <th className="py-2 px-2 w-16 text-center border-r border-gray-300">Predikat</th>
+                          <th className="py-2 px-2.5">Keterangan</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -205,20 +239,20 @@ export default function RaportPreviewClient() {
                         ) : (
                           nilaiList.map((n: any, idx: number) => (
                             <tr key={n.id || idx} className="hover:bg-gray-50">
-                              <td className="py-2 px-3 text-center border-r border-gray-200">{idx + 1}</td>
-                              <td className="py-2 px-3 font-bold border-r border-gray-200">{n.mata_pelajaran}</td>
-                              <td className="py-2 px-3 italic text-gray-700 border-r border-gray-200">{n.kitab || '-'}</td>
-                              <td className="py-2 px-2 text-center border-r border-gray-200">70</td>
+                              <td className="py-1.5 px-2.5 text-center border-r border-gray-200">{idx + 1}</td>
+                              <td className="py-1.5 px-2.5 font-bold border-r border-gray-200">{n.mata_pelajaran}</td>
+                              <td className="py-1.5 px-2.5 italic text-gray-700 border-r border-gray-200">{n.kitab || '-'}</td>
+                              <td className="py-1.5 px-2 text-center border-r border-gray-200">70</td>
                               {hasLisan && (
-                                <td className="py-2 px-2 text-center font-semibold text-gray-800 border-r border-gray-200">
+                                <td className="py-1.5 px-2 text-center font-semibold text-gray-800 border-r border-gray-200">
                                   {n.nilai_lisan !== null && n.nilai_lisan !== undefined && String(n.nilai_lisan).trim() !== ''
                                     ? n.nilai_lisan
                                     : '-'}
                                 </td>
                               )}
-                              <td className="py-2 px-2 text-center font-bold text-gray-900 border-r border-gray-200">{n.nilai_akhir ?? '-'}</td>
-                              <td className="py-2 px-2 text-center font-black border-r border-gray-200">{n.predikat ?? '-'}</td>
-                              <td className="py-2 px-3 text-gray-600">{Number(n.nilai_akhir) >= 70 ? 'Tuntas' : Number(n.nilai_akhir) > 0 ? 'Perlu Bimbingan' : (n.catatan || 'Belum Dinilai')}</td>
+                              <td className="py-1.5 px-2 text-center font-bold text-gray-900 border-r border-gray-200">{n.nilai_akhir ?? '-'}</td>
+                              <td className="py-1.5 px-2 text-center font-black border-r border-gray-200">{n.predikat ?? '-'}</td>
+                              <td className="py-1.5 px-2.5 text-gray-600">{Number(n.nilai_akhir) >= 70 ? 'Tuntas' : Number(n.nilai_akhir) > 0 ? 'Perlu Bimbingan' : (n.catatan || 'Belum Dinilai')}</td>
                             </tr>
                           ))
                         )}
@@ -226,13 +260,13 @@ export default function RaportPreviewClient() {
                       {nilaiList.length > 0 && (
                         <tfoot>
                           <tr className="bg-gray-100 font-bold border-t border-gray-300">
-                            <td colSpan={hasLisan ? 5 : 4} className="py-2.5 px-3 text-right border-r border-gray-300 uppercase">
+                            <td colSpan={hasLisan ? 5 : 4} className="py-2 px-2.5 text-right border-r border-gray-300 uppercase">
                               Nilai Rata-Rata Akhir:
                             </td>
-                            <td className="py-2.5 px-2 text-center font-black text-emerald-800 border-r border-gray-300">
+                            <td className="py-2 px-2 text-center font-black text-emerald-800 border-r border-gray-300">
                               {d.ringkasan_nilai?.rata_rata ?? '0.00'}
                             </td>
-                            <td colSpan={2} className="py-2.5 px-3 text-xs text-gray-600">
+                            <td colSpan={2} className="py-2 px-2.5 text-[11px] text-gray-600">
                               Dari total {d.ringkasan_nilai?.total_mapel ?? nilaiList.length} mata pelajaran
                             </td>
                           </tr>
@@ -242,113 +276,22 @@ export default function RaportPreviewClient() {
                   </div>
                 </div>
 
-                {/* REKAP ABSENSI & KEDISIPLINAN (BERTUMPUK FULL-WIDTH) */}
-                <div className="space-y-6 mb-6">
-                  {abs && (
-                    <div>
-                      <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">B. Rekapitulasi Presensi</h5>
-                      <div className="border border-gray-300 rounded-xl overflow-hidden text-xs">
-                        <table className="w-full">
-                          <tbody className="divide-y divide-gray-200">
-                            <tr>
-                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Hadir</td>
-                              <td className="py-2 px-3 font-bold text-emerald-700">{abs.hadir ?? 0} kali</td>
-                            </tr>
-                            <tr>
-                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Izin</td>
-                              <td className="py-2 px-3 font-bold text-amber-700">{abs.izin ?? 0} kali</td>
-                            </tr>
-                            <tr>
-                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Sakit</td>
-                              <td className="py-2 px-3 font-bold text-blue-700">{abs.sakit ?? 0} kali</td>
-                            </tr>
-                            <tr>
-                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Alpha / Tanpa Keterangan</td>
-                              <td className="py-2 px-3 font-bold text-rose-700">{abs.alpha ?? abs.alpa ?? 0} kali</td>
-                            </tr>
-                            <tr className="bg-gray-100 font-bold">
-                              <td className="py-2 px-3 w-64 border-r border-gray-200">Persentase Kehadiran</td>
-                              <td className="py-2 px-3 font-black text-gray-900">{abs.persentase ?? 100} persen</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-
-                  {d.rekap_kedisiplinan && (
-                    <div>
-                      <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">C. Kedisiplinan &amp; Ketertiban</h5>
-                      <div className="border border-gray-300 rounded-xl overflow-hidden text-xs">
-                        <table className="w-full">
-                          <tbody className="divide-y divide-gray-200">
-                            <tr>
-                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Predikat Kedisiplinan</td>
-                              <td className="py-2 px-3 font-black text-emerald-800">{d.rekap_kedisiplinan.predikat}</td>
-                            </tr>
-                            <tr>
-                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Catatan Pelanggaran</td>
-                              <td className="py-2 px-3 text-gray-600 italic">
-                                {!d.rekap_kedisiplinan.riwayat || d.rekap_kedisiplinan.riwayat.length === 0
-                                  ? 'Tidak ada catatan pelanggaran (Disiplin baik).'
-                                  : `${d.rekap_kedisiplinan.riwayat[0].jenis} (${d.rekap_kedisiplinan.riwayat[0].deskripsi || '-'})`}
-                              </td>
-                            </tr>
-                            <tr>
-                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Predikat Akhlak</td>
-                              <td className="py-2 px-3 font-bold text-gray-800">{d.catatan?.akhlak || 'Baik'}</td>
-                            </tr>
-                            <tr>
-                              <td className="py-2 px-3 w-64 font-semibold bg-gray-50 border-r border-gray-200">Capaian Tahfidz</td>
-                              <td className="py-2 px-3 font-bold text-gray-800">{d.catatan?.tahfidz_hafalan || '-'}</td>
-                            </tr>
-                            <tr className="bg-gray-100 font-bold">
-                              <td className="py-2 px-3 w-64 border-r border-gray-200">Keputusan Akhir</td>
-                              <td className="py-2 px-3 font-black text-emerald-800">{d.catatan?.status_kelulusan || '-'}</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <RaportFooterSections
+                  absensi={abs}
+                  kedisiplinanRows={kedisiplinanRows}
+                  catatanTitle="D. Catatan Wali Kelas"
+                  catatanContent={
+                    <p className="text-gray-700 min-h-[36px] whitespace-pre-wrap leading-snug">
+                      {d.catatan?.catatan_wali_kelas || '-'}
+                    </p>
+                  }
+                  namaWali={d.santri?.nama_wali}
+                  kepalaMadin={(d as any).kepala_madin}
+                  showIcons={false}
+                />
               </>
             );
           })()}
-
-          {/* CATATAN WALI KELAS */}
-          <div className="mb-6 border border-gray-200 rounded-xl p-4">
-            <h5 className="font-bold text-xs uppercase tracking-wider text-gray-700 mb-2">D. Catatan Wali Kelas</h5>
-            <p className="text-xs text-gray-700 min-h-[48px] whitespace-pre-wrap">{d.catatan?.catatan_wali_kelas || '-'}</p>
-          </div>
-
-          {/* TANDA TANGAN */}
-          <div className="text-xs mt-8">
-            <p className="text-right text-gray-500">
-              Lamongan, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-            <p className="text-center text-gray-500 mt-1 mb-1">Mengetahui,</p>
-            <div className="grid grid-cols-2 gap-6 text-center">
-              <div className="flex flex-col justify-between">
-                <p className="font-bold text-gray-700">Orang Tua / Wali Santri</p>
-                <div className="mt-16">
-                  <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
-                    {d.santri?.nama_wali && String(d.santri.nama_wali).trim() && d.santri.nama_wali !== '-'
-                      ? d.santri.nama_wali
-                      : '( ......................... )'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col justify-between">
-                <p className="font-bold text-gray-700 whitespace-nowrap">Kepala Madrasah Diniyah PP. Matholi&apos;ul Anwar</p>
-                <div className="mt-16">
-                  <p className="font-bold border-t border-gray-400 mx-8 pt-1 whitespace-nowrap">
-                    {(d as any).kepala_madin || 'Agus Naqoub Ashrofun Nasr'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
 
         </div>
       </div>
