@@ -113,11 +113,13 @@ export default function RaportDocument({
     keteranganBimbingan,
   } = resolvePengaturanNilai(pengaturanNilai, editCatatan);
 
+  const semesterTaValue = `${semesterLabel} , ${displayValue(raportData.tahun_ajaran)}`;
+
   const identitasPage1 = [
     { label: 'Nama Santri', value: displayValue(santri.nama), valueClass: 'font-black text-gray-900' },
     { label: 'Nomor Induk (NIS)', value: displayValue(santri.nis) },
     { label: 'Kelas Madin', value: displayValue(santri.nama_kelas_madin) },
-    { label: 'Semester / TA', value: `${semesterLabel} / ${displayValue(raportData.tahun_ajaran)}`, valueClass: 'font-bold' },
+    { label: 'Semester , TA', value: semesterTaValue, valueClass: 'font-bold' },
     { label: 'Kamar / Asrama', value: `${displayValue(santri.nama_kamar)} (${displayValue(santri.nama_asrama)})` },
     { label: 'Alamat', value: displayValue(santri.alamat), valueClass: 'leading-snug' },
   ];
@@ -126,7 +128,7 @@ export default function RaportDocument({
     { label: 'Nama', labelWidth: 'w-32 print:w-28', value: displayValue(santri.nama), valueClass: 'font-bold text-gray-900' },
     { label: 'Kelas Madin', labelWidth: 'w-24 print:w-[86px]', value: displayValue(santri.nama_kelas_madin) },
     { label: 'Nomor Induk (NIS)', labelWidth: 'w-32 print:w-28', value: displayValue(santri.nis) },
-    { label: 'Semester / TA', labelWidth: 'w-24 print:w-[86px]', value: `${semesterLabel} / ${displayValue(raportData.tahun_ajaran)}` },
+    { label: 'Semester , TA', labelWidth: 'w-24 print:w-[86px]', value: semesterTaValue },
   ];
 
   const kedisiplinanRows: RaportKedisiplinanRow[] = [
@@ -261,7 +263,7 @@ export default function RaportDocument({
 
           <div className="flex items-center justify-between gap-3 mb-1.5 print:mb-1">
             <h5 className="font-bold text-xs print:text-[10px] uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
-              <ClipboardList size={14} /> A. Transkrip Nilai Per Mata Pelajaran
+              <ClipboardList size={14} /> A. Transkrip Nilai Tiap Mata Pelajaran
             </h5>
             <span className="text-[9px] print:text-[8px] text-gray-600 whitespace-nowrap">KKM: {batasLabel}</span>
           </div>
